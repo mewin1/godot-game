@@ -33,6 +33,7 @@ var _chip_labels: Array[Label] = []
 var _siege_panel: PanelContainer
 var _siege_label: Label
 var _time: float = 0.0
+var _player_colors: FieldStyle = VisualCatalog.get_default().field
 
 
 func _init() -> void:
@@ -111,8 +112,18 @@ func _phase_text(sim: MatchSim) -> String:
 			var seconds: int = ceili(ticks_left / sim.config.ticks_per_second)
 			return "Подготовка · %d с" % seconds
 		MatchSim.Phase.WAVE:
-			return "Волна"
+			return _wave_text(sim)
 	return "Матч окончен"
+
+
+## Волна: сколько осталось до ярости; в ярости — сколько до прорыва всех оставшихся.
+func _wave_text(sim: MatchSim) -> String:
+	var config: GameConfig = sim.config
+	var ticks_left: int = config.wave_max_ticks - sim.phase_tick
+	if ticks_left > 0:
+		return "Волна · %d с" % ceili(float(ticks_left) / config.ticks_per_second)
+	ticks_left = maxi(0, ticks_left + config.wave_enrage_extra_ticks)
+	return "ЯРОСТЬ! мобы ускорились · %d с" % ceili(float(ticks_left) / config.ticks_per_second)
 
 
 func _refresh_chips(sim: MatchSim, human_index: int) -> void:
@@ -122,6 +133,7 @@ func _refresh_chips(sim: MatchSim, human_index: int) -> void:
 		var chip: PanelContainer = _chips[player.index]
 		var label: Label = _chip_labels[player.index]
 		var display_name: String = "Вы" if player.index == human_index else player.display_name
+		label.add_theme_color_override("font_color", _player_colors.get_player_color(player.index))
 		if not player.is_alive:
 			label.text = "%s · %d место" % [display_name, player.place]
 			chip.modulate = COLOR_ELIMINATED

@@ -16,11 +16,15 @@ const HP_BACK_COLOR: Color = Color(0.05, 0.04, 0.03, 0.85)
 const HP_GOOD_COLOR: Color = Color(0.56, 0.74, 0.4)
 const HP_LOW_COLOR: Color = Color(0.85, 0.36, 0.25)
 const BREACH_TEXT_COLOR: Color = Color(1.0, 0.45, 0.35)
+const HP_TEXT_COLOR: Color = Color(0.94, 0.89, 0.81)
 const SHOT_SOUNDS: Array[StringName] = [&"shot_fire", &"shot_ice", &"shot_mech"]
 
 var interpolation: float = 0.0
 var is_own_field: bool = false
 var breach_multiplier: int = 1
+var hero_hp: int = 0
+## Центр таблички HP героя на экране (её место задаёт FieldView: там же терем).
+var hero_plate_center: Vector2 = Vector2.ZERO
 
 static var _puff_texture: Texture2D
 
@@ -93,6 +97,7 @@ func _draw() -> void:
 		_draw_projectile(projectile)
 	for impact: Impact in _impacts:
 		_draw_impact(impact)
+	_draw_hero_hp(hero_plate_center)
 	for text: FloatText in _texts:
 		_draw_float_text(text)
 	if _breach_flash_left > 0.0:
@@ -120,22 +125,47 @@ func _draw_mob(mob: MobState) -> void:
 		_facing_left[mob.id] = step_x < 0.0
 	var sprite_size: float = visual.size_cells * _cell_size
 	feet.y += sprite_size * 0.3
-	var phase: float = _time * visual.bob_speed * PI + mob.id
+	var bob_speed: float = visual.bob_speed * (2.0 if _field.is_enraged else 1.0)
+	var phase: float = _time * bob_speed * PI + mob.id
 	var bob: float = absf(sin(phase)) * visual.bob_height * sprite_size
 	var tilt: float = sin(phase) * 0.07
 	draw_set_transform(feet, 0.0, Vector2(1.0, 0.32))
 	draw_circle(Vector2.ZERO, sprite_size * 0.36, SHADOW_COLOR)
+	if mob.sender_index >= 0:
+		# Чья армия: кольцо цвета игрока под юнитом.
+		draw_arc(Vector2.ZERO, sprite_size * 0.36, 0.0, TAU, 24,
+				_style.get_player_color(mob.sender_index), 5.0, true)
 	if mob.slow_percent > 0:
 		draw_arc(Vector2.ZERO, sprite_size * 0.42, 0.0, TAU, 24, _style.slow_tint, 3.0, true)
 	var flip: float = -1.0 if _facing_left.get(mob.id, false) else 1.0
 	draw_set_transform(feet - Vector2(0, bob), tilt, Vector2(flip, 1.0))
-	var tint: Color = _style.slow_tint if mob.slow_percent > 0 else Color.WHITE
+	var tint: Color = Color.WHITE
+	if _field.is_enraged:
+		tint = _style.enrage_tint
+	if mob.slow_percent > 0:
+		tint = tint * _style.slow_tint
 	draw_texture_rect(visual.texture, Rect2(Vector2(-sprite_size * 0.5, -sprite_size),
 			Vector2.ONE * sprite_size), false, tint)
 	draw_set_transform_matrix(Transform2D.IDENTITY)
 	if mob.hp < mob.max_hp:
 		_draw_hp_bar(Vector2(feet.x, feet.y - sprite_size - bob - 4.0), sprite_size * 0.7,
 				float(mob.hp) / mob.max_hp)
+
+
+func _draw_hero_hp(center: Vector2) -> void:
+	var font: Font = get_theme_default_font()
+	var font_size: int = maxi(12, int(_cell_size * 0.34))
+	var text: String = str(maxi(0, hero_hp))
+	var text_width: float = font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
+	var icon_size: float = font_size * 1.1
+	var plate_size: Vector2 = Vector2(icon_size + text_width + 14.0, font_size * 1.45)
+	var plate: Rect2 = Rect2(center - plate_size * 0.5, plate_size)
+	draw_rect(plate.grow(2.0), Color(0.07, 0.05, 0.04, 0.9))
+	draw_rect(plate, Color(0.2, 0.14, 0.1, 0.95))
+	draw_texture_rect(_style.heart_icon, Rect2(plate.position + Vector2(4.0,
+			(plate_size.y - icon_size) * 0.5), Vector2.ONE * icon_size), false)
+	draw_string(font, Vector2(plate.position.x + icon_size + 8.0, center.y + font_size * 0.36),
+			text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, HP_TEXT_COLOR)
 
 
 func _draw_hp_bar(top_center: Vector2, width: float, ratio: float) -> void:

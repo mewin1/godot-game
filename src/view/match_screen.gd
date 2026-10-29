@@ -36,6 +36,7 @@ var _is_paused: bool = false
 var _speed_index: int = 0
 var _was_prep_shown: bool = true
 var _banner: Control
+var _was_enraged: bool = false
 ## В каком раунде выбыл каждый игрок (индекс → раунд) — для таблицы итогов.
 var _elimination_rounds: Dictionary[int, int] = {}
 
@@ -242,6 +243,7 @@ func _refresh_views() -> void:
 	_refresh_opponent_view()
 	_fade_left_half_on_change()
 	_hud.refresh(_sim, HUMAN_INDEX)
+	_announce_enrage(me.field.is_enraged)
 	_update_toast()
 
 
@@ -272,6 +274,13 @@ func _fade_left_half_on_change() -> void:
 	var tween: Tween = _menu_slot.create_tween()
 	tween.set_ignore_time_scale()
 	tween.tween_property(_menu_slot, "modulate:a", 1.0, HALF_FADE_SECONDS)
+
+
+func _announce_enrage(is_enraged: bool) -> void:
+	if is_enraged and not _was_enraged and _human().is_alive:
+		_show_banner("ЯРОСТЬ!", COLOR_SIEGE, "Время волны вышло — мобы ускорились")
+		_sound_bank.play(&"wave", 0.0)
+	_was_enraged = is_enraged
 
 
 func _update_toast() -> void:

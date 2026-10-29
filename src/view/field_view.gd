@@ -388,23 +388,10 @@ func _draw_hero() -> void:
 	if _hero_shake_left > 0.0:
 		var flash: Color = Color(_style.breach_color, 0.5 * _hero_shake_left / HERO_SHAKE_SECONDS)
 		draw_texture_rect(texture, Rect2(draw_position, Vector2(width, height)), false, flash)
-	_draw_hero_hp(Vector2(rect.get_center().x, rect.end.y - _cell_size * 0.1) + shake)
+	# Табличку HP рисует боевой слой — поверх мобов, чтобы толпа у терема её не закрывала.
+	_battle.hero_hp = hero_hp
+	_battle.hero_plate_center = Vector2(rect.get_center().x, rect.end.y - _cell_size * 0.1) + shake
 
-
-func _draw_hero_hp(center: Vector2) -> void:
-	var font: Font = get_theme_default_font()
-	var font_size: int = maxi(12, int(_cell_size * 0.34))
-	var text: String = str(maxi(0, hero_hp))
-	var text_width: float = font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
-	var icon_size: float = font_size * 1.1
-	var plate_size: Vector2 = Vector2(icon_size + text_width + 14.0, font_size * 1.45)
-	var plate: Rect2 = Rect2(center - plate_size * 0.5, plate_size)
-	draw_rect(plate.grow(2.0), Color(0.07, 0.05, 0.04, 0.9))
-	draw_rect(plate, Color(0.2, 0.14, 0.1, 0.95))
-	draw_texture_rect(_style.heart_icon, Rect2(plate.position + Vector2(4.0,
-			(plate_size.y - icon_size) * 0.5), Vector2.ONE * icon_size), false)
-	draw_string(font, Vector2(plate.position.x + icon_size + 8.0, center.y + font_size * 0.36),
-			text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, TITLE_COLOR)
 
 #endregion
 

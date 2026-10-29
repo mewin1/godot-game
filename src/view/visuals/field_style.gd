@@ -29,3 +29,13 @@ extends Resource
 @export var slow_tint: Color = Color(0.6, 0.85, 1.0)
 @export var breach_color: Color = Color(0.8, 0.15, 0.1)
 @export var gold_text_color: Color = Color(0.95, 0.8, 0.4)
+## Ярость (время волны вышло): мобы краснеют.
+@export var enrage_tint: Color = Color(1.0, 0.55, 0.45)
+## Цвета игроков по номеру: кольцо под юнитами армии и имя в фишке. Первый — вы.
+@export var player_colors: Array[Color] = [Color(0.91, 0.65, 0.29), Color(0.82, 0.36, 0.3),
+		Color(0.5, 0.72, 0.88), Color(0.56, 0.76, 0.42), Color(0.72, 0.56, 0.86)]
+
+
+## Цвет игрока по номеру (если игроков больше, чем цветов, — по кругу).
+func get_player_color(player_index: int) -> Color:
+	return player_colors[player_index % player_colors.size()]
