@@ -42,7 +42,7 @@ extends Resource
 ## Урон башни уровня 1, 2, 3 в процентах от базового.
 @export var level_damage_percent: Array[int] = [100, 220, 480]
 ## На каком расстоянии (в клетках, по горизонтали/вертикали/диагонали) от открытого пути можно строить.
-@export var build_radius: int = 1
+@export var build_radius: int = 2
 
 @export_group("Отправка")
 @export var send_base_cost: int = 5
@@ -58,7 +58,9 @@ extends Resource
 @export_group("Базовая волна")
 @export var wave_base_count: int = 5
 @export var wave_count_per_round: int = 1
-@export var wave_hp_growth_percent: int = 12
+## HP мобов растёт каждый раунд на столько процентов от прошлого раунда (сложный процент).
+## Юниты отправки растут так же, иначе поздние отправки бесполезны.
+@export var wave_hp_growth_percent: int = 25
 @export var wave_spawn_interval_ticks: int = 20
 
 @export_group("Прорыв")
@@ -86,6 +88,14 @@ func get_shop_upgrade_cost(level: int) -> int:
 	if level < 1 or level > shop_upgrade_costs.size():
 		return 0
 	return shop_upgrade_costs[level - 1]
+
+
+## Во сколько процентов от базового HP мобы в раунде (раунд 1 — 100).
+func get_round_hp_percent(round_number: int) -> int:
+	var percent: int = 100
+	for i: int in round_number - 1:
+		percent = percent * (100 + wave_hp_growth_percent) / 100
+	return percent
 
 
 func get_level_damage(base_damage: int, tower_level: int) -> int:
