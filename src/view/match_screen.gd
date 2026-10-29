@@ -14,7 +14,8 @@ const TOAST_SECONDS: float = 2.0
 const MAX_TICKS_PER_FRAME: int = 5
 const COLOR_BACKGROUND: Color = Color(0.06, 0.07, 0.09)
 
-@export var player_count: int = 2
+## Игроков в лобби: вы + боты.
+@export var player_count: int = 5
 
 var _sim: MatchSim
 var _accumulator: float = 0.0
@@ -22,6 +23,8 @@ var _selected_tower_id: int = 0
 var _toast_time_left: float = 0.0
 
 var _hud_label: Label
+var _lobby_label: Label
+var _ghost_label: Label
 var _halves: BoxContainer
 var _menu_slot: Control
 var _shop_panel: ShopPanel
@@ -71,6 +74,11 @@ func _build_ui() -> void:
 	_hud_label.custom_minimum_size = Vector2(0, 40)
 	_hud_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	root_box.add_child(_hud_label)
+	_lobby_label = Label.new()
+	_lobby_label.add_theme_font_size_override("font_size", 17)
+	_lobby_label.add_theme_color_override("font_color", Color(0.8, 0.85, 0.95))
+	_lobby_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	root_box.add_child(_lobby_label)
 	_halves = BoxContainer.new()
 	_halves.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	root_box.add_child(_halves)
@@ -113,6 +121,12 @@ func _build_halves() -> void:
 	_opponent_view = FieldView.new()
 	_opponent_view.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_menu_slot.add_child(_opponent_view)
+	_ghost_label = Label.new()
+	_ghost_label.text = "Ваш соперник в этом раунде — призрак.\nОн присылает обычную пачку юнитов,\nа ваша отправка уходит в пустоту."
+	_ghost_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_ghost_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_ghost_label.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_menu_slot.add_child(_ghost_label)
 	_my_view = FieldView.new()
 	_make_half(_my_view)
 	_my_view.command_requested.connect(_on_command_requested)
@@ -168,6 +182,7 @@ func _start_match() -> void:
 	_sim.command_failed.connect(_on_sim_command_failed)
 	_sim.match_finished.connect(_on_sim_match_finished)
 	_sim.phase_changed.connect(_on_sim_phase_changed)
+	_sim.player_eliminated.connect(_on_sim_player_eliminated)
 	_sim.start()
 	_shop_panel.setup(_sim, _human())
 
@@ -200,10 +215,12 @@ func _refresh_views() -> void:
 	_shop_panel.refresh(me.field.get_tower(_selected_tower_id))
 	var opponent: PlayerState = _opponent()
 	_opponent_view.visible = not _shop_panel.visible and opponent != null
+	_ghost_label.visible = not _shop_panel.visible and opponent == null
 	if opponent != null:
 		_opponent_view.show_field(opponent.field, _sim.config, "Поле соперника: %s" % opponent.display_name)
 		_opponent_view.hero_hp = opponent.hero_hp
 	_hud_label.text = _hud_text()
+	_lobby_label.text = _lobby_text()
 	_update_toast()
 
 
@@ -215,11 +232,38 @@ func _hud_text() -> String:
 	if _sim.phase == MatchSim.Phase.OVER:
 		phase_name = "Матч окончен"
 	var text: String = "  Раунд %d · %s   |   Вы: HP %d · золото %d (+%d за раунд)" % [
-			_sim.round_number, phase_name, me.hero_hp, me.gold, me.income]
+			_sim.round_number, phase_name, maxi(0, me.hero_hp), me.gold, me.income]
 	var opponent: PlayerState = _opponent()
 	if opponent != null:
-		text += "   |   %s: HP %d" % [opponent.display_name, opponent.hero_hp]
+		text += "   |   %s: HP %d" % [opponent.display_name, maxi(0, opponent.hero_hp)]
 	return text
+
+
+## Вторая строка: все игроки с HP, кто ваш соперник, и объявление осады.
+func _lobby_text() -> String:
+	var parts: PackedStringArray = []
+	var opponent_index: int = _sim.opponent_of[HUMAN_INDEX]
+	for player: PlayerState in _sim.players:
+		var mark: String = ""
+		if not player.is_alive:
+			mark = " (выбыл, место %d)" % player.place
+		elif player.index == opponent_index:
+			mark = " ← соперник"
+		parts.append("%s %d%s" % [player.display_name, maxi(0, player.hero_hp), mark])
+	var text: String = "  HP: " + " · ".join(parts)
+	return text + _siege_text()
+
+
+func _siege_text() -> String:
+	if _sim.siege_leader >= 0:
+		var names: PackedStringArray = []
+		for index: int in _sim.siege_attackers:
+			names.append(_sim.players[index].display_name)
+		return "\n  ОСАДА! Лидер %s против: %s" % [
+				_sim.players[_sim.siege_leader].display_name, ", ".join(names)]
+	if _sim.phase != MatchSim.Phase.OVER and _sim.is_siege_round(_sim.round_number + 1):
+		return "\n  Следующий раунд — осада лидера: двое слабейших атакуют самого сильного"
+	return ""
 
 
 func _update_toast() -> void:
@@ -261,9 +305,20 @@ func _on_sim_phase_changed(phase: MatchSim.Phase) -> void:
 		_show_toast("Волна!")
 
 
+func _on_sim_player_eliminated(player: PlayerState) -> void:
+	if player.index == HUMAN_INDEX:
+		_show_game_over()
+	else:
+		_show_toast("%s выбыл, место %d" % [player.display_name, player.place])
+
+
 func _on_sim_match_finished() -> void:
+	_show_game_over()
+
+
+func _show_game_over() -> void:
 	var me: PlayerState = _human()
-	_game_over_label.text = "Победа!" if me.place == 1 else "Поражение · место %d" % me.place
+	_game_over_label.text = "Победа!" if me.place == 1 else "Вы выбыли · место %d" % me.place
 	_game_over_panel.visible = true
 	_game_over_panel.reset_size()
 	_game_over_panel.position = (size - _game_over_panel.size) / 2.0

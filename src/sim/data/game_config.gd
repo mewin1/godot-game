@@ -63,6 +63,17 @@ extends Resource
 @export var wave_hp_growth_percent: int = 25
 @export var wave_spawn_interval_ticks: int = 20
 
+@export_group("Осада лидера")
+## Осада в раундах, кратных этому числу (5, 10, 15…), если живых не меньше siege_min_players.
+@export var siege_every_rounds: int = 5
+@export var siege_min_players: int = 3
+## Атакующему — столько золота за каждое HP, снятое лидеру его мобами.
+@export var siege_gold_per_hp: int = 2
+## Лидер пропустил столько HP или больше — бонус каждому атакующему, иначе — бонус лидеру.
+@export var siege_breach_threshold: int = 5
+@export var siege_attacker_bonus: int = 10
+@export var siege_leader_bonus: int = 15
+
 @export_group("Прорыв")
 ## С какого раунда какой множитель урона прорыва (по возрастанию раундов).
 @export var breach_multiplier_start_rounds: Array[int] = [10, 15]

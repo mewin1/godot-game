@@ -202,7 +202,7 @@ func _draw_path_markers() -> void:
 	var hero: Rect2 = _cell_rect(path[path.size() - 1]).grow(-_cell_size * 0.08)
 	draw_rect(hero, COLOR_HERO)
 	draw_string(get_theme_default_font(), hero.position + Vector2(0, hero.size.y * 0.68),
-			str(hero_hp), HORIZONTAL_ALIGNMENT_CENTER, hero.size.x, int(_cell_size * 0.42))
+			str(maxi(0, hero_hp)), HORIZONTAL_ALIGNMENT_CENTER, hero.size.x, int(_cell_size * 0.42))
 
 
 func _draw_towers() -> void:
