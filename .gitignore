@@ -1,0 +1,41 @@
+# --- Godot 4 ---
+# Кэш и импортированные ресурсы — Godot пересоздаёт их сам
+.godot/
+# Шаблон сборки под Android (появится, если включить сборку под Android)
+/android/
+# Временные файлы редактора
+*.tmp
+*.translation
+
+# --- Готовые сборки игры ---
+/build/
+/builds/
+/export/
+/exports/
+*.x86_64
+*.x86_32
+*.arm64
+*.exe
+*.pck
+*.apk
+*.aab
+*.dmg
+*.app/
+
+# --- Claude Code ---
+.claude/
+CLAUDE.local.md
+.mcp.json
+
+# --- Редакторы кода ---
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# --- Системные файлы ---
+.DS_Store
+Thumbs.db
+desktop.ini
+.directory
