@@ -184,6 +184,8 @@ func test_siege_leader_takes_reduced_damage_from_attackers() -> void:
 	var expected: int = full_damage * _config.siege_leader_damage_percent / 100
 	assert_lt(_config.siege_leader_damage_percent, 100)
 	assert_eq(hp_before - leader.hero_hp, expected)
+	assert_eq(sim.players[sim.siege_attackers[0]].army_damage_dealt, expected,
+			"урон армии в раунде считается по фактически снятому HP")
 
 
 func test_bot_lobby_gives_unique_places() -> void:

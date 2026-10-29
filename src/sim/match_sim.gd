@@ -174,6 +174,7 @@ func _start_round(number: int) -> void:
 	_plan_pairs()
 	for player: PlayerState in get_alive_players():
 		player.field.calm_down()
+		player.army_damage_dealt = 0
 		if number > 1:
 			player.shop.on_round_started()
 		player.start_prep(number > 1)
@@ -263,7 +264,9 @@ func _collect_field_results(player: PlayerState) -> void:
 			damage = _reduce_siege_damage(damage)
 		player.hero_hp -= damage
 		if mob.sender_index >= 0:
-			players[mob.sender_index].gold += damage * config.army_gold_per_hp
+			var sender: PlayerState = players[mob.sender_index]
+			sender.gold += damage * config.army_gold_per_hp
+			sender.army_damage_dealt += damage
 		if player.index == siege_leader:
 			_record_siege_damage(mob.sender_index, damage)
 	field.clear_pending()

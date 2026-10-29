@@ -13,6 +13,7 @@ const END_PANEL_SCENE: PackedScene = preload("res://scenes/match_end_panel.tscn"
 const LIVE_LOG_DIR: String = "res://logs/live"
 const HUMAN_INDEX: int = 0
 const TOAST_SECONDS: float = 2.0
+const SUMMARY_SECONDS: float = 4.0
 const TOAST_FONT_SIZE: int = 24
 const HALF_FADE_SECONDS: float = 0.35
 ## Не больше стольких тиков за кадр — чтобы игра не «догоняла» рывком после подвисания.
@@ -37,6 +38,7 @@ var _speed_index: int = 0
 var _was_prep_shown: bool = true
 var _banner: Control
 var _was_enraged: bool = false
+var _hp_at_round_start: int = 0
 ## В каком раунде выбыл каждый игрок (индекс → раунд) — для таблицы итогов.
 var _elimination_rounds: Dictionary[int, int] = {}
 
@@ -47,6 +49,7 @@ var _shop_panel: ShopPanel
 var _opponent_view: FieldView
 var _my_view: FieldView
 var _overlay: Control
+var _toast_panel: PanelContainer
 var _toast_label: Label
 var _end_layer: Control
 var _end_panel: MatchEndPanel
@@ -157,13 +160,18 @@ func _make_half(half: Control) -> void:
 
 
 func _build_toast() -> void:
+	_toast_panel = PanelContainer.new()
+	_toast_panel.theme_type_variation = &"CardPanelActive"
+	_toast_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_toast_panel.modulate.a = 0.0
+	_overlay.add_child(_toast_panel)
 	_toast_label = Label.new()
 	_toast_label.add_theme_font_size_override("font_size", TOAST_FONT_SIZE)
 	_toast_label.add_theme_color_override("font_color", COLOR_TOAST)
 	_toast_label.add_theme_constant_override("outline_size", 8)
 	_toast_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_toast_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_overlay.add_child(_toast_label)
+	_toast_panel.add_child(_toast_label)
 
 
 func _build_end_layer() -> void:
@@ -194,6 +202,7 @@ func _start_match() -> void:
 	_sim.command_failed.connect(_on_sim_command_failed)
 	_sim.match_finished.connect(_on_sim_match_finished)
 	_sim.round_started.connect(_on_sim_round_started)
+	_sim.round_finished.connect(_on_sim_round_finished)
 	_sim.phase_changed.connect(_on_sim_phase_changed)
 	_sim.player_eliminated.connect(_on_sim_player_eliminated)
 	_hud.set_player_count(player_count)
@@ -285,14 +294,15 @@ func _announce_enrage(is_enraged: bool) -> void:
 
 func _update_toast() -> void:
 	_toast_time_left = maxf(0.0, _toast_time_left - get_process_delta_time())
-	_toast_label.modulate.a = clampf(_toast_time_left, 0.0, 1.0)
+	_toast_panel.modulate.a = clampf(_toast_time_left * 2.0, 0.0, 1.0)
 
 
-func _show_toast(text: String) -> void:
+func _show_toast(text: String, seconds: float = TOAST_SECONDS) -> void:
 	_toast_label.text = text
-	_toast_label.reset_size()
-	_toast_label.position = Vector2((size.x - _toast_label.size.x) / 2.0, size.y - 90.0)
-	_toast_time_left = TOAST_SECONDS
+	_toast_panel.reset_size()
+	_toast_panel.position = Vector2((size.x - _toast_panel.size.x) / 2.0,
+			size.y - _toast_panel.size.y - 40.0)
+	_toast_time_left = seconds
 
 
 func _show_banner(text: String, color: Color = UiFx.BANNER_COLOR, subtitle: String = "") -> void:
@@ -366,7 +376,35 @@ func _on_sim_command_failed(player_index: int, reason: String) -> void:
 		_show_toast(reason)
 
 
+## Сводка после волны: сколько сняла ваша армия и сколько потеряли вы.
+func _on_sim_round_finished(_round_number: int) -> void:
+	var me: PlayerState = _human()
+	if not me.is_alive:
+		return
+	var lines: PackedStringArray = []
+	var target: String = _round_target_name()
+	if target == "":
+		lines.append("Бой с призраком: урон армии не засчитывается")
+	else:
+		lines.append("Ваша армия сняла %d HP у: %s" % [me.army_damage_dealt, target])
+	var lost: int = _hp_at_round_start - me.hero_hp
+	lines.append("Вы потеряли %d HP" % lost if lost > 0 else "Терем устоял без потерь")
+	_show_toast("\n".join(lines), SUMMARY_SECONDS)
+
+
+## Кого атаковала ваша армия в этом раунде (пусто — призрака).
+func _round_target_name() -> String:
+	if _sim.siege_leader == HUMAN_INDEX:
+		var names: PackedStringArray = []
+		for index: int in _sim.siege_attackers:
+			names.append(_sim.players[index].display_name)
+		return " и ".join(names)
+	var opponent: PlayerState = _opponent()
+	return opponent.display_name if opponent != null else ""
+
+
 func _on_sim_round_started(round_number: int) -> void:
+	_hp_at_round_start = _human().hero_hp
 	if not _sim.is_siege_round(round_number):
 		_show_banner("Раунд %d" % round_number)
 		_sound_bank.play(&"round", 0.0)
