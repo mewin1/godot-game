@@ -230,6 +230,7 @@ func _refresh_views() -> void:
 	_my_view.hero_hp = me.hero_hp
 	_my_view.can_edit = is_prep and me.is_alive
 	_my_view.selected_tower_id = _selected_tower_id
+	_my_view.is_under_siege = _sim.siege_leader == HUMAN_INDEX
 	var multiplier: int = _sim.config.get_breach_multiplier(_sim.round_number)
 	_my_view.breach_multiplier = multiplier
 	_opponent_view.breach_multiplier = multiplier

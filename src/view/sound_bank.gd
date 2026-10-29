@@ -13,9 +13,10 @@ const VOLUME_DB: float = -8.0
 
 static var _is_muted: bool = false
 static var _is_settings_loaded: bool = false
+## Звуки генерируются один раз за запуск игры (~50 мс) и дальше общие для всех сцен.
+static var _streams: Dictionary[StringName, AudioStreamWAV] = {}
+static var _volumes: Dictionary[StringName, float] = {}
 
-var _streams: Dictionary[StringName, AudioStreamWAV] = {}
-var _volumes: Dictionary[StringName, float] = {}
 var _last_played: Dictionary[StringName, float] = {}
 var _players: Array[AudioStreamPlayer] = []
 var _next_player: int = 0
@@ -43,7 +44,8 @@ func _ready() -> void:
 		var player: AudioStreamPlayer = AudioStreamPlayer.new()
 		add_child(player)
 		_players.append(player)
-	_build_sounds()
+	if _streams.is_empty():
+		_build_sounds()
 
 
 func _process(delta: float) -> void:

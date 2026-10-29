@@ -13,7 +13,7 @@ const COLOR_EMPTY: Color = Color(0.1, 0.075, 0.057, 0.7)
 const COLOR_NAME: Color = Color(0.95, 0.8, 0.52)
 const COLOR_STATS: Color = Color(0.94, 0.89, 0.81, 0.85)
 const COLOR_EFFECTS: Color = Color(0.75, 0.86, 0.9, 0.9)
-const MAX_SHAPE_CELL: float = 30.0
+const MAX_SHAPE_CELL: float = 36.0
 
 var offer_index: int = 0
 var data: TowerData

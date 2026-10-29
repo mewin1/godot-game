@@ -26,6 +26,7 @@ const HERO_WIDTH: float = 1.2
 const DECOR_SIZE: float = 0.92
 ## «Пружинка» башни после покупки или слияния.
 const POP_SECONDS: float = 0.35
+const SIEGE_PULSE_SPEED: float = 5.0
 const POP_STRENGTH: float = 0.3
 const MERGE_BURST_COLOR: Color = Color(1.0, 0.82, 0.4)
 const SELL_BURST_COLOR: Color = Color(0.75, 0.62, 0.45)
@@ -53,6 +54,9 @@ var breach_multiplier: int = 1:
 		breach_multiplier = value
 		_battle.breach_multiplier = value
 
+## На это поле идут сразу двое (осада): рамка поля мигает красным.
+var is_under_siege: bool = false
+
 var _style: FieldStyle
 var _battle: BattleLayer
 var _cell_size: float = 32.0
@@ -64,6 +68,7 @@ var _hover_merge_target: TowerState
 var _press_position: Vector2 = Vector2.ZERO
 var _fire_pulses: Dictionary[int, float] = {}
 var _hero_shake_left: float = 0.0
+var _time: float = 0.0
 var _pops: Dictionary[int, float] = {}
 ## Уровни и центры башен на прошлом кадре — так видно покупку, слияние и продажу.
 var _known_levels: Dictionary[int, int] = {}
@@ -85,6 +90,7 @@ func _process(delta: float) -> void:
 		if _fire_pulses[tower_id] <= 0.0:
 			_fire_pulses.erase(tower_id)
 	_hero_shake_left = maxf(0.0, _hero_shake_left - delta)
+	_time += delta
 	for tower_id: int in _pops.keys():
 		_pops[tower_id] -= delta
 		if _pops[tower_id] <= 0.0:
@@ -251,8 +257,13 @@ func _draw_board() -> void:
 	var board: BoardLayout = field.layout
 	var board_rect: Rect2 = Rect2(_origin, Vector2(board.width, board.height) * _cell_size)
 	draw_rect(board_rect.grow(_cell_size * FRAME_MARGIN), _style.frame_color)
-	draw_rect(board_rect.grow(_cell_size * FRAME_MARGIN * 0.35), _style.selected_color.darkened(0.55),
-			false, 2.0)
+	var frame_line: Color = _style.selected_color.darkened(0.55)
+	var frame_width: float = 2.0
+	if is_under_siege:
+		var pulse: float = 0.5 + 0.5 * sin(_time * SIEGE_PULSE_SPEED)
+		frame_line = _style.breach_color.lerp(Color(1.0, 0.5, 0.35), pulse)
+		frame_width = 3.0 + 3.0 * pulse
+	draw_rect(board_rect.grow(_cell_size * FRAME_MARGIN * 0.35), frame_line, false, frame_width)
 	var grass_count: int = _style.grass_textures.size()
 	for y: int in board.height:
 		for x: int in board.width:
