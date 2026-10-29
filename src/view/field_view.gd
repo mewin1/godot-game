@@ -140,10 +140,6 @@ func get_tower_screen_center(tower: TowerState) -> Vector2:
 	return _to_screen(Vector2(tower.center_milli()))
 
 
-func get_cell_size() -> float:
-	return _cell_size
-
-
 #region Перетаскивание
 
 func _get_drag_data(at_position: Vector2) -> Variant:
@@ -322,7 +318,8 @@ func _draw_decor() -> void:
 			var texture: Texture2D = _style.decor_textures[(cell_hash / 100) % decor_count]
 			var decor_size: float = _cell_size * DECOR_SIZE
 			var rect: Rect2 = _cell_rect(cell)
-			var draw_position: Vector2 = rect.get_center() - Vector2(decor_size * 0.5, decor_size * 0.6)
+			var draw_position: Vector2 = rect.get_center() \
+					- Vector2(decor_size * 0.5, decor_size * 0.6)
 			draw_texture_rect(texture, Rect2(draw_position, Vector2.ONE * decor_size), false)
 
 

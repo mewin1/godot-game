@@ -269,7 +269,8 @@ func _army_summary(army: ArmyState) -> String:
 	var parts: PackedStringArray = []
 	for unit_name: String in counts:
 		parts.append("%s ×%d" % [unit_name, counts[unit_name]])
-	return "Армия сама идёт к сопернику каждый раунд. Прокачка — навсегда и +доход.\nСостав: %s · HP +%d%% · скорость +%d%%" % [
+	return ("Армия сама идёт к сопернику каждый раунд. Прокачка — навсегда и +доход.\n"
+			+ "Состав: %s · HP +%d%% · скорость +%d%%") % [
 			", ".join(parts), army.hp_percent, army.speed_percent]
 
 #endregion

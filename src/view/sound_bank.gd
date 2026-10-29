@@ -182,7 +182,8 @@ func _arpeggio(frequencies: Array[float], step: float, seconds: float) -> Packed
 		var start: int = int(note * step * MIX_RATE)
 		for i: int in range(start, samples.size()):
 			var t: float = float(i - start) / MIX_RATE
-			var tone: float = sin(TAU * frequencies[note] * t) + 0.3 * sin(TAU * frequencies[note] * 3.0 * t)
+			var angle: float = TAU * frequencies[note] * t
+			var tone: float = sin(angle) + 0.3 * sin(angle * 3.0)
 			samples[i] += tone * 0.35 * exp(-14.0 * t) * minf(1.0, t * 500.0)
 	return samples
 

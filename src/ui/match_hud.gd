@@ -107,7 +107,8 @@ func set_muted(is_muted: bool) -> void:
 func _phase_text(sim: MatchSim) -> String:
 	match sim.phase:
 		MatchSim.Phase.PREP:
-			var seconds: int = ceili(float(sim.get_phase_ticks_left()) / sim.config.ticks_per_second)
+			var ticks_left: float = float(sim.get_phase_ticks_left())
+			var seconds: int = ceili(ticks_left / sim.config.ticks_per_second)
 			return "Подготовка · %d с" % seconds
 		MatchSim.Phase.WAVE:
 			return "Волна"
