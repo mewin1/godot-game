@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="ArmyUpgradeData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/sim/data/army_upgrade_data.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"army_speed"
+display_name = "Юниты +10% скорости"
+kind = 1
+value = 10
+base_cost = 5
+cost_step = 4
+max_purchases = 5
+min_shop_level = 1
+income_bonus = 1

@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="GameConfig" load_steps=24 format=3]
+[gd_resource type="Resource" script_class="GameConfig" load_steps=31 format=3]
 
 [ext_resource type="Script" path="res://src/sim/data/game_config.gd" id="1_script"]
 [ext_resource type="Resource" path="res://data/board/board_default.tres" id="2_ext"]
@@ -23,6 +23,13 @@
 [ext_resource type="Resource" path="res://data/buffs/add_armored.tres" id="21_ext"]
 [ext_resource type="Resource" path="res://data/buffs/add_boss.tres" id="22_ext"]
 [ext_resource type="Resource" path="res://data/buffs/income.tres" id="23_ext"]
+[ext_resource type="Script" path="res://src/sim/data/army_upgrade_data.gd" id="24_ext"]
+[ext_resource type="Resource" path="res://data/army/army_units.tres" id="25_ext"]
+[ext_resource type="Resource" path="res://data/army/army_hp.tres" id="26_ext"]
+[ext_resource type="Resource" path="res://data/army/army_speed.tres" id="27_ext"]
+[ext_resource type="Resource" path="res://data/army/army_fast.tres" id="28_ext"]
+[ext_resource type="Resource" path="res://data/army/army_armored.tres" id="29_ext"]
+[ext_resource type="Resource" path="res://data/army/army_boss.tres" id="30_ext"]
 
 [resource]
 script = ExtResource("1_script")
@@ -30,4 +37,5 @@ board = ExtResource("2_ext")
 towers = Array[ExtResource("5_ext")]([ExtResource("7_ext"), ExtResource("8_ext"), ExtResource("9_ext"), ExtResource("10_ext"), ExtResource("11_ext"), ExtResource("12_ext")])
 send_buffs = Array[ExtResource("6_ext")]([ExtResource("13_ext"), ExtResource("14_ext"), ExtResource("15_ext"), ExtResource("16_ext"), ExtResource("17_ext"), ExtResource("18_ext"), ExtResource("19_ext"), ExtResource("20_ext"), ExtResource("21_ext"), ExtResource("22_ext"), ExtResource("23_ext")])
 wave_mob = ExtResource("3_ext")
-send_mob = ExtResource("4_ext")
+army_mob = ExtResource("4_ext")
+army_upgrades = Array[ExtResource("24_ext")]([ExtResource("25_ext"), ExtResource("26_ext"), ExtResource("27_ext"), ExtResource("28_ext"), ExtResource("29_ext"), ExtResource("30_ext")])

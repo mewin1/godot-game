@@ -6,17 +6,19 @@ extends RefCounted
 ## Повышать магазин, только когда цена упала до этого значения (или раунд уже поздний).
 const CHEAP_UPGRADE_COST: int = 4
 const LATE_ROUND: int = 4
-## Шанс отправить в раунде, если хватает золота (в процентах).
-const SEND_CHANCE_PERCENT: int = 50
+## Шанс купить улучшение армии до башен, если хватает золота и на башню (в процентах).
+const ARMY_FIRST_CHANCE_PERCENT: int = 40
 
 
 func play_prep(sim: MatchSim, player: PlayerState) -> void:
 	_choose_buff(sim, player)
 	_merge_all_pairs(sim, player)
 	_maybe_upgrade_shop(sim, player)
-	_maybe_send(sim, player)
+	_maybe_upgrade_army_first(sim, player)
 	_buy_towers(sim, player)
 	_merge_all_pairs(sim, player)
+	_buy_towers(sim, player)
+	_spend_rest_on_army(sim, player)
 
 
 func _choose_buff(sim: MatchSim, player: PlayerState) -> void:
@@ -36,13 +38,33 @@ func _maybe_upgrade_shop(sim: MatchSim, player: PlayerState) -> void:
 		_execute(sim, player, UpgradeShopCommand.new())
 
 
-func _maybe_send(sim: MatchSim, player: PlayerState) -> void:
+## Иногда бот вкладывается в армию и доход раньше башен.
+func _maybe_upgrade_army_first(sim: MatchSim, player: PlayerState) -> void:
 	if sim.round_number < 2:
 		return
-	if player.gold < sim.get_send_cost(player) + sim.config.tower_cost:
-		return
-	if player.rng.randi_range(1, 100) <= SEND_CHANCE_PERCENT:
-		_execute(sim, player, SendUnitsCommand.new())
+	var index: int = _pick_affordable_upgrade(player, sim.config.tower_cost)
+	if index >= 0 and player.rng.randi_range(1, 100) <= ARMY_FIRST_CHANCE_PERCENT:
+		_execute(sim, player, BuyArmyUpgradeCommand.new(index))
+
+
+## Остаток золота после башен — в армию (если на башни уже нет места или золота).
+func _spend_rest_on_army(sim: MatchSim, player: PlayerState) -> void:
+	var index: int = _pick_affordable_upgrade(player, 0)
+	while index >= 0 and _run(sim, player, BuyArmyUpgradeCommand.new(index)):
+		index = _pick_affordable_upgrade(player, 0)
+
+
+## Случайное доступное улучшение, на которое хватает золота с запасом reserve; -1 — нет такого.
+func _pick_affordable_upgrade(player: PlayerState, reserve: int) -> int:
+	var choices: Array[int] = []
+	for index: int in player.army.upgrade_counts.size():
+		if player.army.check_upgrade_available(index, player.shop.level) != "":
+			continue
+		if player.gold >= player.army.get_upgrade_cost(index) + reserve:
+			choices.append(index)
+	if choices.is_empty():
+		return -1
+	return choices[player.rng.randi_range(0, choices.size() - 1)]
 
 
 ## Покупает, пока хватает золота: сначала копии для слияния, потом — на лучшее место.

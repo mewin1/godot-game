@@ -31,18 +31,39 @@ func test_four_players_no_ghost() -> void:
 		assert_ne(sim.opponent_of[i], MatchSim.GHOST)
 
 
-func test_ghost_sends_pack_to_lonely_player() -> void:
+func test_ghost_is_copy_of_another_player() -> void:
 	var sim: MatchSim = _make_lobby()
 	var lonely: int = sim.opponent_of.find(MatchSim.GHOST)
-	var field: FieldState = sim.players[lonely].field
-	var seen: Dictionary[int, bool] = {}
+	assert_eq(sim.ghost_target, lonely)
+	assert_ne(sim.ghost_source, lonely)
+	assert_true(sim.ghost_source >= 0)
 	_skip_prep(sim)
+	var source: PlayerState = sim.players[sim.ghost_source]
+	assert_not_null(sim.ghost_field)
+	assert_eq(sim.ghost_field.towers.size(), source.field.towers.size(), "башни скопированы")
+	assert_eq(sim.ghost_field.path_length, source.field.path_length)
+
+
+func test_ghost_fight_both_ways() -> void:
+	var sim: MatchSim = _make_lobby()
+	var lonely: int = sim.ghost_target
+	var source: PlayerState = sim.players[sim.ghost_source]
+	_skip_prep(sim)
+	# Запоминаем размеры армий сейчас: в следующей подготовке боты их прокачают.
+	var ghost_army_size: int = source.army.get_unit_count()
+	var my_army_size: int = sim.players[lonely].army.get_unit_count()
+	var ghost_army: Dictionary[int, bool] = {}
+	var my_army: Dictionary[int, bool] = {}
 	while sim.phase == MatchSim.Phase.WAVE:
+		for mob: MobState in sim.players[lonely].field.mobs:
+			if mob.sender_index == MatchSim.GHOST and mob.data != _config.wave_mob:
+				ghost_army[mob.id] = true
+		for mob: MobState in sim.ghost_field.mobs:
+			if mob.sender_index == lonely:
+				my_army[mob.id] = true
 		sim.tick()
-		for mob: MobState in field.mobs:
-			if mob.data == _config.send_mob:
-				seen[mob.id] = true
-	assert_eq(seen.size(), _config.send_pack_size)
+	assert_eq(ghost_army.size(), ghost_army_size, "армия призрака идёт ко мне")
+	assert_eq(my_army.size(), my_army_size, "моя — к призраку")
 
 
 func test_siege_round_every_five_rounds() -> void:
@@ -74,21 +95,25 @@ func test_siege_picks_leader_and_two_weakest() -> void:
 	assert_eq(sim.opponent_of[0], 3, "остальные — обычная дуэль")
 
 
-func test_leader_send_copied_to_both_attackers() -> void:
+func test_leader_army_goes_to_both_attackers() -> void:
 	var sim: MatchSim = _make_siege_round()
 	var leader: int = sim.siege_leader
-	sim.players[leader].gold = 100
-	assert_eq(sim.execute_command(leader, SendUnitsCommand.new()), "")
+	# Запоминаем сейчас: после волны начнётся новый раунд и осада сбросится.
+	var attackers: Array[int] = sim.siege_attackers.duplicate()
+	assert_eq(attackers.size(), 2)
 	_skip_prep(sim)
-	for attacker_index: int in sim.siege_attackers:
-		var seen: Dictionary[int, bool] = {}
-		var field: FieldState = sim.players[attacker_index].field
-		while sim.phase == MatchSim.Phase.WAVE and seen.size() < _config.send_pack_size:
-			sim.tick()
-			for mob: MobState in field.mobs:
+	var army_size: int = sim.players[leader].army.get_unit_count()
+	var seen: Dictionary[int, Dictionary] = {}
+	for attacker_index: int in attackers:
+		seen[attacker_index] = {}
+	while sim.phase == MatchSim.Phase.WAVE and sim.round_number == 5:
+		for attacker_index: int in attackers:
+			for mob: MobState in sim.players[attacker_index].field.mobs:
 				if mob.sender_index == leader:
-					seen[mob.id] = true
-		assert_eq(seen.size(), _config.send_pack_size, "копия пачки у атакующего %d" % attacker_index)
+					seen[attacker_index][mob.id] = true
+		sim.tick()
+	for attacker_index: int in attackers:
+		assert_eq(seen[attacker_index].size(), army_size, "армия лидера у атакующего %d" % attacker_index)
 
 
 func test_leader_gets_bonus_when_siege_held() -> void:
@@ -110,7 +135,7 @@ func test_attackers_paid_for_damage_and_breach_bonus() -> void:
 	var gold_before: int = attacker.gold
 	var breach_damage: int = _config.siege_breach_threshold
 	for i: int in breach_damage:
-		var mob: MobState = MobState.create(_config.send_mob)
+		var mob: MobState = MobState.create(_config.army_mob)
 		mob.sender_index = attacker.index
 		leader.field.pending_breaches.append(mob)
 	sim._collect_field_results(leader)
@@ -180,6 +205,9 @@ func _remove_all_waves(sim: MatchSim) -> void:
 	for player: PlayerState in sim.players:
 		player.field.mobs.clear()
 		player.field._spawn_queue.clear()
+	if sim.ghost_field != null:
+		sim.ghost_field.mobs.clear()
+		sim.ghost_field._spawn_queue.clear()
 
 
 func _skip_prep(sim: MatchSim) -> void:

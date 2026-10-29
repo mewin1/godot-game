@@ -29,7 +29,6 @@ var _toast_time_left: float = 0.0
 
 var _hud_label: Label
 var _lobby_label: Label
-var _ghost_label: Label
 var _halves: BoxContainer
 var _menu_slot: Control
 var _shop_panel: ShopPanel
@@ -131,12 +130,6 @@ func _build_halves() -> void:
 	_opponent_view = FieldView.new()
 	_opponent_view.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_menu_slot.add_child(_opponent_view)
-	_ghost_label = Label.new()
-	_ghost_label.text = "Ваш соперник в этом раунде — призрак.\nОн присылает обычную пачку юнитов,\nа ваша отправка уходит в пустоту."
-	_ghost_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_ghost_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	_ghost_label.set_anchors_preset(Control.PRESET_FULL_RECT)
-	_menu_slot.add_child(_ghost_label)
 	_my_view = FieldView.new()
 	_make_half(_my_view)
 	_my_view.command_requested.connect(_on_command_requested)
@@ -190,8 +183,7 @@ func _start_match() -> void:
 	# Сид матча выбирает отображение: внутри симуляции случайность только от этого сида.
 	var match_seed: int = randi()
 	_sim = MatchSim.new(config, match_seed, player_count, 1)
-	# Без окна (проверки и тесты из терминала) живой лог не нужен.
-	if is_logging_enabled and DisplayServer.get_name() != "headless":
+	if is_logging_enabled:
 		_logger = _create_logger(match_seed)
 	_sim.command_failed.connect(_on_sim_command_failed)
 	_sim.match_finished.connect(_on_sim_match_finished)
@@ -229,21 +221,35 @@ func _refresh_views() -> void:
 	var is_prep: bool = _sim.phase == MatchSim.Phase.PREP
 	if me.field.get_tower(_selected_tower_id) == null or not is_prep:
 		_selected_tower_id = 0
-	_my_view.show_field(me.field, _sim.config, "Ваше поле")
+	_my_view.show_field(me.field, _sim.config, "Ваше поле · клетки %d/%d" % [
+			me.get_cells_used(), me.get_cell_limit()])
 	_my_view.hero_hp = me.hero_hp
 	_my_view.can_edit = is_prep and me.is_alive
 	_my_view.selected_tower_id = _selected_tower_id
 	_shop_panel.visible = is_prep and me.is_alive
 	_shop_panel.refresh(me.field.get_tower(_selected_tower_id))
-	var opponent: PlayerState = _opponent()
-	_opponent_view.visible = not _shop_panel.visible and opponent != null
-	_ghost_label.visible = not _shop_panel.visible and opponent == null
-	if opponent != null:
-		_opponent_view.show_field(opponent.field, _sim.config, "Поле соперника: %s" % opponent.display_name)
-		_opponent_view.hero_hp = opponent.hero_hp
+	_refresh_opponent_view()
 	_hud_label.text = _hud_text()
 	_lobby_label.text = _lobby_text()
 	_update_toast()
+
+
+## Левая половина в волне: поле соперника, а в бою с призраком — поле призрака.
+func _refresh_opponent_view() -> void:
+	_opponent_view.visible = not _shop_panel.visible
+	var opponent: PlayerState = _opponent()
+	if opponent != null:
+		_opponent_view.show_field(opponent.field, _sim.config,
+				"Поле соперника: %s · туда идёт ваша армия" % opponent.display_name)
+		_opponent_view.hero_hp = opponent.hero_hp
+		return
+	if _sim.ghost_target == HUMAN_INDEX and _sim.ghost_field != null:
+		var source: PlayerState = _sim.players[_sim.ghost_source]
+		_opponent_view.show_field(_sim.ghost_field, _sim.config,
+				"Призрак (копия: %s) · туда идёт ваша армия" % source.display_name)
+		_opponent_view.hero_hp = source.hero_hp
+		return
+	_opponent_view.visible = false
 
 
 func _hud_text() -> String:
@@ -258,6 +264,8 @@ func _hud_text() -> String:
 	var opponent: PlayerState = _opponent()
 	if opponent != null:
 		text += "   |   %s: HP %d" % [opponent.display_name, maxi(0, opponent.hero_hp)]
+	elif _sim.ghost_target == HUMAN_INDEX:
+		text += "   |   Призрак (копия: %s)" % _sim.players[_sim.ghost_source].display_name
 	return text
 
 
@@ -271,6 +279,8 @@ func _lobby_text() -> String:
 			mark = " (выбыл, место %d)" % player.place
 		elif player.index == opponent_index:
 			mark = " ← соперник"
+		elif player.index == _sim.ghost_source and _sim.ghost_target == HUMAN_INDEX:
+			mark = " ← соперник-призрак (копия)"
 		parts.append("%s %d%s" % [player.display_name, maxi(0, player.hero_hp), mark])
 	var text: String = "  HP: " + " · ".join(parts)
 	return text + _siege_text()

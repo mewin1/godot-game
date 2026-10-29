@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="ArmyUpgradeData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://src/sim/data/army_upgrade_data.gd" id="1_script"]
+[ext_resource type="Resource" path="res://data/mobs/armored.tres" id="2_ext"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"army_armored"
+display_name = "Бронированный юнит"
+kind = 3
+value = 1
+base_cost = 10
+cost_step = 5
+max_purchases = 0
+min_shop_level = 2
+income_bonus = 1
+mob = ExtResource("2_ext")

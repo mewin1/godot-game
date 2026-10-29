@@ -5,7 +5,7 @@
 [resource]
 script = ExtResource("1_script")
 id = &"discount"
-display_name = "Отправка дешевле на 1"
+display_name = "Прокачка армии дешевле на 1"
 is_rare = false
 kind = 4
 value = 1

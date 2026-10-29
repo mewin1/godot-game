@@ -1,6 +1,6 @@
 class_name PlayerState
 extends RefCounted
-## Игрок в матче: герой, золото, доход, магазин, поле и армия отправки.
+## Игрок в матче: герой, золото, доход, магазин, поле и армия.
 ## Методы-действия возвращают "" при успехе или текст причины отказа (его показывает интерфейс).
 
 ## Сдвиги, которые пробует поворот, если на месте фигура не помещается (от ближних к дальним).
@@ -20,14 +20,11 @@ var is_alive: bool = true
 ## Итоговое место (1–5); 0 — пока в игре.
 var place: int = 0
 var is_ready: bool = false
-var has_sent_this_round: bool = false
-## Пачка, отправленная в эту подготовку; уйдёт сопернику в начале волны.
-var pending_pack: Array[MobState] = []
 ## Бафы на выбор (пусто — выбирать нечего).
 var buff_offers: Array[SendBuffData] = []
 var shop: ShopState
 var field: FieldState
-var army: SendArmy
+var army: ArmyState
 var rng: RandomNumberGenerator
 
 var _config: GameConfig
@@ -41,7 +38,7 @@ func _init(config: GameConfig, player_index: int, seed_value: int) -> void:
 	income = config.base_income
 	shop = ShopState.new(config)
 	field = FieldState.new(config, shop.level)
-	army = SendArmy.new(config)
+	army = ArmyState.new(config)
 	rng = RandomNumberGenerator.new()
 	rng.seed = seed_value
 
@@ -55,6 +52,8 @@ func buy_tower(offer_index: int, anchor: Vector2i, rotation: int) -> String:
 		return error
 	if not field.can_place_tower_data(data, anchor, rotation):
 		return "Сюда не встанет"
+	if get_cells_used() + data.shape.size() > get_cell_limit():
+		return "Нет места: клетки %d/%d" % [get_cells_used(), get_cell_limit()]
 	_pay_for_offer(offer_index)
 	var tower: TowerState = field.add_tower(data, anchor, rotation)
 	_add_investment(tower, _config.tower_cost)
@@ -129,6 +128,18 @@ func sell_tower(tower_id: int) -> String:
 	field.remove_tower(tower)
 	return ""
 
+
+## Сколько клеток занимают все башни (лимит — get_cell_limit).
+func get_cells_used() -> int:
+	var cells: int = 0
+	for tower: TowerState in field.towers:
+		cells += tower.data.shape.size()
+	return cells
+
+
+func get_cell_limit() -> int:
+	return _config.get_cell_limit(shop.level)
+
 #endregion
 
 
@@ -155,19 +166,19 @@ func upgrade_shop() -> String:
 #endregion
 
 
-#region Отправка
+#region Армия
 
-func send_units(round_number: int) -> String:
-	if has_sent_this_round:
-		return "Отправка уже была в этом раунде"
-	var cost: int = army.get_send_cost(round_number)
+## Купить улучшение армии: действует до конца матча и навсегда добавляет доход.
+func buy_army_upgrade(upgrade_index: int) -> String:
+	var error: String = army.check_upgrade_available(upgrade_index, shop.level)
+	if error != "":
+		return error
+	var cost: int = army.get_upgrade_cost(upgrade_index)
 	if gold < cost:
 		return "Не хватает золота"
 	gold -= cost
-	has_sent_this_round = true
-	army.sends_done += 1
-	income += army.get_income_gain()
-	pending_pack = army.build_pack(index, cost, round_number)
+	income += army.get_upgrade_income(upgrade_index)
+	army.apply_upgrade(upgrade_index)
 	return ""
 
 
@@ -185,8 +196,6 @@ func choose_buff(offer_index: int) -> String:
 ## Начало подготовки: новая витрина, сброс флагов. offer_buffs — после битвы есть выбор бафа.
 func start_prep(offer_buffs: bool) -> void:
 	is_ready = false
-	has_sent_this_round = false
-	pending_pack.clear()
 	shop.roll(rng)
 	if offer_buffs:
 		buff_offers = army.roll_buff_offers(shop.level, rng)
@@ -201,8 +210,7 @@ func end_prep() -> void:
 
 
 func add_to_hash(hasher: StateHasher) -> void:
-	hasher.add_many([index, hero_hp, gold, income, int(is_alive), place,
-			int(has_sent_this_round), pending_pack.size(), buff_offers.size()])
+	hasher.add_many([index, hero_hp, gold, income, int(is_alive), place, buff_offers.size()])
 	shop.add_to_hash(hasher)
 	army.add_to_hash(hasher)
 	field.add_to_hash(hasher)

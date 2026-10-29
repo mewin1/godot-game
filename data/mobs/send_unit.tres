@@ -5,11 +5,11 @@
 [resource]
 script = ExtResource("1_script")
 id = &"send_unit"
-display_name = "Юнит отправки"
+display_name = "Юнит армии"
 hp = 40
 speed_milli_per_tick = 55
 armor = 0
-kill_reward = 0
+kill_reward = 1
 breach_damage = 1
 color = Color(0.95, 0.35, 0.35, 1)
 view_size = 0.4

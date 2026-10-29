@@ -7,9 +7,11 @@ extends Resource
 @export var board: BoardLayout
 @export var towers: Array[TowerData] = []
 @export var send_buffs: Array[SendBuffData] = []
-## Моб базовой волны и обычный юнит отправки.
+## Моб базовой волны и обычный юнит армии.
 @export var wave_mob: MobData
-@export var send_mob: MobData
+@export var army_mob: MobData
+## Улучшения армии (вкладка «Армия»), по порядку показа.
+@export var army_upgrades: Array[ArmyUpgradeData] = []
 
 @export_group("Время (в тиках)")
 @export var ticks_per_second: int = 20
@@ -43,23 +45,23 @@ extends Resource
 @export var level_damage_percent: Array[int] = [100, 220, 480]
 ## На каком расстоянии (в клетках, по горизонтали/вертикали/диагонали) от открытого пути можно строить.
 @export var build_radius: int = 2
+## Сколько клеток могут занимать все башни игрока на уровне магазина 1, 2, 3, 4.
+@export var cell_limit_by_level: Array[int] = [8, 12, 16, 20]
 
-@export_group("Отправка")
-@export var send_base_cost: int = 5
-@export var send_cost_per_round: int = 2
-@export var send_min_cost: int = 1
-@export var send_income_bonus: int = 1
-@export var send_pack_size: int = 3
-## Награда защитнику за всю пачку — такой процент от цены отправки.
-@export var send_reward_percent: int = 25
-@export var send_spawn_delay_ticks: int = 40
-@export var send_spawn_interval_ticks: int = 16
+@export_group("Армия")
+## Сколько обычных юнитов в армии без улучшений.
+@export var army_base_units: int = 3
+## Цена улучшения армии не опускается ниже этого (скидки от бафов).
+@export var army_upgrade_min_cost: int = 1
+## Армия появляется на поле соперника через столько тиков после начала волны, с таким интервалом.
+@export var army_spawn_delay_ticks: int = 40
+@export var army_spawn_interval_ticks: int = 16
 
 @export_group("Базовая волна")
 @export var wave_base_count: int = 5
 @export var wave_count_per_round: int = 1
 ## HP мобов растёт каждый раунд на столько процентов от прошлого раунда (сложный процент).
-## Юниты отправки растут так же, иначе поздние отправки бесполезны.
+## Юниты армии растут так же, иначе поздняя армия бесполезна.
 @export var wave_hp_growth_percent: int = 25
 @export var wave_spawn_interval_ticks: int = 20
 
@@ -80,9 +82,9 @@ extends Resource
 @export var breach_multipliers: Array[int] = [2, 3]
 
 
-## Цена скилла отправки в раунде без бафов.
-func get_send_cost(round_number: int) -> int:
-	return send_base_cost + send_cost_per_round * (round_number - 1)
+func get_cell_limit(shop_level: int) -> int:
+	var index: int = clampi(shop_level, 1, cell_limit_by_level.size()) - 1
+	return cell_limit_by_level[index]
 
 
 ## Множитель урона прорыва в раунде.

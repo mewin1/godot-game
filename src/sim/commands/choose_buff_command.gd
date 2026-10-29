@@ -1,6 +1,6 @@
 class_name ChooseBuffCommand
 extends SimCommand
-## Выбрать один из предложенных бафов отправки.
+## Выбрать один из предложенных бафов армии.
 
 var offer_index: int
 

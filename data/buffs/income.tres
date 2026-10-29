@@ -5,7 +5,7 @@
 [resource]
 script = ExtResource("1_script")
 id = &"income"
-display_name = "Отправка: +1 к доходу сверху"
+display_name = "Каждая прокачка: +1 к доходу сверху"
 is_rare = true
 kind = 5
 value = 1

@@ -1,14 +1,14 @@
 class_name SendBuffData
 extends Resource
-## Баф отправки: постоянное усиление своих юнитов отправки. Выбирается 1 из 3 после каждой битвы.
+## Баф армии: постоянное усиление своей армии. Выбирается бесплатно, 1 из 3, после каждой битвы.
 
 enum Kind {
 	HP_PERCENT, ## юниты +value% HP
 	SPEED_PERCENT, ## юниты +value% скорости
 	EXTRA_UNITS, ## +value обычных юнитов в пачке
 	ADD_MOB, ## в пачку добавляется value юнитов вида mob
-	COST_DISCOUNT, ## скилл отправки дешевле на value
-	EXTRA_INCOME, ## каждое применение даёт +value к доходу сверх обычного
+	COST_DISCOUNT, ## прокачка армии дешевле на value
+	EXTRA_INCOME, ## каждая прокачка армии даёт +value к доходу сверх обычного
 }
 
 @export var id: StringName = &""

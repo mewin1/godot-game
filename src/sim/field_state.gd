@@ -130,6 +130,13 @@ func move_tower(tower: TowerState, anchor: Vector2i, rotation: int) -> bool:
 	return true
 
 
+## Ставит копии башен другого поля (для призрака). Поле должно быть того же уровня пути.
+func copy_towers_from(other: FieldState) -> void:
+	for source: TowerState in other.towers:
+		var tower: TowerState = add_tower(source.data, source.anchor, source.rotation)
+		tower.level = source.level
+
+
 func remove_tower(tower: TowerState) -> void:
 	_free(tower)
 	towers.erase(tower)

@@ -2,12 +2,18 @@ class_name MatchLogger
 extends RefCounted
 ## Пишет лог матча в файл JSON Lines (одна строка — одно событие). Нужен для анализа баланса:
 ## и живых матчей, и прогонов ботов. Только читает симуляцию через её сигналы.
+## Файл создаётся после первого законченного раунда: короткие запуски (проверки, сразу закрытая
+## игра) логов не оставляют.
 ## События: match_start, round_start, command, wave_start, round_end, eliminated, match_end.
 
-const LOG_VERSION: int = 1
+const LOG_VERSION: int = 2
 
 var _sim: MatchSim
+var _path: String = ""
 var _file: FileAccess
+## Строки до первого конца раунда — копятся в памяти, файла ещё нет.
+var _pending_lines: PackedStringArray = []
+var _is_closed: bool = false
 ## Счётчики текущего раунда по игрокам.
 var _kills: Array[int] = []
 var _kill_gold: Array[int] = []
@@ -18,14 +24,7 @@ var _hp_at_round_start: Array[int] = []
 ## source — откуда матч ("live" — человек, "bots" — прогон ботов); extra — любые поля в match_start.
 func _init(sim: MatchSim, file_path: String, source: String, extra: Dictionary = {}) -> void:
 	_sim = sim
-	var error: Error = DirAccess.make_dir_recursive_absolute(file_path.get_base_dir())
-	if error != OK and error != ERR_ALREADY_EXISTS:
-		push_error("Не удалось создать папку логов: %s" % file_path.get_base_dir())
-		return
-	_file = FileAccess.open(file_path, FileAccess.WRITE)
-	if _file == null:
-		push_error("Не удалось открыть лог: %s" % file_path)
-		return
+	_path = file_path
 	for player: PlayerState in sim.players:
 		_kills.append(0)
 		_kill_gold.append(0)
@@ -43,20 +42,44 @@ func _init(sim: MatchSim, file_path: String, source: String, extra: Dictionary =
 
 
 func is_open() -> bool:
-	return _file != null
+	return not _is_closed
 
 
-## Закрывает файл (матч закончился или игрок вышел посреди матча).
+## Закрывает лог (матч закончился или игрок вышел посреди матча).
 func close() -> void:
-	if _file == null:
-		return
-	_file.close()
-	_file = null
+	_is_closed = true
+	_pending_lines.clear()
+	if _file != null:
+		_file.close()
+		_file = null
 
 
 func _write(event: Dictionary) -> void:
+	if _is_closed:
+		return
+	var line: String = JSON.stringify(event)
 	if _file != null:
-		_file.store_line(JSON.stringify(event))
+		_file.store_line(line)
+	else:
+		_pending_lines.append(line)
+
+
+## Создаёт файл и сбрасывает в него накопленное. false — не получилось (лог выключается).
+func _open_file() -> bool:
+	var error: Error = DirAccess.make_dir_recursive_absolute(_path.get_base_dir())
+	if error != OK and error != ERR_ALREADY_EXISTS:
+		push_error("Не удалось создать папку логов: %s" % _path.get_base_dir())
+		close()
+		return false
+	_file = FileAccess.open(_path, FileAccess.WRITE)
+	if _file == null:
+		push_error("Не удалось открыть лог: %s" % _path)
+		close()
+		return false
+	for line: String in _pending_lines:
+		_file.store_line(line)
+	_pending_lines.clear()
+	return true
 
 
 func _write_match_start(source: String, extra: Dictionary) -> void:
@@ -94,21 +117,20 @@ func _is_int_array(value: Variant) -> bool:
 
 func _player_snapshot(player: PlayerState) -> Dictionary:
 	var towers: Array[Array] = []
-	var cells_used: int = 0
 	var invested: int = 0
 	for tower: TowerState in player.field.towers:
 		towers.append([String(tower.data.id), tower.level])
-		cells_used += tower.data.shape.size()
 		invested += tower.invested_total
 	var buffs: Array[String] = []
 	for buff: SendBuffData in player.army.buffs:
 		buffs.append(String(buff.id))
 	return {"player": player.index, "alive": player.is_alive, "hp": player.hero_hp,
 			"gold": player.gold, "income": player.income, "shop_level": player.shop.level,
-			"towers": towers, "cells_used": cells_used,
+			"towers": towers, "cells_used": player.get_cells_used(),
+			"cell_limit": player.get_cell_limit(),
 			"buildable_cells": player.field.get_buildable_cells().size(),
-			"invested": invested, "sends": player.army.sends_done,
-			"sent_this_round": player.has_sent_this_round, "buffs": buffs}
+			"invested": invested, "army_units": player.army.get_unit_count(),
+			"army_upgrades": player.army.upgrade_counts, "buffs": buffs}
 
 
 func _alive_snapshots() -> Array[Dictionary]:
@@ -126,7 +148,8 @@ func _on_sim_round_started(round_number: int) -> void:
 		_hp_at_round_start[player.index] = player.hero_hp
 	_write({"event": "round_start", "round": round_number, "tick": _sim.tick_count,
 			"opponents": _sim.opponent_of, "siege_leader": _sim.siege_leader,
-			"siege_attackers": _sim.siege_attackers})
+			"siege_attackers": _sim.siege_attackers, "ghost_target": _sim.ghost_target,
+			"ghost_source": _sim.ghost_source})
 
 
 func _on_sim_phase_changed(phase: MatchSim.Phase) -> void:
@@ -155,8 +178,9 @@ func _on_sim_round_finished(round_number: int) -> void:
 		snapshot["leaks"] = _leaks[index]
 	_write({"event": "round_end", "round": round_number, "tick": _sim.tick_count,
 			"wave_ticks": _sim.phase_tick, "players": players})
-	if _file != null:
-		_file.flush()
+	if _is_closed or (_file == null and not _open_file()):
+		return
+	_file.flush()
 
 
 func _on_sim_player_eliminated(player: PlayerState) -> void:
@@ -171,6 +195,8 @@ func _on_sim_match_finished() -> void:
 	var winner: PlayerState = _sim.get_winner()
 	_write({"event": "match_end", "round": _sim.round_number, "tick": _sim.tick_count,
 			"places": places, "winner": winner.index if winner != null else -1})
+	if _file == null and not _is_closed:
+		_open_file()
 	close()
 
 

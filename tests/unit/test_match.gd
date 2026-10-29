@@ -51,25 +51,11 @@ func test_command_during_wave_fails_with_signal() -> void:
 	assert_signal_emitted(sim, "command_failed")
 
 
-func test_send_costs_by_round_formula() -> void:
-	assert_eq(_config.get_send_cost(1), 5)
-	assert_eq(_config.get_send_cost(5), 13)
-	assert_eq(_config.get_send_cost(10), 23)
-
-
-func test_send_raises_income_and_only_once_per_round() -> void:
+func test_army_goes_to_opponent_every_round_for_free() -> void:
 	var sim: MatchSim = _make_match()
-	var player: PlayerState = sim.players[0]
-	assert_eq(sim.execute_command(0, SendUnitsCommand.new()), "")
-	assert_eq(player.gold, _config.start_gold - 5)
-	assert_eq(player.income, _config.base_income + 1)
-	assert_ne(sim.execute_command(0, SendUnitsCommand.new()), "", "второй раз нельзя")
-
-
-func test_send_pack_arrives_on_opponent_field() -> void:
-	var sim: MatchSim = _make_match()
-	sim.execute_command(0, SendUnitsCommand.new())
+	var gold_before: int = sim.players[0].gold
 	_skip_prep(sim)
+	assert_eq(sim.players[0].gold, gold_before, "армия бесплатная")
 	var seen_ids: Dictionary[int, bool] = {}
 	var opponent_field: FieldState = sim.players[1].field
 	while sim.phase == MatchSim.Phase.WAVE:
@@ -77,32 +63,83 @@ func test_send_pack_arrives_on_opponent_field() -> void:
 		for mob: MobState in opponent_field.mobs:
 			if mob.sender_index == 0:
 				seen_ids[mob.id] = true
-	assert_eq(seen_ids.size(), _config.send_pack_size)
+	assert_eq(seen_ids.size(), _config.army_base_units)
 
 
-func test_send_pack_reward_is_quarter_of_cost() -> void:
-	var army: SendArmy = SendArmy.new(_config)
-	var pack: Array[MobState] = army.build_pack(0, 13, 1)
-	var total: int = 0
-	for mob: MobState in pack:
-		total += mob.kill_reward
-	assert_eq(total, 13 * _config.send_reward_percent / 100)
+func test_army_upgrade_costs_gold_raises_income_and_price() -> void:
+	var sim: MatchSim = _make_match()
+	var player: PlayerState = sim.players[0]
+	var cost: int = player.army.get_upgrade_cost(0)
+	assert_eq(sim.execute_command(0, BuyArmyUpgradeCommand.new(0)), "")
+	assert_eq(player.gold, _config.start_gold - cost)
+	assert_eq(player.income, _config.base_income + 1)
+	assert_eq(player.army.get_upgrade_cost(0), cost + _config.army_upgrades[0].cost_step)
+
+
+func test_army_upgrade_extra_unit_grows_army() -> void:
+	var army: ArmyState = ArmyState.new(_config)
+	army.apply_upgrade(_upgrade_index(&"army_units"))
+	assert_eq(army.build_pack(0, 1).size(), _config.army_base_units + 1)
+
+
+func test_army_upgrade_locked_by_shop_level() -> void:
+	var player: PlayerState = PlayerState.new(_config, 0, 1)
+	player.gold = 1000
+	assert_ne(player.buy_army_upgrade(_upgrade_index(&"army_boss")), "", "босс — с 3-го уровня")
+	player.upgrade_shop()
+	player.upgrade_shop()
+	assert_eq(player.buy_army_upgrade(_upgrade_index(&"army_boss")), "")
+
+
+func test_army_upgrade_respects_max_purchases() -> void:
+	var player: PlayerState = PlayerState.new(_config, 0, 1)
+	player.gold = 10000
+	var index: int = _upgrade_index(&"army_speed")
+	var max_purchases: int = _config.army_upgrades[index].max_purchases
+	for i: int in max_purchases:
+		assert_eq(player.buy_army_upgrade(index), "")
+	assert_ne(player.buy_army_upgrade(index), "")
+
+
+func test_army_upgrade_without_gold_fails() -> void:
+	var player: PlayerState = PlayerState.new(_config, 0, 1)
+	player.gold = 0
+	assert_ne(player.buy_army_upgrade(0), "")
+	assert_eq(player.income, _config.base_income)
+
+
+func test_army_units_give_kill_reward_from_data() -> void:
+	var army: ArmyState = ArmyState.new(_config)
+	var pack: Array[MobState] = army.build_pack(0, 1)
+	assert_eq(pack[0].kill_reward, _config.army_mob.kill_reward)
+
+
+func test_army_hp_grows_with_rounds() -> void:
+	var army: ArmyState = ArmyState.new(_config)
+	assert_gt(army.build_pack(0, 10)[0].max_hp, army.build_pack(0, 1)[0].max_hp)
 
 
 func test_buffs_change_pack() -> void:
-	var army: SendArmy = SendArmy.new(_config)
+	var army: ArmyState = ArmyState.new(_config)
 	army.add_buff(SimFixtures.find_buff(_config, &"units_small"))
 	army.add_buff(SimFixtures.find_buff(_config, &"add_fast"))
 	army.add_buff(SimFixtures.find_buff(_config, &"hp_small"))
-	var pack: Array[MobState] = army.build_pack(0, 5, 1)
-	assert_eq(pack.size(), _config.send_pack_size + 2)
-	assert_eq(pack[0].max_hp, _config.send_mob.hp * 115 / 100)
+	var pack: Array[MobState] = army.build_pack(0, 1)
+	assert_eq(pack.size(), _config.army_base_units + 2)
+	assert_eq(pack[0].max_hp, _config.army_mob.hp * 115 / 100)
 
 
-func test_discount_buff_lowers_send_cost() -> void:
-	var army: SendArmy = SendArmy.new(_config)
+func test_discount_buff_lowers_upgrade_cost() -> void:
+	var army: ArmyState = ArmyState.new(_config)
+	var cost: int = army.get_upgrade_cost(0)
 	army.add_buff(SimFixtures.find_buff(_config, &"discount"))
-	assert_eq(army.get_send_cost(1), 4)
+	assert_eq(army.get_upgrade_cost(0), cost - 1)
+
+
+func test_income_buff_adds_income_per_upgrade() -> void:
+	var army: ArmyState = ArmyState.new(_config)
+	army.add_buff(SimFixtures.find_buff(_config, &"income"))
+	assert_eq(army.get_upgrade_income(0), _config.army_upgrades[0].income_bonus + 1)
 
 
 func test_buff_offers_appear_after_first_battle() -> void:
@@ -113,7 +150,7 @@ func test_buff_offers_appear_after_first_battle() -> void:
 
 
 func test_buff_offers_are_common_on_shop_level_one() -> void:
-	var army: SendArmy = SendArmy.new(_config)
+	var army: ArmyState = ArmyState.new(_config)
 	var rng: RandomNumberGenerator = RandomNumberGenerator.new()
 	for i: int in 20:
 		for buff: SendBuffData in army.roll_buff_offers(1, rng):
@@ -137,8 +174,8 @@ func test_round_end_pays_income() -> void:
 func test_breach_damages_hero() -> void:
 	var sim: MatchSim = _make_match()
 	_play_until_round(sim, 2)
-	var wave_size: int = _config.wave_base_count
-	assert_eq(sim.players[0].hero_hp, _config.hero_hp - wave_size, "без башен прорвались все")
+	var leaked: int = _config.wave_base_count + _config.army_base_units
+	assert_eq(sim.players[0].hero_hp, _config.hero_hp - leaked, "без башен прорвались волна и армия")
 
 
 func test_breach_multiplier_grows_late() -> void:
@@ -187,7 +224,7 @@ func _scripted_match_hash(seed_value: int) -> int:
 	var guard: int = 0
 	while sim.phase != MatchSim.Phase.OVER and guard < MAX_TICKS:
 		if sim.phase == MatchSim.Phase.PREP and sim.phase_tick == 1:
-			sim.queue_command(0, SendUnitsCommand.new())
+			sim.queue_command(0, BuyArmyUpgradeCommand.new(sim.round_number % 3))
 			sim.queue_command(0, BuyTowerCommand.new(0, Vector2i(2, 2 + sim.round_number % 6), 1))
 			sim.queue_command(0, ChooseBuffCommand.new(1))
 		if sim.phase == MatchSim.Phase.PREP and sim.phase_tick == 5:
@@ -222,3 +259,10 @@ func _run_to_end(sim: MatchSim) -> void:
 	while sim.phase != MatchSim.Phase.OVER and guard < MAX_TICKS:
 		sim.tick()
 		guard += 1
+
+
+func _upgrade_index(upgrade_id: StringName) -> int:
+	for i: int in _config.army_upgrades.size():
+		if _config.army_upgrades[i].id == upgrade_id:
+			return i
+	return -1

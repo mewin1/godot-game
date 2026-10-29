@@ -10,7 +10,7 @@ var speed: int = 0
 var armor: int = 0
 var kill_reward: int = 0
 var breach_damage: int = 0
-## Индекс игрока, который отправил моба (-1 — базовая волна).
+## Чья армия: индекс игрока (-1 — базовая волна или армия призрака).
 var sender_index: int = -1
 var progress: int = 0
 ## Прогресс на прошлом тике — отображение плавно рисует моба между тиками.
@@ -31,20 +31,6 @@ static func create(mob_data: MobData, hp_bonus_percent: int = 0,
 	mob.armor = mob_data.armor
 	mob.kill_reward = mob_data.kill_reward
 	mob.breach_damage = mob_data.breach_damage
-	return mob
-
-
-## Копия моба для другого поля (нужна, когда одна отправка идёт на два поля).
-func copy_fresh() -> MobState:
-	var mob: MobState = MobState.new()
-	mob.data = data
-	mob.max_hp = max_hp
-	mob.hp = max_hp
-	mob.speed = speed
-	mob.armor = armor
-	mob.kill_reward = kill_reward
-	mob.breach_damage = breach_damage
-	mob.sender_index = sender_index
 	return mob
 
 

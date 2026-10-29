@@ -13,12 +13,12 @@ static func build_base_wave(config: GameConfig, round_number: int) -> Array[MobS
 	return wave
 
 
-## Ставит базовую волну и пачки отправок в очередь поля.
+## Ставит базовую волну и армии соперников в очередь поля.
 static func schedule_wave(config: GameConfig, field: FieldState, round_number: int,
 		packs: Array[MobState]) -> void:
 	var base_wave: Array[MobState] = build_base_wave(config, round_number)
 	for i: int in base_wave.size():
 		field.schedule_spawn(base_wave[i], i * config.wave_spawn_interval_ticks)
 	for i: int in packs.size():
-		var spawn_tick: int = config.send_spawn_delay_ticks + i * config.send_spawn_interval_ticks
+		var spawn_tick: int = config.army_spawn_delay_ticks + i * config.army_spawn_interval_ticks
 		field.schedule_spawn(packs[i], spawn_tick)

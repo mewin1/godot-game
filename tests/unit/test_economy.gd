@@ -203,3 +203,33 @@ func test_rotate_tower_fails_without_space() -> void:
 	var tower: TowerState = _player.field.add_tower(data, Vector2i(0, 3), 1)
 	assert_ne(_player.rotate_tower(tower.id), "", "горизонтальная тройка в столбце 0 не помещается")
 	assert_eq(tower.rotation, 1)
+
+
+func test_cell_limit_grows_with_shop_level() -> void:
+	assert_eq(_player.get_cell_limit(), _config.cell_limit_by_level[0])
+	_player.gold = 100
+	_player.upgrade_shop()
+	assert_eq(_player.get_cell_limit(), _config.cell_limit_by_level[1])
+
+
+func test_buy_over_cell_limit_fails() -> void:
+	var config: GameConfig = SimFixtures.make_config()
+	config.cell_limit_by_level = [2, 2, 2, 2] as Array[int]
+	var player: PlayerState = PlayerState.new(config, 0, 99)
+	player.start_prep(false)
+	var data: TowerData = SimFixtures.find_tower(config, &"ice_1")
+	player.field.add_tower(data, Vector2i(0, 0), 0)
+	player.field.add_tower(data, Vector2i(0, 2), 0)
+	assert_eq(player.get_cells_used(), 2)
+	var error: String = player.buy_tower(0, Vector2i(2, 5), 0)
+	assert_string_contains(error, "клетки")
+	assert_eq(player.gold, config.start_gold)
+
+
+func test_merge_frees_cells() -> void:
+	var data: TowerData = SimFixtures.find_tower(_config, &"fire_1")
+	var first: TowerState = _player.field.add_tower(data, Vector2i(2, 2), 0)
+	var second: TowerState = _player.field.add_tower(data, Vector2i(2, 6), 0)
+	assert_eq(_player.get_cells_used(), 4)
+	_player.merge_towers(second.id, first.id)
+	assert_eq(_player.get_cells_used(), 2)

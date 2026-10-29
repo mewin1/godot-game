@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="ArmyUpgradeData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/sim/data/army_upgrade_data.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"army_units"
+display_name = "+1 юнит"
+kind = 2
+value = 1
+base_cost = 6
+cost_step = 3
+max_purchases = 0
+min_shop_level = 1
+income_bonus = 1
