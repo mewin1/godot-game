@@ -16,6 +16,8 @@ const HP_BACK_COLOR: Color = Color(0.05, 0.04, 0.03, 0.85)
 const HP_GOOD_COLOR: Color = Color(0.56, 0.74, 0.4)
 const HP_LOW_COLOR: Color = Color(0.85, 0.36, 0.25)
 const BREACH_TEXT_COLOR: Color = Color(1.0, 0.45, 0.35)
+## Моб проявляется из ворот на первых долях клетки пути (в тысячных).
+const FADE_IN_MILLI: float = 400.0
 const HP_TEXT_COLOR: Color = Color(0.94, 0.89, 0.81)
 const SHOT_SOUNDS: Array[StringName] = [&"shot_fire", &"shot_ice", &"shot_mech"]
 
@@ -139,9 +141,9 @@ func _draw_mob(mob: MobState) -> void:
 		draw_arc(Vector2.ZERO, sprite_size * 0.42, 0.0, TAU, 24, _style.slow_tint, 3.0, true)
 	var flip: float = -1.0 if _facing_left.get(mob.id, false) else 1.0
 	draw_set_transform(feet - Vector2(0, bob), tilt, Vector2(flip, 1.0))
-	var tint: Color = Color.WHITE
+	var tint: Color = Color(1, 1, 1, clampf(mob.progress / FADE_IN_MILLI, 0.0, 1.0))
 	if _field.is_enraged:
-		tint = _style.enrage_tint
+		tint = Color(_style.enrage_tint, tint.a)
 	if mob.slow_percent > 0:
 		tint = tint * _style.slow_tint
 	draw_texture_rect(visual.texture, Rect2(Vector2(-sprite_size * 0.5, -sprite_size),

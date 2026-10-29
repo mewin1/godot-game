@@ -10,6 +10,9 @@ const OUTLINE_COLOR: Color = Color(0.11, 0.08, 0.06)
 ## Картинка чуть выше центра фигуры: башня «стоит» на плитах.
 const ICON_LIFT: float = 0.12
 const STAR_SIZE: float = 0.3
+## Тёплое свечение под картинкой башни максимального уровня.
+const GLOW_COLOR: Color = Color(1.0, 0.8, 0.4, 0.22)
+const GLOW_LEVEL: int = 3
 const NEIGHBORS: Array[Vector2i] = [Vector2i.UP, Vector2i.RIGHT, Vector2i.DOWN, Vector2i.LEFT]
 
 
@@ -20,6 +23,9 @@ static func draw_tower(canvas: CanvasItem, data: TowerData, turns: int, level: i
 	var cells: Array[Vector2i] = TowerState.rotated_shape(data.shape, turns)
 	draw_plates(canvas, cells, top_left, cell_size, visual, level)
 	var center: Vector2 = top_left + Vector2(TowerState.center_of(cells)) / MILLI * cell_size
+	if level >= GLOW_LEVEL:
+		canvas.draw_circle(center, cell_size * 0.55, GLOW_COLOR)
+		canvas.draw_circle(center, cell_size * 0.38, GLOW_COLOR)
 	draw_icon(canvas, visual, center, cell_size, pulse)
 	draw_stars(canvas, level, center + Vector2(0, cell_size * 0.36), cell_size)
 
