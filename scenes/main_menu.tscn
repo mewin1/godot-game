@@ -1,4 +1,4 @@
-[gd_scene load_steps=8 format=3]
+[gd_scene load_steps=12 format=3]
 
 [ext_resource type="Script" path="res://src/ui/main_menu.gd" id="1_script"]
 [ext_resource type="Theme" path="res://data/ui/ui_theme.tres" id="2_theme"]
@@ -7,8 +7,21 @@
 [ext_resource type="Texture2D" path="res://assets/ui/ornament.svg" id="5_ornament"]
 [ext_resource type="Texture2D" path="res://assets/ui/icon_sound_on.svg" id="6_sound"]
 
+[ext_resource type="Shader" path="res://assets/shaders/fog.gdshader" id="7_fog"]
+
 [sub_resource type="ShaderMaterial" id="vignette_material"]
 shader = ExtResource("4_vignette")
+
+[sub_resource type="ShaderMaterial" id="fog_material"]
+shader = ExtResource("7_fog")
+
+[sub_resource type="Gradient" id="ember_colors"]
+offsets = PackedFloat32Array(0, 0.5, 1)
+colors = PackedColorArray(1, 0.85, 0.5, 1, 1, 0.55, 0.2, 0.8, 0.6, 0.2, 0.1, 0)
+
+[sub_resource type="Curve" id="ember_size"]
+_data = [Vector2(0, 1), 0.0, 0.0, 0, 0, Vector2(1, 0.2), 0.0, 0.0, 0, 0]
+point_count = 2
 
 [node name="MainMenu" type="Control"]
 layout_mode = 3
@@ -31,6 +44,43 @@ mouse_filter = 2
 texture = ExtResource("3_background")
 expand_mode = 1
 stretch_mode = 6
+
+[node name="Fog" type="ColorRect" parent="."]
+material = SubResource("fog_material")
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="EmbersAnchor" type="Control" parent="."]
+layout_mode = 1
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 0
+mouse_filter = 2
+
+[node name="Embers" type="CPUParticles2D" parent="EmbersAnchor"]
+amount = 40
+lifetime = 7.0
+preprocess = 7.0
+emission_shape = 3
+emission_rect_extents = Vector2(700, 10)
+direction = Vector2(0.3, -1)
+spread = 20.0
+gravity = Vector2(6, -6)
+initial_velocity_min = 40.0
+initial_velocity_max = 90.0
+scale_amount_min = 3.0
+scale_amount_max = 6.0
+scale_amount_curve = SubResource("ember_size")
+color_ramp = SubResource("ember_colors")
 
 [node name="Vignette" type="ColorRect" parent="."]
 material = SubResource("vignette_material")

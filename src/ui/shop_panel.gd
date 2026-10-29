@@ -238,7 +238,10 @@ func _refresh_tower_box() -> void:
 	_hint_label.visible = tower == null
 	if tower == null:
 		return
-	_tower_label.text = "%s, ур. %d" % [tower.data.display_name, tower.level]
+	var damage: int = _sim.config.get_level_damage(tower.data.damage, tower.level)
+	var shots: float = float(_sim.config.ticks_per_second) / tower.data.cooldown_ticks
+	_tower_label.text = "%s, ур. %d\nурон %d · %.1f выстр./с · радиус %.1f" % [
+			tower.data.display_name, tower.level, damage, shots, tower.data.range_milli / 1000.0]
 	_sell_button.text = "Продать +%d" % _player.get_sell_price(tower)
 
 
