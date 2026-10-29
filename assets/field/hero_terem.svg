@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="160" viewBox="0 0 128 160">
+<defs>
+<radialGradient id="win" cx="64" cy="98" r="20" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#ffe2a0"/><stop offset="1" stop-color="#e8963a"/></radialGradient>
+<radialGradient id="halo" cx="64" cy="98" r="54" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#ffcf7a" stop-opacity="0.35"/><stop offset="1" stop-color="#ffcf7a" stop-opacity="0"/></radialGradient>
+</defs>
+<circle cx="64" cy="98" r="54" fill="url(#halo)"/>
+<path d="M14 150 H114 L108 138 H20 Z" fill="#6e6458" stroke="#1c1410" stroke-width="4" stroke-linejoin="round"/>
+<rect x="24" y="70" width="80" height="70" fill="#7a5434" stroke="#1c1410" stroke-width="4"/>
+<path d="M24 82 H104 M24 94 H104 M24 106 H104 M24 118 H104 M24 130 H104" stroke="#55392a" stroke-width="3"/>
+<circle cx="24" cy="76" r="4" fill="#9a6c44" stroke="#1c1410" stroke-width="2"/><circle cx="104" cy="76" r="4" fill="#9a6c44" stroke="#1c1410" stroke-width="2"/>
+<circle cx="24" cy="100" r="4" fill="#9a6c44" stroke="#1c1410" stroke-width="2"/><circle cx="104" cy="100" r="4" fill="#9a6c44" stroke="#1c1410" stroke-width="2"/>
+<circle cx="24" cy="124" r="4" fill="#9a6c44" stroke="#1c1410" stroke-width="2"/><circle cx="104" cy="124" r="4" fill="#9a6c44" stroke="#1c1410" stroke-width="2"/>
+<path d="M44 82 C44 74 84 74 84 82 L84 116 H44 Z" fill="#efe4cf" stroke="#1c1410" stroke-width="3.5" stroke-linejoin="round"/>
+<rect x="50" y="86" width="28" height="26" fill="url(#win)" stroke="#1c1410" stroke-width="3"/>
+<path d="M64 86 V112 M50 99 H78" stroke="#55392a" stroke-width="3"/>
+<path d="M40 76 L64 64 L88 76" fill="none" stroke="#b4473a" stroke-width="4" stroke-linejoin="round"/>
+<path d="M42 120 H86" stroke="#b4473a" stroke-width="4"/>
+<path d="M46 120 l3 5 l3 -5 M58 120 l3 5 l3 -5 M70 120 l3 5 l3 -5" fill="none" stroke="#1c1410" stroke-width="2"/>
+<path d="M14 72 L64 18 L114 72 Z" fill="#4a5a44" stroke="#1c1410" stroke-width="4" stroke-linejoin="round"/>
+<path d="M30 72 L64 34 L98 72" fill="none" stroke="#6b7d5e" stroke-width="3"/>
+<path d="M14 72 H114" stroke="#b07a40" stroke-width="5" stroke-linecap="round"/>
+<path d="M64 18 V4" stroke="#1c1410" stroke-width="4" stroke-linecap="round"/>
+<path d="M64 4 L84 9 L64 14 Z" fill="#b4473a" stroke="#1c1410" stroke-width="2.5" stroke-linejoin="round"/>
+</svg>

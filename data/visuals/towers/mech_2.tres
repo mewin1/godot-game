@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="TowerVisual" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://src/view/visuals/tower_visual.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://assets/towers/mech_2.svg" id="2_icon"]
+
+[resource]
+script = ExtResource("1_script")
+tower_id = &"mech_2"
+icon = ExtResource("2_icon")
+icon_scale = 1.35
+plate_color = Color(0.33, 0.26, 0.19, 1)
+plate_edge_color = Color(0.86, 0.68, 0.38, 1)
+projectile = 2
+projectile_color = Color(0.95, 0.85, 0.6, 1)
+projectile_seconds = 0.1
+impact_color = Color(1.0, 0.85, 0.5, 1)

@@ -131,6 +131,7 @@ func _build_halves() -> void:
 	_opponent_view.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_menu_slot.add_child(_opponent_view)
 	_my_view = FieldView.new()
+	_my_view.is_own_field = true
 	_make_half(_my_view)
 	_my_view.command_requested.connect(_on_command_requested)
 	_my_view.tower_tapped.connect(_on_my_view_tower_tapped)
@@ -225,6 +226,9 @@ func _refresh_views() -> void:
 	_my_view.hero_hp = me.hero_hp
 	_my_view.can_edit = is_prep and me.is_alive
 	_my_view.selected_tower_id = _selected_tower_id
+	var multiplier: int = _sim.config.get_breach_multiplier(_sim.round_number)
+	_my_view.breach_multiplier = multiplier
+	_opponent_view.breach_multiplier = multiplier
 	_shop_panel.visible = is_prep and me.is_alive
 	_shop_panel.refresh(me.field.get_tower(_selected_tower_id))
 	_refresh_opponent_view()

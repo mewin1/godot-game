@@ -1,6 +1,6 @@
 class_name ShapePreview
 extends Control
-## Фигура башни из квадратиков — для витрины и для «призрака» при перетаскивании.
+## Фигура башни (плиты и картинка) — для витрины и для «призрака» при перетаскивании.
 
 var data: TowerData
 var rotation_turns: int = 0
@@ -22,20 +22,10 @@ static func create_drag_preview(tower_data: TowerData, turns: int, tower_level: 
 	return preview
 
 
-## Рисует фигуру в любой ноде: левый верхний угол — top_left.
+## Рисует башню в любой ноде: левый верхний угол рамки фигуры — top_left.
 static func draw_shape(canvas: CanvasItem, tower_data: TowerData, turns: int, tower_level: int,
 		top_left: Vector2, cell_size: float) -> void:
-	var inset: float = maxf(1.0, cell_size * 0.06)
-	var cells: Array[Vector2i] = TowerState.rotated_shape(tower_data.shape, turns)
-	for cell: Vector2i in cells:
-		var rect: Rect2 = Rect2(top_left + Vector2(cell) * cell_size, Vector2.ONE * cell_size)
-		canvas.draw_rect(rect.grow(-inset), tower_data.color)
-		canvas.draw_rect(rect.grow(-inset), tower_data.color.darkened(0.45), false, 2.0)
-	# Точки уровня — на первой клетке фигуры: угол рамки у повёрнутой фигуры может быть пустым.
-	var pip_cell: Vector2 = top_left + Vector2(cells[0]) * cell_size
-	for i: int in tower_level:
-		var pip: Vector2 = pip_cell + Vector2(cell_size * (0.25 + 0.25 * i), cell_size * 0.25)
-		canvas.draw_circle(pip, cell_size * 0.09, Color.WHITE)
+	TowerPainter.draw_tower(canvas, tower_data, turns, tower_level, top_left, cell_size)
 
 
 static func get_shape_size(tower_data: TowerData, turns: int) -> Vector2i:

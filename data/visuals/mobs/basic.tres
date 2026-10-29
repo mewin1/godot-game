@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="MobVisual" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://src/view/visuals/mob_visual.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://assets/mobs/basic.svg" id="2_texture"]
+
+[resource]
+script = ExtResource("1_script")
+mob_id = &"basic"
+texture = ExtResource("2_texture")
+size_cells = 0.79
+bob_height = 0.08
+bob_speed = 4.0
+death_color = Color(0.42, 0.52, 0.34, 1)

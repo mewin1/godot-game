@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+<defs><radialGradient id="mist" cx="64" cy="76" r="44" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#0c0a09" stop-opacity="0.95"/><stop offset="0.7" stop-color="#1e2a24" stop-opacity="0.8"/><stop offset="1" stop-color="#3b4a33" stop-opacity="0"/></radialGradient></defs>
+<ellipse cx="64" cy="76" rx="46" ry="40" fill="url(#mist)"/>
+<path d="M22 118 L22 40 L38 64 L28 64 L40 86 L30 86 L42 108 Z" fill="#26331f" stroke="#1c1410" stroke-width="3" stroke-linejoin="round"/>
+<path d="M106 118 L106 40 L90 64 L100 64 L88 86 L98 86 L86 108 Z" fill="#26331f" stroke="#1c1410" stroke-width="3" stroke-linejoin="round"/>
+<path d="M30 40 Q64 10 98 40" fill="none" stroke="#1c1410" stroke-width="8" stroke-linecap="round"/>
+<path d="M30 40 Q64 10 98 40" fill="none" stroke="#5a4632" stroke-width="4" stroke-linecap="round"/>
+<path d="M58 30 h12 M64 24 v12" stroke="#b4473a" stroke-width="3"/>
+<ellipse cx="54" cy="74" rx="4" ry="2.5" fill="#f2c45a"/><ellipse cx="72" cy="74" rx="4" ry="2.5" fill="#f2c45a"/>
+<path d="M40 100 Q64 92 88 100" fill="none" stroke="#9aa8a0" stroke-opacity="0.5" stroke-width="4" stroke-linecap="round"/>
+</svg>

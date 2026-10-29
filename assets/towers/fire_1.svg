@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+<defs><radialGradient id="glow" cx="64" cy="54" r="44" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#ffcf7a" stop-opacity="0.5"/><stop offset="1" stop-color="#ff9a3c" stop-opacity="0"/></radialGradient></defs>
+<circle cx="64" cy="54" r="44" fill="url(#glow)"/>
+<path d="M42 114 L58 76 M86 114 L70 76 M64 116 L64 80" stroke="#1c1410" stroke-width="9" stroke-linecap="round"/>
+<path d="M42 114 L58 76 M86 114 L70 76 M64 116 L64 80" stroke="#7a5434" stroke-width="4" stroke-linecap="round"/>
+<path d="M28 66 Q64 102 100 66 Z" fill="#4a3022" stroke="#1c1410" stroke-width="4" stroke-linejoin="round"/>
+<path d="M36 74 Q64 92 92 74" fill="none" stroke="#6b4632" stroke-width="3"/>
+<path d="M27 66 H101" stroke="#b07a40" stroke-width="6" stroke-linecap="round"/>
+<path d="M64 10 C78 28 94 40 86 58 C82 68 46 68 42 58 C36 42 52 34 55 22 C60 32 63 32 64 10 Z" fill="#df6a34" stroke="#1c1410" stroke-width="3.5" stroke-linejoin="round"/>
+<path d="M64 30 C73 41 78 50 73 58 C69 63 57 63 55 58 C52 50 60 45 64 30 Z" fill="#f6b04e"/>
+<path d="M64 45 C68 51 69 55 67 58 C65 60 61 60 60 58 C59 55 62 52 64 45 Z" fill="#fff0c4"/>
+</svg>
