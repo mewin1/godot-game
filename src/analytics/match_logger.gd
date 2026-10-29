@@ -1,0 +1,183 @@
+class_name MatchLogger
+extends RefCounted
+## Пишет лог матча в файл JSON Lines (одна строка — одно событие). Нужен для анализа баланса:
+## и живых матчей, и прогонов ботов. Только читает симуляцию через её сигналы.
+## События: match_start, round_start, command, wave_start, round_end, eliminated, match_end.
+
+const LOG_VERSION: int = 1
+
+var _sim: MatchSim
+var _file: FileAccess
+## Счётчики текущего раунда по игрокам.
+var _kills: Array[int] = []
+var _kill_gold: Array[int] = []
+var _leaks: Array[int] = []
+var _hp_at_round_start: Array[int] = []
+
+
+## source — откуда матч ("live" — человек, "bots" — прогон ботов); extra — любые поля в match_start.
+func _init(sim: MatchSim, file_path: String, source: String, extra: Dictionary = {}) -> void:
+	_sim = sim
+	var error: Error = DirAccess.make_dir_recursive_absolute(file_path.get_base_dir())
+	if error != OK and error != ERR_ALREADY_EXISTS:
+		push_error("Не удалось создать папку логов: %s" % file_path.get_base_dir())
+		return
+	_file = FileAccess.open(file_path, FileAccess.WRITE)
+	if _file == null:
+		push_error("Не удалось открыть лог: %s" % file_path)
+		return
+	for player: PlayerState in sim.players:
+		_kills.append(0)
+		_kill_gold.append(0)
+		_leaks.append(0)
+		_hp_at_round_start.append(player.hero_hp)
+		player.field.mob_killed.connect(_on_field_mob_killed.bind(player.index))
+		player.field.mob_breached.connect(_on_field_mob_breached.bind(player.index))
+	sim.round_started.connect(_on_sim_round_started)
+	sim.phase_changed.connect(_on_sim_phase_changed)
+	sim.command_processed.connect(_on_sim_command_processed)
+	sim.round_finished.connect(_on_sim_round_finished)
+	sim.player_eliminated.connect(_on_sim_player_eliminated)
+	sim.match_finished.connect(_on_sim_match_finished)
+	_write_match_start(source, extra)
+
+
+func is_open() -> bool:
+	return _file != null
+
+
+## Закрывает файл (матч закончился или игрок вышел посреди матча).
+func close() -> void:
+	if _file == null:
+		return
+	_file.close()
+	_file = null
+
+
+func _write(event: Dictionary) -> void:
+	if _file != null:
+		_file.store_line(JSON.stringify(event))
+
+
+func _write_match_start(source: String, extra: Dictionary) -> void:
+	var players: Array[Dictionary] = []
+	for player: PlayerState in _sim.players:
+		players.append({"index": player.index, "name": player.display_name, "bot": player.is_bot})
+	var event: Dictionary = {"event": "match_start", "version": LOG_VERSION, "source": source,
+			"players": players, "config": _config_numbers()}
+	event.merge(extra)
+	_write(event)
+
+
+## Все числовые настройки конфига — чтобы сравнивать логи до и после правок баланса.
+func _config_numbers() -> Dictionary:
+	var numbers: Dictionary = {}
+	for property: Dictionary in _sim.config.get_property_list():
+		var usage: int = property["usage"]
+		var type: int = property["type"]
+		if usage & PROPERTY_USAGE_STORAGE == 0:
+			continue
+		if type == TYPE_INT or type == TYPE_ARRAY:
+			var property_name: String = property["name"]
+			var value: Variant = _sim.config.get(property_name)
+			if type == TYPE_INT or _is_int_array(value):
+				numbers[property_name] = value
+	return numbers
+
+
+func _is_int_array(value: Variant) -> bool:
+	if not (value is Array):
+		return false
+	var array: Array = value
+	return array.is_typed() and array.get_typed_builtin() == TYPE_INT
+
+
+func _player_snapshot(player: PlayerState) -> Dictionary:
+	var towers: Array[Array] = []
+	var cells_used: int = 0
+	var invested: int = 0
+	for tower: TowerState in player.field.towers:
+		towers.append([String(tower.data.id), tower.level])
+		cells_used += tower.data.shape.size()
+		invested += tower.invested_total
+	var buffs: Array[String] = []
+	for buff: SendBuffData in player.army.buffs:
+		buffs.append(String(buff.id))
+	return {"player": player.index, "alive": player.is_alive, "hp": player.hero_hp,
+			"gold": player.gold, "income": player.income, "shop_level": player.shop.level,
+			"towers": towers, "cells_used": cells_used,
+			"buildable_cells": player.field.get_buildable_cells().size(),
+			"invested": invested, "sends": player.army.sends_done,
+			"sent_this_round": player.has_sent_this_round, "buffs": buffs}
+
+
+func _alive_snapshots() -> Array[Dictionary]:
+	var snapshots: Array[Dictionary] = []
+	for player: PlayerState in _sim.get_alive_players():
+		snapshots.append(_player_snapshot(player))
+	return snapshots
+
+
+func _on_sim_round_started(round_number: int) -> void:
+	for player: PlayerState in _sim.players:
+		_kills[player.index] = 0
+		_kill_gold[player.index] = 0
+		_leaks[player.index] = 0
+		_hp_at_round_start[player.index] = player.hero_hp
+	_write({"event": "round_start", "round": round_number, "tick": _sim.tick_count,
+			"opponents": _sim.opponent_of, "siege_leader": _sim.siege_leader,
+			"siege_attackers": _sim.siege_attackers})
+
+
+func _on_sim_phase_changed(phase: MatchSim.Phase) -> void:
+	if phase != MatchSim.Phase.WAVE:
+		return
+	var wave: Array[MobState] = WaveBuilder.build_base_wave(_sim.config, _sim.round_number)
+	_write({"event": "wave_start", "round": _sim.round_number, "tick": _sim.tick_count,
+			"prep_ticks": _sim.config.prep_ticks, "base_wave_count": wave.size(),
+			"base_wave_hp": wave[0].max_hp, "players": _alive_snapshots()})
+
+
+func _on_sim_command_processed(player_index: int, description: Dictionary, error: String) -> void:
+	_write({"event": "command", "round": _sim.round_number, "tick": _sim.tick_count,
+			"phase_tick": _sim.phase_tick, "player": player_index, "command": description,
+			"error": error})
+
+
+func _on_sim_round_finished(round_number: int) -> void:
+	var players: Array[Dictionary] = _alive_snapshots()
+	for snapshot: Dictionary in players:
+		var index: int = snapshot["player"]
+		var hp: int = snapshot["hp"]
+		snapshot["hp_lost"] = _hp_at_round_start[index] - hp
+		snapshot["kills"] = _kills[index]
+		snapshot["kill_gold"] = _kill_gold[index]
+		snapshot["leaks"] = _leaks[index]
+	_write({"event": "round_end", "round": round_number, "tick": _sim.tick_count,
+			"wave_ticks": _sim.phase_tick, "players": players})
+	if _file != null:
+		_file.flush()
+
+
+func _on_sim_player_eliminated(player: PlayerState) -> void:
+	_write({"event": "eliminated", "round": _sim.round_number, "player": player.index,
+			"place": player.place})
+
+
+func _on_sim_match_finished() -> void:
+	var places: Array[int] = []
+	for player: PlayerState in _sim.players:
+		places.append(player.place)
+	var winner: PlayerState = _sim.get_winner()
+	_write({"event": "match_end", "round": _sim.round_number, "tick": _sim.tick_count,
+			"places": places, "winner": winner.index if winner != null else -1})
+	close()
+
+
+func _on_field_mob_killed(mob: MobState, player_index: int) -> void:
+	_kills[player_index] += 1
+	_kill_gold[player_index] += mob.kill_reward
+
+
+func _on_field_mob_breached(_mob: MobState, player_index: int) -> void:
+	_leaks[player_index] += 1

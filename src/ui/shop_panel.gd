@@ -41,7 +41,7 @@ func _init() -> void:
 	box.add_child(_offer_grid)
 	_build_action_row(box)
 	_build_tower_box(box)
-	_hint_label = _make_label("Перетащи башню на поле. На такую же башню — слияние.", 16)
+	_hint_label = _make_label("Перетащи башню на поле. На такую же — слияние. Нажми на свою башню — выделишь, ещё раз — повернёшь.", 16)
 	box.add_child(_hint_label)
 	_ready_button = _make_button("Готов ▶", _on_ready_button_pressed)
 	_ready_button.add_theme_stylebox_override("normal", _make_ready_style(Color(0.2, 0.5, 0.28)))
@@ -218,8 +218,7 @@ func _on_command_button_pressed(command: SimCommand) -> void:
 func _on_rotate_button_pressed() -> void:
 	if _selected_tower == null:
 		return
-	var turns: int = (_selected_tower.rotation + 1) % TowerState.ROTATIONS
-	command_requested.emit(MoveTowerCommand.new(_selected_tower.id, _selected_tower.anchor, turns))
+	command_requested.emit(RotateTowerCommand.new(_selected_tower.id))
 
 
 func _on_sell_button_pressed() -> void:

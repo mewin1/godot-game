@@ -6,6 +6,8 @@ extends Control
 ## Крутит симуляцию с фиксированным тиком и передаёт в неё команды игрока.
 
 const CONFIG_PATH: String = "res://data/game_config.tres"
+## Логи живых матчей (для разработки: папка проекта, в git не попадает).
+const LIVE_LOG_DIR: String = "res://logs/live"
 const HUMAN_INDEX: int = 0
 const BASE_FONT_SIZE: int = 20
 const HUD_FONT_SIZE: int = 22
@@ -16,8 +18,11 @@ const COLOR_BACKGROUND: Color = Color(0.06, 0.07, 0.09)
 
 ## Игроков в лобби: вы + боты.
 @export var player_count: int = 5
+## Писать лог матча для анализа баланса.
+@export var is_logging_enabled: bool = true
 
 var _sim: MatchSim
+var _logger: MatchLogger
 var _accumulator: float = 0.0
 var _selected_tower_id: int = 0
 var _toast_time_left: float = 0.0
@@ -39,6 +44,11 @@ func _ready() -> void:
 	_build_ui()
 	_update_split_direction()
 	_start_match()
+
+
+func _exit_tree() -> void:
+	if _logger != null:
+		_logger.close()
 
 
 func _process(delta: float) -> void:
@@ -178,13 +188,25 @@ func _build_game_over() -> void:
 func _start_match() -> void:
 	var config: GameConfig = load(CONFIG_PATH) as GameConfig
 	# Сид матча выбирает отображение: внутри симуляции случайность только от этого сида.
-	_sim = MatchSim.new(config, randi(), player_count, 1)
+	var match_seed: int = randi()
+	_sim = MatchSim.new(config, match_seed, player_count, 1)
+	# Без окна (проверки и тесты из терминала) живой лог не нужен.
+	if is_logging_enabled and DisplayServer.get_name() != "headless":
+		_logger = _create_logger(match_seed)
 	_sim.command_failed.connect(_on_sim_command_failed)
 	_sim.match_finished.connect(_on_sim_match_finished)
 	_sim.phase_changed.connect(_on_sim_phase_changed)
 	_sim.player_eliminated.connect(_on_sim_player_eliminated)
 	_sim.start()
 	_shop_panel.setup(_sim, _human())
+
+
+func _create_logger(match_seed: int) -> MatchLogger:
+	var stamp: String = Time.get_datetime_string_from_system(false, true)
+	var file_name: String = "%s_seed%d.jsonl" % [stamp.replace(":", "-").replace(" ", "_"),
+			match_seed]
+	var path: String = ProjectSettings.globalize_path(LIVE_LOG_DIR).path_join(file_name)
+	return MatchLogger.new(_sim, path, "live", {"seed": match_seed, "started_at": stamp})
 
 
 func _step_simulation(delta: float) -> void:
@@ -291,8 +313,12 @@ func _on_command_requested(command: SimCommand) -> void:
 	_sim.queue_command(HUMAN_INDEX, command)
 
 
+## Нажатие на башню выделяет её, повторное нажатие на выделенную — поворачивает.
 func _on_my_view_tower_tapped(tower_id: int) -> void:
-	_selected_tower_id = tower_id if tower_id != _selected_tower_id else 0
+	if tower_id != 0 and tower_id == _selected_tower_id:
+		_sim.queue_command(HUMAN_INDEX, RotateTowerCommand.new(tower_id))
+		return
+	_selected_tower_id = tower_id
 
 
 func _on_sim_command_failed(player_index: int, reason: String) -> void:

@@ -6,3 +6,7 @@ extends SimCommand
 func execute(_sim: MatchSim, player: PlayerState) -> String:
 	player.is_ready = true
 	return ""
+
+
+func to_log(_sim: MatchSim, _player: PlayerState) -> Dictionary:
+	return {"type": "ready"}

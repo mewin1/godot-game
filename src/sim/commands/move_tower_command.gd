@@ -15,3 +15,7 @@ func _init(id: int, at_anchor: Vector2i, turns: int) -> void:
 
 func execute(_sim: MatchSim, player: PlayerState) -> String:
 	return player.move_tower(tower_id, anchor, rotation)
+
+
+func to_log(_sim: MatchSim, _player: PlayerState) -> Dictionary:
+	return {"type": "move", "tower": tower_id, "x": anchor.x, "y": anchor.y, "rotation": rotation}

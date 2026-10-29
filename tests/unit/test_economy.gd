@@ -180,3 +180,26 @@ func _buy_at(offer_index: int, anchor: Vector2i) -> String:
 			if _player.field.can_place_tower_data(data, anchor, turns):
 				return _player.buy_tower(offer_index, anchor, turns)
 	return _player.buy_tower(offer_index, anchor, 0)
+
+
+func test_rotate_tower_in_place_when_fits() -> void:
+	var data: TowerData = SimFixtures.find_tower(_config, &"fire_1")
+	var tower: TowerState = _player.field.add_tower(data, Vector2i(2, 4), 1)
+	assert_eq(_player.rotate_tower(tower.id), "")
+	assert_eq(tower.rotation, 2)
+	assert_eq(tower.anchor, Vector2i(2, 4))
+
+
+func test_rotate_tower_shifts_when_blocked() -> void:
+	var data: TowerData = SimFixtures.find_tower(_config, &"fire_1")
+	var tower: TowerState = _player.field.add_tower(data, Vector2i(0, 4), 1)
+	assert_eq(_player.rotate_tower(tower.id), "", "горизонтально у края не влезает на месте")
+	assert_eq(tower.rotation, 2)
+	assert_true(_player.field.can_place(tower.cells(), tower.id))
+
+
+func test_rotate_tower_fails_without_space() -> void:
+	var data: TowerData = SimFixtures.find_tower(_config, &"ice_2")
+	var tower: TowerState = _player.field.add_tower(data, Vector2i(0, 3), 1)
+	assert_ne(_player.rotate_tower(tower.id), "", "горизонтальная тройка в столбце 0 не помещается")
+	assert_eq(tower.rotation, 1)

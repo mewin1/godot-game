@@ -5,3 +5,7 @@ extends SimCommand
 
 func execute(_sim: MatchSim, player: PlayerState) -> String:
 	return player.upgrade_shop()
+
+
+func to_log(_sim: MatchSim, _player: PlayerState) -> Dictionary:
+	return {"type": "upgrade_shop"}

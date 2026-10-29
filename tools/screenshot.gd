@@ -17,7 +17,11 @@ func _initialize() -> void:
 		push_error("Не удалось загрузить сцену: %s" % scene_path)
 		quit(1)
 		return
-	root.add_child(packed.instantiate())
+	var scene: Node = packed.instantiate()
+	# Скриншоты не должны засорять логи живых матчей.
+	if "is_logging_enabled" in scene:
+		scene.set("is_logging_enabled", false)
+	root.add_child(scene)
 	_capture_later(out_path, frames)
 
 

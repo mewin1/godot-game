@@ -3,6 +3,13 @@ extends RefCounted
 ## Игрок в матче: герой, золото, доход, магазин, поле и армия отправки.
 ## Методы-действия возвращают "" при успехе или текст причины отказа (его показывает интерфейс).
 
+## Сдвиги, которые пробует поворот, если на месте фигура не помещается (от ближних к дальним).
+const ROTATE_OFFSETS: Array[Vector2i] = [
+	Vector2i(0, 0), Vector2i(-1, 0), Vector2i(0, -1), Vector2i(1, 0), Vector2i(0, 1),
+	Vector2i(-1, -1), Vector2i(1, -1), Vector2i(-1, 1), Vector2i(1, 1),
+	Vector2i(-2, 0), Vector2i(0, -2), Vector2i(2, 0), Vector2i(0, 2),
+]
+
 var index: int = 0
 var display_name: String = ""
 var is_bot: bool = false
@@ -76,6 +83,19 @@ func move_tower(tower_id: int, anchor: Vector2i, rotation: int) -> String:
 	if not field.move_tower(tower, anchor, rotation):
 		return "Сюда не встанет"
 	return ""
+
+
+## Поворот на 90° по часовой. Сначала пробует то же место, потом ближайшие сдвиги
+## (порядок перебора фиксированный — детерминизм).
+func rotate_tower(tower_id: int) -> String:
+	var tower: TowerState = field.get_tower(tower_id)
+	if tower == null:
+		return "Нет такой башни"
+	var turns: int = (tower.rotation + 1) % TowerState.ROTATIONS
+	for offset: Vector2i in ROTATE_OFFSETS:
+		if field.move_tower(tower, tower.anchor + offset, turns):
+			return ""
+	return "Повёрнутая башня здесь не помещается"
 
 
 ## Две одинаковые башни одного уровня → одна (target) уровнем выше. Клетки source освобождаются.

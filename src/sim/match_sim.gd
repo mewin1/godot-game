@@ -6,6 +6,10 @@ extends RefCounted
 signal round_started(round_number: int)
 signal phase_changed(phase: Phase)
 signal command_failed(player_index: int, reason: String)
+## Любая команда (и людей, и ботов) после выполнения: описание и "" или причина отказа. Для логов.
+signal command_processed(player_index: int, description: Dictionary, error: String)
+## Конец раунда: доход и награды уже начислены, выбывшие ещё не определены.
+signal round_finished(round_number: int)
 signal player_eliminated(player: PlayerState)
 signal match_finished()
 
@@ -69,7 +73,10 @@ func execute_command(player_index: int, command: SimCommand) -> String:
 		return "Игрок выбыл"
 	if command.requires_prep() and phase != Phase.PREP:
 		return "Сейчас идёт волна"
-	return command.execute(self, player)
+	var description: Dictionary = command.to_log(self, player)
+	var error: String = command.execute(self, player)
+	command_processed.emit(player_index, description, error)
+	return error
 
 
 ## Один шаг симуляции (1/ticks_per_second секунды).
@@ -155,11 +162,11 @@ func _start_round(number: int) -> void:
 		if number > 1:
 			player.shop.on_round_started()
 		player.start_prep(number > 1)
+	round_started.emit(round_number)
+	phase_changed.emit(phase)
 	for player: PlayerState in get_alive_players():
 		if player.is_bot:
 			_bots[player.index].play_prep(self, player)
-	round_started.emit(round_number)
-	phase_changed.emit(phase)
 
 
 func _start_wave() -> void:
@@ -236,6 +243,7 @@ func _finish_round() -> void:
 	_pay_siege_rewards()
 	for player: PlayerState in alive:
 		player.gold += player.income
+	round_finished.emit(round_number)
 	_eliminate_dead(alive)
 	var survivors: Array[PlayerState] = get_alive_players()
 	if survivors.size() <= 1:

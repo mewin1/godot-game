@@ -13,3 +13,7 @@ func _init(offer: int, target_tower_id: int) -> void:
 
 func execute(_sim: MatchSim, player: PlayerState) -> String:
 	return player.buy_tower_into(offer_index, target_id)
+
+
+func to_log(_sim: MatchSim, _player: PlayerState) -> Dictionary:
+	return {"type": "buy_merge", "offer": offer_index, "target": target_id}

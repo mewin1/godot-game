@@ -12,3 +12,8 @@ func requires_prep() -> bool:
 ## Выполняет команду. Возвращает "" при успехе или причину отказа.
 func execute(_sim: MatchSim, _player: PlayerState) -> String:
 	return "Команда не реализована"
+
+
+## Описание команды для лога матча. Вызывается до выполнения (витрина ещё не изменилась).
+func to_log(_sim: MatchSim, _player: PlayerState) -> Dictionary:
+	return {"type": "unknown"}

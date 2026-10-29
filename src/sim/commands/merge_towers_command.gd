@@ -13,3 +13,7 @@ func _init(source_tower_id: int, target_tower_id: int) -> void:
 
 func execute(_sim: MatchSim, player: PlayerState) -> String:
 	return player.merge_towers(source_id, target_id)
+
+
+func to_log(_sim: MatchSim, _player: PlayerState) -> Dictionary:
+	return {"type": "merge", "source": source_id, "target": target_id}

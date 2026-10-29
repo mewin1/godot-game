@@ -5,3 +5,7 @@ extends SimCommand
 
 func execute(sim: MatchSim, player: PlayerState) -> String:
 	return player.send_units(sim.round_number)
+
+
+func to_log(_sim: MatchSim, _player: PlayerState) -> Dictionary:
+	return {"type": "send"}

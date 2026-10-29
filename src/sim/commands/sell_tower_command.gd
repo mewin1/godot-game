@@ -11,3 +11,7 @@ func _init(id: int) -> void:
 
 func execute(_sim: MatchSim, player: PlayerState) -> String:
 	return player.sell_tower(tower_id)
+
+
+func to_log(_sim: MatchSim, _player: PlayerState) -> Dictionary:
+	return {"type": "sell", "tower": tower_id}
