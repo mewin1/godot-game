@@ -1,0 +1,55 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://src/ui/match_end_panel.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://assets/ui/ornament.svg" id="2_ornament"]
+
+[node name="MatchEndPanel" type="PanelContainer"]
+custom_minimum_size = Vector2(420, 0)
+script = ExtResource("1_script")
+
+[node name="Box" type="VBoxContainer" parent="."]
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="Header" type="Label" parent="Box"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"TitleLabel"
+theme_override_font_sizes/font_size = 48
+text = "Победа!"
+horizontal_alignment = 1
+
+[node name="Ornament" type="TextureRect" parent="Box"]
+custom_minimum_size = Vector2(0, 16)
+layout_mode = 2
+texture = ExtResource("2_ornament")
+expand_mode = 1
+stretch_mode = 1
+
+[node name="Table" type="GridContainer" parent="Box"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/h_separation = 28
+theme_override_constants/v_separation = 6
+columns = 3
+
+[node name="Buttons" type="HBoxContainer" parent="Box"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="AgainButton" type="Button" parent="Box/Buttons"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 64)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"AccentButton"
+theme_override_font_sizes/font_size = 24
+text = "Ещё раз"
+
+[node name="MenuButton" type="Button" parent="Box/Buttons"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 64)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 24
+text = "В меню"

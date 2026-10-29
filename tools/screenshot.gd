@@ -1,6 +1,6 @@
 extends SceneTree
 ## Делает скриншот сцены и выходит. Нужен, чтобы проверять визуал без редактора.
-## Запуск: godot --path . -s res://tools/screenshot.gd -- --scene=res://scenes/main.tscn --out=/путь/к/файлу.png
+## Запуск: godot --path . -s res://tools/screenshot.gd -- --scene=res://scenes/match.tscn --out=/путь/к/файлу.png
 ## Необязательно: --frames=N (сколько кадров подождать перед снимком, по умолчанию 10).
 
 const DEFAULT_FRAMES: int = 10
@@ -8,7 +8,7 @@ const DEFAULT_FRAMES: int = 10
 
 func _initialize() -> void:
 	var args: Dictionary[String, String] = _parse_args()
-	var scene_path: String = args.get("scene", "res://scenes/main.tscn")
+	var scene_path: String = args.get("scene", "res://scenes/match.tscn")
 	var out_path: String = args.get("out", "user://screenshot.png")
 	var frames_text: String = args.get("frames", str(DEFAULT_FRAMES))
 	var frames: int = frames_text.to_int()

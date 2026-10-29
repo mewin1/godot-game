@@ -24,6 +24,11 @@ const FRAME_MARGIN: float = 0.14
 ## Терем шире клетки: в долях клетки.
 const HERO_WIDTH: float = 1.2
 const DECOR_SIZE: float = 0.92
+## «Пружинка» башни после покупки или слияния.
+const POP_SECONDS: float = 0.35
+const POP_STRENGTH: float = 0.3
+const MERGE_BURST_COLOR: Color = Color(1.0, 0.82, 0.4)
+const SELL_BURST_COLOR: Color = Color(0.75, 0.62, 0.45)
 
 var field: FieldState
 var config: GameConfig
@@ -59,6 +64,10 @@ var _hover_merge_target: TowerState
 var _press_position: Vector2 = Vector2.ZERO
 var _fire_pulses: Dictionary[int, float] = {}
 var _hero_shake_left: float = 0.0
+var _pops: Dictionary[int, float] = {}
+## Уровни и центры башен на прошлом кадре — так видно покупку, слияние и продажу.
+var _known_levels: Dictionary[int, int] = {}
+var _known_centers: Dictionary[int, Vector2i] = {}
 
 
 func _init() -> void:
@@ -76,6 +85,12 @@ func _process(delta: float) -> void:
 		if _fire_pulses[tower_id] <= 0.0:
 			_fire_pulses.erase(tower_id)
 	_hero_shake_left = maxf(0.0, _hero_shake_left - delta)
+	for tower_id: int in _pops.keys():
+		_pops[tower_id] -= delta
+		if _pops[tower_id] <= 0.0:
+			_pops.erase(tower_id)
+	if field != null and is_own_field:
+		_track_tower_changes()
 	queue_redraw()
 
 
@@ -107,6 +122,8 @@ func show_field(field_state: FieldState, game_config: GameConfig, caption: Strin
 		field.mob_breached.disconnect(_on_field_mob_breached)
 	field = field_state
 	_fire_pulses.clear()
+	_pops.clear()
+	_remember_towers()
 	field.tower_fired.connect(_on_field_tower_fired)
 	field.mob_breached.connect(_on_field_mob_breached)
 	_battle.set_field(field)
@@ -310,8 +327,14 @@ func _draw_towers() -> void:
 	for tower: TowerState in field.towers:
 		var top_left: Vector2 = _origin + Vector2(tower.anchor) * _cell_size
 		var pulse: float = _fire_pulses.get(tower.id, 0.0) / FIRE_PULSE_SECONDS
+		if _pops.has(tower.id):
+			var progress: float = 1.0 - _pops[tower.id] / POP_SECONDS
+			var pop_scale: float = 1.0 + POP_STRENGTH * sin(progress * PI)
+			var center: Vector2 = _to_screen(Vector2(tower.center_milli()))
+			draw_set_transform(center * (1.0 - pop_scale), 0.0, Vector2.ONE * pop_scale)
 		TowerPainter.draw_tower(self, tower.data, tower.rotation, tower.level, top_left, _cell_size,
 				pulse)
+		draw_set_transform_matrix(Transform2D.IDENTITY)
 		if tower.id == selected_tower_id:
 			for cell: Vector2i in tower.cells():
 				draw_rect(_cell_rect(cell).grow(-1.0), _style.selected_color, false, 3.0)
@@ -376,6 +399,46 @@ func _draw_hero_hp(center: Vector2) -> void:
 			text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, TITLE_COLOR)
 
 #endregion
+
+
+## Сравнивает башни с прошлым кадром: новая — покупка, выросший уровень — слияние,
+## пропавшая (без слияния) — продажа. Только для своего поля.
+func _track_tower_changes() -> void:
+	var has_merge: bool = false
+	var has_new: bool = false
+	for tower: TowerState in field.towers:
+		if not _known_levels.has(tower.id):
+			has_new = true
+			_pops[tower.id] = POP_SECONDS
+		elif _known_levels[tower.id] < tower.level:
+			has_merge = true
+			_pops[tower.id] = POP_SECONDS
+			_battle.play_burst(get_tower_screen_center(tower), MERGE_BURST_COLOR)
+	var has_removed: bool = false
+	for tower_id: int in _known_levels:
+		if field.get_tower(tower_id) == null:
+			has_removed = true
+			if not has_merge:
+				_battle.play_burst(_to_screen(Vector2(_known_centers[tower_id])), SELL_BURST_COLOR)
+	if has_merge:
+		sound_requested.emit(&"merge")
+	elif has_new:
+		sound_requested.emit(&"buy")
+	elif has_removed:
+		sound_requested.emit(&"sell")
+	if has_merge or has_new or has_removed or _known_levels.size() != field.towers.size():
+		_remember_towers()
+	else:
+		for tower: TowerState in field.towers:
+			_known_centers[tower.id] = tower.center_milli()
+
+
+func _remember_towers() -> void:
+	_known_levels.clear()
+	_known_centers.clear()
+	for tower: TowerState in field.towers:
+		_known_levels[tower.id] = tower.level
+		_known_centers[tower.id] = tower.center_milli()
 
 
 func _path_points(cells: Array[Vector2i]) -> PackedVector2Array:

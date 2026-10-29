@@ -7,8 +7,13 @@ const CARD_SIZE: Vector2 = Vector2(196, 150)
 const ROTATE_BUTTON_SIZE: Vector2 = Vector2(48, 48)
 const NAME_FONT_SIZE: int = 20
 const INFO_FONT_SIZE: int = 15
-const COLOR_CARD: Color = Color(0.18, 0.19, 0.24)
-const COLOR_EMPTY: Color = Color(0.12, 0.12, 0.15)
+const COLOR_CARD: Color = Color(0.18, 0.135, 0.1)
+const COLOR_CARD_SHADE: Color = Color(0.11, 0.08, 0.06)
+const COLOR_EMPTY: Color = Color(0.1, 0.075, 0.057, 0.7)
+const COLOR_NAME: Color = Color(0.95, 0.8, 0.52)
+const COLOR_STATS: Color = Color(0.94, 0.89, 0.81, 0.85)
+const COLOR_EFFECTS: Color = Color(0.75, 0.86, 0.9, 0.9)
+const MAX_SHAPE_CELL: float = 30.0
 
 var offer_index: int = 0
 var data: TowerData
@@ -61,23 +66,29 @@ func _draw() -> void:
 	if data == null:
 		draw_rect(rect, COLOR_EMPTY)
 		draw_string(get_theme_default_font(), Vector2(0, size.y / 2), "куплено",
-				HORIZONTAL_ALIGNMENT_CENTER, size.x, INFO_FONT_SIZE, Color(1, 1, 1, 0.4))
+				HORIZONTAL_ALIGNMENT_CENTER, size.x, INFO_FONT_SIZE, Color(COLOR_STATS, 0.4))
 		return
-	draw_rect(rect, COLOR_CARD)
-	draw_rect(rect, data.color, false, 3.0)
+	var visual: TowerVisual = VisualCatalog.get_default().get_tower(data.id)
+	draw_rect(rect, COLOR_CARD_SHADE)
+	draw_rect(rect.grow(-3.0), COLOR_CARD)
+	draw_rect(Rect2(rect.position + Vector2(3, size.y - 50), Vector2(size.x - 6, 47)),
+			COLOR_CARD_SHADE)
+	draw_rect(rect.grow(-1.5), visual.plate_edge_color, false, 3.0)
 	var font: Font = get_theme_default_font()
 	draw_string(font, Vector2(10, 26), data.display_name, HORIZONTAL_ALIGNMENT_LEFT,
-			size.x - ROTATE_BUTTON_SIZE.x - 14, NAME_FONT_SIZE)
+			size.x - ROTATE_BUTTON_SIZE.x - 14, NAME_FONT_SIZE, COLOR_NAME)
 	draw_string(font, Vector2(10, size.y - 30), _stats_text(), HORIZONTAL_ALIGNMENT_LEFT,
-			size.x - 14, INFO_FONT_SIZE, Color(1, 1, 1, 0.8))
+			size.x - 14, INFO_FONT_SIZE, COLOR_STATS)
 	draw_string(font, Vector2(10, size.y - 10), _effects_text(), HORIZONTAL_ALIGNMENT_LEFT,
-			size.x - 14, INFO_FONT_SIZE, Color(1, 1, 0.7, 0.9))
+			size.x - 14, INFO_FONT_SIZE, COLOR_EFFECTS)
 	var shape_area: Rect2 = Rect2(Vector2(10, 34), Vector2(size.x - 20, size.y - 76))
 	var bounds: Vector2 = Vector2(ShapePreview.get_shape_size(data, rotation_turns))
-	var cell: float = floorf(minf(22.0, minf(shape_area.size.x / bounds.x,
+	var cell: float = floorf(minf(MAX_SHAPE_CELL, minf(shape_area.size.x / bounds.x,
 			shape_area.size.y / bounds.y)))
 	var top_left: Vector2 = shape_area.position + (shape_area.size - bounds * cell) / 2.0
 	ShapePreview.draw_shape(self, data, rotation_turns, 1, top_left, cell)
+	if not is_active:
+		draw_rect(rect, Color(0, 0, 0, 0.45))
 
 
 func _stats_text() -> String:

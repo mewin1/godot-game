@@ -72,6 +72,11 @@ func set_field(field: FieldState) -> void:
 	_field.mob_breached.connect(_on_field_mob_breached)
 
 
+## Вспышка частиц в точке экрана (покупка, слияние, продажа — их замечает FieldView).
+func play_burst(at: Vector2, color: Color) -> void:
+	_spawn_puff(at, color)
+
+
 ## Положение и размер клетки поля на экране (их считает FieldView).
 func set_layout(origin: Vector2, cell_size: float) -> void:
 	_origin = origin

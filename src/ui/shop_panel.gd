@@ -10,7 +10,6 @@ signal command_requested(command: SimCommand)
 const FONT_SIZE: int = 20
 const BUTTON_HEIGHT: float = 56.0
 const OFFER_COLUMNS: int = 3
-const COLOR_TAB_ACTIVE: Color = Color(0.32, 0.4, 0.58)
 const ARMY_COLUMNS: int = 2
 const ARMY_FONT_SIZE: int = 18
 
@@ -57,8 +56,7 @@ func _init() -> void:
 	_army_grid.add_theme_constant_override("v_separation", 8)
 	_army_page.add_child(_army_grid)
 	_ready_button = _make_button("Готов ▶", _on_ready_button_pressed)
-	_ready_button.add_theme_stylebox_override("normal", _make_flat_style(Color(0.2, 0.5, 0.28)))
-	_ready_button.add_theme_stylebox_override("hover", _make_flat_style(Color(0.25, 0.6, 0.33)))
+	_ready_button.theme_type_variation = &"AccentButton"
 	box.add_child(_ready_button)
 	_show_page(true)
 
@@ -172,14 +170,8 @@ func _make_button(text: String, on_pressed: Callable) -> Button:
 	button.focus_mode = Control.FOCUS_NONE
 	button.add_theme_font_size_override("font_size", FONT_SIZE)
 	button.pressed.connect(on_pressed)
+	UiFx.add_press_feedback(button)
 	return button
-
-
-func _make_flat_style(color: Color) -> StyleBoxFlat:
-	var style: StyleBoxFlat = StyleBoxFlat.new()
-	style.bg_color = color
-	style.set_corner_radius_all(8)
-	return style
 
 
 func _make_label(text: String, font_size: int) -> Label:
@@ -197,10 +189,8 @@ func _make_label(text: String, font_size: int) -> Label:
 func _show_page(is_towers: bool) -> void:
 	_towers_page.visible = is_towers
 	_army_page.visible = not is_towers
-	_towers_tab.remove_theme_stylebox_override("normal")
-	_army_tab.remove_theme_stylebox_override("normal")
-	var active_tab: Button = _towers_tab if is_towers else _army_tab
-	active_tab.add_theme_stylebox_override("normal", _make_flat_style(COLOR_TAB_ACTIVE))
+	_towers_tab.theme_type_variation = &"TabActiveButton" if is_towers else &""
+	_army_tab.theme_type_variation = &"" if is_towers else &"TabActiveButton"
 
 
 func _refresh_buffs() -> void:

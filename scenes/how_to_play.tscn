@@ -1,0 +1,126 @@
+[gd_scene load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://src/ui/how_to_play.gd" id="1_script"]
+[ext_resource type="Theme" path="res://data/ui/ui_theme.tres" id="2_theme"]
+[ext_resource type="Texture2D" path="res://assets/ui/menu_background.svg" id="3_background"]
+[ext_resource type="Shader" path="res://assets/shaders/vignette.gdshader" id="4_vignette"]
+[ext_resource type="Texture2D" path="res://assets/ui/ornament.svg" id="5_ornament"]
+
+[sub_resource type="ShaderMaterial" id="vignette_material"]
+shader = ExtResource("4_vignette")
+shader_parameter/strength = 0.8
+
+[node name="HowToPlay" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = ExtResource("2_theme")
+script = ExtResource("1_script")
+
+[node name="Background" type="TextureRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = ExtResource("3_background")
+expand_mode = 1
+stretch_mode = 6
+
+[node name="Vignette" type="ColorRect" parent="."]
+material = SubResource("vignette_material")
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="Margin" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 24
+theme_override_constants/margin_top = 24
+theme_override_constants/margin_right = 24
+theme_override_constants/margin_bottom = 24
+
+[node name="Panel" type="PanelContainer" parent="Margin"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Box" type="VBoxContainer" parent="Margin/Panel"]
+custom_minimum_size = Vector2(0, 0)
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Header" type="Label" parent="Margin/Panel/Box"]
+layout_mode = 2
+theme_type_variation = &"HeaderLabel"
+theme_override_font_sizes/font_size = 36
+text = "Как играть"
+horizontal_alignment = 1
+
+[node name="Ornament" type="TextureRect" parent="Margin/Panel/Box"]
+custom_minimum_size = Vector2(0, 16)
+layout_mode = 2
+texture = ExtResource("5_ornament")
+expand_mode = 1
+stretch_mode = 1
+
+[node name="Scroll" type="ScrollContainer" parent="Margin/Panel/Box"]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="Rules" type="RichTextLabel" parent="Margin/Panel/Box/Scroll"]
+custom_minimum_size = Vector2(0, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+bbcode_enabled = true
+fit_content = true
+text = "[color=#e8a64a][b]Цель[/b][/color]
+Вы и четверо соперников. У каждого — терем с 40 HP. Мобы, дошедшие до терема, снимают HP. Побеждает последний устоявший.
+
+[color=#e8a64a][b]Подготовка (40 секунд)[/b][/color]
+• Перетащите карточку из магазина на своё поле — башня куплена и поставлена. Зелёная подсветка — встанет, красная — нет.
+• Строить можно только на светлых клетках у дороги. Кнопка ⟳ на карточке поворачивает фигуру.
+• Две одинаковые башни одного уровня сливаются в одну, сильнее (до 3 звёзд): перетащите одну на другую.
+• Нажмите на башню — увидите радиус, кнопки «Повернуть» и «Продать». Продать можно и перетащив башню обратно в меню магазина.
+• «Обновить» — новая витрина. «Магазин → ур.N» — путь длиннее, клеток и предложений больше, появляются башни 2-го тира.
+
+[color=#e8a64a][b]Три школы башен[/b][/color]
+• [color=#f0a060]Огонь[/color] — бьёт по площади: хорош против толпы.
+• [color=#a8d8ee]Лёд[/color] — замедляет врагов (они синеют).
+• [color=#d8c090]Механизмы[/color] — быстро стреляют болтами: хороши против одиночных крепких.
+
+[color=#e8a64a][b]Армия (вкладка «Армия»)[/b][/color]
+Ваша армия каждый раунд сама идёт к сопернику. Улучшения за золото навсегда: больше воинов, больше HP, быстрее, новые виды. Каждое улучшение ещё и повышает доход. За каждое HP, снятое с соперника, — золото.
+
+[color=#e8a64a][b]Волна[/b][/color]
+Слева — поле соперника (туда идёт ваша армия), справа — ваше. После волны выберите бесплатный баф армии (★ — редкий).
+
+[color=#e8a64a][b]Осада (раунды 5, 10, 15)[/b][/color]
+Двое слабейших вместе нападают на лидера. Если нападают на вас — экран предупредит красным.
+
+[color=#e8a64a][b]Призрак[/b][/color]
+Если вам не хватило пары, вы бьётесь с копией поля и армии другого игрока."
+
+[node name="BackButton" type="Button" parent="Margin/Panel/Box"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 64)
+layout_mode = 2
+theme_type_variation = &"AccentButton"
+theme_override_font_sizes/font_size = 24
+text = "Назад"

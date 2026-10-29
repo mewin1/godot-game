@@ -1,20 +1,26 @@
 class_name MatchScreen
 extends Control
-## Экран матча без камеры: сверху строка состояния, ниже две половины.
+## Экран матча без камеры: сверху панель (MatchHud), ниже две половины.
 ## Подготовка: меню (магазин) + своё поле. Волна: поле соперника + своё поле.
 ## Широкий экран — половины слева/справа, высокий (телефон) — сверху/снизу (автоматически).
 ## Крутит симуляцию с фиксированным тиком и передаёт в неё команды игрока.
 
 const CONFIG_PATH: String = "res://data/game_config.tres"
+const THEME_PATH: String = "res://data/ui/ui_theme.tres"
+const VIGNETTE_SHADER: Shader = preload("res://assets/shaders/vignette.gdshader")
+const END_PANEL_SCENE: PackedScene = preload("res://scenes/match_end_panel.tscn")
 ## Логи живых матчей (для разработки: папка проекта, в git не попадает).
 const LIVE_LOG_DIR: String = "res://logs/live"
 const HUMAN_INDEX: int = 0
-const BASE_FONT_SIZE: int = 20
-const HUD_FONT_SIZE: int = 22
 const TOAST_SECONDS: float = 2.0
+const TOAST_FONT_SIZE: int = 24
+const HALF_FADE_SECONDS: float = 0.35
 ## Не больше стольких тиков за кадр — чтобы игра не «догоняла» рывком после подвисания.
 const MAX_TICKS_PER_FRAME: int = 5
-const COLOR_BACKGROUND: Color = Color(0.06, 0.07, 0.09)
+const COLOR_BACKGROUND: Color = Color(0.08, 0.06, 0.047)
+const COLOR_TOAST: Color = Color(1.0, 0.8, 0.45)
+const COLOR_SIEGE: Color = Color(1.0, 0.45, 0.35)
+const SPEEDS: Array[int] = [1, 2]
 
 ## Игроков в лобби: вы + боты.
 @export var player_count: int = 5
@@ -26,17 +32,22 @@ var _logger: MatchLogger
 var _accumulator: float = 0.0
 var _selected_tower_id: int = 0
 var _toast_time_left: float = 0.0
+var _is_paused: bool = false
+var _speed_index: int = 0
+var _was_prep_shown: bool = true
+var _banner: Control
 
-var _hud_label: Label
-var _lobby_label: Label
+var _hud: MatchHud
 var _halves: BoxContainer
 var _menu_slot: Control
 var _shop_panel: ShopPanel
 var _opponent_view: FieldView
 var _my_view: FieldView
+var _overlay: Control
 var _toast_label: Label
-var _game_over_panel: PanelContainer
-var _game_over_label: Label
+var _end_layer: Control
+var _end_panel: MatchEndPanel
+var _sound_bank: SoundBank
 
 
 func _ready() -> void:
@@ -46,6 +57,8 @@ func _ready() -> void:
 
 
 func _exit_tree() -> void:
+	# Пауза и ускорение действуют через общий масштаб времени — вернуть его для других сцен.
+	Engine.time_scale = 1.0
 	if _logger != null:
 		_logger.close()
 
@@ -62,6 +75,8 @@ func _notification(what: int) -> void:
 
 ## Высокий экран (телефон) — половины сверху/снизу, широкий (ПК) — слева/справа.
 func _update_split_direction() -> void:
+	if is_inside_tree():
+		ScreenFit.apply(get_window())
 	_halves.vertical = size.y > size.x
 
 
@@ -69,55 +84,47 @@ func _update_split_direction() -> void:
 
 func _build_ui() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
-	theme = _make_theme()
+	theme = load(THEME_PATH) as Theme
 	var background: ColorRect = ColorRect.new()
 	background.color = COLOR_BACKGROUND
-	background.set_anchors_preset(Control.PRESET_FULL_RECT)
-	background.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(background)
+	_add_full_rect(self, background)
 	var root_box: VBoxContainer = VBoxContainer.new()
-	root_box.set_anchors_preset(Control.PRESET_FULL_RECT)
-	add_child(root_box)
-	_hud_label = Label.new()
-	_hud_label.add_theme_font_size_override("font_size", HUD_FONT_SIZE)
-	_hud_label.custom_minimum_size = Vector2(0, 40)
-	_hud_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	root_box.add_child(_hud_label)
-	_lobby_label = Label.new()
-	_lobby_label.add_theme_font_size_override("font_size", 17)
-	_lobby_label.add_theme_color_override("font_color", Color(0.8, 0.85, 0.95))
-	_lobby_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	root_box.add_child(_lobby_label)
+	root_box.add_theme_constant_override("separation", 4)
+	_add_full_rect(self, root_box)
+	root_box.mouse_filter = Control.MOUSE_FILTER_PASS
+	_hud = MatchHud.new()
+	_hud.pause_pressed.connect(_on_hud_pause_pressed)
+	_hud.speed_pressed.connect(_on_hud_speed_pressed)
+	_hud.sound_pressed.connect(_on_hud_sound_pressed)
+	_hud.set_muted(SoundBank.is_muted())
+	root_box.add_child(_hud)
 	_halves = BoxContainer.new()
 	_halves.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	root_box.add_child(_halves)
 	_build_halves()
+	_add_vignette()
+	_overlay = Control.new()
+	_add_full_rect(self, _overlay)
 	_build_toast()
-	_build_game_over()
+	_build_end_layer()
+	_sound_bank = SoundBank.new()
+	add_child(_sound_bank)
 
 
-## Крупные контрастные кнопки: на телефоне по ним попадают пальцем.
-func _make_theme() -> Theme:
-	var ui_theme: Theme = Theme.new()
-	ui_theme.default_font_size = BASE_FONT_SIZE
-	ui_theme.set_stylebox("normal", "Button", _make_button_style(Color(0.24, 0.27, 0.34)))
-	ui_theme.set_stylebox("hover", "Button", _make_button_style(Color(0.3, 0.34, 0.43)))
-	ui_theme.set_stylebox("pressed", "Button", _make_button_style(Color(0.18, 0.2, 0.26)))
-	ui_theme.set_stylebox("disabled", "Button", _make_button_style(Color(0.14, 0.15, 0.18)))
-	ui_theme.set_color("font_disabled_color", "Button", Color(1, 1, 1, 0.35))
-	var panel: StyleBoxFlat = StyleBoxFlat.new()
-	panel.bg_color = Color(0.1, 0.11, 0.14)
-	panel.set_content_margin_all(10)
-	ui_theme.set_stylebox("panel", "PanelContainer", panel)
-	return ui_theme
+func _add_full_rect(parent: Control, child: Control) -> void:
+	child.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	parent.add_child(child)
+	child.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
 
-func _make_button_style(color: Color) -> StyleBoxFlat:
-	var style: StyleBoxFlat = StyleBoxFlat.new()
-	style.bg_color = color
-	style.set_corner_radius_all(8)
-	style.set_content_margin_all(6)
-	return style
+## Мягкое затемнение краёв поверх всего — «нуар».
+func _add_vignette() -> void:
+	var vignette: ColorRect = ColorRect.new()
+	var vignette_material: ShaderMaterial = ShaderMaterial.new()
+	vignette_material.shader = VIGNETTE_SHADER
+	vignette_material.set_shader_parameter("strength", 0.45)
+	vignette.material = vignette_material
+	_add_full_rect(self, vignette)
 
 
 func _build_halves() -> void:
@@ -129,12 +136,14 @@ func _build_halves() -> void:
 	_menu_slot.add_child(_shop_panel)
 	_opponent_view = FieldView.new()
 	_opponent_view.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_opponent_view.sound_requested.connect(_on_view_sound_requested)
 	_menu_slot.add_child(_opponent_view)
 	_my_view = FieldView.new()
 	_my_view.is_own_field = true
 	_make_half(_my_view)
 	_my_view.command_requested.connect(_on_command_requested)
 	_my_view.tower_tapped.connect(_on_my_view_tower_tapped)
+	_my_view.sound_requested.connect(_on_view_sound_requested)
 
 
 func _make_half(half: Control) -> void:
@@ -146,35 +155,28 @@ func _make_half(half: Control) -> void:
 
 func _build_toast() -> void:
 	_toast_label = Label.new()
-	_toast_label.add_theme_font_size_override("font_size", 24)
-	_toast_label.add_theme_color_override("font_color", Color(1.0, 0.8, 0.4))
-	_toast_label.add_theme_color_override("font_outline_color", Color.BLACK)
-	_toast_label.add_theme_constant_override("outline_size", 6)
+	_toast_label.add_theme_font_size_override("font_size", TOAST_FONT_SIZE)
+	_toast_label.add_theme_color_override("font_color", COLOR_TOAST)
+	_toast_label.add_theme_constant_override("outline_size", 8)
 	_toast_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_toast_label.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
-	_toast_label.position.y -= 60
 	_toast_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(_toast_label)
+	_overlay.add_child(_toast_label)
 
 
-func _build_game_over() -> void:
-	_game_over_panel = PanelContainer.new()
-	_game_over_panel.set_anchors_preset(Control.PRESET_CENTER)
-	_game_over_panel.visible = false
-	add_child(_game_over_panel)
-	var box: VBoxContainer = VBoxContainer.new()
-	box.add_theme_constant_override("separation", 20)
-	_game_over_panel.add_child(box)
-	_game_over_label = Label.new()
-	_game_over_label.add_theme_font_size_override("font_size", 40)
-	_game_over_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	box.add_child(_game_over_label)
-	var restart: Button = Button.new()
-	restart.text = "Новый матч"
-	restart.custom_minimum_size = Vector2(320, 72)
-	restart.add_theme_font_size_override("font_size", 28)
-	restart.pressed.connect(_on_restart_pressed)
-	box.add_child(restart)
+func _build_end_layer() -> void:
+	_end_layer = Control.new()
+	_end_layer.visible = false
+	_add_full_rect(self, _end_layer)
+	_end_layer.mouse_filter = Control.MOUSE_FILTER_STOP
+	var dim: ColorRect = ColorRect.new()
+	dim.color = Color(0, 0, 0, 0.6)
+	_add_full_rect(_end_layer, dim)
+	var center: CenterContainer = CenterContainer.new()
+	_add_full_rect(_end_layer, center)
+	_end_panel = END_PANEL_SCENE.instantiate() as MatchEndPanel
+	_end_panel.again_pressed.connect(_on_end_panel_again_pressed)
+	_end_panel.menu_pressed.connect(_on_end_panel_menu_pressed)
+	center.add_child(_end_panel)
 
 #endregion
 
@@ -188,8 +190,10 @@ func _start_match() -> void:
 		_logger = _create_logger(match_seed)
 	_sim.command_failed.connect(_on_sim_command_failed)
 	_sim.match_finished.connect(_on_sim_match_finished)
+	_sim.round_started.connect(_on_sim_round_started)
 	_sim.phase_changed.connect(_on_sim_phase_changed)
 	_sim.player_eliminated.connect(_on_sim_player_eliminated)
+	_hud.set_player_count(player_count)
 	_sim.start()
 	_shop_panel.setup(_sim, _human())
 
@@ -232,8 +236,8 @@ func _refresh_views() -> void:
 	_shop_panel.visible = is_prep and me.is_alive
 	_shop_panel.refresh(me.field.get_tower(_selected_tower_id))
 	_refresh_opponent_view()
-	_hud_label.text = _hud_text()
-	_lobby_label.text = _lobby_text()
+	_fade_left_half_on_change()
+	_hud.refresh(_sim, HUMAN_INDEX)
 	_update_toast()
 
 
@@ -255,50 +259,15 @@ func _refresh_opponent_view() -> void:
 	_opponent_view.visible = false
 
 
-func _hud_text() -> String:
-	var me: PlayerState = _human()
-	var seconds: int = ceili(float(_sim.get_phase_ticks_left()) / _sim.config.ticks_per_second)
-	var phase_name: String = "Подготовка %d с" % seconds if _sim.phase == MatchSim.Phase.PREP \
-			else "Волна"
-	if _sim.phase == MatchSim.Phase.OVER:
-		phase_name = "Матч окончен"
-	var text: String = "  Раунд %d · %s   |   Вы: HP %d · золото %d (+%d за раунд)" % [
-			_sim.round_number, phase_name, maxi(0, me.hero_hp), me.gold, me.income]
-	var opponent: PlayerState = _opponent()
-	if opponent != null:
-		text += "   |   %s: HP %d" % [opponent.display_name, maxi(0, opponent.hero_hp)]
-	elif _sim.ghost_target == HUMAN_INDEX:
-		text += "   |   Призрак (копия: %s)" % _sim.players[_sim.ghost_source].display_name
-	return text
-
-
-## Вторая строка: все игроки с HP, кто ваш соперник, и объявление осады.
-func _lobby_text() -> String:
-	var parts: PackedStringArray = []
-	var opponent_index: int = _sim.opponent_of[HUMAN_INDEX]
-	for player: PlayerState in _sim.players:
-		var mark: String = ""
-		if not player.is_alive:
-			mark = " (выбыл, место %d)" % player.place
-		elif player.index == opponent_index:
-			mark = " ← соперник"
-		elif player.index == _sim.ghost_source and _sim.ghost_target == HUMAN_INDEX:
-			mark = " ← соперник-призрак (копия)"
-		parts.append("%s %d%s" % [player.display_name, maxi(0, player.hero_hp), mark])
-	var text: String = "  HP: " + " · ".join(parts)
-	return text + _siege_text()
-
-
-func _siege_text() -> String:
-	if _sim.siege_leader >= 0:
-		var names: PackedStringArray = []
-		for index: int in _sim.siege_attackers:
-			names.append(_sim.players[index].display_name)
-		return "\n  ОСАДА! Лидер %s против: %s" % [
-				_sim.players[_sim.siege_leader].display_name, ", ".join(names)]
-	if _sim.phase != MatchSim.Phase.OVER and _sim.is_siege_round(_sim.round_number + 1):
-		return "\n  Следующий раунд — осада лидера: двое слабейших атакуют самого сильного"
-	return ""
+## Магазин и поле соперника сменяют друг друга плавно, а не щелчком.
+func _fade_left_half_on_change() -> void:
+	if _shop_panel.visible == _was_prep_shown:
+		return
+	_was_prep_shown = _shop_panel.visible
+	_menu_slot.modulate.a = 0.0
+	var tween: Tween = _menu_slot.create_tween()
+	tween.set_ignore_time_scale()
+	tween.tween_property(_menu_slot, "modulate:a", 1.0, HALF_FADE_SECONDS)
 
 
 func _update_toast() -> void:
@@ -309,8 +278,14 @@ func _update_toast() -> void:
 func _show_toast(text: String) -> void:
 	_toast_label.text = text
 	_toast_label.reset_size()
-	_toast_label.position.x = (size.x - _toast_label.size.x) / 2.0
+	_toast_label.position = Vector2((size.x - _toast_label.size.x) / 2.0, size.y - 90.0)
 	_toast_time_left = TOAST_SECONDS
+
+
+func _show_banner(text: String, color: Color = UiFx.BANNER_COLOR, subtitle: String = "") -> void:
+	if is_instance_valid(_banner):
+		_banner.queue_free()
+	_banner = UiFx.show_banner(_overlay, text, color, subtitle)
 
 
 func _human() -> PlayerState:
@@ -320,6 +295,21 @@ func _human() -> PlayerState:
 func _opponent() -> PlayerState:
 	var index: int = _sim.opponent_of[HUMAN_INDEX]
 	return _sim.players[index] if index != MatchSim.GHOST else null
+
+
+func _apply_time_scale() -> void:
+	Engine.time_scale = 0.0 if _is_paused else float(SPEEDS[_speed_index])
+	_hud.set_paused(_is_paused)
+	_hud.set_speed(SPEEDS[_speed_index])
+
+
+func _show_game_over() -> void:
+	if _end_layer.visible:
+		return
+	_end_panel.show_results(_sim.players, HUMAN_INDEX)
+	_end_layer.visible = true
+	UiFx.pop_in(_end_panel)
+	_sound_bank.play(&"siege" if _human().place != 1 else &"round", 0.0)
 
 
 func _on_command_requested(command: SimCommand) -> void:
@@ -334,14 +324,51 @@ func _on_my_view_tower_tapped(tower_id: int) -> void:
 	_selected_tower_id = tower_id
 
 
+func _on_view_sound_requested(sound_id: StringName) -> void:
+	_sound_bank.play(sound_id)
+
+
+func _on_hud_pause_pressed() -> void:
+	_is_paused = not _is_paused
+	_apply_time_scale()
+	_sound_bank.play(&"click")
+
+
+func _on_hud_speed_pressed() -> void:
+	_speed_index = (_speed_index + 1) % SPEEDS.size()
+	_apply_time_scale()
+	_sound_bank.play(&"click")
+
+
+func _on_hud_sound_pressed() -> void:
+	SoundBank.set_muted(not SoundBank.is_muted())
+	_hud.set_muted(SoundBank.is_muted())
+	_sound_bank.play(&"click")
+
+
 func _on_sim_command_failed(player_index: int, reason: String) -> void:
 	if player_index == HUMAN_INDEX:
 		_show_toast(reason)
 
 
+func _on_sim_round_started(round_number: int) -> void:
+	if not _sim.is_siege_round(round_number):
+		_show_banner("Раунд %d" % round_number)
+		_sound_bank.play(&"round", 0.0)
+		return
+	var subtitle: String = "Двое слабейших атакуют лидера"
+	if _sim.siege_leader == HUMAN_INDEX:
+		subtitle = "На вас идут сразу двое!"
+	elif _sim.siege_attackers.has(HUMAN_INDEX):
+		subtitle = "Вы вместе с союзником атакуете лидера"
+	_show_banner("ОСАДА!", COLOR_SIEGE, "Раунд %d · %s" % [round_number, subtitle])
+	_sound_bank.play(&"siege", 0.0)
+
+
 func _on_sim_phase_changed(phase: MatchSim.Phase) -> void:
 	if phase == MatchSim.Phase.WAVE:
-		_show_toast("Волна!")
+		_show_banner("Волна!")
+		_sound_bank.play(&"wave", 0.0)
 
 
 func _on_sim_player_eliminated(player: PlayerState) -> void:
@@ -355,13 +382,9 @@ func _on_sim_match_finished() -> void:
 	_show_game_over()
 
 
-func _show_game_over() -> void:
-	var me: PlayerState = _human()
-	_game_over_label.text = "Победа!" if me.place == 1 else "Вы выбыли · место %d" % me.place
-	_game_over_panel.visible = true
-	_game_over_panel.reset_size()
-	_game_over_panel.position = (size - _game_over_panel.size) / 2.0
+func _on_end_panel_again_pressed() -> void:
+	ScenePaths.go_to(get_tree(), ScenePaths.MATCH)
 
 
-func _on_restart_pressed() -> void:
-	get_tree().reload_current_scene()
+func _on_end_panel_menu_pressed() -> void:
+	ScenePaths.go_to(get_tree(), ScenePaths.MAIN_MENU)
