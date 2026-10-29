@@ -6,7 +6,7 @@
 script = ExtResource("1_script")
 id = &"basic"
 display_name = "Обычный"
-hp = 30
+hp = 22
 speed_milli_per_tick = 50
 armor = 0
 kill_reward = 1

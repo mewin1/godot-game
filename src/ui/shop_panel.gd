@@ -1,7 +1,7 @@
 class_name ShopPanel
 extends PanelContainer
 ## Меню фазы подготовки. Сверху — выбор бафа армии (после битвы), затем две вкладки:
-## «Башни» (витрина, рерол, уровень магазина, клетки, выбранная башня) и «Армия»
+## «Башни» (витрина, рерол, уровень магазина, выбранная башня) и «Армия»
 ## (состав армии и её прокачка). Внизу — «Готов». Команды отдаёт наверх сигналом.
 ## Сюда же можно перетащить свою башню с поля — она продаётся.
 
@@ -11,7 +11,6 @@ const FONT_SIZE: int = 20
 const BUTTON_HEIGHT: float = 56.0
 const OFFER_COLUMNS: int = 3
 const COLOR_TAB_ACTIVE: Color = Color(0.32, 0.4, 0.58)
-const COLOR_CELLS_FULL: Color = Color(1.0, 0.55, 0.45)
 const ARMY_COLUMNS: int = 2
 const ARMY_FONT_SIZE: int = 18
 
@@ -29,7 +28,6 @@ var _offer_grid: GridContainer
 var _offer_cards: Array[OfferCard] = []
 var _reroll_button: Button
 var _upgrade_button: Button
-var _cells_label: Label
 var _hint_label: Label
 var _tower_box: HBoxContainer
 var _tower_label: Label
@@ -86,7 +84,6 @@ func refresh(selected_tower: TowerState) -> void:
 	_refresh_buffs()
 	_refresh_offers()
 	_refresh_shop_actions()
-	_refresh_cells()
 	_refresh_tower_box()
 	_refresh_army()
 	_ready_button.disabled = _player.is_ready
@@ -149,10 +146,9 @@ func _build_towers_page(parent: Container) -> void:
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		button.custom_minimum_size = Vector2(0, BUTTON_HEIGHT + 12)
 		row.add_child(button)
-	_cells_label = _make_label("", FONT_SIZE)
-	_towers_page.add_child(_cells_label)
-	_hint_label = _make_label("Перетащи башню на поле. На такую же — слияние. "
-			+ "Нажми на свою башню — выделишь, ещё раз — повернёшь.", 16)
+	_hint_label = _make_label("Перетащи карточку на поле — купить. На такую же башню — слияние.\n"
+			+ "Нажми на свою башню — выделишь: появятся «Повернуть» и «Продать». "
+			+ "Ещё нажатие — поворот. Продать можно и перетащив башню сюда, в меню.", 16)
 	_towers_page.add_child(_hint_label)
 	_build_tower_box(_towers_page)
 
@@ -244,17 +240,6 @@ func _refresh_shop_actions() -> void:
 	else:
 		_upgrade_button.text = "Магазин\nмакс. уровень"
 	_upgrade_button.disabled = not shop.can_upgrade() or _player.gold < shop.upgrade_cost
-
-
-func _refresh_cells() -> void:
-	var used: int = _player.get_cells_used()
-	var limit: int = _player.get_cell_limit()
-	var text: String = "Клетки под башни: %d / %d" % [used, limit]
-	if used >= limit:
-		text += " — места нет: слей, продай или подними магазин"
-	_cells_label.text = text
-	var color: Color = COLOR_CELLS_FULL if used >= limit else Color.WHITE
-	_cells_label.add_theme_color_override("font_color", color)
 
 
 func _refresh_tower_box() -> void:

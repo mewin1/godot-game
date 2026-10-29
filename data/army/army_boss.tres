@@ -13,5 +13,4 @@ base_cost = 20
 cost_step = 10
 max_purchases = 0
 min_shop_level = 3
-income_bonus = 1
 mob = ExtResource("2_ext")

@@ -18,6 +18,8 @@ var _is_closed: bool = false
 var _kills: Array[int] = []
 var _kill_gold: Array[int] = []
 var _leaks: Array[int] = []
+## Урон героям соперников от армии игрока за раунд.
+var _army_damage: Array[int] = []
 var _hp_at_round_start: Array[int] = []
 
 
@@ -29,6 +31,7 @@ func _init(sim: MatchSim, file_path: String, source: String, extra: Dictionary =
 		_kills.append(0)
 		_kill_gold.append(0)
 		_leaks.append(0)
+		_army_damage.append(0)
 		_hp_at_round_start.append(player.hero_hp)
 		player.field.mob_killed.connect(_on_field_mob_killed.bind(player.index))
 		player.field.mob_breached.connect(_on_field_mob_breached.bind(player.index))
@@ -85,7 +88,8 @@ func _open_file() -> bool:
 func _write_match_start(source: String, extra: Dictionary) -> void:
 	var players: Array[Dictionary] = []
 	for player: PlayerState in _sim.players:
-		players.append({"index": player.index, "name": player.display_name, "bot": player.is_bot})
+		players.append({"index": player.index, "name": player.display_name, "bot": player.is_bot,
+				"bot_army_share": _sim.get_bot_army_share(player.index)})
 	var event: Dictionary = {"event": "match_start", "version": LOG_VERSION, "source": source,
 			"players": players, "config": _config_numbers()}
 	event.merge(extra)
@@ -127,7 +131,6 @@ func _player_snapshot(player: PlayerState) -> Dictionary:
 	return {"player": player.index, "alive": player.is_alive, "hp": player.hero_hp,
 			"gold": player.gold, "income": player.income, "shop_level": player.shop.level,
 			"towers": towers, "cells_used": player.get_cells_used(),
-			"cell_limit": player.get_cell_limit(),
 			"buildable_cells": player.field.get_buildable_cells().size(),
 			"invested": invested, "army_units": player.army.get_unit_count(),
 			"army_upgrades": player.army.upgrade_counts, "buffs": buffs}
@@ -145,6 +148,7 @@ func _on_sim_round_started(round_number: int) -> void:
 		_kills[player.index] = 0
 		_kill_gold[player.index] = 0
 		_leaks[player.index] = 0
+		_army_damage[player.index] = 0
 		_hp_at_round_start[player.index] = player.hero_hp
 	_write({"event": "round_start", "round": round_number, "tick": _sim.tick_count,
 			"opponents": _sim.opponent_of, "siege_leader": _sim.siege_leader,
@@ -176,6 +180,7 @@ func _on_sim_round_finished(round_number: int) -> void:
 		snapshot["kills"] = _kills[index]
 		snapshot["kill_gold"] = _kill_gold[index]
 		snapshot["leaks"] = _leaks[index]
+		snapshot["army_damage"] = _army_damage[index]
 	_write({"event": "round_end", "round": round_number, "tick": _sim.tick_count,
 			"wave_ticks": _sim.phase_tick, "players": players})
 	if _is_closed or (_file == null and not _open_file()):
@@ -205,5 +210,8 @@ func _on_field_mob_killed(mob: MobState, player_index: int) -> void:
 	_kill_gold[player_index] += mob.kill_reward
 
 
-func _on_field_mob_breached(_mob: MobState, player_index: int) -> void:
+func _on_field_mob_breached(mob: MobState, player_index: int) -> void:
 	_leaks[player_index] += 1
+	if mob.sender_index >= 0:
+		var multiplier: int = _sim.config.get_breach_multiplier(_sim.round_number)
+		_army_damage[mob.sender_index] += mob.breach_damage * multiplier

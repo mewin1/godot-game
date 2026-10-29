@@ -6,7 +6,7 @@
 script = ExtResource("1_script")
 id = &"boss"
 display_name = "Мини-босс"
-hp = 250
+hp = 350
 speed_milli_per_tick = 35
 armor = 2
 kill_reward = 5

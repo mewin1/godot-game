@@ -4,17 +4,21 @@ extends RefCounted
 ## поэтому бот тоже детерминирован. Действует один раз в начале каждой подготовки.
 
 ## Повышать магазин, только когда цена упала до этого значения (или раунд уже поздний).
-const CHEAP_UPGRADE_COST: int = 4
+const CHEAP_UPGRADE_COST: int = 5
 const LATE_ROUND: int = 4
-## Шанс купить улучшение армии до башен, если хватает золота и на башню (в процентах).
-const ARMY_FIRST_CHANCE_PERCENT: int = 40
+## Стиль бота: какую долю золота в начале подготовки он тратит на армию (остальное — башни).
+var army_share_percent: int = 30
+
+
+func _init(army_share: int) -> void:
+	army_share_percent = army_share
 
 
 func play_prep(sim: MatchSim, player: PlayerState) -> void:
 	_choose_buff(sim, player)
 	_merge_all_pairs(sim, player)
 	_maybe_upgrade_shop(sim, player)
-	_maybe_upgrade_army_first(sim, player)
+	_buy_army_with_budget(sim, player, player.gold * army_share_percent / 100)
 	_buy_towers(sim, player)
 	_merge_all_pairs(sim, player)
 	_buy_towers(sim, player)
@@ -38,13 +42,16 @@ func _maybe_upgrade_shop(sim: MatchSim, player: PlayerState) -> void:
 		_execute(sim, player, UpgradeShopCommand.new())
 
 
-## Иногда бот вкладывается в армию и доход раньше башен.
-func _maybe_upgrade_army_first(sim: MatchSim, player: PlayerState) -> void:
-	if sim.round_number < 2:
-		return
-	var index: int = _pick_affordable_upgrade(player, sim.config.tower_cost)
-	if index >= 0 and player.rng.randi_range(1, 100) <= ARMY_FIRST_CHANCE_PERCENT:
-		_execute(sim, player, BuyArmyUpgradeCommand.new(index))
+## Тратит на армию не больше budget золота (случайные доступные улучшения).
+func _buy_army_with_budget(sim: MatchSim, player: PlayerState, budget: int) -> void:
+	var spent: int = 0
+	var index: int = _pick_affordable_upgrade(player, player.gold - (budget - spent))
+	while index >= 0:
+		var cost: int = player.army.get_upgrade_cost(index)
+		if not _run(sim, player, BuyArmyUpgradeCommand.new(index)):
+			return
+		spent += cost
+		index = _pick_affordable_upgrade(player, player.gold - (budget - spent))
 
 
 ## Остаток золота после башен — в армию (если на башни уже нет места или золота).

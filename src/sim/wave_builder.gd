@@ -6,7 +6,7 @@ extends RefCounted
 ## Мобы базовой волны раунда round_number. Число растёт линейно, HP — сложным процентом.
 static func build_base_wave(config: GameConfig, round_number: int) -> Array[MobState]:
 	var count: int = config.wave_base_count + config.wave_count_per_round * (round_number - 1)
-	var hp_bonus: int = config.get_round_hp_percent(round_number) - 100
+	var hp_bonus: int = config.get_round_hp_percent(round_number, config.wave_hp_growth_percent) - 100
 	var wave: Array[MobState] = []
 	for i: int in count:
 		wave.append(MobState.create(config.wave_mob, hp_bonus))

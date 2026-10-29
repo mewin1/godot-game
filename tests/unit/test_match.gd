@@ -139,7 +139,8 @@ func test_discount_buff_lowers_upgrade_cost() -> void:
 func test_income_buff_adds_income_per_upgrade() -> void:
 	var army: ArmyState = ArmyState.new(_config)
 	army.add_buff(SimFixtures.find_buff(_config, &"income"))
-	assert_eq(army.get_upgrade_income(0), _config.army_upgrades[0].income_bonus + 1)
+	var from_cost: int = maxi(1, _config.army_upgrades[0].base_cost * _config.army_income_percent / 100)
+	assert_eq(army.get_upgrade_income(0), from_cost + 1)
 
 
 func test_buff_offers_appear_after_first_battle() -> void:
@@ -173,8 +174,9 @@ func test_round_end_pays_income() -> void:
 
 func test_breach_damages_hero() -> void:
 	var sim: MatchSim = _make_match()
+	var enemy_army: int = sim.players[1].army.get_unit_count()
 	_play_until_round(sim, 2)
-	var leaked: int = _config.wave_base_count + _config.army_base_units
+	var leaked: int = _config.wave_base_count + enemy_army
 	assert_eq(sim.players[0].hero_hp, _config.hero_hp - leaked, "без башен прорвались волна и армия")
 
 
@@ -266,3 +268,16 @@ func _upgrade_index(upgrade_id: StringName) -> int:
 		if _config.army_upgrades[i].id == upgrade_id:
 			return i
 	return -1
+
+
+func test_army_breach_gives_gold_to_owner() -> void:
+	var sim: MatchSim = _make_match()
+	_skip_prep(sim)
+	var owner: PlayerState = sim.players[0]
+	var victim: PlayerState = sim.players[1]
+	var gold_before: int = owner.gold
+	var mob: MobState = MobState.create(_config.army_mob)
+	mob.sender_index = owner.index
+	victim.field.pending_breaches.append(mob)
+	sim._collect_field_results(victim)
+	assert_eq(owner.gold, gold_before + mob.breach_damage * _config.army_gold_per_hp)

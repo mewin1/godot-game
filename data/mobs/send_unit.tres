@@ -6,7 +6,7 @@
 script = ExtResource("1_script")
 id = &"send_unit"
 display_name = "Юнит армии"
-hp = 40
+hp = 100
 speed_milli_per_tick = 55
 armor = 0
 kill_reward = 1

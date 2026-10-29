@@ -15,7 +15,7 @@ extends Resource
 
 @export_group("Время (в тиках)")
 @export var ticks_per_second: int = 20
-@export var prep_ticks: int = 500
+@export var prep_ticks: int = 800
 @export var wave_max_ticks: int = 1200
 
 @export_group("Герой")
@@ -33,8 +33,8 @@ extends Resource
 @export var shop_base_offers: int = 3
 @export var max_shop_level: int = 4
 ## Полная цена повышения 1→2, 2→3, 3→4.
-@export var shop_upgrade_costs: Array[int] = [6, 10, 14]
-@export var shop_upgrade_min_cost: int = 2
+@export var shop_upgrade_costs: Array[int] = [10, 18, 28]
+@export var shop_upgrade_min_cost: int = 5
 ## Шанс (в процентах) редкого бафа в каждом слоте на уровне магазина 1, 2, 3, 4.
 @export var rare_buff_chance_by_level: Array[int] = [0, 15, 35, 50]
 @export var buff_offer_count: int = 3
@@ -42,27 +42,34 @@ extends Resource
 @export_group("Башни")
 @export var max_tower_level: int = 3
 ## Урон башни уровня 1, 2, 3 в процентах от базового.
-@export var level_damage_percent: Array[int] = [100, 220, 480]
+@export var level_damage_percent: Array[int] = [100, 200, 400]
 ## На каком расстоянии (в клетках, по горизонтали/вертикали/диагонали) от открытого пути можно строить.
 @export var build_radius: int = 2
-## Сколько клеток могут занимать все башни игрока на уровне магазина 1, 2, 3, 4.
-@export var cell_limit_by_level: Array[int] = [8, 12, 16, 20]
 
 @export_group("Армия")
 ## Сколько обычных юнитов в армии без улучшений.
 @export var army_base_units: int = 3
 ## Цена улучшения армии не опускается ниже этого (скидки от бафов).
 @export var army_upgrade_min_cost: int = 1
+## Каждая покупка улучшения армии навсегда добавляет к доходу такой процент от его базовой цены
+## (20% — первая покупка окупается за ~5 раундов, повторные — дольше).
+@export var army_income_percent: int = 20
+## Хозяин армии получает столько золота за каждое HP, снятое его армией с героя соперника.
+## Личная награда за атаку: в бою «все против всех» без неё атаковать невыгодно.
+@export var army_gold_per_hp: int = 2
+## HP юнитов армии растёт сам по себе на столько процентов за раунд (сложный процент).
+## Небольшой: сила армии должна в основном зависеть от вложенного золота.
+@export var army_hp_growth_percent: int = 10
 ## Армия появляется на поле соперника через столько тиков после начала волны, с таким интервалом.
 @export var army_spawn_delay_ticks: int = 40
 @export var army_spawn_interval_ticks: int = 16
 
 @export_group("Базовая волна")
-@export var wave_base_count: int = 5
+@export var wave_base_count: int = 4
 @export var wave_count_per_round: int = 1
-## HP мобов растёт каждый раунд на столько процентов от прошлого раунда (сложный процент).
-## Юниты армии растут так же, иначе поздняя армия бесполезна.
-@export var wave_hp_growth_percent: int = 25
+## HP мобов базовой волны растёт каждый раунд на столько процентов (сложный процент).
+## Это давление, которое в итоге заканчивает матч.
+@export var wave_hp_growth_percent: int = 12
 @export var wave_spawn_interval_ticks: int = 20
 
 @export_group("Осада лидера")
@@ -82,11 +89,6 @@ extends Resource
 @export var breach_multipliers: Array[int] = [2, 3]
 
 
-func get_cell_limit(shop_level: int) -> int:
-	var index: int = clampi(shop_level, 1, cell_limit_by_level.size()) - 1
-	return cell_limit_by_level[index]
-
-
 ## Множитель урона прорыва в раунде.
 func get_breach_multiplier(round_number: int) -> int:
 	var multiplier: int = 1
@@ -103,11 +105,11 @@ func get_shop_upgrade_cost(level: int) -> int:
 	return shop_upgrade_costs[level - 1]
 
 
-## Во сколько процентов от базового HP мобы в раунде (раунд 1 — 100).
-func get_round_hp_percent(round_number: int) -> int:
+## Во сколько процентов от базового HP мобы в раунде (раунд 1 — 100) при росте growth_percent.
+func get_round_hp_percent(round_number: int, growth_percent: int) -> int:
 	var percent: int = 100
 	for i: int in round_number - 1:
-		percent = percent * (100 + wave_hp_growth_percent) / 100
+		percent = percent * (100 + growth_percent) / 100
 	return percent
 
 

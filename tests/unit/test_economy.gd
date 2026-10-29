@@ -38,7 +38,7 @@ func test_shop_offers_only_open_tiers() -> void:
 
 func test_upgrade_cost_drops_each_round_to_minimum() -> void:
 	var shop: ShopState = _player.shop
-	assert_eq(shop.upgrade_cost, 6)
+	assert_eq(shop.upgrade_cost, _config.shop_upgrade_costs[0])
 	for i: int in 10:
 		shop.on_round_started()
 	assert_eq(shop.upgrade_cost, _config.shop_upgrade_min_cost)
@@ -48,7 +48,7 @@ func test_upgrade_resets_cost_to_next_full_price() -> void:
 	_player.gold = 100
 	_player.shop.on_round_started()
 	assert_eq(_player.upgrade_shop(), "")
-	assert_eq(_player.shop.upgrade_cost, 10)
+	assert_eq(_player.shop.upgrade_cost, _config.shop_upgrade_costs[1])
 
 
 func test_upgrade_without_gold_fails() -> void:
@@ -168,7 +168,7 @@ func test_merged_tower_sells_for_third_of_all_copies() -> void:
 
 func test_tower_level_raises_damage() -> void:
 	assert_eq(_config.get_level_damage(10, 1), 10)
-	assert_gt(_config.get_level_damage(10, 2), 20)
+	assert_gt(_config.get_level_damage(10, 2), _config.get_level_damage(10, 1))
 	assert_gt(_config.get_level_damage(10, 3), _config.get_level_damage(10, 2))
 
 
@@ -203,27 +203,6 @@ func test_rotate_tower_fails_without_space() -> void:
 	var tower: TowerState = _player.field.add_tower(data, Vector2i(0, 3), 1)
 	assert_ne(_player.rotate_tower(tower.id), "", "горизонтальная тройка в столбце 0 не помещается")
 	assert_eq(tower.rotation, 1)
-
-
-func test_cell_limit_grows_with_shop_level() -> void:
-	assert_eq(_player.get_cell_limit(), _config.cell_limit_by_level[0])
-	_player.gold = 100
-	_player.upgrade_shop()
-	assert_eq(_player.get_cell_limit(), _config.cell_limit_by_level[1])
-
-
-func test_buy_over_cell_limit_fails() -> void:
-	var config: GameConfig = SimFixtures.make_config()
-	config.cell_limit_by_level = [2, 2, 2, 2] as Array[int]
-	var player: PlayerState = PlayerState.new(config, 0, 99)
-	player.start_prep(false)
-	var data: TowerData = SimFixtures.find_tower(config, &"ice_1")
-	player.field.add_tower(data, Vector2i(0, 0), 0)
-	player.field.add_tower(data, Vector2i(0, 2), 0)
-	assert_eq(player.get_cells_used(), 2)
-	var error: String = player.buy_tower(0, Vector2i(2, 5), 0)
-	assert_string_contains(error, "клетки")
-	assert_eq(player.gold, config.start_gold)
 
 
 func test_merge_frees_cells() -> void:

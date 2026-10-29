@@ -52,8 +52,6 @@ func buy_tower(offer_index: int, anchor: Vector2i, rotation: int) -> String:
 		return error
 	if not field.can_place_tower_data(data, anchor, rotation):
 		return "Сюда не встанет"
-	if get_cells_used() + data.shape.size() > get_cell_limit():
-		return "Нет места: клетки %d/%d" % [get_cells_used(), get_cell_limit()]
 	_pay_for_offer(offer_index)
 	var tower: TowerState = field.add_tower(data, anchor, rotation)
 	_add_investment(tower, _config.tower_cost)
@@ -129,16 +127,13 @@ func sell_tower(tower_id: int) -> String:
 	return ""
 
 
-## Сколько клеток занимают все башни (лимит — get_cell_limit).
+## Сколько клеток занимают все башни (для логов и анализа).
 func get_cells_used() -> int:
 	var cells: int = 0
 	for tower: TowerState in field.towers:
 		cells += tower.data.shape.size()
 	return cells
 
-
-func get_cell_limit() -> int:
-	return _config.get_cell_limit(shop.level)
 
 #endregion
 

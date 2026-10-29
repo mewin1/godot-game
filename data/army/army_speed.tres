@@ -12,4 +12,3 @@ base_cost = 5
 cost_step = 4
 max_purchases = 5
 min_shop_level = 1
-income_bonus = 1

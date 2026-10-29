@@ -140,7 +140,9 @@ func test_attackers_paid_for_damage_and_breach_bonus() -> void:
 		leader.field.pending_breaches.append(mob)
 	sim._collect_field_results(leader)
 	_finish_round_now(sim)
-	var expected: int = breach_damage * _config.siege_gold_per_hp + _config.siege_attacker_bonus
+	# Общая награда армии за урон + награда осады за урон + бонус за прорыв порога.
+	var gold_per_hp: int = _config.army_gold_per_hp + _config.siege_gold_per_hp
+	var expected: int = breach_damage * gold_per_hp + _config.siege_attacker_bonus
 	assert_eq(attacker.gold, gold_before + expected + attacker.income)
 
 

@@ -43,9 +43,11 @@ func get_upgrade_cost(index: int) -> int:
 	return maxi(_config.army_upgrade_min_cost, cost)
 
 
-## Сколько дохода даст следующая покупка.
+## Сколько дохода навсегда даст следующая покупка: процент от базовой цены (не меньше 1) + бафы.
+## Первая покупка окупается за ~100 / army_income_percent раундов, повторные (дороже) — дольше.
 func get_upgrade_income(index: int) -> int:
-	return get_upgrade(index).income_bonus + extra_income
+	var from_cost: int = get_upgrade(index).base_cost * _config.army_income_percent / 100
+	return maxi(1, from_cost) + extra_income
 
 
 ## "" — можно купить (без учёта золота), иначе причина.
@@ -81,9 +83,10 @@ func get_unit_count() -> int:
 
 
 ## Армия на этот раунд: обычные юниты + добавленные, с бонусами HP и скорости.
-## HP растёт по раундам, как у базовой волны, иначе поздняя армия бесполезна.
+## HP понемногу растёт по раундам сам (army_hp_growth_percent), остальное — от прокачки.
 func build_pack(sender_index: int, round_number: int) -> Array[MobState]:
-	var round_percent: int = _config.get_round_hp_percent(round_number)
+	var round_percent: int = _config.get_round_hp_percent(round_number,
+			_config.army_hp_growth_percent)
 	var hp_bonus: int = round_percent * (100 + hp_percent) / 100 - 100
 	var pack: Array[MobState] = []
 	for i: int in _config.army_base_units + extra_units:

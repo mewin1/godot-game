@@ -17,6 +17,9 @@ enum Phase { PREP, WAVE, OVER }
 
 ## Соперник «призрак» у игрока без пары: копия поля и армии другого игрока.
 const GHOST: int = -1
+## Разброс стилей ботов: доля золота на армию (в процентах).
+const BOT_MIN_ARMY_SHARE: int = 0
+const BOT_MAX_ARMY_SHARE: int = 70
 
 var config: GameConfig
 var players: Array[PlayerState] = []
@@ -56,7 +59,8 @@ func _init(game_config: GameConfig, match_seed: int, player_count: int = 2,
 		player.is_bot = i >= human_count
 		player.display_name = "Вы" if not player.is_bot else "Бот %d" % i
 		players.append(player)
-		_bots.append(BotBrain.new() if player.is_bot else null)
+		var army_share: int = _rng.randi_range(BOT_MIN_ARMY_SHARE, BOT_MAX_ARMY_SHARE)
+		_bots.append(BotBrain.new(army_share) if player.is_bot else null)
 
 
 ## Запускает первый раунд.
@@ -113,6 +117,12 @@ func get_winner() -> PlayerState:
 		if player.place == 1:
 			return player
 	return null
+
+
+## Доля золота на армию у бота (-1 — это человек). Для логов и анализа стилей.
+func get_bot_army_share(player_index: int) -> int:
+	var brain: BotBrain = _bots[player_index]
+	return brain.army_share_percent if brain != null else -1
 
 
 ## Раунд осады: каждый siege_every_rounds-й, пока живых хватает.
@@ -242,6 +252,8 @@ func _collect_field_results(player: PlayerState) -> void:
 	for mob: MobState in field.pending_breaches:
 		var damage: int = mob.breach_damage * multiplier
 		player.hero_hp -= damage
+		if mob.sender_index >= 0:
+			players[mob.sender_index].gold += damage * config.army_gold_per_hp
 		if player.index == siege_leader:
 			_record_siege_damage(mob.sender_index, damage)
 	field.clear_pending()

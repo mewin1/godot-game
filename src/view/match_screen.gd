@@ -221,8 +221,7 @@ func _refresh_views() -> void:
 	var is_prep: bool = _sim.phase == MatchSim.Phase.PREP
 	if me.field.get_tower(_selected_tower_id) == null or not is_prep:
 		_selected_tower_id = 0
-	_my_view.show_field(me.field, _sim.config, "Ваше поле · клетки %d/%d" % [
-			me.get_cells_used(), me.get_cell_limit()])
+	_my_view.show_field(me.field, _sim.config, "Ваше поле")
 	_my_view.hero_hp = me.hero_hp
 	_my_view.can_edit = is_prep and me.is_alive
 	_my_view.selected_tower_id = _selected_tower_id
