@@ -16,7 +16,12 @@ extends Resource
 @export_group("Время (в тиках)")
 @export var ticks_per_second: int = 20
 @export var prep_ticks: int = 800
+## После стольких тиков волны мобы впадают в ярость (бегут быстрее)...
 @export var wave_max_ticks: int = 1200
+## ...и ещё через столько тиков все оставшиеся засчитываются прорвавшимися (волна обязана кончиться).
+@export var wave_enrage_extra_ticks: int = 600
+## Ярость: на сколько процентов быстрее бегут мобы (замедление льда на них тоже действует).
+@export var wave_enrage_speed_percent: int = 200
 
 @export_group("Герой")
 @export var hero_hp: int = 40
@@ -82,6 +87,9 @@ extends Resource
 @export var siege_breach_threshold: int = 5
 @export var siege_attacker_bonus: int = 10
 @export var siege_leader_bonus: int = 15
+## Сколько процентов урона прорыва получает лидер от армий атакующих. Армий две, поэтому 50% —
+## вместе как одна армия в дуэли: осада выравнивает шансы, а не добивает лидера.
+@export var siege_leader_damage_percent: int = 50
 
 @export_group("Прорыв")
 ## С какого раунда какой множитель урона прорыва (по возрастанию раундов).

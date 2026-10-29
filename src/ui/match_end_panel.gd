@@ -23,12 +23,14 @@ func _ready() -> void:
 
 
 ## Заполняет таблицу. Ещё живые игроки (если вы выбыли раньше) — вверху, без места.
-func show_results(players: Array[PlayerState], human_index: int) -> void:
+## elimination_rounds: индекс игрока → раунд, в котором он выбыл.
+func show_results(players: Array[PlayerState], human_index: int,
+		elimination_rounds: Dictionary[int, int]) -> void:
 	var me: PlayerState = players[human_index]
 	_header.text = "Победа!" if me.place == 1 else "Вы — %d-е место" % me.place
 	for child: Node in _table.get_children():
 		child.queue_free()
-	for title: String in ["Место", "Игрок", "HP"]:
+	for title: String in ["Место", "Игрок", "Выбыл"]:
 		_add_cell(title, COLOR_HEADER)
 	var ranked: Array[PlayerState] = players.duplicate()
 	ranked.sort_custom(_is_ranked_higher)
@@ -36,7 +38,12 @@ func show_results(players: Array[PlayerState], human_index: int) -> void:
 		var color: Color = COLOR_HUMAN if player.index == human_index else Color.WHITE
 		_add_cell(str(player.place) if player.place > 0 else "в игре", color)
 		_add_cell("Вы" if player.index == human_index else player.display_name, color)
-		_add_cell(str(maxi(0, player.hero_hp)), color)
+		var fallen: String = "—"
+		if elimination_rounds.has(player.index):
+			fallen = "в раунде %d" % elimination_rounds[player.index]
+		elif player.place == 1:
+			fallen = "устоял ♥%d" % maxi(0, player.hero_hp)
+		_add_cell(fallen, color)
 
 
 func _add_cell(text: String, color: Color) -> void:

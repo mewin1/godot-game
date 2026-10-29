@@ -36,6 +36,8 @@ var _is_paused: bool = false
 var _speed_index: int = 0
 var _was_prep_shown: bool = true
 var _banner: Control
+## В каком раунде выбыл каждый игрок (индекс → раунд) — для таблицы итогов.
+var _elimination_rounds: Dictionary[int, int] = {}
 
 var _hud: MatchHud
 var _halves: BoxContainer
@@ -230,7 +232,8 @@ func _refresh_views() -> void:
 	_my_view.hero_hp = me.hero_hp
 	_my_view.can_edit = is_prep and me.is_alive
 	_my_view.selected_tower_id = _selected_tower_id
-	_my_view.is_under_siege = _sim.siege_leader == HUMAN_INDEX
+	_my_view.is_under_siege = _sim.siege_leader == HUMAN_INDEX and me.is_alive \
+			and _sim.phase != MatchSim.Phase.OVER
 	var multiplier: int = _sim.config.get_breach_multiplier(_sim.round_number)
 	_my_view.breach_multiplier = multiplier
 	_opponent_view.breach_multiplier = multiplier
@@ -304,10 +307,12 @@ func _apply_time_scale() -> void:
 	_hud.set_speed(SPEEDS[_speed_index])
 
 
+## Таблица итогов. Вызывается отложенно: в одном раунде могут выбыть несколько игроков,
+## и места раздаются всем сразу — показываем, когда раздали всё.
 func _show_game_over() -> void:
+	_end_panel.show_results(_sim.players, HUMAN_INDEX, _elimination_rounds)
 	if _end_layer.visible:
 		return
-	_end_panel.show_results(_sim.players, HUMAN_INDEX)
 	_end_layer.visible = true
 	UiFx.pop_in(_end_panel)
 	_sound_bank.play(&"siege" if _human().place != 1 else &"round", 0.0)
@@ -373,14 +378,15 @@ func _on_sim_phase_changed(phase: MatchSim.Phase) -> void:
 
 
 func _on_sim_player_eliminated(player: PlayerState) -> void:
+	_elimination_rounds[player.index] = _sim.round_number
 	if player.index == HUMAN_INDEX:
-		_show_game_over()
-	else:
+		_show_game_over.call_deferred()
+	elif _human().is_alive:
 		_show_toast("%s выбыл, место %d" % [player.display_name, player.place])
 
 
 func _on_sim_match_finished() -> void:
-	_show_game_over()
+	_show_game_over.call_deferred()
 
 
 func _on_end_panel_again_pressed() -> void:

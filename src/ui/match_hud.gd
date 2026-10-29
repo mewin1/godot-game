@@ -139,7 +139,9 @@ func _refresh_chips(sim: MatchSim, human_index: int) -> void:
 
 ## Осада: красное мигающее предупреждение, если двое идут на вас; спокойная строка — иначе.
 func _refresh_siege(sim: MatchSim, human_index: int) -> void:
-	_siege_panel.visible = true
+	_siege_panel.visible = sim.phase != MatchSim.Phase.OVER and sim.players[human_index].is_alive
+	if not _siege_panel.visible:
+		return
 	if sim.siege_leader == human_index:
 		var names: PackedStringArray = []
 		for index: int in sim.siege_attackers:

@@ -97,6 +97,20 @@ func test_mob_moves_by_speed_each_tick() -> void:
 	assert_eq(mob.progress, _config.wave_mob.speed_milli_per_tick * 2)
 
 
+## Ярость (время волны вышло): мобы бегут быстрее, но замедление льда на них всё равно действует.
+func test_enraged_mobs_move_faster() -> void:
+	var field: FieldState = FieldState.new(_config, 1)
+	var mob: MobState = MobState.create(_config.wave_mob)
+	field.schedule_spawn(mob, 0)
+	field.tick()
+	field.enrage()
+	assert_true(field.is_enraged)
+	var before: int = mob.progress
+	field.tick()
+	var speed: int = _config.wave_mob.speed_milli_per_tick
+	assert_eq(mob.progress - before, speed * (100 + _config.wave_enrage_speed_percent) / 100)
+
+
 func test_mob_reaching_end_breaches_and_is_removed() -> void:
 	var field: FieldState = FieldState.new(_config, 1)
 	field.schedule_spawn(MobState.create(_config.wave_mob), 0)

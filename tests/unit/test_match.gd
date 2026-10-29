@@ -180,10 +180,33 @@ func test_breach_damages_hero() -> void:
 	assert_eq(sim.players[0].hero_hp, _config.hero_hp - leaked, "без башен прорвались волна и армия")
 
 
+## Цифры раундов — из конфига (их подбирают по логам), проверяем саму ступеньку.
 func test_breach_multiplier_grows_late() -> void:
-	assert_eq(_config.get_breach_multiplier(9), 1)
-	assert_eq(_config.get_breach_multiplier(10), 2)
-	assert_eq(_config.get_breach_multiplier(15), 3)
+	var first: int = _config.breach_multiplier_start_rounds[0]
+	var second: int = _config.breach_multiplier_start_rounds[1]
+	assert_eq(_config.get_breach_multiplier(first - 1), 1)
+	assert_eq(_config.get_breach_multiplier(first), _config.breach_multipliers[0])
+	assert_eq(_config.get_breach_multiplier(second), _config.breach_multipliers[1])
+
+
+## Время волны вышло — мобы не засчитываются прорвавшимися разом, а впадают в ярость (бегут
+## быстрее мимо башен). Прорыв всех оставшихся — только после дополнительного времени.
+func test_wave_timeout_enrages_mobs_before_forced_breach() -> void:
+	var sim: MatchSim = _make_match()
+	_skip_prep(sim)
+	var field: FieldState = sim.players[0].field
+	var stuck: MobState = MobState.create(_config.wave_mob)
+	stuck.speed = 0
+	field.schedule_spawn(stuck, field.wave_tick)
+	while sim.phase_tick < _config.wave_max_ticks:
+		sim.tick()
+	sim.tick()
+	assert_true(field.is_enraged, "ярость после таймера")
+	assert_false(stuck.is_breached, "мобы ещё бегут, а не прорвались разом")
+	while sim.phase == MatchSim.Phase.WAVE and sim.round_number == 1:
+		sim.tick()
+	assert_true(stuck.is_breached, "после доп. времени — прорыв оставшихся")
+	assert_false(field.is_enraged, "в новом раунде ярости нет")
 
 
 func test_match_ends_when_hero_dies() -> void:

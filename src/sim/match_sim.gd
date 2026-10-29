@@ -44,6 +44,8 @@ var _army_routes: Array[Vector2i] = []
 ## Осада: урон лидеру от мобов каждого атакующего и всё HP, которое лидер потерял за раунд.
 var _siege_damage_by_attacker: Dictionary[int, int] = {}
 var _siege_leader_hp_lost: int = 0
+## Остаток урона по лидеру в сотых долях HP: уменьшенный урон копится, а не теряется при округлении.
+var _siege_damage_remainder: int = 0
 var _queue: Array[QueuedCommand] = []
 var _bots: Array[BotBrain] = []
 var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
@@ -171,6 +173,7 @@ func _start_round(number: int) -> void:
 	phase_tick = 0
 	_plan_pairs()
 	for player: PlayerState in get_alive_players():
+		player.field.calm_down()
 		if number > 1:
 			player.shop.on_round_started()
 		player.start_prep(number > 1)
@@ -220,15 +223,20 @@ func _start_ghost_wave() -> void:
 
 func _tick_wave() -> void:
 	phase_tick += 1
-	var timed_out: bool = phase_tick >= config.wave_max_ticks
+	var is_overtime: bool = phase_tick >= config.wave_max_ticks
+	var timed_out: bool = phase_tick >= config.wave_max_ticks + config.wave_enrage_extra_ticks
 	var all_done: bool = true
 	for player: PlayerState in get_alive_players():
+		if is_overtime and not player.field.is_enraged:
+			player.field.enrage()
 		player.field.tick()
 		if timed_out:
 			player.field.breach_all_remaining()
 		_collect_field_results(player)
 		all_done = all_done and player.field.is_wave_done()
 	if ghost_field != null:
+		if is_overtime and not ghost_field.is_enraged:
+			ghost_field.enrage()
 		all_done = _tick_ghost_field(timed_out) and all_done
 	if all_done:
 		_finish_round()
@@ -251,12 +259,23 @@ func _collect_field_results(player: PlayerState) -> void:
 	var multiplier: int = config.get_breach_multiplier(round_number)
 	for mob: MobState in field.pending_breaches:
 		var damage: int = mob.breach_damage * multiplier
+		if player.index == siege_leader and siege_attackers.has(mob.sender_index):
+			damage = _reduce_siege_damage(damage)
 		player.hero_hp -= damage
 		if mob.sender_index >= 0:
 			players[mob.sender_index].gold += damage * config.army_gold_per_hp
 		if player.index == siege_leader:
 			_record_siege_damage(mob.sender_index, damage)
 	field.clear_pending()
+	if player.hero_hp <= 0 and player.fell_tick < 0:
+		player.fell_tick = tick_count
+
+
+## Урон армии атакующего по лидеру осады: siege_leader_damage_percent от полного.
+func _reduce_siege_damage(damage: int) -> int:
+	var hundredths: int = damage * config.siege_leader_damage_percent + _siege_damage_remainder
+	_siege_damage_remainder = hundredths % 100
+	return hundredths / 100
 
 
 func _record_siege_damage(sender_index: int, damage: int) -> void:
@@ -279,13 +298,13 @@ func _finish_round() -> void:
 	_start_round(round_number + 1)
 
 
-## Выбывшие в одном раунде получают места по оставшемуся HP (меньше HP — хуже место).
+## Выбывшие в одном раунде: кто пал раньше — тот хуже; пали одновременно — меньше HP хуже.
 func _eliminate_dead(alive: Array[PlayerState]) -> void:
 	var dead: Array[PlayerState] = []
 	for player: PlayerState in alive:
 		if player.hero_hp <= 0:
 			dead.append(player)
-	dead.sort_custom(_is_worse_player)
+	dead.sort_custom(_is_worse_fallen)
 	var next_place: int = alive.size()
 	for player: PlayerState in dead:
 		player.is_alive = false
@@ -299,6 +318,12 @@ func _is_worse_player(a: PlayerState, b: PlayerState) -> bool:
 	if a.hero_hp != b.hero_hp:
 		return a.hero_hp < b.hero_hp
 	return a.index > b.index
+
+
+func _is_worse_fallen(a: PlayerState, b: PlayerState) -> bool:
+	if a.fell_tick != b.fell_tick:
+		return a.fell_tick < b.fell_tick
+	return _is_worse_player(a, b)
 
 
 func _finish_match(survivors: Array[PlayerState]) -> void:
@@ -320,6 +345,7 @@ func _plan_pairs() -> void:
 	siege_attackers.clear()
 	_siege_damage_by_attacker.clear()
 	_siege_leader_hp_lost = 0
+	_siege_damage_remainder = 0
 	for i: int in players.size():
 		opponent_of.append(GHOST)
 	var pool: Array[PlayerState] = get_alive_players()

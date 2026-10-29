@@ -15,6 +15,8 @@ var path_length: int = 0
 var towers: Array[TowerState] = []
 var mobs: Array[MobState] = []
 var wave_tick: int = 0
+## Время волны вышло: мобы бегут быстрее (см. GameConfig.wave_enrage_speed_percent).
+var is_enraged: bool = false
 ## Накоплено с последнего сбора: золото за убийства и прорвавшиеся мобы.
 var pending_kill_gold: int = 0
 var pending_breaches: Array[MobState] = []
@@ -178,6 +180,17 @@ func schedule_spawn(mob: MobState, spawn_tick: int) -> void:
 
 func start_wave() -> void:
 	wave_tick = 0
+	is_enraged = false
+
+
+## Ярость: время волны вышло, оставшиеся мобы ускоряются.
+func enrage() -> void:
+	is_enraged = true
+
+
+## Волна кончилась — ярость спадает (поле готово к подготовке).
+func calm_down() -> void:
+	is_enraged = false
 
 
 func tick() -> void:
@@ -213,6 +226,7 @@ func clear_pending() -> void:
 func add_to_hash(hasher: StateHasher) -> void:
 	hasher.add(path_length)
 	hasher.add(wave_tick)
+	hasher.add(int(is_enraged))
 	for tower: TowerState in towers:
 		hasher.add_many([tower.id, tower.anchor.x, tower.anchor.y, tower.rotation, tower.level,
 				tower.cooldown_left, tower.invested_total, tower.invested_this_phase])
@@ -261,6 +275,8 @@ func _move_mobs() -> void:
 	var end_progress: int = get_path_end_progress()
 	for mob: MobState in mobs:
 		mob.advance()
+		if is_enraged:
+			mob.progress += mob.current_speed() * _config.wave_enrage_speed_percent / 100
 		if mob.progress >= end_progress:
 			mob.progress = end_progress
 			_breach(mob)

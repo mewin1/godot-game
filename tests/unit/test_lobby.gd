@@ -133,17 +133,57 @@ func test_attackers_paid_for_damage_and_breach_bonus() -> void:
 	var leader: PlayerState = sim.players[sim.siege_leader]
 	_remove_all_waves(sim)
 	var gold_before: int = attacker.gold
+	# Урон по лидеру в осаде уменьшен — прорывов нужно больше, чтобы снять порог.
 	var breach_damage: int = _config.siege_breach_threshold
-	for i: int in breach_damage:
-		var mob: MobState = MobState.create(_config.army_mob)
-		mob.sender_index = attacker.index
-		leader.field.pending_breaches.append(mob)
+	var breaches: int = ceili(breach_damage * 100.0 / _config.siege_leader_damage_percent)
+	_add_breaches(sim, leader, breaches, attacker.index)
 	sim._collect_field_results(leader)
 	_finish_round_now(sim)
 	# Общая награда армии за урон + награда осады за урон + бонус за прорыв порога.
 	var gold_per_hp: int = _config.army_gold_per_hp + _config.siege_gold_per_hp
 	var expected: int = breach_damage * gold_per_hp + _config.siege_attacker_bonus
 	assert_eq(attacker.gold, gold_before + expected + attacker.income)
+
+
+## Баг из живого матча: трое пали в одном раунде, а места раздали по остатку HP —
+## «победил» тот, кто пал раньше, но с меньшим минусом. Теперь выше тот, кто продержался дольше.
+func test_same_round_deaths_ranked_by_who_fell_later() -> void:
+	var sim: MatchSim = _make_lobby()
+	_disable_bots(sim)
+	_remove_all_waves(sim)
+	var early: PlayerState = sim.players[1]
+	var late: PlayerState = sim.players[2]
+	early.hero_hp = 3
+	late.hero_hp = 3
+	sim.tick_count = 100
+	_add_breaches(sim, early, 5, -1)
+	sim._collect_field_results(early)
+	sim.tick_count = 200
+	_add_breaches(sim, late, 23, -1)
+	sim._collect_field_results(late)
+	assert_lt(late.hero_hp, early.hero_hp, "у павшего позже минус больше")
+	_finish_round_now(sim)
+	assert_false(early.is_alive)
+	assert_false(late.is_alive)
+	assert_lt(late.place, early.place, "кто пал позже — выше место")
+
+
+## Осада — выравнивание, а не добивание: каждая армия атакующих бьёт лидера слабее,
+## чтобы две армии вместе снимали примерно как одна в дуэли.
+func test_siege_leader_takes_reduced_damage_from_attackers() -> void:
+	var sim: MatchSim = _make_siege_round()
+	_disable_bots(sim)
+	_remove_all_waves(sim)
+	var leader: PlayerState = sim.players[sim.siege_leader]
+	var hp_before: int = leader.hero_hp
+	var breaches: int = 10
+	_add_breaches(sim, leader, breaches, sim.siege_attackers[0])
+	sim._collect_field_results(leader)
+	var full_damage: int = breaches * _config.army_mob.breach_damage \
+			* _config.get_breach_multiplier(sim.round_number)
+	var expected: int = full_damage * _config.siege_leader_damage_percent / 100
+	assert_lt(_config.siege_leader_damage_percent, 100)
+	assert_eq(hp_before - leader.hero_hp, expected)
 
 
 func test_bot_lobby_gives_unique_places() -> void:
@@ -172,6 +212,15 @@ func _lobby_hash(seed_value: int) -> int:
 		sim.tick()
 		guard += 1
 	return sim.state_hash()
+
+
+## Прорывы на поле игрока: sender_index — чья армия (-1 — базовая волна).
+func _add_breaches(sim: MatchSim, player: PlayerState, count: int, sender_index: int) -> void:
+	var mob_data: MobData = sim.config.army_mob if sender_index >= 0 else sim.config.wave_mob
+	for i: int in count:
+		var mob: MobState = MobState.create(mob_data)
+		mob.sender_index = sender_index
+		player.field.pending_breaches.append(mob)
 
 
 func _make_lobby() -> MatchSim:

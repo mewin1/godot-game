@@ -19,6 +19,9 @@ var income: int = 0
 var is_alive: bool = true
 ## Итоговое место (1–5); 0 — пока в игре.
 var place: int = 0
+## Тик, на котором HP героя впервые упало до 0 (-1 — ещё стоит). Если несколько героев падают
+## в одном раунде, выше место у того, кто продержался дольше.
+var fell_tick: int = -1
 var is_ready: bool = false
 ## Бафы на выбор (пусто — выбирать нечего).
 var buff_offers: Array[SendBuffData] = []
@@ -205,7 +208,8 @@ func end_prep() -> void:
 
 
 func add_to_hash(hasher: StateHasher) -> void:
-	hasher.add_many([index, hero_hp, gold, income, int(is_alive), place, buff_offers.size()])
+	hasher.add_many([index, hero_hp, gold, income, int(is_alive), place, fell_tick,
+			buff_offers.size()])
 	shop.add_to_hash(hasher)
 	army.add_to_hash(hasher)
 	field.add_to_hash(hasher)
