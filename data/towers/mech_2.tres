@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="TowerData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/sim/data/tower_data.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"mech_2"
+display_name = "Механизм II"
+school = &"mech"
+tier = 2
+shape = Array[Vector2i]([Vector2i(0, 0), Vector2i(1, 0), Vector2i(2, 0), Vector2i(1, 1)])
+damage = 12
+cooldown_ticks = 6
+range_milli = 3200
+splash_radius_milli = 0
+splash_percent = 0
+slow_percent = 0
+slow_ticks = 0
+tags = Array[StringName]([&"mech"])
+color = Color(0.5, 0.52, 0.6, 1)

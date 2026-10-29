@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="MobData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/sim/data/mob_data.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"send_unit"
+display_name = "Юнит отправки"
+hp = 40
+speed_milli_per_tick = 55
+armor = 0
+kill_reward = 0
+breach_damage = 1
+color = Color(0.95, 0.35, 0.35, 1)
+view_size = 0.4

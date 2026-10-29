@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="MobData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/sim/data/mob_data.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"boss"
+display_name = "Мини-босс"
+hp = 250
+speed_milli_per_tick = 35
+armor = 2
+kill_reward = 0
+breach_damage = 5
+color = Color(0.7, 0.15, 0.2, 1)
+view_size = 0.7

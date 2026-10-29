@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="SendBuffData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://src/sim/data/send_buff_data.gd" id="1_script"]
+[ext_resource type="Resource" path="res://data/mobs/fast.tres" id="2_ext"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"add_fast"
+display_name = "В пачку: быстрый юнит"
+is_rare = false
+kind = 3
+value = 1
+mob = ExtResource("2_ext")

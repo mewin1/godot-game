@@ -1,0 +1,33 @@
+[gd_resource type="Resource" script_class="GameConfig" load_steps=24 format=3]
+
+[ext_resource type="Script" path="res://src/sim/data/game_config.gd" id="1_script"]
+[ext_resource type="Resource" path="res://data/board/board_default.tres" id="2_ext"]
+[ext_resource type="Resource" path="res://data/mobs/basic.tres" id="3_ext"]
+[ext_resource type="Resource" path="res://data/mobs/send_unit.tres" id="4_ext"]
+[ext_resource type="Script" path="res://src/sim/data/tower_data.gd" id="5_ext"]
+[ext_resource type="Script" path="res://src/sim/data/send_buff_data.gd" id="6_ext"]
+[ext_resource type="Resource" path="res://data/towers/fire_1.tres" id="7_ext"]
+[ext_resource type="Resource" path="res://data/towers/ice_1.tres" id="8_ext"]
+[ext_resource type="Resource" path="res://data/towers/mech_1.tres" id="9_ext"]
+[ext_resource type="Resource" path="res://data/towers/fire_2.tres" id="10_ext"]
+[ext_resource type="Resource" path="res://data/towers/ice_2.tres" id="11_ext"]
+[ext_resource type="Resource" path="res://data/towers/mech_2.tres" id="12_ext"]
+[ext_resource type="Resource" path="res://data/buffs/hp_small.tres" id="13_ext"]
+[ext_resource type="Resource" path="res://data/buffs/speed_small.tres" id="14_ext"]
+[ext_resource type="Resource" path="res://data/buffs/units_small.tres" id="15_ext"]
+[ext_resource type="Resource" path="res://data/buffs/add_fast.tres" id="16_ext"]
+[ext_resource type="Resource" path="res://data/buffs/discount.tres" id="17_ext"]
+[ext_resource type="Resource" path="res://data/buffs/hp_big.tres" id="18_ext"]
+[ext_resource type="Resource" path="res://data/buffs/speed_big.tres" id="19_ext"]
+[ext_resource type="Resource" path="res://data/buffs/units_big.tres" id="20_ext"]
+[ext_resource type="Resource" path="res://data/buffs/add_armored.tres" id="21_ext"]
+[ext_resource type="Resource" path="res://data/buffs/add_boss.tres" id="22_ext"]
+[ext_resource type="Resource" path="res://data/buffs/income.tres" id="23_ext"]
+
+[resource]
+script = ExtResource("1_script")
+board = ExtResource("2_ext")
+towers = Array[ExtResource("5_ext")]([ExtResource("7_ext"), ExtResource("8_ext"), ExtResource("9_ext"), ExtResource("10_ext"), ExtResource("11_ext"), ExtResource("12_ext")])
+send_buffs = Array[ExtResource("6_ext")]([ExtResource("13_ext"), ExtResource("14_ext"), ExtResource("15_ext"), ExtResource("16_ext"), ExtResource("17_ext"), ExtResource("18_ext"), ExtResource("19_ext"), ExtResource("20_ext"), ExtResource("21_ext"), ExtResource("22_ext"), ExtResource("23_ext")])
+wave_mob = ExtResource("3_ext")
+send_mob = ExtResource("4_ext")

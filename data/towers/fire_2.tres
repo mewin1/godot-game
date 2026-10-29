@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="TowerData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/sim/data/tower_data.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"fire_2"
+display_name = "Огонь II"
+school = &"fire"
+tier = 2
+shape = Array[Vector2i]([Vector2i(0, 0), Vector2i(0, 1), Vector2i(1, 1)])
+damage = 30
+cooldown_ticks = 24
+range_milli = 2500
+splash_radius_milli = 900
+splash_percent = 50
+slow_percent = 0
+slow_ticks = 0
+tags = Array[StringName]([&"fire"])
+color = Color(0.85, 0.25, 0.1, 1)
