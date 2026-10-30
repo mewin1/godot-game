@@ -373,6 +373,7 @@ func add_to_hash(hasher: StateHasher) -> void:
 			buff_offers.size(), skill_uses, int(is_skill_used_this_round),
 			int(is_hero_triggered), free_rerolls_left, next_tower_bonus_levels,
 			discover_offers.size(), gift_towers.size()])
+	hasher.add(rng.state)
 	hasher.add_string(String(hero.id) if hero != null else "-")
 	shop.add_to_hash(hasher)
 	army.add_to_hash(hasher)

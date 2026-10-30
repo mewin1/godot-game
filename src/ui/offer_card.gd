@@ -19,6 +19,7 @@ var data: TowerData
 var rotation_turns: int = 0
 var is_active: bool = true
 var ticks_per_second: int = 20
+var tower_cost: int = 6
 var is_gift: bool = false
 
 var _press_position: Vector2 = Vector2.ZERO
@@ -156,7 +157,7 @@ func _draw() -> void:
 			stored_tower.level if stored_tower != null else 1, origin, cell)
 	var caption: String = ""
 	if not is_reserve_slot:
-		caption = "Подарок" if is_gift else "6 зол. · " + IdolSlot.god_name(data.god)
+		caption = "Подарок" if is_gift else "%d зол. · %s" % [tower_cost, IdolSlot.god_name(data.god)]
 	elif stored_tower != null and stored_tower.enchantment >= 0:
 		caption = "Чары"
 	draw_string(font, Vector2(6, size.y - 6), caption, HORIZONTAL_ALIGNMENT_LEFT,

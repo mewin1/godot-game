@@ -84,6 +84,7 @@ func refresh(selected_tower: TowerState) -> void:
 		card.visible = i < _player.shop.offers.size()
 		if not card.visible:
 			continue
+		card.tower_cost = _sim.config.tower_cost
 		var rite: RiteData = _player.shop.get_rite(i)
 		card.is_active = _player.gold >= (rite.cost if rite != null else _sim.config.tower_cost)
 		card.show_offer(_player.shop.get_offer(i))
@@ -114,8 +115,27 @@ func refresh(selected_tower: TowerState) -> void:
 	if selected_tower != null:
 		_selection.text = "%s · ур.%d · продажа %d" % [selected_tower.data.display_name,
 				selected_tower.level, _player.get_sell_price(selected_tower)]
+		_selection.tooltip_text = _tower_details(selected_tower)
 	_ready.disabled = _player.is_ready
 	_ready.text = "Ждём остальных…" if _player.is_ready else "Готов ▶"
+
+
+func _tower_details(tower: TowerState) -> String:
+	var field: FieldState = _player.field
+	var lines: PackedStringArray = [tower.data.description]
+	if _player.reserve.has(tower):
+		return "\n".join(lines) + "\nВ резерве постройка не участвует в обороне."
+	if tower.data.attacks:
+		lines.append("Удар %d · период %.2f с · радиус %.1f клетки" % [
+				field.get_tower_damage(tower),
+				float(field.get_tower_cooldown(tower)) / _sim.config.ticks_per_second,
+				field.get_tower_range(tower) / 1000.0])
+	if tower.data.wind_length_milli > 0:
+		lines.append("Длина потока сейчас: %.1f клетки" % (DivineCombat.wind_length(field, tower)
+				/ 1000.0))
+	if tower.level == _sim.config.max_tower_level and tower.awakening < 0:
+		lines.append("Дальше: чары и пробуждение в магазине 4.")
+	return "\n".join(lines)
 
 
 func _rite_context(rite: RiteData) -> String:

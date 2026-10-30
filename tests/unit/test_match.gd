@@ -416,3 +416,13 @@ func test_incoming_preview_matches_spawned_army_without_consuming_rng() -> void:
 	for i: int in preview.size():
 		assert_eq(preview[i].max_hp, actual[i].max_hp)
 		assert_eq(preview[i].speed, actual[i].speed)
+
+
+func test_player_rng_changes_hash_before_future_shop_roll() -> void:
+	var first: MatchSim = _make_match()
+	var second: MatchSim = _make_match()
+	assert_eq(first.state_hash(), second.state_hash())
+	# Видимая витрина пока та же; следующий бросок уже зависит от другого состояния.
+	second.players[0].rng.state += 1
+	assert_ne(first.state_hash(), second.state_hash(),
+			"хэш должен обнаружить расхождение до следующей случайной покупки/витрины")
