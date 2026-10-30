@@ -73,9 +73,14 @@ static func apply_wind(field: FieldState, mob: MobState) -> void:
 			var slowdown: int = power if alignment < 0 else power / 2
 			mob.wind_slow_percent = maxi(mob.wind_slow_percent, slowdown)
 
+	WindReactions.apply(field, mob)
+
 
 ## Горение тикает раз в секунду симуляции, заряд имеет срок жизни.
 static func tick_effects(field: FieldState, mob: MobState) -> void:
+	CurseCombat.tick(field, mob)
+	if mob.wind_reaction_cooldown > 0:
+		mob.wind_reaction_cooldown -= 1
 	if mob.wet_ticks_left > 0:
 		mob.wet_ticks_left -= 1
 	if mob.charge_ticks_left > 0:
@@ -112,6 +117,10 @@ static func hit(field: FieldState, tower: TowerState, mob: MobState, damage: int
 		mob.stun_ticks_left = maxi(mob.stun_ticks_left, reaction.stun_ticks)
 		if reaction.freeze_ticks > 0 and mob.can_apply_status(&"frozen"):
 			mob.freeze_ticks_left = maxi(mob.freeze_ticks_left, reaction.freeze_ticks)
+		if reaction.makes_contagious:
+			mob.is_contagious = true
+		if reaction.curse_extra_ticks > 0:
+			CurseCombat.conserve(mob, reaction)
 		field.effect_played.emit(reaction.id, mob)
 	var was_burning: bool = mob.burn_ticks_left > 0
 	if was_burning:
@@ -140,7 +149,11 @@ static func hit(field: FieldState, tower: TowerState, mob: MobState, damage: int
 			and (mob.can_apply_status(&"cold") or mob.freeze_ticks_left > 0):
 		mob.cold_ticks_left = maxi(mob.cold_ticks_left, tower.data.cold_ticks)
 		mob.cold_slow_percent = maxi(mob.cold_slow_percent, tower.data.cold_slow_percent)
-	if tower.data.god == &"perun":
+	if tower.data.curse_ticks > 0:
+		CurseCombat.apply(tower, mob, field.get_tower_damage(tower))
+	if tower.data.charge_ticks > 0 and mob.is_alive() and mob.can_apply_status(&"charge"):
+		mob.charge_ticks_left = maxi(mob.charge_ticks_left, tower.data.charge_ticks)
+	if tower.data.tags.has(&"lightning") or tower.data.god == &"perun":
 		if field.config.chain_chance_percent < 0:
 			_charge(field, tower, mob, damage)
 		elif field.roll_chance(chain_chance(field, mob)):
@@ -149,8 +162,14 @@ static func hit(field: FieldState, tower: TowerState, mob: MobState, damage: int
 
 ## Шанс запуска определяется основной целью; мокрые дополнительные цели не бросают снова.
 static func chain_chance(field: FieldState, mob: MobState) -> int:
-	var chance: int = field.config.wet_chain_chance_percent if mob.wet_ticks_left > 0 \
-			else field.config.chain_chance_percent
+	var chance: int = field.config.chain_chance_percent
+	var rule: ReactionData = ReactionResolver.resolve(&"lightning", mob.status_tags(),
+			field.config.reactions)
+	if rule != null:
+		chance += rule.chain_chance_bonus
+	elif mob.wet_ticks_left > 0:
+		# Исторические фикстуры не содержат каталог реакций.
+		chance = field.config.wet_chain_chance_percent
 	var idol: IdolState = field.get_idol(&"perun")
 	if idol != null:
 		chance += idol.chain_chance_bonus

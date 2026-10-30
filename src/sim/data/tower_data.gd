@@ -9,6 +9,9 @@ extends Resource
 @export var school: StringName = &""
 ## Божество; пусто у прежних построек. Основные эффекты не требуют идола.
 @export var god: StringName = &""
+@export var curse_ticks: int = 0
+@export var curse_percent: int = 0
+@export var charge_ticks: int = 0
 @export var cold_ticks: int = 0
 @export var cold_slow_percent: int = 0
 @export var wet_ticks: int = 0

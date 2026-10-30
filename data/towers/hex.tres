@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="TowerData" format=3]
+[ext_resource type="Script" path="res://src/sim/data/tower_data.gd" id="1"]
+[resource]
+script = ExtResource("1")
+id = &"hex"
+display_name = "Чёрная метка"
+god = &"curse"
+school = &"curse"
+tags = Array[StringName]([&"curse"])
+tier = 1
+shape = Array[Vector2i]([Vector2i(0, 0)])
+damage = 4
+cooldown_ticks = 18
+range_milli = 2500
+curse_ticks = 60
+curse_percent = 200
+description = "Зачинщик: проклятие взрывается через 3 с. Мокрота делает его заразным."

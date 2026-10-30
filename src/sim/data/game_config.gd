@@ -22,6 +22,7 @@ extends Resource
 ## -1 оставляет старые заряды в исторических тестах; активная сборка использует шанс.
 @export var chain_chance_percent: int = -1
 @export var wet_chain_chance_percent: int = 80
+@export var curse_spread_radius_milli: int = 1500
 @export var chain_hits: int = 3
 @export var chain_percent: int = 40
 @export var chain_range_milli: int = 2000

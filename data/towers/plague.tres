@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="TowerData" format=3]
+[ext_resource type="Script" path="res://src/sim/data/tower_data.gd" id="1"]
+[resource]
+script = ExtResource("1")
+id = &"plague"
+display_name = "Моровой колокол"
+god = &"curse"
+school = &"curse"
+tags = Array[StringName]([&"curse"])
+tier = 2
+shape = Array[Vector2i]([Vector2i(0, 0)])
+damage = 8
+cooldown_ticks = 28
+range_milli = 2800
+curse_ticks = 60
+curse_percent = 200
+description = "Усилитель: помечает группу. Проклятие перескакивает на соседнего мокрого."
+splash_radius_milli = 1000
+splash_percent = 100

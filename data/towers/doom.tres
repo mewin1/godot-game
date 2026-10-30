@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="TowerData" format=3]
+[ext_resource type="Script" path="res://src/sim/data/tower_data.gd" id="1"]
+[resource]
+script = ExtResource("1")
+id = &"doom"
+display_name = "Чёрный обелиск"
+god = &"curse"
+school = &"curse"
+tags = Array[StringName]([&"curse"])
+tier = 3
+shape = Array[Vector2i]([Vector2i(0, 0)])
+damage = 18
+cooldown_ticks = 36
+range_milli = 3000
+curse_ticks = 40
+curse_percent = 250
+description = "Финишер: сильный взрыв через 2 с; лёд продлевает задержку и усиливает урон."

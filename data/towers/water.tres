@@ -10,7 +10,7 @@ god = &"water"
 school = &"water"
 tier = 2
 shape = Array[Vector2i]([Vector2i(0, 0), Vector2i(1, 0)])
-damage = 4
+damage = 0
 cooldown_ticks = 20
 range_milli = 2500
 splash_radius_milli = 1000
@@ -18,6 +18,6 @@ splash_percent = 100
 wet_ticks = 60
 wet_ticks_per_level = 20
 shop_weight = 5
-description = "Орошает группу: мокрота 3/4/5 с по уровням. Перун запускает цепь с шансом 80% вместо 20%. Сам по себе наносит мало урона."
+description = "Орошает группу: мокрота 3/4/5 с по уровням. Перун запускает цепь с шансом 80% вместо 20%. Сам по себе не наносит урона."
 
 tags = Array[StringName]([&"water"])

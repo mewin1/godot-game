@@ -31,6 +31,12 @@ var heal_window_ticks: int = 0
 var heal_window_percent: int = 0
 ## Юнит злой армии (для отображения; HP уже учтено при создании).
 var is_angry: bool = false
+var curse_ticks_left: int = 0
+var curse_damage: int = 0
+var curse_delay: int = 0
+var is_contagious: bool = false
+var is_conserved: bool = false
+var wind_reaction_cooldown: int = 0
 var cold_ticks_left: int = 0
 var cold_slow_percent: int = 0
 var freeze_ticks_left: int = 0
@@ -72,6 +78,8 @@ func take_damage(amount: int) -> bool:
 		return false
 	if shield_left > 0:
 		shield_left -= 1
+		return false
+	if amount <= 0:
 		return false
 	hp -= maxi(1, amount - armor)
 	return hp <= 0
@@ -117,6 +125,8 @@ func status_tags() -> Array[StringName]:
 		result.append(&"burn")
 	if charge_ticks_left > 0:
 		result.append(&"charge")
+	if curse_ticks_left > 0:
+		result.append(&"curse")
 	if freeze_ticks_left > 0:
 		result.append(&"frozen")
 	elif cold_ticks_left > 0:
@@ -127,6 +137,12 @@ func status_tags() -> Array[StringName]:
 ## Удаляет статус вместе с накопленной силой.
 func remove_status(tag: StringName) -> void:
 	match tag:
+		&"curse":
+			curse_ticks_left = 0
+			curse_damage = 0
+			curse_delay = 0
+			is_contagious = false
+			is_conserved = false
 		&"cold", &"frozen":
 			cold_ticks_left = 0
 			freeze_ticks_left = 0

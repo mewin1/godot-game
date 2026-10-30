@@ -16,3 +16,4 @@ range_milli = 3000
 description = "Тяжёлый разряд: шанс цепи 20%, по мокрой цели 80%. Сильный удар даёт сильную цепь."
 
 tags = Array[StringName]([&"lightning"])
+charge_ticks = 60

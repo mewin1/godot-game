@@ -358,6 +358,8 @@ func add_to_hash(hasher: StateHasher) -> void:
 		hasher.add_many([mob.id, mob.hp, mob.progress, mob.slow_percent, mob.slow_ticks_left,
 				mob.shield_left, mob.heal_cooldown, mob.heal_window_ticks,
 				mob.heal_window_percent, mob.speed, mob.armor, mob.max_hp,
+				mob.curse_ticks_left, mob.curse_damage, mob.curse_delay, int(mob.is_contagious),
+				int(mob.is_conserved), mob.wind_reaction_cooldown,
 				mob.cold_ticks_left, mob.cold_slow_percent, mob.freeze_ticks_left,
 				mob.stun_ticks_left, mob.sender_index, mob.wet_ticks_left, mob.charges, mob.charge_ticks_left, mob.burn_damage,
 				mob.burn_ticks_left, mob.burn_cooldown, mob.wind_slow_percent, mob.wind_boost_percent])
@@ -415,12 +417,13 @@ func _move_mobs() -> void:
 		DivineCombat.tick_effects(self, mob)
 		if not mob.is_alive():
 			continue
+		var step_speed: int = mob.current_speed()
 		mob.advance()
 		if is_enraged:
-			mob.progress += mob.current_speed() * _config.wave_enrage_speed_percent / 100
+			mob.progress += step_speed * _config.wave_enrage_speed_percent / 100
 		if mob.data.sprint_from_percent > 0 \
 				and mob.progress * 100 >= end_progress * mob.data.sprint_from_percent:
-			mob.progress += mob.current_speed() * mob.data.sprint_speed_percent / 100
+			mob.progress += step_speed * mob.data.sprint_speed_percent / 100
 		if knockback_milli > 0 and not mob.was_knocked_back and mob.progress * 2 >= end_progress:
 			mob.was_knocked_back = true
 			mob.progress = maxi(0, mob.progress - knockback_milli)

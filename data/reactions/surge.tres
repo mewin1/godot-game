@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="ReactionData" format=3]
+[ext_resource type="Script" path="res://src/sim/data/reaction_data.gd" id="1"]
+[resource]
+script = ExtResource("1")
+id = &"surge"
+incoming = &"wind"
+required = &"wet"
+spread_radius_milli = 1500
+spread_duration_ticks = 30
+push_milli = 250
+interval_ticks = 20
