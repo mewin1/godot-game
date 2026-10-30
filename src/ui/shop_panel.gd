@@ -18,6 +18,11 @@ var _player: PlayerState
 var _selected_tower: TowerState
 
 var _buff_box: VBoxContainer
+var _discover_box: VBoxContainer
+var _discover_buttons: Array[Button] = []
+var _gift_box: VBoxContainer
+var _gift_row: HBoxContainer
+var _gift_cards: Array[OfferCard] = []
 var _buff_buttons: Array[Button] = []
 var _towers_tab: Button
 var _army_tab: Button
@@ -40,10 +45,19 @@ var _ready_button: Button
 
 
 func _init() -> void:
+	# Меню прокручивается, если не влезает (баф + подарки + витрина); «Готов» — всегда внизу.
+	var root: VBoxContainer = VBoxContainer.new()
+	add_child(root)
+	var scroll: ScrollContainer = ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	root.add_child(scroll)
 	var box: VBoxContainer = VBoxContainer.new()
 	box.add_theme_constant_override("separation", 10)
-	add_child(box)
+	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(box)
 	_build_buff_box(box)
+	_build_discover_box(box)
 	_build_tabs(box)
 	_build_towers_page(box)
 	_army_page = VBoxContainer.new()
@@ -58,7 +72,7 @@ func _init() -> void:
 	_army_page.add_child(_army_grid)
 	_ready_button = _make_button("Готов ▶", _on_ready_button_pressed)
 	_ready_button.theme_type_variation = &"AccentButton"
-	box.add_child(_ready_button)
+	root.add_child(_ready_button)
 	_show_page(true)
 
 
@@ -81,6 +95,7 @@ func refresh(selected_tower: TowerState) -> void:
 		return
 	_selected_tower = selected_tower
 	_refresh_buffs()
+	_refresh_gifts()
 	_refresh_offers()
 	_refresh_shop_actions()
 	_refresh_tower_box()
@@ -117,6 +132,26 @@ func _build_buff_box(parent: Container) -> void:
 		row.add_child(button)
 		_buff_buttons.append(button)
 	parent.add_child(_buff_box)
+
+
+## «Тройка → открытие»: выбор подарка и ряд подарков, которые можно перетащить на поле.
+func _build_discover_box(parent: Container) -> void:
+	_discover_box = VBoxContainer.new()
+	_discover_box.add_child(_make_label("Тройка! Выберите постройку в подарок:", FONT_SIZE))
+	var row: HBoxContainer = HBoxContainer.new()
+	_discover_box.add_child(row)
+	for i: int in 3:
+		var button: Button = _make_button("", _on_discover_button_pressed.bind(i))
+		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		button.custom_minimum_size = Vector2(0, BUTTON_HEIGHT + 12)
+		row.add_child(button)
+		_discover_buttons.append(button)
+	parent.add_child(_discover_box)
+	_gift_box = VBoxContainer.new()
+	_gift_box.add_child(_make_label("Подарки — перетащите на поле бесплатно:", FONT_SIZE))
+	_gift_row = HBoxContainer.new()
+	_gift_box.add_child(_gift_row)
+	parent.add_child(_gift_box)
 
 
 func _build_tabs(parent: Container) -> void:
@@ -207,6 +242,28 @@ func _refresh_buffs() -> void:
 		if button.visible:
 			var buff: SendBuffData = offers[i]
 			button.text = ("★ " if buff.is_rare else "") + buff.display_name
+
+
+func _refresh_gifts() -> void:
+	var offers: Array[TowerData] = _player.discover_offers
+	_discover_box.visible = not offers.is_empty()
+	for i: int in _discover_buttons.size():
+		_discover_buttons[i].visible = i < offers.size()
+		if i < offers.size():
+			_discover_buttons[i].text = offers[i].display_name
+	var gifts: Array[TowerData] = _player.gift_towers
+	_gift_box.visible = not gifts.is_empty()
+	while _gift_cards.size() < gifts.size():
+		var card: OfferCard = OfferCard.new()
+		card.is_gift = true
+		card.offer_index = _gift_cards.size()
+		card.ticks_per_second = _sim.config.ticks_per_second
+		_gift_row.add_child(card)
+		_gift_cards.append(card)
+	for i: int in _gift_cards.size():
+		_gift_cards[i].visible = i < gifts.size()
+		if i < gifts.size():
+			_gift_cards[i].show_offer(gifts[i])
 
 
 func _refresh_offers() -> void:
@@ -334,6 +391,10 @@ func _army_summary(army: ArmyState) -> String:
 
 func _on_buff_button_pressed(index: int) -> void:
 	command_requested.emit(ChooseBuffCommand.new(index))
+
+
+func _on_discover_button_pressed(index: int) -> void:
+	command_requested.emit(ChooseDiscoverCommand.new(index))
 
 
 func _on_command_button_pressed(command: SimCommand) -> void:

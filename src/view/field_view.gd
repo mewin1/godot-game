@@ -190,7 +190,7 @@ func _update_hover(payload: DragPayload, at_position: Vector2) -> void:
 ## Башня под пальцем, с которой можно слить перетаскиваемую (та же башня, тот же уровень).
 func _find_merge_target(payload: DragPayload, cell: Vector2i) -> TowerState:
 	var target: TowerState = field.get_tower_at(cell)
-	if target == null or target.id == payload.tower_id:
+	if target == null or target.id == payload.tower_id or payload.kind == DragPayload.Kind.GIFT:
 		return null
 	if target.data != payload.data or target.level != payload.level:
 		return null
@@ -202,6 +202,8 @@ func _find_merge_target(payload: DragPayload, cell: Vector2i) -> TowerState:
 func _make_drop_command(payload: DragPayload) -> SimCommand:
 	if not _hover_valid:
 		return null
+	if payload.kind == DragPayload.Kind.GIFT:
+		return PlaceGiftCommand.new(payload.offer_index, _hover_anchor, payload.rotation)
 	if payload.kind == DragPayload.Kind.OFFER:
 		if _hover_merge_target != null:
 			return BuyIntoTowerCommand.new(payload.offer_index, _hover_merge_target.id)

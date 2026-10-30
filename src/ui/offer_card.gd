@@ -22,6 +22,8 @@ var rotation_turns: int = 0
 var is_active: bool = true
 ## Из конфига: нужен, чтобы показать скорострельность в выстрелах в секунду.
 var ticks_per_second: int = 20
+## Подарок «тройки»: ставится бесплатно, рисуется в золотой рамке.
+var is_gift: bool = false
 
 var _rotate_button: Button
 
@@ -58,6 +60,8 @@ func _get_drag_data(_at_position: Vector2) -> Variant:
 	if data == null or not is_active:
 		return null
 	set_drag_preview(ShapePreview.create_drag_preview(data, rotation_turns, 1, 40.0))
+	if is_gift:
+		return DragPayload.for_gift(offer_index, data, rotation_turns)
 	return DragPayload.for_offer(offer_index, data, rotation_turns)
 
 
@@ -89,6 +93,8 @@ func _draw() -> void:
 	ShapePreview.draw_shape(self, data, rotation_turns, 1, top_left, cell)
 	if not is_active:
 		draw_rect(rect, Color(0, 0, 0, 0.45))
+	if is_gift:
+		draw_rect(rect.grow(-1.5), Color(0.95, 0.75, 0.3), false, 3.0)
 
 
 func _stats_text() -> String:

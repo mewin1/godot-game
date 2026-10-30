@@ -2,7 +2,8 @@ class_name DragPayload
 extends RefCounted
 ## Что перетаскивают: предложение витрины или уже поставленную башню.
 
-enum Kind { OFFER, TOWER }
+## GIFT — подарок «тройки» (offer_index — номер подарка).
+enum Kind { OFFER, TOWER, GIFT }
 
 var kind: Kind = Kind.OFFER
 var data: TowerData
@@ -18,6 +19,12 @@ static func for_offer(index: int, tower_data: TowerData, turns: int) -> DragPayl
 	payload.offer_index = index
 	payload.data = tower_data
 	payload.rotation = turns
+	return payload
+
+
+static func for_gift(index: int, tower_data: TowerData, turns: int) -> DragPayload:
+	var payload: DragPayload = for_offer(index, tower_data, turns)
+	payload.kind = Kind.GIFT
 	return payload
 
 

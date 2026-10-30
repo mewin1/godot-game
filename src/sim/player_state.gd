@@ -34,6 +34,9 @@ var free_rerolls_left: int = 0
 var has_full_refund: bool = false
 var shop_upgrade_discount: int = 0
 var next_tower_bonus_levels: int = 0
+## «Тройка → открытие»: постройки на выбор (пусто — выбирать нечего) и подарки, ждущие места.
+var discover_offers: Array[TowerData] = []
+var gift_towers: Array[TowerData] = []
 var gold: int = 0
 var income: int = 0
 var is_alive: bool = true
@@ -137,6 +140,7 @@ func merge_towers(source_id: int, target_id: int) -> String:
 	target.invested_this_phase += source.invested_this_phase
 	field.remove_tower(source)
 	field.mark_towers_changed()
+	_check_discover(target)
 	return ""
 
 
@@ -228,6 +232,28 @@ func buy_army_upgrade(upgrade_index: int) -> String:
 	return ""
 
 
+## Выбрать подарок «тройки»: он ждёт в меню, пока его не поставят на поле.
+func choose_discover(offer_index: int) -> String:
+	if offer_index < 0 or offer_index >= discover_offers.size():
+		return "Нет такого подарка"
+	gift_towers.append(discover_offers[offer_index])
+	discover_offers.clear()
+	return ""
+
+
+## Поставить подарок бесплатно. Стоит как обычная покупка (для продажи — как купленная раньше).
+func place_gift(gift_index: int, anchor: Vector2i, rotation: int) -> String:
+	if gift_index < 0 or gift_index >= gift_towers.size():
+		return "Нет такого подарка"
+	var data: TowerData = gift_towers[gift_index]
+	if not field.can_place_tower_data(data, anchor, rotation):
+		return "Сюда не встанет"
+	gift_towers.remove_at(gift_index)
+	var tower: TowerState = field.add_tower(data, anchor, rotation)
+	tower.invested_total = _config.tower_cost
+	return ""
+
+
 func choose_buff(offer_index: int) -> String:
 	if offer_index < 0 or offer_index >= buff_offers.size():
 		return "Нет такого бафа"
@@ -316,6 +342,8 @@ func start_prep(offer_buffs: bool) -> void:
 func end_prep() -> void:
 	if not buff_offers.is_empty():
 		_take_buff(0)
+	if not discover_offers.is_empty():
+		choose_discover(0)
 	for tower: TowerState in field.towers:
 		tower.invested_this_phase = 0
 
@@ -323,7 +351,8 @@ func end_prep() -> void:
 func add_to_hash(hasher: StateHasher) -> void:
 	hasher.add_many([index, hero_hp, gold, income, int(is_alive), place, fell_tick,
 			army_damage_dealt, buff_offers.size(), skill_uses, int(is_skill_used_this_round),
-			int(is_hero_triggered), free_rerolls_left, next_tower_bonus_levels])
+			int(is_hero_triggered), free_rerolls_left, next_tower_bonus_levels,
+			discover_offers.size(), gift_towers.size()])
 	hasher.add_string(String(hero.id) if hero != null else "-")
 	shop.add_to_hash(hasher)
 	army.add_to_hash(hasher)
@@ -351,6 +380,24 @@ func _apply_brew(tower: TowerState, already_gained: int) -> void:
 	next_tower_bonus_levels = 0
 	tower.level = mini(tower.level + gained, _config.max_tower_level)
 	field.mark_towers_changed()
+	if gained > 0:
+		_check_discover(tower)
+
+
+## Постройка дошла до максимального уровня — выбор подарка из следующего тира.
+func _check_discover(tower: TowerState) -> void:
+	if tower.level < _config.max_tower_level or not discover_offers.is_empty():
+		return
+	var max_tier: int = 1
+	for data: TowerData in _config.towers:
+		max_tier = maxi(max_tier, data.tier)
+	var tier: int = mini(shop.level + 1, max_tier)
+	var pool: Array[TowerData] = []
+	for data: TowerData in _config.towers:
+		if data.tier == tier:
+			pool.append(data)
+	for i: int in mini(_config.discover_offer_count, pool.size()):
+		discover_offers.append(pool.pop_at(rng.randi_range(0, pool.size() - 1)))
 
 
 func _take_buff(offer_index: int) -> void:

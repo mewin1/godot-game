@@ -31,6 +31,7 @@ func play_prep(sim: MatchSim, player: PlayerState) -> void:
 	_buy_towers(sim, player)
 	_merge_all_pairs(sim, player)
 	_buy_towers(sim, player)
+	_take_gifts(sim, player)
 	_spend_rest_on_army(sim, player)
 
 
@@ -50,6 +51,19 @@ func _maybe_use_skill(sim: MatchSim, player: PlayerState, timing: HeroSkillData.
 		return
 	if skill.effect.bot_wants_to_use(sim, player):
 		_execute(sim, player, UseHeroSkillCommand.new())
+
+
+## «Тройка»: случайный подарок и сразу на лучшее место (если есть).
+func _take_gifts(sim: MatchSim, player: PlayerState) -> void:
+	if not player.discover_offers.is_empty():
+		var choice: int = player.rng.randi_range(0, player.discover_offers.size() - 1)
+		_execute(sim, player, ChooseDiscoverCommand.new(choice))
+	var index: int = player.gift_towers.size() - 1
+	while index >= 0:
+		var spot: Vector3i = _find_best_spot(player.field, player.gift_towers[index])
+		if spot.z >= 0:
+			_execute(sim, player, PlaceGiftCommand.new(index, Vector2i(spot.x, spot.y), spot.z))
+		index -= 1
 
 
 func _use_free_rerolls(sim: MatchSim, player: PlayerState) -> void:

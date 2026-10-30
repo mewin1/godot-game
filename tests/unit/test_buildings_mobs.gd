@@ -217,3 +217,29 @@ func test_folk_school_adds_income() -> void:
 	field.add_tower(_tower(&"stall"), Vector2i(2, 5), 0)
 	field.add_tower(_tower(&"samovar"), Vector2i(3, 2), 0)
 	assert_eq(field.get_round_income(), 2 + 1, "лавка 2 + «Двор» за две постройки 1")
+
+
+func test_merge_to_max_level_gives_discover_and_free_gift() -> void:
+	var sim: MatchSim = MatchSim.new(_config, 3, 2, 1)
+	sim.start()
+	var player: PlayerState = sim.players[0]
+	var first: TowerState = player.field.add_tower(_tower(&"ice_1"), Vector2i(2, 2), 0)
+	var second: TowerState = player.field.add_tower(_tower(&"ice_1"), Vector2i(2, 6), 0)
+	first.level = 2
+	second.level = 2
+	assert_eq(sim.execute_command(0, MergeTowersCommand.new(second.id, first.id)), "")
+	assert_eq(first.level, 3)
+	assert_eq(player.discover_offers.size(), 3)
+	assert_eq(player.discover_offers[0].tier, 2, "следующий тир после магазина 1")
+	assert_eq(sim.execute_command(0, ChooseDiscoverCommand.new(1)), "")
+	assert_eq(player.gift_towers.size(), 1)
+	var gold: int = player.gold
+	var gift: TowerData = player.gift_towers[0]
+	var placed: bool = false
+	for turns: int in TowerState.ROTATIONS:
+		for cell: Vector2i in player.field.get_buildable_cells():
+			if not placed and player.field.can_place_tower_data(gift, cell, turns):
+				assert_eq(sim.execute_command(0, PlaceGiftCommand.new(0, cell, turns)), "")
+				placed = true
+	assert_eq(player.gift_towers.size(), 0)
+	assert_eq(player.gold, gold, "подарок бесплатный")

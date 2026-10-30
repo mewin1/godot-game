@@ -212,7 +212,8 @@ func _build_tip() -> void:
 func _show_tip(text: String) -> void:
 	_tip_label.text = "Подсказка: " + text
 	var width: float = minf(size.x - 32.0, 760.0)
-	_tip_panel.custom_minimum_size = Vector2(width, 0)
+	# Перенос строк у Label в контейнере работает только при заданной ширине.
+	_tip_label.custom_minimum_size = Vector2(width - 24.0, 0)
 	_tip_panel.reset_size()
 	_tip_panel.position = Vector2((size.x - width) / 2.0, _hud.size.y + 8.0)
 	_tip_time_left = TIP_SECONDS
