@@ -33,7 +33,6 @@ const STEALTH_ALPHA: float = 0.45
 var interpolation: float = 0.0
 var playback_speed: int = 1
 var is_own_field: bool = false
-var breach_multiplier: int = 1
 var hero_hp: int = 0
 ## Центр таблички HP героя на экране (её место задаёт FieldView: там же терем).
 var hero_plate_center: Vector2 = Vector2.ZERO
@@ -83,7 +82,7 @@ func set_field(field: FieldState) -> void:
 		_field.lightning_fired.disconnect(_on_lightning_fired)
 		_field.tower_fired.disconnect(_on_field_tower_fired)
 		_field.mob_killed.disconnect(_on_field_mob_killed)
-		_field.mob_breached.disconnect(_on_field_mob_breached)
+		_field.breach_resolved.disconnect(_on_breach_resolved)
 		_field.effect_played.disconnect(_on_field_effect_played)
 		_field.tower_pulsed.disconnect(_on_field_tower_pulsed)
 	_field = field
@@ -95,7 +94,7 @@ func set_field(field: FieldState) -> void:
 	_field.lightning_fired.connect(_on_lightning_fired)
 	_field.tower_fired.connect(_on_field_tower_fired)
 	_field.mob_killed.connect(_on_field_mob_killed)
-	_field.mob_breached.connect(_on_field_mob_breached)
+	_field.breach_resolved.connect(_on_breach_resolved)
 	_field.effect_played.connect(_on_field_effect_played)
 	_field.tower_pulsed.connect(_on_field_tower_pulsed)
 
@@ -389,9 +388,11 @@ func _on_field_mob_killed(mob: MobState) -> void:
 	sound_requested.emit(&"death")
 
 
-func _on_field_mob_breached(mob: MobState) -> void:
+func _on_breach_resolved(_mob: MobState, actual_damage: int) -> void:
+	if actual_damage <= 0:
+		return
 	_breach_flash_left = BREACH_FLASH_SECONDS
-	_add_text(_hero_screen_position(), "−%d" % (mob.breach_damage * breach_multiplier),
+	_add_text(_hero_screen_position(), "−%d" % actual_damage,
 			BREACH_TEXT_COLOR)
 	sound_requested.emit(&"breach")
 

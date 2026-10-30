@@ -43,6 +43,8 @@ var _skill_button: Button
 var _siege_panel: PanelContainer
 var _siege_label: Label
 var _time: float = 0.0
+var _threat_key: Vector3i = Vector3i(-1, -1, -1)
+var _threat: PackedStringArray = []
 var _player_colors: FieldStyle = VisualCatalog.get_default().field
 
 
@@ -110,6 +112,24 @@ func refresh(sim: MatchSim, human_index: int) -> void:
 	_refresh_hero(sim, me)
 	_refresh_chips(sim, human_index)
 	_refresh_siege(sim, human_index)
+	if sim.phase == MatchSim.Phase.PREP and me.is_alive:
+		_refresh_threat(sim, human_index)
+
+
+func _refresh_threat(sim: MatchSim, human_index: int) -> void:
+	var key: Vector3i = Vector3i(sim.round_number,
+			sim.tick_count / sim.config.ticks_per_second, human_index)
+	if key != _threat_key:
+		_threat_key = key
+		_threat = ArmyPreview.describe(sim, human_index)
+	var siege_text: String = _siege_label.text if _siege_panel.visible else ""
+	_siege_panel.visible = true
+	_siege_label.text = _threat[0]
+	if sim.siege_leader == human_index:
+		_siege_label.text = "ОСАДА НА ВАС · " + _siege_label.text
+	elif sim.siege_attackers.has(human_index):
+		_siege_label.text = "Осада лидера · " + _siege_label.text
+	_siege_panel.tooltip_text = siege_text + "\n" + _threat[1]
 
 
 func set_paused(is_paused: bool) -> void:

@@ -7,6 +7,8 @@ signal lightning_fired(from_milli: Vector2i, to_milli: Vector2i)
 signal tower_fired(tower: TowerState, mob: MobState)
 signal mob_killed(mob: MobState)
 signal mob_breached(mob: MobState)
+## Матч уже применил осаду, общий предел и остаток HP: для точной подписи потерь.
+signal breach_resolved(mob: MobState, actual_damage: int)
 ## Башня ударила всех вокруг разом (пар бани, сказки кота) — для кольца на экране.
 signal tower_pulsed(tower: TowerState)
 ## Особое событие на поле для отображения: &"strike" (палица), &"silence" (башни опалены),

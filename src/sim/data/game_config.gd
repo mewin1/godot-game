@@ -140,6 +140,9 @@ extends Resource
 ## С какого раунда какой множитель урона прорыва (по возрастанию раундов).
 @export var breach_multiplier_start_rounds: Array[int] = [10, 15]
 @export var breach_multipliers: Array[int] = [2, 3]
+## Общий предел урона поля за раунд; пустой список — без предела (прежние правила).
+@export var breach_limits: Array[int] = []
+@export var breach_limit_rounds_per_step: int = 4
 
 
 ## Множитель урона прорыва в раунде.
@@ -149,6 +152,14 @@ func get_breach_multiplier(round_number: int) -> int:
 		if round_number >= breach_multiplier_start_rounds[i]:
 			multiplier = breach_multipliers[i]
 	return multiplier
+
+
+## 0 означает отсутствие предела. Общий для базовой волны и всех атакующих осады.
+func get_breach_limit(round_number: int) -> int:
+	if breach_limits.is_empty():
+		return 0
+	var index: int = maxi(0, round_number - 1) / maxi(1, breach_limit_rounds_per_step)
+	return breach_limits[mini(index, breach_limits.size() - 1)]
 
 
 ## Полная цена повышения магазина с уровня level на следующий (0 — уже максимум).

@@ -55,12 +55,6 @@ var is_own_field: bool = false:
 	set(value):
 		is_own_field = value
 		_battle.is_own_field = value
-## Множитель урона прорыва в этом раунде — для подписи «−N» над теремом.
-var breach_multiplier: int = 1:
-	set(value):
-		breach_multiplier = value
-		_battle.breach_multiplier = value
-
 ## На это поле идут сразу двое (осада): рамка поля мигает красным.
 var is_under_siege: bool = false
 

@@ -88,7 +88,7 @@ func refresh(selected_tower: TowerState) -> void:
 		card.is_active = _player.gold >= (rite.cost if rite != null else _sim.config.tower_cost)
 		card.show_offer(_player.shop.get_offer(i))
 		if rite != null:
-			card.show_rite(rite)
+			card.show_rite(rite, _rite_context(rite))
 	var reroll_price: int = _player.get_reroll_price()
 	_reroll.text = "Обновить · %d" % reroll_price
 	_reroll.disabled = _player.gold < reroll_price
@@ -96,6 +96,7 @@ func refresh(selected_tower: TowerState) -> void:
 	_upgrade.text = "Магазин %d → %d · %d" % [_player.shop.level,
 			_player.shop.level + 1, upgrade_price] if _player.shop.can_upgrade() else "Магазин 4"
 	_upgrade.disabled = not _player.shop.can_upgrade() or _player.gold < upgrade_price
+	_upgrade.tooltip_text = _upgrade_context()
 	_army_title.text = "Армия: %d бойцов · доход %d" % [
 			_player.army.get_unit_count(), _player.get_total_income()]
 	for i: int in _army_buttons.size():
@@ -105,7 +106,9 @@ func refresh(selected_tower: TowerState) -> void:
 		_army_buttons[i].text = "%s\n%d · +%d доход" % [
 				army.get_upgrade(i).display_name, cost, army.get_upgrade_income(i)]
 		_army_buttons[i].disabled = locked != "" or _player.gold < cost
-		_army_buttons[i].tooltip_text = locked
+		var mob: MobData = army.get_upgrade(i).mob
+		var detail: String = mob.description if mob != null else "Постоянное усиление армии и дохода"
+		_army_buttons[i].tooltip_text = locked if locked != "" else detail
 	_refresh_choices()
 	_selection.visible = selected_tower != null
 	if selected_tower != null:
@@ -113,6 +116,38 @@ func refresh(selected_tower: TowerState) -> void:
 				selected_tower.level, _player.get_sell_price(selected_tower)]
 	_ready.disabled = _player.is_ready
 	_ready.text = "Ждём остальных…" if _player.is_ready else "Готов ▶"
+
+
+func _rite_context(rite: RiteData) -> String:
+	var on_field: int = 0
+	var in_reserve: int = 0
+	for tower: TowerState in _player.get_all_towers():
+		var useful: bool = tower.data.god == rite.god if rite.target == RiteData.Target.IDOL \
+				else _player.check_tower_rite(rite, tower.id) == ""
+		if not useful:
+			continue
+		if _player.reserve.has(tower):
+			in_reserve += 1
+		else:
+			on_field += 1
+	if on_field == 0 and in_reserve == 0:
+		return "Сейчас нет подходящих построек"
+	return "%s: поле %d · запас %d" % [
+			"Усилит" if rite.target == RiteData.Target.IDOL else "Цели", on_field, in_reserve]
+
+
+func _upgrade_context() -> String:
+	if not _player.shop.can_upgrade():
+		return "Максимальный магазин: доступны пробуждения зачарованных построек ур.3"
+	var next_level: int = _player.shop.level + 1
+	var before: int = _player.field.path_length
+	var after: int = _sim.config.board.get_path_length(next_level)
+	var text: String = "Путь %d → %d клеток · резерв %d → %d" % [before, after,
+			_player.get_reserve_capacity(), _sim.config.reserve_capacity_by_level[next_level - 1]]
+	text += "\nБольше предложений и доступ к заговорам следующего тира."
+	if next_level == 4:
+		text += "\nПробуждение: постройка ур.3 с чарами получает силу или размах."
+	return text
 
 
 func _refresh_choices() -> void:

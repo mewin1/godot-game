@@ -191,6 +191,10 @@ func state_hash() -> int:
 	var hasher: StateHasher = StateHasher.new()
 	hasher.add_many([round_number, phase, phase_tick, tick_count, siege_leader])
 	hasher.add_many(opponent_of)
+	hasher.add(_rng.state)
+	hasher.add_many([_siege_leader_hp_lost, _siege_damage_remainder])
+	for attacker: int in siege_attackers:
+		hasher.add_many([attacker, _siege_damage_by_attacker.get(attacker, 0)])
 	for player: PlayerState in players:
 		player.add_to_hash(hasher)
 	hasher.add_many([ghost_target, ghost_source])
@@ -263,6 +267,7 @@ func _start_round(number: int) -> void:
 		player.army_damage_dealt = 0
 		player.hp_lost_this_round = 0
 		player.raw_breach_damage = 0
+		player.limited_breach_damage = 0
 		player.army.temporary_mobs.clear()
 		if number > 1:
 			player.shop.on_round_started()
@@ -282,13 +287,13 @@ func _start_wave() -> void:
 		player.end_prep()
 	for player: PlayerState in alive:
 		player.field.start_wave()
-		WaveBuilder.schedule_wave(config, player.field, round_number, _collect_armies(player.index))
+		WaveBuilder.schedule_wave(config, player.field, round_number, build_incoming_armies(player.index))
 	_start_ghost_wave()
 	phase_changed.emit(phase)
 
 
-## Армии, которые придут на поле игрока (свежие юниты для каждого маршрута).
-func _collect_armies(receiver_index: int) -> Array[MobState]:
+## Снимок входящих армий для боя и предпросмотра, без изменения состояния или RNG.
+func build_incoming_armies(receiver_index: int) -> Array[MobState]:
 	var armies: Array[MobState] = []
 	if round_number < config.army_first_round:
 		return armies
@@ -397,28 +402,36 @@ func _tick_ghost_field(timed_out: bool) -> bool:
 func _collect_field_results(player: PlayerState) -> void:
 	var field: FieldState = player.field
 	player.gold += field.pending_kill_gold
-	var multiplier: int = config.get_breach_multiplier(round_number)
 	var hp_before: int = player.hero_hp
 	for mob: MobState in field.pending_breaches:
-		var damage: int = mob.breach_damage * multiplier
-		if player.index == siege_leader and siege_attackers.has(mob.sender_index):
-			damage = _reduce_siege_damage(damage)
-		# Отрицательный остаток нужен тай-брейку, но за HP после смерти не платим.
-		var actual_damage: int = mini(maxi(0, player.hero_hp), damage)
-		player.hero_hp -= damage
-		player.hp_lost_this_round += actual_damage
-		player.raw_breach_damage += damage
-		if mob.sender_index >= 0 and actual_damage > 0:
-			var sender: PlayerState = players[mob.sender_index]
-			sender.gold += actual_damage * config.army_gold_per_hp + mob.data.breach_gold_to_sender
-			sender.army_damage_dealt += actual_damage
-		if player.index == siege_leader:
-			_record_siege_damage(mob.sender_index, actual_damage)
+		_apply_breach(player, mob)
 	field.clear_pending()
 	if player.hero_hp < hp_before:
 		player.notify_hp_lost(self)
 	if player.hero_hp <= 0 and player.fell_tick < 0:
 		player.fell_tick = player.field.wave_tick if config.synchronized_battle else tick_count
+
+
+func _apply_breach(player: PlayerState, mob: MobState) -> void:
+	var damage: int = mob.breach_damage * config.get_breach_multiplier(round_number)
+	if player.index == siege_leader and siege_attackers.has(mob.sender_index):
+		damage = _reduce_siege_damage(damage)
+	player.raw_breach_damage += damage
+	var limit: int = config.get_breach_limit(round_number)
+	if limit > 0:
+		damage = mini(damage, maxi(0, limit - player.limited_breach_damage))
+	player.limited_breach_damage += damage
+	# Отрицательный остаток нужен тай-брейку, но за HP после смерти не платим.
+	var actual_damage: int = mini(maxi(0, player.hero_hp), damage)
+	player.hero_hp -= damage
+	player.hp_lost_this_round += actual_damage
+	player.field.breach_resolved.emit(mob, actual_damage)
+	if mob.sender_index >= 0 and actual_damage > 0:
+		var sender: PlayerState = players[mob.sender_index]
+		sender.gold += actual_damage * config.army_gold_per_hp + mob.data.breach_gold_to_sender
+		sender.army_damage_dealt += actual_damage
+	if player.index == siege_leader:
+		_record_siege_damage(mob.sender_index, actual_damage)
 
 
 ## Урон армии атакующего по лидеру осады: siege_leader_damage_percent от полного.

@@ -333,3 +333,86 @@ func test_breach_rewards_only_for_remaining_hp() -> void:
 	assert_eq(sender.army_damage_dealt, 2)
 	assert_eq(sender.gold - gold_before, 2 * _config.army_gold_per_hp + 7)
 	assert_eq(defender.fell_tick, fell_tick)
+
+
+func test_round_breach_limit_is_shared_and_does_not_pay_for_excess() -> void:
+	_config.breach_limits = [4, 8, 12, 16, 20]
+	_config.breach_multiplier_start_rounds = []
+	var sim: MatchSim = _make_match()
+	var defender: PlayerState = sim.players[0]
+	var sender: PlayerState = sim.players[1]
+	var gold_before: int = sender.gold
+	watch_signals(defender.field)
+	for i: int in 3:
+		var mob: MobState = MobState.create(_config.army_mob)
+		mob.breach_damage = 3
+		mob.sender_index = -1 if i == 0 else 1
+		defender.field.pending_breaches.append(mob)
+		sim._collect_field_results(defender)
+	assert_eq(defender.hero_hp, _config.hero_hp - 4)
+	assert_eq(defender.hp_lost_this_round, 4)
+	assert_eq(defender.raw_breach_damage, 9)
+	assert_eq(sender.army_damage_dealt, 1)
+	assert_eq(sender.gold - gold_before, _config.army_gold_per_hp)
+	assert_signal_emit_count(defender.field, "breach_resolved", 3)
+	sim._start_round(2)
+	assert_eq(defender.limited_breach_damage, 0)
+	assert_eq(defender.raw_breach_damage, 0)
+
+
+func test_breach_limit_progression_and_legacy_unlimited() -> void:
+	assert_eq(_config.get_breach_limit(20), 0)
+	_config.breach_limits = [4, 8, 12, 16, 20]
+	for number: int in [1, 4, 5, 8, 9, 12, 13, 16, 17, 40]:
+		assert_eq(_config.get_breach_limit(number), mini(20, 4 * ((number - 1) / 4 + 1)))
+
+
+func test_siege_round_uses_one_limit_for_both_attackers() -> void:
+	_config.breach_limits = [4]
+	var sim: MatchSim = MatchSim.new(_config, SEED, 3, 3)
+	sim.start()
+	sim.siege_leader = 0
+	sim.siege_attackers = [1, 2]
+	sim._siege_damage_by_attacker = {1: 0, 2: 0}
+	var defender: PlayerState = sim.players[0]
+	for sender: int in [1, 2]:
+		var mob: MobState = MobState.create(_config.army_mob)
+		mob.sender_index = sender
+		mob.breach_damage = 6
+		defender.field.pending_breaches.append(mob)
+		sim._collect_field_results(defender)
+	assert_eq(defender.hp_lost_this_round, 4)
+	assert_eq(defender.raw_breach_damage, 6, "осадное снижение до общего предела")
+	assert_eq(sim.players[1].army_damage_dealt, 3)
+	assert_eq(sim.players[2].army_damage_dealt, 1)
+	assert_eq(sim._siege_leader_hp_lost, 4)
+
+
+func test_limit_usage_changes_hash_and_future_damage_even_with_same_hp() -> void:
+	_config.breach_limits = [4]
+	var first: MatchSim = _make_match()
+	var second: MatchSim = _make_match()
+	first.players[0].limited_breach_damage = 2
+	assert_ne(first.state_hash(), second.state_hash())
+	for sim: MatchSim in [first, second]:
+		var mob: MobState = MobState.create(_config.army_mob)
+		mob.breach_damage = 4
+		sim.players[0].field.pending_breaches.append(mob)
+		sim._collect_field_results(sim.players[0])
+	assert_eq(first.players[0].hero_hp - second.players[0].hero_hp, 2)
+
+
+func test_incoming_preview_matches_spawned_army_without_consuming_rng() -> void:
+	var sim: MatchSim = _make_match()
+	var before: int = sim.state_hash()
+	var preview: Array[MobState] = sim.build_incoming_armies(0)
+	assert_eq(sim.state_hash(), before)
+	_skip_prep(sim)
+	var actual: Array[MobState] = []
+	for entry: SpawnEntry in sim.players[0].field._spawn_queue:
+		if entry.mob.sender_index == 1:
+			actual.append(entry.mob)
+	assert_eq(preview.size(), actual.size())
+	for i: int in preview.size():
+		assert_eq(preview[i].max_hp, actual[i].max_hp)
+		assert_eq(preview[i].speed, actual[i].speed)

@@ -51,6 +51,8 @@ var army_damage_dealt: int = 0
 ## Реальные потери и потенциальный урон прорывов за раунд, раздельно для аналитики.
 var hp_lost_this_round: int = 0
 var raw_breach_damage: int = 0
+## Засчитанный урон до ограничения остатком HP; расходует общий предел раунда.
+var limited_breach_damage: int = 0
 var is_ready: bool = false
 ## Бафы на выбор (пусто — выбирать нечего).
 var buff_offers: Array[SendBuffData] = []
@@ -367,7 +369,8 @@ func end_prep() -> void:
 
 func add_to_hash(hasher: StateHasher) -> void:
 	hasher.add_many([index, hero_hp, gold, income, int(is_alive), place, fell_tick,
-			army_damage_dealt, hp_lost_this_round, raw_breach_damage, buff_offers.size(), skill_uses, int(is_skill_used_this_round),
+			army_damage_dealt, hp_lost_this_round, raw_breach_damage, limited_breach_damage,
+			buff_offers.size(), skill_uses, int(is_skill_used_this_round),
 			int(is_hero_triggered), free_rerolls_left, next_tower_bonus_levels,
 			discover_offers.size(), gift_towers.size()])
 	hasher.add_string(String(hero.id) if hero != null else "-")
@@ -543,22 +546,31 @@ func _apply_idol_rite(rite: RiteData, slot: int) -> String:
 	return ""
 
 
-func _apply_tower_rite(rite: RiteData, tower_id: int) -> String:
+## Проверка цели общая для покупки и подсказок; не изменяет башню и кошелёк.
+func check_tower_rite(rite: RiteData, tower_id: int) -> String:
 	var tower: TowerState = get_owned_tower(tower_id)
 	if tower == null:
 		return "Выберите башню на поле или в резерве"
 	if rite.effect == RiteData.Effect.ENCHANT_RATE and not tower.data.attacks:
 		return "Ритм подходит только стреляющей постройке"
-	var is_awakening: bool = rite.effect >= RiteData.Effect.AWAKEN_WIDE
-	if is_awakening:
+	if rite.effect >= RiteData.Effect.AWAKEN_WIDE:
 		if tower.level < _config.max_tower_level or tower.enchantment < 0:
 			return "Пробуждение требует башню 3-го уровня с чарами"
 		if tower.awakening >= 0:
 			return "Башня уже пробуждена"
+	elif tower.enchantment >= 0:
+		return "На башне уже есть чары; сохраняются при слиянии"
+	return ""
+
+
+func _apply_tower_rite(rite: RiteData, tower_id: int) -> String:
+	var error: String = check_tower_rite(rite, tower_id)
+	if error != "":
+		return error
+	var tower: TowerState = get_owned_tower(tower_id)
+	if rite.effect >= RiteData.Effect.AWAKEN_WIDE:
 		tower.awakening = rite.effect
 	else:
-		if tower.enchantment >= 0:
-			return "На башне уже есть чары; сохраняются при слиянии"
 		tower.enchantment = rite.effect
 	_add_investment(tower, rite.cost)
 	return ""

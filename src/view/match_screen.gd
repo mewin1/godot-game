@@ -37,7 +37,6 @@ var _speed_index: int = 0
 var _was_prep_shown: bool = true
 var _banner: Control
 var _was_enraged: bool = false
-var _hp_at_round_start: int = 0
 ## В каком раунде выбыл каждый игрок (индекс → раунд) — для таблицы итогов.
 var _elimination_rounds: Dictionary[int, int] = {}
 
@@ -279,9 +278,6 @@ func _refresh_views() -> void:
 	_my_view.selected_tower_id = _selected_tower_id
 	_my_view.is_under_siege = _sim.siege_leader == HUMAN_INDEX and me.is_alive \
 			and _sim.phase != MatchSim.Phase.OVER
-	var multiplier: int = _sim.config.get_breach_multiplier(_sim.round_number)
-	_my_view.breach_multiplier = multiplier
-	_opponent_view.breach_multiplier = multiplier
 	_shop_panel.visible = is_prep and me.is_alive
 	_shop_panel.refresh(me.get_owned_tower(_selected_tower_id))
 	_inventory.refresh(me, is_prep and me.is_alive)
@@ -497,7 +493,7 @@ func _on_sim_round_finished(_round_number: int) -> void:
 		lines.append("Бой с призраком: урон армии не засчитывается")
 	else:
 		lines.append("Ваша армия сняла %d HP у: %s" % [me.army_damage_dealt, target])
-	var lost: int = _hp_at_round_start - me.hero_hp
+	var lost: int = me.hp_lost_this_round
 	lines.append("Вы потеряли %d HP" % lost if lost > 0 else "Терем устоял без потерь")
 	if me.army.rage_percent > 0:
 		lines.append("Армия не дошла — в следующем раунде злее: +%d%% HP" % me.army.rage_percent)
@@ -516,7 +512,6 @@ func _round_target_name() -> String:
 
 
 func _on_sim_round_started(round_number: int) -> void:
-	_hp_at_round_start = _human().hero_hp
 	if not _sim.is_siege_round(round_number):
 		_show_banner("Раунд %d" % round_number)
 		_sound_bank.play(&"round", 0.0)

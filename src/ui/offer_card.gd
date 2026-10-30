@@ -74,13 +74,16 @@ func show_offer(tower_data: TowerData) -> void:
 
 
 ## Заговор перетаскивается прямо на идол или собственную постройку.
-func show_rite(rite_data: RiteData) -> void:
+func show_rite(rite_data: RiteData, context: String = "") -> void:
 	rite = rite_data
 	data = null
 	_rite_label.visible = true
-	_rite_label.text = "%s\n%s" % [rite.display_name, rite.description.get_slice(". ", 0)]
+	var detail: String = context if context != "" else rite.description.get_slice(". ", 0)
+	_rite_label.text = "%s\n%s" % [rite.display_name, detail]
 	tooltip_text = "%s\n%s · %d зол." % [rite.description,
 			"На идол" if rite.target == RiteData.Target.IDOL else "На башню", rite.cost]
+	if context != "":
+		tooltip_text += "\n" + context
 	queue_redraw()
 
 
