@@ -20,6 +20,18 @@ func _run() -> void:
 		quit(1)
 		return
 	var sim: MatchSim = value
+	for i: int in 4:
+		await process_frame
+	var selector_value: Variant = scene.get("_hero_select")
+	if not (selector_value is HeroSelectPanel):
+		quit(1)
+		return
+	var selector: HeroSelectPanel = selector_value
+	assert(selector != null and selector.visible)
+	assert(sim.active_gods.size() == 4)
+	for god: StringName in sim.active_gods:
+		assert(selector._draft_label.text.contains(IdolSlot.god_name(god)))
+	_check_layout(scene)
 	var player: PlayerState = sim.players[0]
 	# Худший случай по месту: Василиса, магазин 4, семь карточек, полный резерв и оба выбора.
 	for hero: HeroData in sim.config.heroes:

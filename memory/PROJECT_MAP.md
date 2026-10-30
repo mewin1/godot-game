@@ -11,6 +11,10 @@
 | Фазы, пары, призрак, осада, смерть и награды | `src/sim/match_sim.gd` | `test_match`, `test_lobby`, `test_divine_rework` |
 | Движение, цели, выстрелы, лечение, убийства | `src/sim/field_state.gd`, `mob_state.gd` | `test_field_state`, `test_buildings_mobs` |
 | Ветер, горение, мокрота и вероятностная цепь | `src/sim/divine_combat.gd`, `field_state.gd` | `test_divine_rework`, `test_water_lightning` |
+| Статусы, реакции, холод и физический финишер | `src/sim/reaction_resolver.gd`, `data/reactions/`, `divine_combat.gd`, `mob_state.gd` | `test_reactions`, `test_new_idols` |
+| Проклятие и разнос ветром | `src/sim/curse_combat.gd`, `wind_reactions.gd` | `test_reactions` |
+| Драфт и фильтр контента | `src/sim/pantheon_draft.gd`, `match_sim.gd`, `shop_state.gd`, `player_state.gd` | `test_pantheon_draft` (все 35 четвёрок) |
+| Справка реакций и метки в бою | `src/ui/reaction_guide.gd`, `shop_panel.gd`, `src/view/battle_layer.gd` | smoke, живой запуск |
 | Покупка, перенос, резерв, подарок, слияние, продажа | `src/sim/player_state.gd`, `tower_state.gd`, `commands/` | `test_economy`, `test_divine_rework`, smoke |
 | Витрина, заговоры, вероятность выпадения | `src/sim/shop_state.gd`, `data/game_config.tres`, `data/rites/` | `test_divine_rework`, `test_economy` |
 | Идолы и постоянные усиления | `src/sim/idol_state.gd`, `src/sim/data/rite_data.gd`, `player_state.gd` | `test_divine_rework` |

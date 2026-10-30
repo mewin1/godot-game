@@ -178,3 +178,51 @@ func test_active_draft_and_bots_replay_identically_through_battle() -> void:
 		if tick_index % 60 == 0:
 			assert_eq(first.state_hash(), second.state_hash())
 	assert_gt(first.round_number, 2)
+
+
+func test_all_35_drafts_have_real_reactive_build_with_two_or_three_gods() -> void:
+	var brain: BotBrain = BotBrain.new(0)
+	for a: int in 4:
+		for b: int in range(a + 1, 5):
+			for c: int in range(b + 1, 6):
+				for d: int in range(c + 1, 7):
+					var gods: Array[StringName] = [_config.gods[a], _config.gods[b],
+							_config.gods[c], _config.gods[d]]
+					var found: bool = false
+					for first: int in 3:
+						for second: int in range(first + 1, 4):
+							found = found or _try_reactive_build([gods[first], gods[second]], brain)
+					if not found:
+						for excluded: int in 4:
+							var build: Array[StringName] = gods.duplicate()
+							build.remove_at(excluded)
+							found = found or _try_reactive_build(build, brain)
+					assert_true(found, "рабочая реакция в бою: %s" % str(gods))
+
+
+func _try_reactive_build(gods: Array[StringName], brain: BotBrain) -> bool:
+	var field: FieldState = FieldState.new(_config, 3, 611)
+	var reactions: Dictionary[StringName, int] = {}
+	field.effect_played.connect(func(effect_id: StringName, _target: MobState) -> void:
+		reactions[effect_id] = reactions.get(effect_id, 0) + 1)
+	for god: StringName in gods:
+		for tower: TowerData in _config.towers:
+			if tower.god != god or tower.tier != 1:
+				continue
+			var spot: Vector3i = brain.find_best_spot(field, tower)
+			if spot.z < 0:
+				return false
+			field.add_tower(tower, Vector2i(spot.x, spot.y), spot.z)
+			break
+	var mob: MobState = MobState.create(_config.wave_mob)
+	mob.hp = 150
+	mob.max_hp = 150
+	field.schedule_spawn(mob, 0)
+	for tick_index: int in 800:
+		field.tick()
+		if field.is_wave_done():
+			break
+	var reaction_count: int = 0
+	for rule: ReactionData in _config.reactions:
+		reaction_count += reactions.get(rule.id, 0)
+	return mob.hp <= 0 and reaction_count > 0

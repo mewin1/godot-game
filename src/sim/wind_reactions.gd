@@ -30,13 +30,16 @@ static func apply(field: FieldState, mob: MobState) -> void:
 	field.effect_played.emit(rule.id, mob)
 
 
-static func _spread(source: MobState, target: MobState, status: StringName, ticks: int, slow: int) -> void:
+static func _spread(source: MobState, target: MobState, status: StringName,
+		ticks: int, slow: int) -> void:
 	match status:
 		&"wet":
 			target.wet_ticks_left = maxi(target.wet_ticks_left, mini(source.wet_ticks_left, ticks))
 		&"burn":
-			target.burn_ticks_left = maxi(target.burn_ticks_left, mini(source.burn_ticks_left, ticks))
+			target.burn_ticks_left = maxi(target.burn_ticks_left,
+					mini(source.burn_ticks_left, ticks))
 			target.burn_damage = maxi(target.burn_damage, source.burn_damage)
 		&"cold":
 			target.cold_ticks_left = maxi(target.cold_ticks_left, ticks)
-			target.cold_slow_percent = maxi(target.cold_slow_percent, maxi(source.cold_slow_percent, slow))
+			target.cold_slow_percent = maxi(target.cold_slow_percent,
+					maxi(source.cold_slow_percent, slow))

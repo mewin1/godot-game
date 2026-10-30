@@ -4,7 +4,7 @@ extends RefCounted
 
 ## Таблица для наведения, без второго набора правил в интерфейсе.
 static func text(config: GameConfig) -> String:
-	var lines: PackedStringArray = ["На цели не больше двух статусов. Стрелка — порядок удара."]
+	var lines: PackedStringArray = ["Максимум два статуса; третий не накладывается. Стрелка — порядок удара."]
 	var seen: Array[String] = []
 	for rule: ReactionData in config.reactions:
 		if rule.explanation.is_empty() or seen.has(rule.explanation):

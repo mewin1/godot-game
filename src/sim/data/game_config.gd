@@ -23,6 +23,7 @@ extends Resource
 @export var battle_speeds: Array[int] = [1, 2, 5]
 ## -1 оставляет старые заряды в исторических тестах; активная сборка использует шанс.
 @export var chain_chance_percent: int = -1
+## Для старых фикстур без реакций; активный бонус мокроты задаёт ReactionData.
 @export var wet_chain_chance_percent: int = 80
 @export var curse_spread_radius_milli: int = 1500
 @export var chain_hits: int = 3

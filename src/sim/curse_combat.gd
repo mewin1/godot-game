@@ -46,7 +46,8 @@ static func tick(field: FieldState, mob: MobState) -> void:
 
 static func _find_wet(field: FieldState, origin: MobState) -> MobState:
 	var best: MobState = null
-	var best_distance: int = field.config.curse_spread_radius_milli * field.config.curse_spread_radius_milli + 1
+	var radius: int = field.config.curse_spread_radius_milli
+	var best_distance: int = radius * radius + 1
 	var point: Vector2i = field.get_mob_position(origin)
 	for candidate: MobState in field.mobs:
 		if candidate == origin or not candidate.is_alive() or candidate.wet_ticks_left <= 0:

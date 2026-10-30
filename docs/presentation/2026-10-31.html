@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="ru"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Застава · Ночь реакций</title>
+<style>
+:root{color-scheme:dark;--bg:#141b20;--panel:#1e292e;--gold:#edca86;--text:#eee8dc;--muted:#bac4c4}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:17px/1.6 system-ui,sans-serif}
+main{max-width:1040px;margin:auto;padding:55px 28px}h1{font-size:clamp(34px,6vw,64px);line-height:1.1;letter-spacing:-2px;margin:12px 0 24px}h2{color:var(--gold);font-size:24px;margin-top:40px}.eyebrow{letter-spacing:3px;color:var(--gold);font-size:13px;text-transform:uppercase}.lead{font-size:21px;max-width:760px;color:var(--muted)}.stats,.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:28px 0}.stat,.card{background:var(--panel);border:1px solid #354249;border-radius:12px;padding:20px}.stat strong{font-size:38px;display:block;color:var(--gold)}.stat span{color:var(--muted);font-size:14px}.card b{color:var(--gold)}.card img{width:54px;height:54px;float:right;margin-left:10px}p{margin:10px 0}table{width:100%;border-collapse:collapse;font-size:15px}td,th{padding:12px 10px;border-bottom:1px solid #354249;text-align:left}th{color:var(--gold)}.note{border-left:3px solid var(--gold);padding:12px 20px;background:var(--panel);margin-top:24px;color:var(--muted)}code{color:var(--gold)}a{color:var(--gold)}footer{margin-top:36px;color:var(--muted);font-size:14px}@media(max-width:700px){.stats,.cards{grid-template-columns:1fr}main{padding:30px 18px}table{font-size:13px}td,th{padding:10px 5px}}
+</style>
+<main>
+<div class="eyebrow">31 октября 2026 · локальный патчлог</div>
+<h1>Стихии встречаются<br>на заставе</h1>
+<p class="lead">Семь богов, четыре на каждый матч. Статусы готовят направленные реакции, а механизмы Войны связывают пары физическим добиванием.</p>
+<div class="stats"><div class="stat"><strong>7 / 4</strong><span>богов в пантеоне / общем драфте</span></div><div class="stat"><strong>21</strong><span>активная постройка, по три на бога</span></div><div class="stat"><strong>35 / 35</strong><span>четвёрок с проверенным реактивным билдом</span></div></div>
+<h2>Что появилось</h2>
+<div class="cards">
+<div class="card"><img src="../../assets/towers/ice_1.svg" alt=""><b>Лёд</b><p>Холод тормозит, мокрота позволяет заморозить. По горению — Таяние, по проклятию — Консервация.</p></div>
+<div class="card"><img src="../../assets/towers/perun.svg" alt=""><b>Чернобог</b><p>Проклятие взрывается по таймеру. Зараза переносит его на мокрого; повторные удары не откладывают взрыв.</p></div>
+<div class="card"><img src="../../assets/towers/rocket.svg" alt=""><b>Бог войны</b><p>Самострел, осадный станок и ракеты. Раскол ломает заморозку; Добивание расходует две метки.</p></div>
+</div>
+<p>Общий драфт виден до героя. Лавка, заговоры и подарки соблюдают пул; шесть героев дают стартовую постройку своего бога. Три основы идолов сохранены, для новых богов добавлены семь заговоров.</p>
+<p>Вода и ветер теперь без прямого урона. В бою видны статусы и названия реакций; в лавке — таблица <b>«Реакции ⓘ»</b> по наведению. Третий статус ждёт освобождения одного из двух мест.</p>
+<h2>Пары, которые можно попробовать</h2>
+<table><tr><th>Подготовка → удар</th><th>Результат</th></tr><tr><td>Мокрота → Огонь / Молния / Лёд</td><td>Пар и тушение / сильная Цепь / Заморозка</td></tr><tr><td>Горение → Молния / Лёд / Ветер</td><td>Прожарка со станом / Таяние / разнос огня</td></tr><tr><td>Проклятие → Лёд</td><td>Позже, но сильнее: однократная Консервация</td></tr><tr><td>Заморозка / две метки → Физика</td><td>Раскол / Добивание с поглощением меток</td></tr></table>
+<h2>Проверено</h2>
+<p><b>238/238 GUT, 7943 проверки.</b> Импорт, повтор матчей с ботами, хэши статусов, щиты, смерть и награды. Smoke проверяет пул до героя, размеры 1280×720 и 1920×1080, полный резерв, подарки, идолы, поворот и продажу. Запуск без окна прошёл.</p>
+<p>Все 35 драфтов проверены по графу и фильтрам. В настоящем бою для каждой четвёрки найден билд из двух или трёх богов, который убивает цель на 150 HP и запускает реакцию. Это проверка работоспособности, не равного баланса.</p>
+<h2>Темп: экономика сохранена</h2>
+<table><tr><th>24 одинаковых сида, 5 игроков</th><th>Бот v3</th><th>Бот v4</th></tr><tr><td>Медиана раундов</td><td>16,5</td><td>16</td></tr><tr><td>Диапазон</td><td>11–20</td><td>11–20</td></tr><tr><td>Полная подготовка + бой</td><td>21,5 мин</td><td>21,7 мин</td></tr><tr><td>Доступ к пробуждению</td><td>25%</td><td>32,5%</td></tr><tr><td>Смерти из половины HP</td><td>0</td><td>0</td></tr></table>
+<p>Бот v4 использует воду с новыми партнёрами и учитывает стартовый дар до покупок. Рост армии 14% и пределы потерь сохранены: оснований менять экономику пока нет.</p>
+<div class="note"><b>Следующий шаг — живой матч.</b> X11/Wayland в среде недоступны, настоящий рендер не проверен. Нужно оценить метки и подсказки глазами, расход статусов и реальное время с готовностью. Вода и Ветер — поддержка; сами не убивают. Иконки новых построек пока переиспользованы. Привязки башен и резисты не вводились.</div>
+<footer>Ничего не опубликовано и не отправлено в сеть. Исходные правки автора сохранены. <a href="../19_elemental_reactions.md">Подробности и команды повторения</a> · <a href="../CURRENT_RULES.md">Действующие правила</a></footer>
+</main></html>
