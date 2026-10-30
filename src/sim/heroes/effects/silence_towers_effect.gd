@@ -22,3 +22,7 @@ func bot_wants_to_use(sim: MatchSim, player: PlayerState) -> bool:
 	for field: FieldState in sim.get_army_target_fields(player.index):
 		units += field.count_alive_mobs_of(player.index)
 	return units >= bot_min_units
+
+
+func affects_opponents() -> bool:
+	return true

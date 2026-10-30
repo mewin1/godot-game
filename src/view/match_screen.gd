@@ -411,6 +411,9 @@ func _on_sim_hero_event(player_index: int, message: String) -> void:
 		_sound_bank.play(&"skill", 0.0)
 		return
 	var attacker: PlayerState = _sim.players[player_index]
+	var skill: HeroSkillData = attacker.hero.skill if attacker.hero != null else null
+	if skill == null or not skill.effect.affects_opponents():
+		return
 	if _sim.get_army_target_fields(player_index).has(_human().field):
 		_show_toast("%s (%s): %s" % [attacker.display_name, attacker.hero.display_name, message])
 

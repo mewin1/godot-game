@@ -21,6 +21,11 @@ func activate(_sim: MatchSim, _player: PlayerState) -> String:
 	return "Навык ничего не делает"
 
 
+## Задевает ли эффект соперников (их стоит предупредить на экране).
+func affects_opponents() -> bool:
+	return false
+
+
 ## Подсказка боту: стоит ли жать навык сейчас (проверки цены и фазы — снаружи).
 func bot_wants_to_use(_sim: MatchSim, _player: PlayerState) -> bool:
 	return true

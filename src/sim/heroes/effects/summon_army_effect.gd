@@ -12,3 +12,7 @@ func activate(_sim: MatchSim, player: PlayerState) -> String:
 	player.field.play_effect(&"hero_skill")
 	player.hero_message = "Ватага: +%d «%s» в армию на эту волну" % [count, mob.display_name]
 	return ""
+
+
+func affects_opponents() -> bool:
+	return true
