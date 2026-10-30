@@ -6,11 +6,11 @@
 script = ExtResource("1")
 id = &"perun_charge"
 display_name = "Сговор грозы"
-description = "Разряд Перуна после 2 попаданий вместо 3. Предел: один раз."
+description = "Шанс цепи Перуна +10 процентных пунктов: 20% → 30%, по мокрым 80% → 90%. Две покупки."
 god = &"perun"
 target = 0
-effect = 1
-value = 1
+effect = 11
+value = 10
 cost = 8
 tier = 1
-max_purchases = 1
+max_purchases = 2

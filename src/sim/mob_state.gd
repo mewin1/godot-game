@@ -31,6 +31,7 @@ var heal_window_ticks: int = 0
 var heal_window_percent: int = 0
 ## Юнит злой армии (для отображения; HP уже учтено при создании).
 var is_angry: bool = false
+var wet_ticks_left: int = 0
 var charges: int = 0
 var charge_ticks_left: int = 0
 var burn_damage: int = 0

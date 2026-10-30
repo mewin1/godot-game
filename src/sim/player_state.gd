@@ -72,7 +72,7 @@ func _init(config: GameConfig, player_index: int, seed_value: int) -> void:
 	gold = config.start_gold
 	income = config.base_income
 	shop = ShopState.new(config)
-	field = FieldState.new(config, shop.level)
+	field = FieldState.new(config, shop.level, seed_value)
 	army = ArmyState.new(config)
 	rng = RandomNumberGenerator.new()
 	rng.seed = seed_value

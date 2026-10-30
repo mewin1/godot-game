@@ -18,6 +18,9 @@ extends Resource
 @export var battle_real_ticks: int = 800
 @export var battle_speed_thresholds: Array[int] = [400, 600]
 @export var battle_speeds: Array[int] = [1, 2, 5]
+## -1 оставляет старые заряды в исторических тестах; активная сборка использует шанс.
+@export var chain_chance_percent: int = -1
+@export var wet_chain_chance_percent: int = 80
 @export var chain_hits: int = 3
 @export var chain_percent: int = 40
 @export var chain_range_milli: int = 2000

@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="TowerData" format=3]
+
+[ext_resource type="Script" path="res://src/sim/data/tower_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"water"
+display_name = "Водяной желоб"
+god = &"water"
+school = &"water"
+tier = 2
+shape = Array[Vector2i]([Vector2i(0, 0), Vector2i(1, 0)])
+damage = 4
+cooldown_ticks = 20
+range_milli = 2500
+splash_radius_milli = 1000
+splash_percent = 100
+wet_ticks = 60
+wet_ticks_per_level = 20
+shop_weight = 5
+description = "Орошает группу: мокрота 3/4/5 с по уровням. Перун запускает цепь с шансом 80% вместо 20%. Сам по себе наносит мало урона."

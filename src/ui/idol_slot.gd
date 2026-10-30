@@ -15,13 +15,23 @@ func _init() -> void:
 
 
 ## Обновляет только отображение, без изменения идола.
-func refresh(state: IdolState, editable: bool) -> void:
+func refresh(state: IdolState, editable: bool, ticks_per_second: int = 20) -> void:
 	idol = state
 	can_edit = editable
-	tooltip_text = "Урон +%d%% · разряд: на %d ударов меньше · цепь +%d\n" % [
-			idol.damage_percent, idol.chain_reduction, idol.chain_targets]
-	tooltip_text += "Горение +%d%% · ветер +%d%% · длина +%.1f клетки" % [
-			idol.burn_percent, idol.wind_power, idol.wind_length_milli / 1000.0]
+	match idol.god:
+		&"perun":
+			tooltip_text = "Урон +%d%% · шанс цепи +%d п.п. · цепь +%d" % [
+					idol.damage_percent, idol.chain_chance_bonus, idol.chain_targets]
+		&"svarog":
+			tooltip_text = "Урон +%d%% · горение +%d%%" % [idol.damage_percent, idol.burn_percent]
+		&"stribog":
+			tooltip_text = "Сила ветра +%d%% · длина +%.1f клетки" % [
+					idol.wind_power, idol.wind_length_milli / 1000.0]
+		&"water":
+			tooltip_text = "Мокрота дольше на %.1f с" % (float(idol.wet_ticks) / ticks_per_second)
+		_:
+			tooltip_text = "Перетащите заговор, чтобы посвятить идол одной силе. Три места на выбор."
+
 	queue_redraw()
 
 
@@ -34,6 +44,8 @@ static func god_name(god: StringName) -> String:
 			return "Сварог"
 		&"stribog":
 			return "Стрибог"
+		&"water":
+			return "Вода"
 	return "Пустой идол"
 
 

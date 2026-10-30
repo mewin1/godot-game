@@ -282,7 +282,8 @@ func _refresh_views() -> void:
 	_shop_panel.refresh(me.get_owned_tower(_selected_tower_id))
 	_inventory.refresh(me, is_prep and me.is_alive)
 	for i: int in _idol_slots.size():
-		_idol_slots[i].refresh(me.field.idols[i], is_prep and me.is_alive)
+		_idol_slots[i].refresh(me.field.idols[i], is_prep and me.is_alive,
+				_sim.config.ticks_per_second)
 	var playback: int = _sim.get_battle_speed() * SPEEDS[_speed_index]
 	_my_view.playback_speed = playback
 	_opponent_view.playback_speed = playback

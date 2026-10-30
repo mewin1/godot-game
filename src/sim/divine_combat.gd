@@ -76,6 +76,8 @@ static func apply_wind(field: FieldState, mob: MobState) -> void:
 
 ## Горение тикает раз в секунду симуляции, заряд имеет срок жизни.
 static func tick_effects(field: FieldState, mob: MobState) -> void:
+	if mob.wet_ticks_left > 0:
+		mob.wet_ticks_left -= 1
 	if mob.charge_ticks_left > 0:
 		mob.charge_ticks_left -= 1
 		if mob.charge_ticks_left == 0:
@@ -94,10 +96,22 @@ static func tick_effects(field: FieldState, mob: MobState) -> void:
 
 ## Обычный удар может поджечь и вызвать ограниченную цепь, без рекурсивных срабатываний.
 static func hit(field: FieldState, tower: TowerState, mob: MobState, damage: int) -> void:
+	if not mob.is_alive():
+		return
+	var was_shielded: bool = mob.shield_left > 0
 	var was_burning: bool = mob.burn_ticks_left > 0
 	if was_burning:
 		damage += damage * tower.data.burning_target_bonus_percent / 100
 	field.deal_mob_damage(mob, damage)
+	if was_shielded:
+		return
+	if tower.data.wet_ticks > 0 and mob.is_alive():
+		var duration: int = tower.data.wet_ticks \
+				+ (tower.level - 1) * tower.data.wet_ticks_per_level
+		var water_idol: IdolState = field.get_idol(tower.data.god)
+		if water_idol != null:
+			duration += water_idol.wet_ticks
+		mob.wet_ticks_left = maxi(mob.wet_ticks_left, duration)
 	if tower.data.burn_percent > 0 and mob.is_alive():
 		var percent: int = tower.data.burn_percent
 		var idol: IdolState = field.get_idol(tower.data.god)
@@ -107,23 +121,42 @@ static func hit(field: FieldState, tower: TowerState, mob: MobState, damage: int
 		mob.burn_damage = maxi(mob.burn_damage, burn)
 		mob.burn_ticks_left = maxi(mob.burn_ticks_left, tower.data.burn_ticks)
 	if tower.data.god == &"perun":
-		_charge(field, tower, mob, damage)
+		if field.config.chain_chance_percent < 0:
+			_charge(field, tower, mob, damage)
+		elif field.roll_chance(chain_chance(field, mob)):
+			_chain(field, tower, mob, damage)
 
 
+## Шанс запуска определяется основной целью; мокрые дополнительные цели не бросают снова.
+static func chain_chance(field: FieldState, mob: MobState) -> int:
+	var chance: int = field.config.wet_chain_chance_percent if mob.wet_ticks_left > 0 \
+			else field.config.chain_chance_percent
+	var idol: IdolState = field.get_idol(&"perun")
+	if idol != null:
+		chance += idol.chain_chance_bonus
+	return clampi(chance, 0, 100)
+
+
+## Историческая модель зарядов остаётся только для старых фикстур.
 static func _charge(field: FieldState, tower: TowerState, mob: MobState, damage: int) -> void:
 	var required: int = field.config.chain_hits
-	var transitions: int = 1
 	var idol: IdolState = field.get_idol(&"perun")
 	if idol != null:
 		required = maxi(2, required - idol.chain_reduction)
+	mob.charges += 1
+	mob.charge_ticks_left = field.config.chain_lifetime_ticks
+	if mob.charges >= required:
+		mob.charges = 0
+		_chain(field, tower, mob, damage)
+
+
+static func _chain(field: FieldState, tower: TowerState, mob: MobState, damage: int) -> void:
+	var transitions: int = 1
+	var idol: IdolState = field.get_idol(&"perun")
+	if idol != null:
 		transitions += idol.chain_targets
 	if tower.awakening == RiteData.Effect.AWAKEN_WIDE:
 		transitions += field.config.awakening_extra_targets
-	mob.charges += 1
-	mob.charge_ticks_left = field.config.chain_lifetime_ticks
-	if mob.charges < required:
-		return
-	mob.charges = 0
 	var visited: Array[MobState] = [mob]
 	var previous: MobState = mob
 	for i: int in transitions:

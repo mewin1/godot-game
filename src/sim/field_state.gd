@@ -52,9 +52,11 @@ var _next_tower_id: int = 1
 var _next_mob_id: int = 1
 var _split_queue: Array[MobState] = []
 var _are_bonuses_dirty: bool = true
+var _combat_rng: RandomNumberGenerator = RandomNumberGenerator.new()
 
 
-func _init(game_config: GameConfig, shop_level: int = 1) -> void:
+func _init(game_config: GameConfig, shop_level: int = 1, combat_seed: int = 0) -> void:
+	_combat_rng.seed = combat_seed
 	_config = game_config
 	config = game_config
 	layout = game_config.board
@@ -181,6 +183,7 @@ func move_tower(tower: TowerState, anchor: Vector2i, rotation: int) -> bool:
 
 ## Ставит копии башен другого поля (для призрака). Поле должно быть того же уровня пути.
 func copy_towers_from(other: FieldState) -> void:
+	_combat_rng.state = other._combat_rng.state
 	path_length = other.path_length
 	enemy_army_slow_percent = other.enemy_army_slow_percent
 	knockback_milli = other.knockback_milli
@@ -188,6 +191,7 @@ func copy_towers_from(other: FieldState) -> void:
 	for source: TowerState in other.towers:
 		var tower: TowerState = add_tower(source.data, source.anchor, source.rotation)
 		tower.level = source.level
+		tower.cooldown_left = source.cooldown_left
 		tower.enchantment = source.enchantment
 		tower.awakening = source.awakening
 	for i: int in idols.size():
@@ -232,6 +236,15 @@ func schedule_spawn(mob: MobState, spawn_tick: int) -> void:
 	while index > 0 and _spawn_queue[index - 1].spawn_tick > spawn_tick:
 		index -= 1
 	_spawn_queue.insert(index, SpawnEntry.new(spawn_tick, mob))
+
+
+## Случайность боя отдельна от витрины. Крайние шансы не расходуют RNG.
+func roll_chance(percent: int) -> bool:
+	if percent <= 0:
+		return false
+	if percent >= 100:
+		return true
+	return _combat_rng.randi_range(1, 100) <= percent
 
 
 func start_wave() -> void:
@@ -336,6 +349,7 @@ func add_to_hash(hasher: StateHasher) -> void:
 	hasher.add(int(is_enraged))
 	hasher.add(silence_ticks_left)
 	hasher.add(_next_tower_id)
+	hasher.add(_combat_rng.state)
 	for idol: IdolState in idols:
 		idol.add_to_hash(hasher)
 	for tower: TowerState in towers:
@@ -344,7 +358,7 @@ func add_to_hash(hasher: StateHasher) -> void:
 		hasher.add_many([mob.id, mob.hp, mob.progress, mob.slow_percent, mob.slow_ticks_left,
 				mob.shield_left, mob.heal_cooldown, mob.heal_window_ticks,
 				mob.heal_window_percent, mob.speed, mob.armor, mob.max_hp,
-				mob.sender_index, mob.charges, mob.charge_ticks_left, mob.burn_damage,
+				mob.sender_index, mob.wet_ticks_left, mob.charges, mob.charge_ticks_left, mob.burn_damage,
 				mob.burn_ticks_left, mob.burn_cooldown, mob.wind_slow_percent, mob.wind_boost_percent])
 		hasher.add_string(mob.data.id)
 	hasher.add(_spawn_queue.size())
@@ -495,12 +509,13 @@ func _shoot(tower: TowerState, target: MobState) -> void:
 	_hit(target, damage, tower.data, tower)
 	if tower.data.splash_radius_milli <= 0:
 		return
+	var splash_radius: int = get_tower_splash_radius(tower)
 	var splash_damage: int = damage * tower.data.splash_percent / 100
 	for mob: MobState in mobs:
 		if mob == target or not mob.is_alive():
 			continue
 		var position: Vector2i = get_mob_position(mob)
-		if _is_in_range(target_position, position, tower.data.splash_radius_milli):
+		if _is_in_range(target_position, position, splash_radius):
 			_hit(mob, splash_damage, tower.data, tower)
 
 
@@ -608,6 +623,14 @@ func get_tower_cooldown(tower: TowerState) -> int:
 	if tower.enchantment == RiteData.Effect.ENCHANT_RATE:
 		rate += _config.enchant_rate_percent
 	return maxi(1, tower.data.cooldown_ticks * 100 / (100 + rate))
+
+
+## Радиус области удара общий для боя и отображения взрыва.
+func get_tower_splash_radius(tower: TowerState) -> int:
+	var radius: int = tower.data.splash_radius_milli
+	if radius > 0 and tower.awakening == RiteData.Effect.AWAKEN_WIDE:
+		radius += _config.enchant_range_milli
+	return radius
 
 
 func get_tower_range(tower: TowerState) -> int:

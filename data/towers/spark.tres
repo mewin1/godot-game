@@ -13,4 +13,4 @@ shape = Array[Vector2i]([Vector2i(0, 0)])
 damage = 12
 cooldown_ticks = 12
 range_milli = 2500
-description = "Общие заряды Перуна: каждое третье попадание выпускает цепь."
+description = "Шанс цепи 20%, по мокрой цели 80%. Дополнительная цель получает 40% удара."

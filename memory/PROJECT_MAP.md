@@ -10,7 +10,7 @@
 |---|---|---|
 | Фазы, пары, призрак, осада, смерть и награды | `src/sim/match_sim.gd` | `test_match`, `test_lobby`, `test_divine_rework` |
 | Движение, цели, выстрелы, лечение, убийства | `src/sim/field_state.gd`, `mob_state.gd` | `test_field_state`, `test_buildings_mobs` |
-| Ветер, горение, заряды и цепь | `src/sim/divine_combat.gd`, `field_state.gd` | `test_divine_rework` |
+| Ветер, горение, мокрота и вероятностная цепь | `src/sim/divine_combat.gd`, `field_state.gd` | `test_divine_rework`, `test_water_lightning` |
 | Покупка, перенос, резерв, подарок, слияние, продажа | `src/sim/player_state.gd`, `tower_state.gd`, `commands/` | `test_economy`, `test_divine_rework`, smoke |
 | Витрина, заговоры, вероятность выпадения | `src/sim/shop_state.gd`, `data/game_config.tres`, `data/rites/` | `test_divine_rework`, `test_economy` |
 | Идолы и постоянные усиления | `src/sim/idol_state.gd`, `src/sim/data/rite_data.gd`, `player_state.gd` | `test_divine_rework` |
@@ -35,6 +35,8 @@
 - **Постройка:** `TowerData` → `data/towers/<id>.tres` → активный список `config.towers`.
   Графика: SVG в `assets/towers/`, ресурс `data/visuals/towers/`, запись в visual catalog.
   Уникальное правило — маленький компонент поведения; не добавлять проверки имени башни в UI.
+- Проверка сочетания воды и Перуна: `tools/water_strategy_probe.gd` — равные
+  вложения/площадь, плотные и редкие/быстрые пачки. Это отдельные бои, не матчи.
 - **Моб:** `MobData` → `data/mobs/`; путь покупки через `ArmyUpgradeData` в `data/army/`
   и активном `config.army_upgrades`. Возможный бесплатный баф — `data/buffs/`.
   Добавить визуальный ресурс и описание контрмер. Базовые особые волны сейчас отключены.
@@ -81,6 +83,7 @@ python3 -I tools/analyze_logs.py logs/bots/<папка>
 - `FieldState` выполняет бой, отдаёт накопленные убийства/прорывы симуляции матча.
   Золото/HP героя начисляет `MatchSim`, не графика.
 - Отображение отправляет команды. Новые поля, влияющие на исход, включать в хэш состояния.
+  Броски боя — `FieldState.roll_chance()`, отдельный RNG с сидом, копируется призраку.
 - Общая перемотка выполняет настоящие тики: ускорять только спрайты нельзя.
 - Живые логи могут не иметь `match_end`; полный анализатор такие матчи пропускает.
 - Часть документов и активов описывает предыдущие сборки; сначала проверить текущий каталог.

@@ -46,8 +46,8 @@ func _mob(at_progress: int = 3000) -> MobState:
 	return mob
 
 
-func test_current_content_has_three_gods_and_six_towers() -> void:
-	assert_eq(_config.towers.size(), 6)
+func test_current_content_has_four_powers_and_seven_towers() -> void:
+	assert_eq(_config.towers.size(), 7)
 	assert_eq(_config.army_base_units, 5)
 	assert_true(_config.school_bonuses.is_empty())
 	assert_eq(_player.field.idols.size(), 3)
@@ -126,7 +126,7 @@ func test_idol_rite_dedicates_once_and_rejects_other_god() -> void:
 	_offer_rite(&"perun_charge")
 	assert_eq(_player.buy_rite(2, 0), "")
 	assert_eq(_player.field.idols[0].god, &"perun")
-	assert_eq(_player.field.idols[0].chain_reduction, 1)
+	assert_eq(_player.field.idols[0].chain_chance_bonus, 10)
 	_offer_rite(&"svarog_burn")
 	var before: int = _player.gold
 	assert_ne(_player.buy_rite(2, 0), "")
@@ -142,12 +142,13 @@ func test_same_god_cannot_occupy_second_idol() -> void:
 	assert_eq(_player.field.idols[1].god, &"")
 
 
-func test_idol_reduction_cannot_be_bought_past_cap() -> void:
-	_offer_rite(&"perun_charge")
-	_player.buy_rite(2, 0)
+func test_idol_chance_cannot_be_bought_past_cap() -> void:
+	for i: int in 2:
+		_offer_rite(&"perun_charge")
+		assert_eq(_player.buy_rite(2, 0), "")
 	_offer_rite(&"perun_charge")
 	assert_ne(_player.buy_rite(2, 0), "")
-	assert_eq(_player.field.idols[0].chain_reduction, 1)
+	assert_eq(_player.field.idols[0].chain_chance_bonus, 20)
 
 
 func test_tower_rite_can_enchant_reserved_tower_only_once() -> void:
@@ -173,7 +174,8 @@ func test_awakening_requires_max_level_and_existing_enchantment() -> void:
 	assert_ne(_player.buy_rite(2, tower.id), "")
 
 
-func test_perun_three_hits_chain_once_without_recursion() -> void:
+func test_legacy_perun_three_hits_chain_once_without_recursion() -> void:
+	_config.chain_chance_percent = -1
 	var tower: TowerState = _player.field.add_tower(_tower(&"spark"), Vector2i(2, 4), 0)
 	var first: MobState = _mob(3000)
 	var next: MobState = _mob(3500)
@@ -185,15 +187,13 @@ func test_perun_three_hits_chain_once_without_recursion() -> void:
 	assert_eq(next.charges, 0)
 
 
-func test_perun_idol_reduces_shared_charge_to_two_hits() -> void:
+func test_perun_idol_increases_dry_and_wet_chances() -> void:
 	_offer_rite(&"perun_charge")
 	_player.buy_rite(2, 0)
-	var tower: TowerState = _player.field.add_tower(_tower(&"spark"), Vector2i(2, 4), 0)
-	var first: MobState = _mob(3000)
-	var next: MobState = _mob(3500)
-	DivineCombat.hit(_player.field, tower, first, 10)
-	DivineCombat.hit(_player.field, tower, first, 10)
-	assert_eq(next.hp, 996)
+	var mob: MobState = _mob(3000)
+	assert_eq(DivineCombat.chain_chance(_player.field, mob), 30)
+	mob.wet_ticks_left = 1
+	assert_eq(DivineCombat.chain_chance(_player.field, mob), 90)
 
 
 func test_wind_against_path_slows_and_along_path_speeds() -> void:
@@ -239,9 +239,9 @@ func test_ghost_copies_idols_and_enchantments_independently() -> void:
 	var ghost: FieldState = FieldState.new(_config)
 	ghost.copy_towers_from(_player.field)
 	assert_eq(ghost.towers[0].enchantment, int(RiteData.Effect.ENCHANT_RATE))
-	assert_eq(ghost.idols[0].chain_reduction, 1)
-	ghost.idols[0].chain_reduction = 0
-	assert_eq(_player.field.idols[0].chain_reduction, 1)
+	assert_eq(ghost.idols[0].chain_chance_bonus, 10)
+	ghost.idols[0].chain_chance_bonus = 0
+	assert_eq(_player.field.idols[0].chain_chance_bonus, 10)
 
 
 func test_path_and_space_grow_only_with_shop_upgrade() -> void:

@@ -95,10 +95,13 @@
 [ext_resource type="Resource" path="res://data/rites/awaken_wide.tres" id="rite_awaken_wide"]
 [ext_resource type="Resource" path="res://data/rites/awaken_focus.tres" id="rite_awaken_focus"]
 
+[ext_resource type="Resource" path="res://data/towers/water.tres" id="new_water"]
+[ext_resource type="Resource" path="res://data/rites/water_duration.tres" id="rite_water_duration"]
+
 [resource]
 script = ExtResource("1_script")
 board = ExtResource("2_ext")
-towers = Array[ExtResource("5_ext")]([ExtResource("new_spark"), ExtResource("new_thunder"), ExtResource("new_brazier"), ExtResource("new_furnace"), ExtResource("new_wind"), ExtResource("new_gale")])
+towers = Array[ExtResource("5_ext")]([ExtResource("new_spark"), ExtResource("new_thunder"), ExtResource("new_brazier"), ExtResource("new_furnace"), ExtResource("new_wind"), ExtResource("new_gale"), ExtResource("new_water")])
 send_buffs = Array[ExtResource("6_ext")]([ExtResource("13_ext"), ExtResource("14_ext"), ExtResource("15_ext"), ExtResource("16_ext"), ExtResource("17_ext"), ExtResource("18_ext"), ExtResource("19_ext"), ExtResource("20_ext"), ExtResource("21_ext"), ExtResource("22_ext"), ExtResource("23_ext")])
 wave_mob = ExtResource("3_ext")
 army_mob = ExtResource("4_ext")
@@ -112,7 +115,7 @@ school_bonuses = Array[ExtResource("school_script")]([])
 army_gold_per_hp = 3
 army_rage_percent = 0
 
-rites = Array[ExtResource("rite_type")]([ExtResource("rite_perun_charge"), ExtResource("rite_perun_chain"), ExtResource("rite_perun_power"), ExtResource("rite_svarog_burn"), ExtResource("rite_svarog_power"), ExtResource("rite_stribog_power"), ExtResource("rite_stribog_length"), ExtResource("rite_enchant_damage"), ExtResource("rite_enchant_rate"), ExtResource("rite_enchant_range"), ExtResource("rite_awaken_wide"), ExtResource("rite_awaken_focus")])
+rites = Array[ExtResource("rite_type")]([ExtResource("rite_perun_charge"), ExtResource("rite_perun_chain"), ExtResource("rite_perun_power"), ExtResource("rite_svarog_burn"), ExtResource("rite_svarog_power"), ExtResource("rite_stribog_power"), ExtResource("rite_stribog_length"), ExtResource("rite_enchant_damage"), ExtResource("rite_enchant_rate"), ExtResource("rite_enchant_range"), ExtResource("rite_awaken_wide"), ExtResource("rite_awaken_focus"), ExtResource("rite_water_duration")])
 army_base_units = 5
 army_first_round = 2
 army_warmup_percent = Array[int]([0, 25, 35, 65])
@@ -126,3 +129,6 @@ enchant_damage_percent = 30
 enchant_rate_percent = 25
 awakening_power_percent = 75
 spawn_window_ticks = 200
+
+chain_chance_percent = 20
+wet_chain_chance_percent = 80

@@ -4,7 +4,7 @@ extends RefCounted
 ## поэтому бот тоже детерминирован. Действует один раз в начале каждой подготовки.
 
 ## Повышать магазин, только когда цена упала до этого значения (или раунд уже поздний).
-const VERSION: int = 1
+const VERSION: int = 2
 const CHEAP_UPGRADE_COST: int = 5
 const LATE_ROUND: int = 4
 ## Пока стреляющих башен меньше — бот берёт только стрелков (усилители и лавки потом).
@@ -62,7 +62,7 @@ func _take_gifts(sim: MatchSim, player: PlayerState) -> void:
 		_execute(sim, player, ChooseDiscoverCommand.new(choice))
 	var index: int = player.gift_towers.size() - 1
 	while index >= 0:
-		var spot: Vector3i = _find_best_spot(player.field, player.gift_towers[index])
+		var spot: Vector3i = find_best_spot(player.field, player.gift_towers[index])
 		if spot.z >= 0:
 			_execute(sim, player, PlaceGiftCommand.new(index, Vector2i(spot.x, spot.y), spot.z))
 		index -= 1
@@ -147,6 +147,15 @@ func _buy_towers(sim: MatchSim, player: PlayerState) -> void:
 
 
 func _wants_tower(player: PlayerState, data: TowerData) -> bool:
+	if data.wet_ticks > 0:
+		var perun: int = 0
+		var water: int = 0
+		var can_merge: bool = false
+		for tower: TowerState in player.field.towers:
+			perun += 1 if tower.data.god == &"perun" else 0
+			water += 1 if tower.data.wet_ticks > 0 else 0
+			can_merge = can_merge or (tower.data == data and tower.level == 1)
+		return perun >= 2 and (can_merge or water < maxi(1, perun / 4))
 	return data.attacks or _count_shooters(player) >= MIN_SHOOTERS_BEFORE_SUPPORT
 
 
@@ -162,14 +171,14 @@ func _buy_one(sim: MatchSim, player: PlayerState, offer_index: int, data: TowerD
 	for tower: TowerState in player.field.towers:
 		if tower.data == data and tower.level == 1:
 			return _run(sim, player, BuyIntoTowerCommand.new(offer_index, tower.id))
-	var spot: Vector3i = _find_best_spot(player.field, data)
+	var spot: Vector3i = find_best_spot(player.field, data)
 	if spot.z < 0:
 		return false
 	return _run(sim, player, BuyTowerCommand.new(offer_index, Vector2i(spot.x, spot.y), spot.z))
 
 
 ## Лучшее место: больше всего клеток пути в радиусе. Возвращает (x, y, поворот) или z = -1.
-func _find_best_spot(field: FieldState, data: TowerData) -> Vector3i:
+func find_best_spot(field: FieldState, data: TowerData) -> Vector3i:
 	var best: Vector3i = Vector3i(0, 0, -1)
 	var best_score: int = 0
 	for y: int in field.layout.height:
@@ -191,6 +200,8 @@ func _find_best_spot(field: FieldState, data: TowerData) -> Vector3i:
 ## Оценка места: стрелкам — сколько клеток пути в радиусе; усилителям — сколько стреляющих
 ## соседей будет рядом (×10, чтобы ставились в кучу); лавке — любое место (подальше от пути).
 func _score_spot(field: FieldState, data: TowerData, cells: Array[Vector2i]) -> int:
+	if data.wet_ticks > 0:
+		return _score_water(field, data, cells)
 	if data.attacks:
 		return field.count_path_cells_in_range(cells, data.range_milli)
 	if data.income_per_round > 0:
@@ -230,6 +241,26 @@ func _run(sim: MatchSim, player: PlayerState, command: SimCommand) -> bool:
 func _execute(sim: MatchSim, player: PlayerState, command: SimCommand) -> void:
 	if not _run(sim, player, command):
 		return
+
+
+## Вода должна накрывать общий с Перуном участок, а не свободный конец дороги.
+func _score_water(field: FieldState, data: TowerData, cells: Array[Vector2i]) -> int:
+	var center: Vector2i = TowerState.center_of(cells)
+	var score: int = 0
+	for point: Vector2i in field.get_active_path():
+		var position: Vector2i = point * FieldState.MILLI + Vector2i(500, 500)
+		var offset: Vector2i = position - center
+		if offset.x * offset.x + offset.y * offset.y > data.range_milli * data.range_milli:
+			continue
+		score += 1
+		for tower: TowerState in field.towers:
+			if tower.data.god != &"perun":
+				continue
+			var reach: int = field.get_tower_range(tower)
+			var distance: Vector2i = position - tower.center_milli()
+			if distance.x * distance.x + distance.y * distance.y <= reach * reach:
+				score += 2
+	return score
 
 
 func _score_wind(field: FieldState, data: TowerData, anchor: Vector2i, turns: int) -> int:

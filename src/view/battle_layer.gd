@@ -189,6 +189,9 @@ func _draw_mob(mob: MobState) -> void:
 	if mob.burn_ticks_left > 0:
 		draw_circle(feet - Vector2(0, sprite_size * 0.55), sprite_size * 0.18,
 				Color(1, 0.4, 0.08, 0.6))
+	if mob.wet_ticks_left > 0:
+		draw_arc(feet - Vector2(0, sprite_size * 0.5), sprite_size * 0.58, 0, TAU,
+				16, Color(0.2, 0.85, 0.95, 0.9), 2.0, true)
 	if mob.charges > 0:
 		draw_arc(feet - Vector2(0, sprite_size * 0.5), sprite_size * 0.5, 0, TAU,
 				16, Color(0.55, 0.85, 1), float(mob.charges + 1), true)
@@ -375,7 +378,7 @@ func _on_field_tower_fired(tower: TowerState, mob: MobState) -> void:
 	projectile.from_milli = Vector2(tower.center_milli()) - Vector2(0, MILLI * 0.25)
 	projectile.target = mob
 	projectile.target_milli = Vector2(_field.get_mob_position(mob))
-	projectile.splash_radius_milli = tower.data.splash_radius_milli
+	projectile.splash_radius_milli = _field.get_tower_splash_radius(tower)
 	_projectiles.append(projectile)
 	sound_requested.emit(SHOT_SOUNDS[projectile.visual.projectile])
 
