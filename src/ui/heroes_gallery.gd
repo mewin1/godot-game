@@ -1,6 +1,6 @@
 extends Control
-## Галерея героев из главного меню: все герои из конфига матча — портрет, HP, пассивка, навык.
-## Собирается кодом из данных (новый герой в конфиге сам появится здесь).
+## Справочник из главного меню: герои (портрет, HP, пассивка, навык), постройки и мобы.
+## Собирается кодом из данных (новый герой, постройка или моб сам появится здесь).
 
 const CONFIG_PATH: String = "res://data/game_config.tres"
 const PORTRAIT_SIZE: float = 96.0
@@ -10,7 +10,10 @@ const COLOR_HP: Color = Color(0.92, 0.5, 0.42)
 const COLOR_SKILL: Color = Color(0.91, 0.65, 0.29)
 const COLOR_TEXT: Color = Color(0.94, 0.89, 0.81)
 
-var _grid: GridContainer
+const MOB_IDS: Array[StringName] = [&"basic", &"fast", &"armored", &"boss", &"kolobok", &"bat",
+		&"healer", &"knight", &"stealth", &"courier", &"robber", &"send_unit"]
+
+var _grids: Array[GridContainer] = []
 
 
 func _ready() -> void:
@@ -28,7 +31,7 @@ func _ready() -> void:
 	var box: VBoxContainer = VBoxContainer.new()
 	box.add_theme_constant_override("separation", 12)
 	margin.add_child(box)
-	var title: Label = _make_label("Герои", 36, COLOR_SKILL)
+	var title: Label = _make_label("Справочник: герои, постройки, мобы", 32, COLOR_SKILL)
 	title.theme_type_variation = &"HeaderLabel"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(title)
@@ -36,14 +39,25 @@ func _ready() -> void:
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	box.add_child(scroll)
-	_grid = GridContainer.new()
-	_grid.add_theme_constant_override("h_separation", 12)
-	_grid.add_theme_constant_override("v_separation", 12)
-	_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.add_child(_grid)
+	var sections: VBoxContainer = VBoxContainer.new()
+	sections.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	sections.add_theme_constant_override("separation", 12)
+	scroll.add_child(sections)
 	var config: GameConfig = load(CONFIG_PATH) as GameConfig
+	var heroes: GridContainer = _add_section(sections, "")
 	for hero: HeroData in config.heroes:
-		_grid.add_child(_make_card(hero))
+		heroes.add_child(_make_card(hero))
+	var towers: GridContainer = _add_section(sections, "Постройки")
+	var catalog: VisualCatalog = VisualCatalog.get_default()
+	for data: TowerData in config.towers:
+		var visual: TowerVisual = catalog.get_tower(data.id)
+		towers.add_child(_make_entry(visual.icon, data.display_name,
+				"Тир %d · клеток %d" % [data.tier, data.shape.size()], data.description))
+	var mobs: GridContainer = _add_section(sections, "Мобы")
+	for mob_id: StringName in MOB_IDS:
+		var mob: MobData = load("res://data/mobs/%s.tres" % mob_id) as MobData
+		mobs.add_child(_make_entry(catalog.get_mob(mob_id).texture, mob.display_name,
+				"HP %d" % mob.hp, mob.description))
 	var back: Button = Button.new()
 	back.text = "Назад"
 	back.custom_minimum_size = Vector2(0, 60)
@@ -61,8 +75,49 @@ func _notification(what: int) -> void:
 
 
 func _update_columns() -> void:
-	if _grid != null:
-		_grid.columns = maxi(1, int(size.x / (CARD_WIDTH + 12.0)))
+	for grid: GridContainer in _grids:
+		grid.columns = maxi(1, int(size.x / (CARD_WIDTH + 12.0)))
+
+
+## Раздел справочника: заголовок (может быть пустым) и сетка карточек.
+func _add_section(parent: Container, caption: String) -> GridContainer:
+	if caption != "":
+		var label: Label = _make_label(caption, 30, COLOR_SKILL)
+		label.theme_type_variation = &"HeaderLabel"
+		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		parent.add_child(label)
+	var grid: GridContainer = GridContainer.new()
+	grid.add_theme_constant_override("h_separation", 12)
+	grid.add_theme_constant_override("v_separation", 12)
+	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	parent.add_child(grid)
+	_grids.append(grid)
+	return grid
+
+
+## Карточка постройки или моба: картинка, имя, короткая строка, описание.
+func _make_entry(icon: Texture2D, title: String, info: String, details: String) -> PanelContainer:
+	var card: PanelContainer = PanelContainer.new()
+	card.theme_type_variation = &"CardPanel"
+	card.custom_minimum_size = Vector2(CARD_WIDTH, 0)
+	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var row: HBoxContainer = HBoxContainer.new()
+	row.add_theme_constant_override("separation", 10)
+	card.add_child(row)
+	var picture: TextureRect = TextureRect.new()
+	picture.texture = icon
+	picture.custom_minimum_size = Vector2.ONE * PORTRAIT_SIZE * 0.7
+	picture.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	picture.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	picture.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	row.add_child(picture)
+	var text: VBoxContainer = VBoxContainer.new()
+	text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(text)
+	text.add_child(_make_label(title, 20, COLOR_TEXT))
+	text.add_child(_make_label(info, 15, COLOR_HP))
+	text.add_child(_make_label(details, 14, COLOR_MUTED))
+	return card
 
 
 func _make_card(hero: HeroData) -> PanelContainer:

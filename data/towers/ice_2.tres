@@ -18,3 +18,4 @@ slow_percent = 55
 slow_ticks = 40
 tags = Array[StringName]([&"ice"])
 color = Color(0.3, 0.55, 0.95, 1)
+description = "Друза: замедляет на 55%, бьёт далеко."

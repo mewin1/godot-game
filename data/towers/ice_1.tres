@@ -18,3 +18,4 @@ slow_percent = 40
 slow_ticks = 30
 tags = Array[StringName]([&"ice"])
 color = Color(0.45, 0.8, 1.0, 1)
+description = "Кристалл: замедляет цель на 40%."

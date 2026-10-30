@@ -18,3 +18,4 @@ slow_percent = 0
 slow_ticks = 0
 tags = Array[StringName]([&"fire"])
 color = Color(0.85, 0.25, 0.1, 1)
+description = "Каменная жаровня: сильнее и дальше, урон по площади."
