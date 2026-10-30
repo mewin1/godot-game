@@ -1,0 +1,29 @@
+[gd_resource type="Resource" script_class="HeroData" load_steps=7 format=3]
+[ext_resource type="Script" path="res://src/sim/heroes/hero_data.gd" id="hero"]
+[ext_resource type="Script" path="res://src/sim/heroes/hero_effect.gd" id="effect"]
+[ext_resource type="Script" path="res://src/sim/heroes/effects/damage_field_effect.gd" id="strike"]
+[ext_resource type="Script" path="res://src/sim/heroes/hero_skill_data.gd" id="skill"]
+
+[sub_resource type="Resource" id="skill_effect"]
+script = ExtResource("strike")
+percent = 40
+
+[sub_resource type="Resource" id="skill"]
+script = ExtResource("skill")
+display_name = "Палица"
+description = "В волну: все мобы на вашем поле теряют 40% текущего HP."
+timing = 1
+cost = 5
+cost_step = 3
+effect = SubResource("skill_effect")
+
+[resource]
+script = ExtResource("hero")
+id = &"ilya"
+display_name = "Илья Муромец"
+epithet = "Богатырь, тридцать лет сидевший на печи"
+description = "Терем крепче: 50 HP."
+style = "оборона"
+hp = 50
+passives = Array[ExtResource("effect")]([])
+skill = SubResource("skill")

@@ -53,6 +53,7 @@ var _toast_panel: PanelContainer
 var _toast_label: Label
 var _end_layer: Control
 var _end_panel: MatchEndPanel
+var _hero_select: HeroSelectPanel
 var _sound_bank: SoundBank
 
 
@@ -102,6 +103,7 @@ func _build_ui() -> void:
 	_hud.pause_pressed.connect(_on_hud_pause_pressed)
 	_hud.speed_pressed.connect(_on_hud_speed_pressed)
 	_hud.sound_pressed.connect(_on_hud_sound_pressed)
+	_hud.skill_pressed.connect(_on_hud_skill_pressed)
 	_hud.set_muted(SoundBank.is_muted())
 	root_box.add_child(_hud)
 	_halves = BoxContainer.new()
@@ -112,6 +114,11 @@ func _build_ui() -> void:
 	_overlay = Control.new()
 	_add_full_rect(self, _overlay)
 	_build_toast()
+	_hero_select = HeroSelectPanel.new()
+	_hero_select.visible = false
+	_hero_select.hero_chosen.connect(_on_hero_select_hero_chosen)
+	add_child(_hero_select)
+	_hero_select.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_build_end_layer()
 	_sound_bank = SoundBank.new()
 	add_child(_sound_bank)
@@ -205,9 +212,13 @@ func _start_match() -> void:
 	_sim.round_finished.connect(_on_sim_round_finished)
 	_sim.phase_changed.connect(_on_sim_phase_changed)
 	_sim.player_eliminated.connect(_on_sim_player_eliminated)
+	_sim.hero_event.connect(_on_sim_hero_event)
 	_hud.set_player_count(player_count)
-	_sim.start()
+	_sim.start_with_hero_select()
 	_shop_panel.setup(_sim, _human())
+	if _sim.phase == MatchSim.Phase.HERO_SELECT:
+		_hero_select.visible = true
+		_hero_select.show_offers(_human().hero_offers)
 
 
 func _create_logger(match_seed: int) -> MatchLogger:
@@ -235,6 +246,9 @@ func _step_simulation(delta: float) -> void:
 
 func _refresh_views() -> void:
 	var me: PlayerState = _human()
+	if _sim.phase == MatchSim.Phase.HERO_SELECT:
+		_refresh_hero_select(me)
+		return
 	var is_prep: bool = _sim.phase == MatchSim.Phase.PREP
 	if me.field.get_tower(_selected_tower_id) == null or not is_prep:
 		_selected_tower_id = 0
@@ -253,6 +267,19 @@ func _refresh_views() -> void:
 	_fade_left_half_on_change()
 	_hud.refresh(_sim, HUMAN_INDEX)
 	_announce_enrage(me.field.is_enraged)
+	_update_toast()
+
+
+## Пока выбирают героя: своё поле, таймер выбора; магазин и поле соперника скрыты.
+func _refresh_hero_select(me: PlayerState) -> void:
+	_my_view.show_field(me.field, _sim.config, "Ваше поле")
+	_my_view.hero_hp = me.hero_hp
+	_my_view.can_edit = false
+	_shop_panel.visible = false
+	_opponent_view.visible = false
+	_hud.refresh(_sim, HUMAN_INDEX)
+	var ticks_left: float = float(_sim.get_phase_ticks_left())
+	_hero_select.set_seconds_left(ceili(ticks_left / _sim.config.ticks_per_second))
 	_update_toast()
 
 
@@ -311,11 +338,34 @@ func _show_banner(text: String, color: Color = UiFx.BANNER_COLOR, subtitle: Stri
 	_banner = UiFx.show_banner(_overlay, text, color, subtitle)
 
 
+func _on_hero_select_hero_chosen(offer_index: int) -> void:
+	_sim.queue_command(HUMAN_INDEX, ChooseHeroCommand.new(offer_index))
+	_sound_bank.play(&"merge")
+
+
+func _on_hud_skill_pressed() -> void:
+	_sim.queue_command(HUMAN_INDEX, UseHeroSkillCommand.new())
+	_sound_bank.play(&"click")
+
+
+## Сообщения героя: свои — тостом; навык соперника, задевший вас, — тоже.
+func _on_sim_hero_event(player_index: int, message: String) -> void:
+	if player_index == HUMAN_INDEX:
+		_show_toast(message, SUMMARY_SECONDS)
+		_sound_bank.play(&"siege" if _sim.phase == MatchSim.Phase.WAVE else &"merge", 0.0)
+		return
+	var attacker: PlayerState = _sim.players[player_index]
+	if _sim.get_army_target_fields(player_index).has(_human().field):
+		_show_toast("%s (%s): %s" % [attacker.display_name, attacker.hero.display_name, message])
+
+
 func _human() -> PlayerState:
 	return _sim.players[HUMAN_INDEX]
 
 
 func _opponent() -> PlayerState:
+	if _sim.opponent_of.is_empty():
+		return null
 	var index: int = _sim.opponent_of[HUMAN_INDEX]
 	return _sim.players[index] if index != MatchSim.GHOST else null
 
@@ -419,6 +469,11 @@ func _on_sim_round_started(round_number: int) -> void:
 
 
 func _on_sim_phase_changed(phase: MatchSim.Phase) -> void:
+	if phase != MatchSim.Phase.HERO_SELECT and _hero_select.visible:
+		_hero_select.visible = false
+		var hero: HeroData = _human().hero
+		if hero != null:
+			_show_banner(hero.display_name, UiFx.BANNER_COLOR, hero.description)
 	if phase == MatchSim.Phase.WAVE:
 		_show_banner("Волна!")
 		_sound_bank.play(&"wave", 0.0)

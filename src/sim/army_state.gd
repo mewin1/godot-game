@@ -11,6 +11,8 @@ var extra_units: int = 0
 var cost_discount: int = 0
 var extra_income: int = 0
 var added_mobs: Array[MobData] = []
+## Юниты только на ближайшую волну (навык героя); убираются в начале следующего раунда.
+var temporary_mobs: Array[MobData] = []
 ## Сколько раз куплено каждое улучшение (по порядку config.army_upgrades).
 var upgrade_counts: Array[int] = []
 
@@ -91,7 +93,7 @@ func build_pack(sender_index: int, round_number: int) -> Array[MobState]:
 	var pack: Array[MobState] = []
 	for i: int in _config.army_base_units + extra_units:
 		pack.append(MobState.create(_config.army_mob, hp_bonus, speed_percent))
-	for mob_data: MobData in added_mobs:
+	for mob_data: MobData in added_mobs + temporary_mobs:
 		pack.append(MobState.create(mob_data, hp_bonus, speed_percent))
 	for mob: MobState in pack:
 		mob.sender_index = sender_index
@@ -116,7 +118,7 @@ func roll_buff_offers(shop_level: int, rng: RandomNumberGenerator) -> Array[Send
 
 func add_to_hash(hasher: StateHasher) -> void:
 	hasher.add_many([hp_percent, speed_percent, extra_units, cost_discount, extra_income,
-			added_mobs.size()])
+			added_mobs.size(), temporary_mobs.size()])
 	hasher.add_many(upgrade_counts)
 
 

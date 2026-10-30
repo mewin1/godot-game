@@ -13,6 +13,8 @@ extends Resource
 @export var kill_reward: int = 1
 ## Сколько HP героя снимает прорыв (до множителя раунда).
 @export var breach_damage: int = 1
+## Прорвался — хозяину армии столько золота сверху (разбойник).
+@export var breach_gold_to_sender: int = 0
 @export var tags: Array[StringName] = []
 ## Цвет и размер квадратика в прототипе (размер в долях клетки). Симуляция их не использует.
 @export var color: Color = Color.WHITE

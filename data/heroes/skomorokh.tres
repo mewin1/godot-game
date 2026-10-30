@@ -1,0 +1,30 @@
+[gd_resource type="Resource" script_class="HeroData" load_steps=7 format=3]
+[ext_resource type="Script" path="res://src/sim/heroes/hero_data.gd" id="hero"]
+[ext_resource type="Script" path="res://src/sim/heroes/hero_effect.gd" id="effect"]
+[ext_resource type="Script" path="res://src/sim/heroes/effects/fair_wheel_effect.gd" id="wheel"]
+[ext_resource type="Script" path="res://src/sim/heroes/hero_skill_data.gd" id="skill"]
+
+[sub_resource type="Resource" id="skill_effect"]
+script = ExtResource("wheel")
+gold = 9
+income = 1
+
+[sub_resource type="Resource" id="skill"]
+script = ExtResource("skill")
+display_name = "Ярмарка"
+description = "Колесо: +9 золота, +1 юнит армии навсегда, +1 доход навсегда или «освистали»."
+timing = 0
+cost = 3
+cost_step = 1
+effect = SubResource("skill_effect")
+
+[resource]
+script = ExtResource("hero")
+id = &"skomorokh"
+display_name = "Скоморох"
+epithet = "Весельчак с ярмарки, бубенцы на колпаке"
+description = "Нет пассивки — всё в навыке."
+style = "азарт"
+hp = 40
+passives = Array[ExtResource("effect")]([])
+skill = SubResource("skill")

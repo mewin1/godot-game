@@ -12,6 +12,8 @@ extends Resource
 @export var army_mob: MobData
 ## Улучшения армии (вкладка «Армия»), по порядку показа.
 @export var army_upgrades: Array[ArmyUpgradeData] = []
+## Все герои: перед матчем каждому выпадает hero_offer_count разных на выбор.
+@export var heroes: Array[HeroData] = []
 
 @export_group("Время (в тиках)")
 @export var ticks_per_second: int = 20
@@ -24,7 +26,11 @@ extends Resource
 @export var wave_enrage_speed_percent: int = 200
 
 @export_group("Герой")
+## HP терема без героя (у героев — своё, в HeroData).
 @export var hero_hp: int = 40
+@export var hero_offer_count: int = 3
+## Сколько тиков на выбор героя (потом берётся первый предложенный).
+@export var hero_select_ticks: int = 600
 
 @export_group("Экономика")
 @export var start_gold: int = 20
@@ -40,6 +46,8 @@ extends Resource
 ## Полная цена повышения 1→2, 2→3, 3→4.
 @export var shop_upgrade_costs: Array[int] = [10, 18, 28]
 @export var shop_upgrade_min_cost: int = 5
+## Ниже этой цены не опускает повышение магазина скидка героя (Космонавт).
+@export var shop_upgrade_discounted_min_cost: int = 3
 ## Шанс (в процентах) редкого бафа в каждом слоте на уровне магазина 1, 2, 3, 4.
 @export var rare_buff_chance_by_level: Array[int] = [0, 15, 35, 50]
 @export var buff_offer_count: int = 3

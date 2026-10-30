@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="GameConfig" load_steps=31 format=3]
+[gd_resource type="Resource" script_class="GameConfig" format=3]
 
 [ext_resource type="Script" path="res://src/sim/data/game_config.gd" id="1_script"]
 [ext_resource type="Resource" path="res://data/board/board_default.tres" id="2_ext"]
@@ -30,6 +30,17 @@
 [ext_resource type="Resource" path="res://data/army/army_fast.tres" id="28_ext"]
 [ext_resource type="Resource" path="res://data/army/army_armored.tres" id="29_ext"]
 [ext_resource type="Resource" path="res://data/army/army_boss.tres" id="30_ext"]
+[ext_resource type="Resource" path="res://data/heroes/baba_yaga.tres" id="hero_baba_yaga"]
+[ext_resource type="Resource" path="res://data/heroes/domovoy.tres" id="hero_domovoy"]
+[ext_resource type="Resource" path="res://data/heroes/cosmonaut.tres" id="hero_cosmonaut"]
+[ext_resource type="Resource" path="res://data/heroes/ilya.tres" id="hero_ilya"]
+[ext_resource type="Resource" path="res://data/heroes/leshy.tres" id="hero_leshy"]
+[ext_resource type="Resource" path="res://data/heroes/babushka.tres" id="hero_babushka"]
+[ext_resource type="Resource" path="res://data/heroes/solovey.tres" id="hero_solovey"]
+[ext_resource type="Resource" path="res://data/heroes/gorynych.tres" id="hero_gorynych"]
+[ext_resource type="Resource" path="res://data/heroes/koschei.tres" id="hero_koschei"]
+[ext_resource type="Resource" path="res://data/heroes/skomorokh.tres" id="hero_skomorokh"]
+[ext_resource type="Script" path="res://src/sim/heroes/hero_data.gd" id="hero_script"]
 
 [resource]
 script = ExtResource("1_script")
@@ -41,3 +52,4 @@ army_mob = ExtResource("4_ext")
 army_hp_growth_percent = 16
 breach_multiplier_start_rounds = Array[int]([16, 19])
 army_upgrades = Array[ExtResource("24_ext")]([ExtResource("25_ext"), ExtResource("26_ext"), ExtResource("27_ext"), ExtResource("28_ext"), ExtResource("29_ext"), ExtResource("30_ext")])
+heroes = Array[ExtResource("hero_script")]([ExtResource("hero_baba_yaga"), ExtResource("hero_domovoy"), ExtResource("hero_cosmonaut"), ExtResource("hero_ilya"), ExtResource("hero_leshy"), ExtResource("hero_babushka"), ExtResource("hero_solovey"), ExtResource("hero_gorynych"), ExtResource("hero_koschei"), ExtResource("hero_skomorokh")])

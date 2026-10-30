@@ -12,14 +12,19 @@ signal command_processed(player_index: int, description: Dictionary, error: Stri
 signal round_finished(round_number: int)
 signal player_eliminated(player: PlayerState)
 signal match_finished()
+## Герой игрока что-то сделал (навык или пассивка): текст для игрока.
+signal hero_event(player_index: int, message: String)
 
-enum Phase { PREP, WAVE, OVER }
+## HERO_SELECT — выбор героя перед первым раундом (новое значение в конце: не меняет старые хэши).
+enum Phase { PREP, WAVE, OVER, HERO_SELECT }
 
 ## Соперник «призрак» у игрока без пары: копия поля и армии другого игрока.
 const GHOST: int = -1
 ## Разброс стилей ботов: доля золота на армию (в процентах).
 const BOT_MIN_ARMY_SHARE: int = 0
 const BOT_MAX_ARMY_SHARE: int = 70
+## Как часто (в тиках) боты думают во время волны — о навыках «в волну».
+const BOT_WAVE_THINK_TICKS: int = 10
 
 var config: GameConfig
 var players: Array[PlayerState] = []
@@ -65,9 +70,49 @@ func _init(game_config: GameConfig, match_seed: int, player_count: int = 2,
 		_bots.append(BotBrain.new(army_share) if player.is_bot else null)
 
 
-## Запускает первый раунд.
+## Запускает первый раунд сразу, без героев (тесты старых правил).
 func start() -> void:
 	_start_round(1)
+
+
+## Запускает матч с выбора героя: каждому — hero_offer_count разных героев на выбор.
+## Боты выбирают сразу; раунд 1 начнётся, когда выберут все люди (или выйдет время).
+func start_with_hero_select() -> void:
+	if config.heroes.is_empty():
+		start()
+		return
+	phase = Phase.HERO_SELECT
+	phase_tick = 0
+	for player: PlayerState in players:
+		player.hero_offers = _roll_hero_offers()
+	phase_changed.emit(phase)
+	for player: PlayerState in players:
+		if player.is_bot:
+			choose_hero(player.index, _bots[player.index].pick_hero(player))
+
+
+## Выбор героя игроком (команда ChooseHeroCommand и боты). "" — получилось.
+func choose_hero(player_index: int, offer_index: int) -> String:
+	var player: PlayerState = players[player_index]
+	if phase != Phase.HERO_SELECT:
+		return "Герой уже выбран"
+	if player.hero != null:
+		return "Герой уже выбран"
+	if offer_index < 0 or offer_index >= player.hero_offers.size():
+		return "Нет такого героя"
+	player.pick_hero(player.hero_offers[offer_index])
+	return ""
+
+
+## Поля, куда в этом раунде идёт армия игрока (для навыков вроде «Трёх голов»).
+func get_army_target_fields(player_index: int) -> Array[FieldState]:
+	var fields: Array[FieldState] = []
+	for route: Vector2i in _army_routes:
+		if route.x == player_index:
+			fields.append(players[route.y].field)
+	if player_index == ghost_target and ghost_field != null:
+		fields.append(ghost_field)
+	return fields
 
 
 ## Ставит команду в очередь: выполнится в начале следующего тика.
@@ -80,6 +125,8 @@ func execute_command(player_index: int, command: SimCommand) -> String:
 	var player: PlayerState = players[player_index]
 	if not player.is_alive or phase == Phase.OVER:
 		return "Игрок выбыл"
+	if command.requires_prep() and phase == Phase.HERO_SELECT:
+		return "Сначала выберите героя"
 	if command.requires_prep() and phase != Phase.PREP:
 		return "Сейчас идёт волна"
 	var description: Dictionary = command.to_log(self, player)
@@ -93,15 +140,22 @@ func tick() -> void:
 	if phase == Phase.OVER:
 		return
 	_apply_queued_commands()
-	if phase == Phase.PREP:
-		_tick_prep()
-	else:
-		_tick_wave()
+	match phase:
+		Phase.HERO_SELECT:
+			_tick_hero_select()
+		Phase.PREP:
+			_tick_prep()
+		_:
+			_tick_wave()
 	tick_count += 1
 
 
 func get_phase_ticks_left() -> int:
-	var total: int = config.prep_ticks if phase == Phase.PREP else config.wave_max_ticks
+	var total: int = config.wave_max_ticks
+	if phase == Phase.PREP:
+		total = config.prep_ticks
+	elif phase == Phase.HERO_SELECT:
+		total = config.hero_select_ticks
 	return maxi(0, total - phase_tick)
 
 
@@ -154,6 +208,30 @@ func _apply_queued_commands() -> void:
 			command_failed.emit(queued.player_index, error)
 
 
+## Выбор героя: ждём людей; кто не успел — получает первого предложенного.
+func _tick_hero_select() -> void:
+	phase_tick += 1
+	var is_timeout: bool = phase_tick >= config.hero_select_ticks
+	for player: PlayerState in players:
+		if player.hero == null and not is_timeout:
+			return
+	for player: PlayerState in players:
+		if player.hero == null:
+			choose_hero(player.index, 0)
+	_start_round(1)
+
+
+## Разные герои из общего списка (у разных игроков могут совпадать).
+func _roll_hero_offers() -> Array[HeroData]:
+	var pool: Array[HeroData] = config.heroes.duplicate()
+	var offers: Array[HeroData] = []
+	for i: int in mini(config.hero_offer_count, pool.size()):
+		var pick: int = _rng.randi_range(0, pool.size() - 1)
+		offers.append(pool[pick])
+		pool.remove_at(pick)
+	return offers
+
+
 func _tick_prep() -> void:
 	phase_tick += 1
 	if phase_tick >= config.prep_ticks or _are_all_humans_ready():
@@ -175,6 +253,7 @@ func _start_round(number: int) -> void:
 	for player: PlayerState in get_alive_players():
 		player.field.calm_down()
 		player.army_damage_dealt = 0
+		player.army.temporary_mobs.clear()
 		if number > 1:
 			player.shop.on_round_started()
 		player.start_prep(number > 1)
@@ -227,6 +306,8 @@ func _tick_wave() -> void:
 	var is_overtime: bool = phase_tick >= config.wave_max_ticks
 	var timed_out: bool = phase_tick >= config.wave_max_ticks + config.wave_enrage_extra_ticks
 	var all_done: bool = true
+	if phase_tick % BOT_WAVE_THINK_TICKS == 0:
+		_let_bots_play_wave()
 	for player: PlayerState in get_alive_players():
 		if is_overtime and not player.field.is_enraged:
 			player.field.enrage()
@@ -241,6 +322,12 @@ func _tick_wave() -> void:
 		all_done = _tick_ghost_field(timed_out) and all_done
 	if all_done:
 		_finish_round()
+
+
+func _let_bots_play_wave() -> void:
+	for player: PlayerState in get_alive_players():
+		if player.is_bot:
+			_bots[player.index].play_wave(self, player)
 
 
 ## Поле призрака ничего не даёт и не отнимает: бой на нём только для честности и зрелища.
@@ -258,6 +345,7 @@ func _collect_field_results(player: PlayerState) -> void:
 	var field: FieldState = player.field
 	player.gold += field.pending_kill_gold
 	var multiplier: int = config.get_breach_multiplier(round_number)
+	var hp_before: int = player.hero_hp
 	for mob: MobState in field.pending_breaches:
 		var damage: int = mob.breach_damage * multiplier
 		if player.index == siege_leader and siege_attackers.has(mob.sender_index):
@@ -265,11 +353,13 @@ func _collect_field_results(player: PlayerState) -> void:
 		player.hero_hp -= damage
 		if mob.sender_index >= 0:
 			var sender: PlayerState = players[mob.sender_index]
-			sender.gold += damage * config.army_gold_per_hp
+			sender.gold += damage * config.army_gold_per_hp + mob.data.breach_gold_to_sender
 			sender.army_damage_dealt += damage
 		if player.index == siege_leader:
 			_record_siege_damage(mob.sender_index, damage)
 	field.clear_pending()
+	if player.hero_hp < hp_before:
+		player.notify_hp_lost(self)
 	if player.hero_hp <= 0 and player.fell_tick < 0:
 		player.fell_tick = tick_count
 

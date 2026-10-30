@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="MobData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/sim/data/mob_data.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"robber"
+display_name = "Разбойник"
+hp = 45
+speed_milli_per_tick = 80
+armor = 0
+kill_reward = 1
+breach_damage = 1
+breach_gold_to_sender = 3

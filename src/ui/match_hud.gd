@@ -7,6 +7,7 @@ extends VBoxContainer
 signal pause_pressed()
 signal speed_pressed()
 signal sound_pressed()
+signal skill_pressed()
 
 const HEART_ICON: Texture2D = preload("res://assets/ui/icon_heart.svg")
 const GOLD_ICON: Texture2D = preload("res://assets/ui/icon_gold.svg")
@@ -19,6 +20,8 @@ const CHIP_FONT_SIZE: int = 16
 const BUTTON_SIZE: Vector2 = Vector2(52, 48)
 const DANGER_PULSE_SPEED: float = 5.0
 const COLOR_ELIMINATED: Color = Color(1, 1, 1, 0.4)
+const PORTRAIT_SIZE: float = 44.0
+const CHIP_PORTRAIT_SIZE: float = 26.0
 
 var _round_label: Label
 var _phase_label: Label
@@ -30,6 +33,9 @@ var _speed_button: Button
 var _sound_button: Button
 var _chips: Array[PanelContainer] = []
 var _chip_labels: Array[Label] = []
+var _chip_portraits: Array[TextureRect] = []
+var _hero_portrait: TextureRect
+var _skill_button: Button
 var _siege_panel: PanelContainer
 var _siege_label: Label
 var _time: float = 0.0
@@ -51,6 +57,12 @@ func _init() -> void:
 	_round_label.add_theme_font_size_override("font_size", VALUE_FONT_SIZE)
 	_phase_label = _add_label(row, 20)
 	_phase_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_hero_portrait = _make_portrait(PORTRAIT_SIZE)
+	row.add_child(_hero_portrait)
+	_skill_button = _add_button(row, "", "Навык героя")
+	_skill_button.theme_type_variation = &"AccentButton"
+	_skill_button.add_theme_font_size_override("font_size", 17)
+	_skill_button.pressed.connect(func() -> void: skill_pressed.emit())
 	_hp_label = _add_value(row, HEART_ICON, "HP героя")
 	_gold_label = _add_value(row, GOLD_ICON, "Золото")
 	_income_label = _add_value(row, INCOME_ICON, "Доход за раунд")
@@ -89,6 +101,7 @@ func refresh(sim: MatchSim, human_index: int) -> void:
 	_hp_label.text = str(maxi(0, me.hero_hp))
 	_gold_label.text = str(me.gold)
 	_income_label.text = "+%d" % me.income
+	_refresh_hero(sim, me)
 	_refresh_chips(sim, human_index)
 	_refresh_siege(sim, human_index)
 
@@ -105,6 +118,24 @@ func set_muted(is_muted: bool) -> void:
 	_sound_button.icon = SOUND_OFF_ICON if is_muted else SOUND_ON_ICON
 
 
+## Портрет героя и кнопка навыка: цена, доступность, подсказка с описанием.
+func _refresh_hero(sim: MatchSim, me: PlayerState) -> void:
+	_hero_portrait.texture = HeroPortraits.get_portrait(me.hero)
+	_hero_portrait.visible = me.hero != null
+	if me.hero != null:
+		_hero_portrait.tooltip_text = "%s: %s" % [me.hero.display_name, me.hero.description]
+	var skill: HeroSkillData = me.hero.skill if me.hero != null else null
+	_skill_button.visible = skill != null
+	if skill == null:
+		return
+	var reason: String = me.check_skill_available(sim.phase)
+	var cost: int = me.get_skill_cost()
+	_skill_button.text = "%s · %d зол." % [skill.display_name, cost]
+	_skill_button.disabled = reason != "" or me.gold < cost or not me.is_alive
+	_skill_button.tooltip_text = "%s (%s)%s" % [skill.description, skill.get_timing_text(),
+			"\n" + reason if reason != "" else ""]
+
+
 func _phase_text(sim: MatchSim) -> String:
 	match sim.phase:
 		MatchSim.Phase.PREP:
@@ -113,6 +144,8 @@ func _phase_text(sim: MatchSim) -> String:
 			return "Подготовка · %d с" % seconds
 		MatchSim.Phase.WAVE:
 			return _wave_text(sim)
+		MatchSim.Phase.HERO_SELECT:
+			return "Выбор героя"
 	return "Матч окончен"
 
 
@@ -127,13 +160,18 @@ func _wave_text(sim: MatchSim) -> String:
 
 
 func _refresh_chips(sim: MatchSim, human_index: int) -> void:
-	var opponent_index: int = sim.opponent_of[human_index]
+	var opponent_index: int = MatchSim.GHOST
+	if human_index < sim.opponent_of.size():
+		opponent_index = sim.opponent_of[human_index]
 	var ghost_index: int = sim.ghost_source if sim.ghost_target == human_index else -1
 	for player: PlayerState in sim.players:
 		var chip: PanelContainer = _chips[player.index]
 		var label: Label = _chip_labels[player.index]
 		var display_name: String = "Вы" if player.index == human_index else player.display_name
 		label.add_theme_color_override("font_color", _player_colors.get_player_color(player.index))
+		_chip_portraits[player.index].texture = HeroPortraits.get_portrait(player.hero)
+		if player.hero != null:
+			chip.tooltip_text = "%s — %s" % [player.hero.display_name, player.hero.description]
 		if not player.is_alive:
 			label.text = "%s · %d место" % [display_name, player.place]
 			chip.modulate = COLOR_ELIMINATED
@@ -185,16 +223,30 @@ func _build_lobby_row() -> void:
 		chip.theme_type_variation = &"CardPanel"
 		chip.visible = false
 		row.add_child(chip)
-		var label: Label = _add_label(chip, CHIP_FONT_SIZE)
+		var chip_box: HBoxContainer = HBoxContainer.new()
+		chip_box.add_theme_constant_override("separation", 4)
+		chip.add_child(chip_box)
+		var portrait: TextureRect = _make_portrait(CHIP_PORTRAIT_SIZE)
+		chip_box.add_child(portrait)
+		var label: Label = _add_label(chip_box, CHIP_FONT_SIZE)
 		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		_chips.append(chip)
 		_chip_labels.append(label)
+		_chip_portraits.append(portrait)
 
 
 ## Показывает столько фишек, сколько игроков в матче.
 func set_player_count(count: int) -> void:
 	for i: int in _chips.size():
 		_chips[i].visible = i < count
+
+
+func _make_portrait(portrait_size: float) -> TextureRect:
+	var portrait: TextureRect = TextureRect.new()
+	portrait.custom_minimum_size = Vector2.ONE * portrait_size
+	portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	return portrait
 
 
 func _add_label(parent: Control, font_size: int) -> Label:

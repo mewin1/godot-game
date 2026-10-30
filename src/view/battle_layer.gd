@@ -20,6 +20,9 @@ const BREACH_TEXT_COLOR: Color = Color(1.0, 0.45, 0.35)
 const FADE_IN_MILLI: float = 400.0
 const HP_TEXT_COLOR: Color = Color(0.94, 0.89, 0.81)
 const SHOT_SOUNDS: Array[StringName] = [&"shot_fire", &"shot_ice", &"shot_mech"]
+const STRIKE_COLOR: Color = Color(1.0, 0.85, 0.5)
+const SILENCE_TEXT_COLOR: Color = Color(1.0, 0.55, 0.3)
+const KNOCKBACK_COLOR: Color = Color(0.55, 0.8, 0.35)
 
 var interpolation: float = 0.0
 var is_own_field: bool = false
@@ -68,6 +71,7 @@ func set_field(field: FieldState) -> void:
 		_field.tower_fired.disconnect(_on_field_tower_fired)
 		_field.mob_killed.disconnect(_on_field_mob_killed)
 		_field.mob_breached.disconnect(_on_field_mob_breached)
+		_field.effect_played.disconnect(_on_field_effect_played)
 	_field = field
 	_projectiles.clear()
 	_impacts.clear()
@@ -76,6 +80,7 @@ func set_field(field: FieldState) -> void:
 	_field.tower_fired.connect(_on_field_tower_fired)
 	_field.mob_killed.connect(_on_field_mob_killed)
 	_field.mob_breached.connect(_on_field_mob_breached)
+	_field.effect_played.connect(_on_field_effect_played)
 
 
 ## Вспышка частиц в точке экрана (покупка, слияние, продажа — их замечает FieldView).
@@ -350,6 +355,30 @@ func _on_field_mob_breached(mob: MobState) -> void:
 	_add_text(_hero_screen_position(), "−%d" % (mob.breach_damage * breach_multiplier),
 			BREACH_TEXT_COLOR)
 	sound_requested.emit(&"breach")
+
+
+## Особые события поля: удар палицы — волна по всему полю, опалённые башни — дым,
+## леший отбросил моба — зелёный «пых» из листьев.
+func _on_field_effect_played(effect_id: StringName, mob: MobState) -> void:
+	match effect_id:
+		&"strike":
+			var center: Vector2 = _origin + Vector2(_field.layout.width, _field.layout.height) \
+					* _cell_size * 0.5
+			var impact: Impact = Impact.new()
+			impact.position = center
+			impact.color = STRIKE_COLOR
+			impact.is_area = true
+			impact.radius = _cell_size * _field.layout.height * 0.6
+			_impacts.append(impact)
+			_add_text(center, "ПАЛИЦА!", STRIKE_COLOR)
+			sound_requested.emit(&"breach")
+		&"silence":
+			var middle: Vector2 = _origin + Vector2(_field.layout.width * 0.5, 1.0) * _cell_size
+			_add_text(middle, "ОПАЛЕНО!", SILENCE_TEXT_COLOR)
+		&"knockback":
+			if mob != null:
+				var at: Vector2 = _milli_to_screen(Vector2(_field.get_mob_position(mob)))
+				_spawn_puff(at, KNOCKBACK_COLOR)
 
 
 ## Снаряд в полёте. Цель — моб; если он умер раньше, снаряд летит в последнюю точку.

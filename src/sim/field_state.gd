@@ -6,6 +6,9 @@ extends RefCounted
 signal tower_fired(tower: TowerState, mob: MobState)
 signal mob_killed(mob: MobState)
 signal mob_breached(mob: MobState)
+## Особое событие на поле для отображения: &"strike" (палица), &"silence" (башни опалены),
+## &"knockback" (леший отбросил моба).
+signal effect_played(effect_id: StringName, mob: MobState)
 
 const MILLI: int = 1000
 
@@ -17,6 +20,11 @@ var mobs: Array[MobState] = []
 var wave_tick: int = 0
 ## Время волны вышло: мобы бегут быстрее (см. GameConfig.wave_enrage_speed_percent).
 var is_enraged: bool = false
+## Правила героя хозяина поля: чужие армии медленнее, леший отбрасывает на середине пути.
+var enemy_army_slow_percent: int = 0
+var knockback_milli: int = 0
+## Башни молчат ещё столько тиков (навык Змея Горыныча соперника).
+var silence_ticks_left: int = 0
 ## Накоплено с последнего сбора: золото за убийства и прорвавшиеся мобы.
 var pending_kill_gold: int = 0
 var pending_breaches: Array[MobState] = []
@@ -181,6 +189,43 @@ func schedule_spawn(mob: MobState, spawn_tick: int) -> void:
 func start_wave() -> void:
 	wave_tick = 0
 	is_enraged = false
+	silence_ticks_left = 0
+
+
+## Башни поменялись (уровень, место): пересчитать то, что от этого зависит.
+func mark_towers_changed() -> void:
+	pass
+
+
+func count_alive_mobs() -> int:
+	var count: int = 0
+	for mob: MobState in mobs:
+		if mob.is_alive():
+			count += 1
+	return count
+
+
+## Сколько живых юнитов армии игрока sender_index на этом поле.
+func count_alive_mobs_of(sender_index: int) -> int:
+	var count: int = 0
+	for mob: MobState in mobs:
+		if mob.is_alive() and mob.sender_index == sender_index:
+			count += 1
+	return count
+
+
+## Все живые мобы теряют percent% текущего HP (никого не добивает).
+func damage_all_by_percent(percent: int) -> void:
+	for mob: MobState in mobs:
+		if mob.is_alive():
+			mob.hp -= mob.hp * percent / 100
+	effect_played.emit(&"strike", null)
+
+
+## Башни не стреляют ticks тиков (если уже молчат дольше — не укорачивает).
+func silence_towers(ticks: int) -> void:
+	silence_ticks_left = maxi(silence_ticks_left, ticks)
+	effect_played.emit(&"silence", null)
 
 
 ## Ярость: время волны вышло, оставшиеся мобы ускоряются.
@@ -227,6 +272,7 @@ func add_to_hash(hasher: StateHasher) -> void:
 	hasher.add(path_length)
 	hasher.add(wave_tick)
 	hasher.add(int(is_enraged))
+	hasher.add(silence_ticks_left)
 	for tower: TowerState in towers:
 		hasher.add_many([tower.id, tower.anchor.x, tower.anchor.y, tower.rotation, tower.level,
 				tower.cooldown_left, tower.invested_total, tower.invested_this_phase])
@@ -268,6 +314,8 @@ func _spawn_due_mobs() -> void:
 		_next_mob_id += 1
 		mob.progress = 0
 		mob.previous_progress = 0
+		if mob.sender_index >= 0 and enemy_army_slow_percent > 0:
+			mob.speed = mob.speed * (100 - enemy_army_slow_percent) / 100
 		mobs.append(mob)
 
 
@@ -277,6 +325,11 @@ func _move_mobs() -> void:
 		mob.advance()
 		if is_enraged:
 			mob.progress += mob.current_speed() * _config.wave_enrage_speed_percent / 100
+		if knockback_milli > 0 and not mob.was_knocked_back and mob.progress * 2 >= end_progress:
+			mob.was_knocked_back = true
+			mob.progress = maxi(0, mob.progress - knockback_milli)
+			mob.previous_progress = mob.progress
+			effect_played.emit(&"knockback", mob)
 		if mob.progress >= end_progress:
 			mob.progress = end_progress
 			_breach(mob)
@@ -289,6 +342,9 @@ func _breach(mob: MobState) -> void:
 
 
 func _fire_towers() -> void:
+	if silence_ticks_left > 0:
+		silence_ticks_left -= 1
+		return
 	for tower: TowerState in towers:
 		if tower.cooldown_left > 0:
 			tower.cooldown_left -= 1

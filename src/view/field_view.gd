@@ -30,6 +30,8 @@ const SIEGE_PULSE_SPEED: float = 5.0
 const POP_STRENGTH: float = 0.3
 const MERGE_BURST_COLOR: Color = Color(1.0, 0.82, 0.4)
 const SELL_BURST_COLOR: Color = Color(0.75, 0.62, 0.45)
+const SCORCH_SHADE: Color = Color(0.05, 0.03, 0.02, 0.55)
+const SCORCH_EMBER: Color = Color(1.0, 0.5, 0.2)
 
 var field: FieldState
 var config: GameConfig
@@ -343,10 +345,22 @@ func _draw_towers() -> void:
 		TowerPainter.draw_tower(self, tower.data, tower.rotation, tower.level, top_left, _cell_size,
 				pulse)
 		draw_set_transform_matrix(Transform2D.IDENTITY)
+		if field.silence_ticks_left > 0:
+			_draw_scorched(tower)
 		if tower.id == selected_tower_id:
 			for cell: Vector2i in tower.cells():
 				draw_rect(_cell_rect(cell).grow(-1.0), _style.selected_color, false, 3.0)
 			_draw_range(tower.center_milli(), tower.data.range_milli, _style.selected_color)
+
+
+## Опалённая башня (навык Змея Горыныча): тёмная дымка и тлеющие искры на клетках.
+func _draw_scorched(tower: TowerState) -> void:
+	for cell: Vector2i in tower.cells():
+		var rect: Rect2 = _cell_rect(cell)
+		draw_rect(rect.grow(-2.0), SCORCH_SHADE)
+		var flicker: float = 0.5 + 0.5 * sin(_time * 9.0 + cell.x * 3.0 + cell.y)
+		draw_circle(rect.get_center() + Vector2(0, -_cell_size * 0.15 * flicker),
+				_cell_size * 0.12, Color(SCORCH_EMBER, 0.4 + 0.5 * flicker))
 
 
 func _draw_hover() -> void:

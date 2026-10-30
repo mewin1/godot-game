@@ -18,6 +18,8 @@ var previous_progress: int = 0
 var slow_percent: int = 0
 var slow_ticks_left: int = 0
 var is_breached: bool = false
+## Леший уже «водил» этого моба (отбрасывает только один раз).
+var was_knocked_back: bool = false
 
 
 ## Создаёт моба по данным с бонусами к HP и скорости в процентах.

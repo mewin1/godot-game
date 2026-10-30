@@ -221,15 +221,17 @@ func _refresh_offers() -> void:
 
 
 func _refresh_shop_actions() -> void:
-	var config: GameConfig = _sim.config
-	_reroll_button.text = "Обновить\n%d зол." % config.reroll_cost
-	_reroll_button.disabled = _player.gold < config.reroll_cost
+	var reroll_price: int = _player.get_reroll_price()
+	var reroll_text: String = "бесплатно" if reroll_price == 0 else "%d зол." % reroll_price
+	_reroll_button.text = "Обновить\n" + reroll_text
+	_reroll_button.disabled = _player.gold < reroll_price
 	var shop: ShopState = _player.shop
+	var upgrade_price: int = _player.get_shop_upgrade_price()
 	if shop.can_upgrade():
-		_upgrade_button.text = "Магазин → ур.%d\n%d зол." % [shop.level + 1, shop.upgrade_cost]
+		_upgrade_button.text = "Магазин → ур.%d\n%d зол." % [shop.level + 1, upgrade_price]
 	else:
 		_upgrade_button.text = "Магазин\nмакс. уровень"
-	_upgrade_button.disabled = not shop.can_upgrade() or _player.gold < shop.upgrade_cost
+	_upgrade_button.disabled = not shop.can_upgrade() or _player.gold < upgrade_price
 
 
 func _refresh_tower_box() -> void:

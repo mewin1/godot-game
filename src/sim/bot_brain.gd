@@ -14,15 +14,46 @@ func _init(army_share: int) -> void:
 	army_share_percent = army_share
 
 
+## Герой — случайный из предложенных: так прогоны ботов честно меряют силу каждого героя.
+func pick_hero(player: PlayerState) -> int:
+	return player.rng.randi_range(0, player.hero_offers.size() - 1)
+
+
 func play_prep(sim: MatchSim, player: PlayerState) -> void:
 	_choose_buff(sim, player)
 	_merge_all_pairs(sim, player)
+	_maybe_use_skill(sim, player, HeroSkillData.Timing.PREP)
+	_use_free_rerolls(sim, player)
 	_maybe_upgrade_shop(sim, player)
 	_buy_army_with_budget(sim, player, player.gold * army_share_percent / 100)
 	_buy_towers(sim, player)
 	_merge_all_pairs(sim, player)
 	_buy_towers(sim, player)
 	_spend_rest_on_army(sim, player)
+
+
+## В волну бот смотрит только на навык «в волну» (или «когда угодно»).
+func play_wave(sim: MatchSim, player: PlayerState) -> void:
+	_maybe_use_skill(sim, player, HeroSkillData.Timing.WAVE)
+
+
+## Жмёт навык, если он для этой фазы, хватает золота и эффект говорит «пора».
+func _maybe_use_skill(sim: MatchSim, player: PlayerState, timing: HeroSkillData.Timing) -> void:
+	if player.hero == null or player.hero.skill == null:
+		return
+	var skill: HeroSkillData = player.hero.skill
+	if skill.timing != timing and skill.timing != HeroSkillData.Timing.ANY:
+		return
+	if player.check_skill_available(sim.phase) != "" or player.gold < player.get_skill_cost():
+		return
+	if skill.effect.bot_wants_to_use(sim, player):
+		_execute(sim, player, UseHeroSkillCommand.new())
+
+
+func _use_free_rerolls(sim: MatchSim, player: PlayerState) -> void:
+	while player.free_rerolls_left > 0:
+		if not _run(sim, player, RerollShopCommand.new()):
+			return
 
 
 func _choose_buff(sim: MatchSim, player: PlayerState) -> void:
@@ -35,10 +66,11 @@ func _choose_buff(sim: MatchSim, player: PlayerState) -> void:
 func _maybe_upgrade_shop(sim: MatchSim, player: PlayerState) -> void:
 	if not player.shop.can_upgrade():
 		return
-	var is_cheap: bool = player.shop.upgrade_cost <= CHEAP_UPGRADE_COST
+	var price: int = player.get_shop_upgrade_price()
+	var is_cheap: bool = price <= CHEAP_UPGRADE_COST
 	if not is_cheap and sim.round_number < LATE_ROUND:
 		return
-	if player.gold >= player.shop.upgrade_cost + sim.config.tower_cost:
+	if player.gold >= price + sim.config.tower_cost:
 		_execute(sim, player, UpgradeShopCommand.new())
 
 
