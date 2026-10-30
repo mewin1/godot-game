@@ -30,6 +30,7 @@ const SIEGE_PULSE_SPEED: float = 5.0
 const POP_STRENGTH: float = 0.3
 const MERGE_BURST_COLOR: Color = Color(1.0, 0.82, 0.4)
 const SELL_BURST_COLOR: Color = Color(0.75, 0.62, 0.45)
+const LESHY_COLOR: Color = Color(0.55, 0.8, 0.35)
 const SCORCH_SHADE: Color = Color(0.05, 0.03, 0.02, 0.55)
 const SCORCH_EMBER: Color = Color(1.0, 0.5, 0.2)
 
@@ -228,6 +229,7 @@ func _draw() -> void:
 	_draw_road()
 	_draw_decor()
 	_draw_spawn()
+	_draw_knockback_mark()
 	_draw_towers()
 	_draw_hover()
 	_draw_hero()
@@ -357,6 +359,20 @@ func _draw_towers() -> void:
 				_draw_range(tower.center_milli(), field.get_tower_range(tower),
 						_style.selected_color)
 			_draw_neighbor_links(tower)
+
+
+## Леший: на середине пути мобов отбрасывает назад — отмечаем это место зелёным кругом.
+func _draw_knockback_mark() -> void:
+	if field.knockback_milli <= 0:
+		return
+	var center: Vector2 = _to_screen(Vector2(field.get_path_point(field.get_path_end_progress() / 2)))
+	var pulse: float = 0.5 + 0.5 * sin(_time * 2.0)
+	draw_circle(center, _cell_size * 0.42, Color(LESHY_COLOR, 0.15 + 0.1 * pulse))
+	draw_arc(center, _cell_size * 0.42, 0.0, TAU, 24, Color(LESHY_COLOR, 0.8), 2.5, true)
+	for i: int in 6:
+		var angle: float = TAU * i / 6.0 + _time * 0.6
+		draw_circle(center + Vector2.from_angle(angle) * _cell_size * 0.42, _cell_size * 0.06,
+				LESHY_COLOR)
 
 
 ## Значок «усилена»: золотой уголок со стрелкой, если соседи или школа дают бонус.
