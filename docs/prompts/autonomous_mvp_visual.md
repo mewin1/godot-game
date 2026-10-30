@@ -1,6 +1,9 @@
 # Промпт: автономная сессия «MVP — чтобы выглядело как игра»
 
-Скопируй всё ниже в новую сессию Claude Code в папке проекта.
+> Исторический сценарий уже выполненной сессии. Не запускать повторно как текущую задачу;
+> актуальное состояние — `memory/CURRENT.md`, следующий сценарий — `docs/prompts/autonomous_development.md`.
+
+Ниже — текст прежнего задания; он может ссылаться на инструменты старого окружения.
 
 ---
 
@@ -9,7 +12,7 @@
 своя простая графика, анимации, эффекты, меню. Без сети (только матч против ботов).
 
 ## 0. Сначала прочитай
-CLAUDE.md, **DEVELOPMENT.md целиком (обязательно)**, decisions.md, open_questions.md, glossary.md,
+AGENTS.md, **DEVELOPMENT.md целиком (обязательно)**, decisions.md, open_questions.md, glossary.md,
 docs/00_pitch.md, docs/01_core_mechanics.md, docs/02_economy.md, docs/prototype_notes.md и свою память
 (особенно «Автономные сессии» и «Ловушки проверки в Godot»). Посмотри код в src/ и сделай скриншот
 текущей игры, чтобы понять стартовую точку.
@@ -81,7 +84,7 @@ docs/00_pitch.md, docs/01_core_mechanics.md, docs/02_economy.md, docs/prototype_
   состояния, переходи к следующей вехе.
 
 ## 5. В конце
-- Обнови CLAUDE.md (раздел «Текущий этап»), decisions.md, open_questions.md,
+- Обнови AGENTS.md (раздел «Текущий этап»), decisions.md, open_questions.md,
   docs/prototype_notes.md (что изменилось и что проверить руками).
 - Обнови память, если узнал что-то неочевидное (например, ловушки импорта SVG или частиц).
 - Финальный коммит и push.

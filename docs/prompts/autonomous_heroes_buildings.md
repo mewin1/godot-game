@@ -1,6 +1,9 @@
 # Промпт: автономная ночная сессия «Герои, постройки, мобы + презентация»
 
-Скопируй всё ниже в новую сессию Claude Code в папке проекта.
+> Исторический сценарий уже выполненной сессии. Не запускать повторно как текущую задачу;
+> актуальное состояние — `memory/CURRENT.md`, следующий сценарий — `docs/prompts/autonomous_development.md`.
+
+Ниже — текст прежнего задания; он может ссылаться на инструменты старого окружения.
 
 ---
 
@@ -38,7 +41,7 @@
 - Попроси держать компьютер включённым: инструмент keep-awake (`mcp__ccd_host__request_keep_awake`),
   режим `session_idle`.
 - Проверь лимит (`get_usage`) и время (`date`), запиши их себе.
-- Прочитай: `CLAUDE.md`, **`DEVELOPMENT.md` целиком (обязательно перед кодом)**, `decisions.md`,
+- Прочитай: `AGENTS.md`, **`DEVELOPMENT.md` целиком (обязательно перед кодом)**, `decisions.md`,
   `open_questions.md`, `glossary.md`, `docs/00_pitch.md`, `docs/01_core_mechanics.md`,
   `docs/02_economy.md`, `docs/03_heroes.md`, `docs/06_visual_style.md`, `docs/08_direction_notes.md`,
   `docs/prototype_notes.md` и свою память (особенно «Автономные сессии» и «Ловушки проверки в Godot»).
@@ -154,7 +157,7 @@ Battlegrounds, TFT, Kingdom Rush, Bloons TD Battles, Legion TD, Dota Auto Chess 
 
 ## 7. В конце (при 85%+ лимита или в 08:00)
 
-- Обнови `CLAUDE.md` («Текущий этап»), `decisions.md`, `open_questions.md`, `docs/prototype_notes.md`
+- Обнови `AGENTS.md` («Текущий этап»), `decisions.md`, `open_questions.md`, `docs/prototype_notes.md`
   (что изменилось, что проверить руками), презентацию.
 - Обнови память, если узнал что-то неочевидное.
 - Финальный коммит и `git push`.
