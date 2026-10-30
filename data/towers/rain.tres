@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="TowerData" format=3]
+[ext_resource type="Script" path="res://src/sim/data/tower_data.gd" id="1"]
+[resource]
+script = ExtResource("1")
+id = &"rain"
+display_name = "Дождевой круг"
+god = &"water"
+school = &"water"
+tags = Array[StringName]([&"water"])
+tier = 3
+shape = Array[Vector2i]([Vector2i(0, 0), Vector2i(1, 0)])
+damage = 0
+cooldown_ticks = 28
+range_milli = 3000
+description = "Усилитель: орошает все цели в радиусе на 4 с. Сам не наносит урона."
+wet_ticks = 80
+hits_all_in_range = true

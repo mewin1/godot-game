@@ -287,6 +287,8 @@ func pick_hero(hero_data: HeroData) -> void:
 	if hero_data.starting_army_units >= 0:
 		army.base_units = hero_data.starting_army_units
 	army.added_mobs.append_array(hero_data.starting_army_mobs)
+	if hero_data.affinity_gift != null and shop.is_god_active(hero_data.affinity_god):
+		gift_towers.append(hero_data.affinity_gift)
 	for effect: HeroEffect in hero_data.passives:
 		effect.on_picked(self)
 
@@ -416,11 +418,12 @@ func _check_discover(tower: TowerState) -> void:
 		return
 	var max_tier: int = 1
 	for data: TowerData in _config.towers:
-		max_tier = maxi(max_tier, data.tier)
+		if shop.is_god_active(data.god):
+			max_tier = maxi(max_tier, data.tier)
 	var tier: int = mini(shop.level + _config.discover_tier_offset, max_tier)
 	var pool: Array[TowerData] = []
 	for data: TowerData in _config.towers:
-		if data.tier == tier:
+		if data.tier == tier and shop.is_god_active(data.god):
 			pool.append(data)
 	for i: int in mini(_config.discover_offer_count, pool.size()):
 		discover_offers.append(pool.pop_at(rng.randi_range(0, pool.size() - 1)))

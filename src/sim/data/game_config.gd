@@ -4,6 +4,8 @@ extends Resource
 ## Значения правятся в data/game_config.tres, а не в коде.
 
 @export_group("Контент")
+@export var gods: Array[StringName] = []
+@export var draft_count: int = 0
 @export var board: BoardLayout
 @export var reactions: Array[ReactionData] = []
 @export var towers: Array[TowerData] = []

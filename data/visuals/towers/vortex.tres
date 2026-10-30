@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="TowerVisual" format=3]
+
+[ext_resource type="Script" path="res://src/view/visuals/tower_visual.gd" id="1"]
+[ext_resource type="Texture2D" path="res://assets/towers/stribog.svg" id="2"]
+
+[resource]
+script = ExtResource("1")
+tower_id = &"vortex"
+icon = ExtResource("2")
+plate_color = Color(0.3, 0.65, 0.52, 1)
+plate_edge_color = Color(0.3, 0.65, 0.52, 1)
+projectile = 1
+projectile_color = Color(0.3, 0.65, 0.52, 1)
+impact_color = Color(0.3, 0.65, 0.52, 1)

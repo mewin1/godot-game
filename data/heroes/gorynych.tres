@@ -4,6 +4,8 @@
 [ext_resource type="Script" path="res://src/sim/heroes/effects/silence_towers_effect.gd" id="silence"]
 [ext_resource type="Script" path="res://src/sim/heroes/hero_skill_data.gd" id="skill"]
 
+[ext_resource type="Resource" path="res://data/towers/brazier.tres" id="affinity_gift"]
+
 [sub_resource type="Resource" id="skill_effect"]
 script = ExtResource("silence")
 ticks = 140
@@ -27,3 +29,6 @@ style = "давление, тайминг"
 hp = 40
 passives = Array[ExtResource("effect")]([])
 skill = SubResource("skill")
+
+affinity_god = &"svarog"
+affinity_gift = ExtResource("affinity_gift")

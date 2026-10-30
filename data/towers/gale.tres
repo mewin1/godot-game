@@ -10,9 +10,14 @@ god = &"stribog"
 school = &"stribog"
 tier = 2
 shape = Array[Vector2i]([Vector2i(0, 0)])
-damage = 10
+damage = 0
 cooldown_ticks = 16
 range_milli = 2700
-description = "Стреляет и дует по стрелке. Совместите поток с огненной зоной."
+description = "Узкий поток по стрелке: усиливает контроль и разнос стихий."
 wind_length_milli = 4000
 wind_power_percent = 20
+
+attacks = false
+tags = Array[StringName]([&"wind"])
+wind_power_per_level = 5
+wind_length_per_level_milli = 500

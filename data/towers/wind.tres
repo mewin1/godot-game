@@ -19,3 +19,5 @@ wind_length_milli = 5000
 wind_power_per_level = 5
 wind_length_per_level_milli = 1000
 shop_weight = 5
+
+tags = Array[StringName]([&"wind"])

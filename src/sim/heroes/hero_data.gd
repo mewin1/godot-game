@@ -11,6 +11,8 @@ extends Resource
 @export_multiline var description: String = ""
 ## Стиль игры одним-двумя словами («оборона», «экономика»…).
 @export var style: String = ""
+@export var affinity_god: StringName = &""
+@export var affinity_gift: TowerData
 @export var hp: int = 40
 ## -1 — обычная общая армия; отдельным героям можно задать иной стартовый состав.
 @export var starting_army_units: int = -1

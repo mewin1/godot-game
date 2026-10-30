@@ -126,11 +126,17 @@
 [ext_resource type="Resource" path="res://data/towers/plague.tres" id="new_plague"]
 [ext_resource type="Resource" path="res://data/towers/doom.tres" id="new_doom"]
 
+[ext_resource type="Resource" path="res://data/towers/storm.tres" id="new_storm"]
+[ext_resource type="Resource" path="res://data/towers/cinder.tres" id="new_cinder"]
+[ext_resource type="Resource" path="res://data/towers/vortex.tres" id="new_vortex"]
+[ext_resource type="Resource" path="res://data/towers/dew.tres" id="new_dew"]
+[ext_resource type="Resource" path="res://data/towers/rain.tres" id="new_rain"]
+
 [resource]
 script = ExtResource("1_script")
 reactions = Array[ExtResource("reaction_type")]([ExtResource("reaction_steam"), ExtResource("reaction_roast"), ExtResource("reaction_melt"), ExtResource("reaction_freeze"), ExtResource("reaction_shatter"), ExtResource("reaction_execute"), ExtResource("reaction_chain"), ExtResource("reaction_infection"), ExtResource("reaction_conservation"), ExtResource("reaction_surge"), ExtResource("reaction_wildfire"), ExtResource("reaction_blizzard"), ExtResource("reaction_frozen_wind")])
 board = ExtResource("2_ext")
-towers = Array[ExtResource("5_ext")]([ExtResource("new_spark"), ExtResource("new_thunder"), ExtResource("new_brazier"), ExtResource("new_furnace"), ExtResource("new_wind"), ExtResource("new_gale"), ExtResource("new_water"), ExtResource("new_rime"), ExtResource("new_glacier"), ExtResource("new_ice_lance"), ExtResource("new_bolt"), ExtResource("new_war_engine"), ExtResource("new_war_rocket"), ExtResource("new_hex"), ExtResource("new_plague"), ExtResource("new_doom")])
+towers = Array[ExtResource("5_ext")]([ExtResource("new_spark"), ExtResource("new_thunder"), ExtResource("new_brazier"), ExtResource("new_furnace"), ExtResource("new_wind"), ExtResource("new_gale"), ExtResource("new_water"), ExtResource("new_rime"), ExtResource("new_glacier"), ExtResource("new_ice_lance"), ExtResource("new_bolt"), ExtResource("new_war_engine"), ExtResource("new_war_rocket"), ExtResource("new_hex"), ExtResource("new_plague"), ExtResource("new_doom"), ExtResource("new_storm"), ExtResource("new_cinder"), ExtResource("new_vortex"), ExtResource("new_dew"), ExtResource("new_rain")])
 send_buffs = Array[ExtResource("6_ext")]([ExtResource("13_ext"), ExtResource("14_ext"), ExtResource("15_ext"), ExtResource("16_ext"), ExtResource("17_ext"), ExtResource("18_ext"), ExtResource("19_ext"), ExtResource("20_ext"), ExtResource("21_ext"), ExtResource("22_ext"), ExtResource("23_ext")])
 wave_mob = ExtResource("3_ext")
 army_mob = ExtResource("4_ext")
@@ -163,3 +169,6 @@ chain_chance_percent = 20
 wet_chain_chance_percent = 80
 
 curse_spread_radius_milli = 1500
+
+gods = Array[StringName]([&"svarog", &"perun", &"water", &"stribog", &"ice", &"curse", &"war"])
+draft_count = 4

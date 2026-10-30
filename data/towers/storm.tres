@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="TowerData" format=3]
+[ext_resource type="Script" path="res://src/sim/data/tower_data.gd" id="1"]
+[resource]
+script = ExtResource("1")
+id = &"storm"
+display_name = "Грозовая решётка"
+god = &"perun"
+school = &"perun"
+tags = Array[StringName]([&"lightning"])
+tier = 3
+shape = Array[Vector2i]([Vector2i(0, 0), Vector2i(1, 0)])
+damage = 24
+cooldown_ticks = 24
+range_milli = 3000
+description = "Усилитель цепи: три разряда по разным целям, каждый оставляет заряд."
+targets_per_shot = 3
+charge_ticks = 60

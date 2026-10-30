@@ -13,6 +13,7 @@ const COLOR_HP: Color = Color(0.92, 0.5, 0.42)
 const COLOR_SKILL: Color = Color(0.91, 0.65, 0.29)
 
 var _title: Label
+var _draft_label: Label
 var _timer_label: Label
 var _cards_box: BoxContainer
 var _cards: Array[PanelContainer] = []
@@ -39,6 +40,9 @@ func _init() -> void:
 	_title.theme_type_variation = &"HeaderLabel"
 	_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(_title)
+	_draft_label = _make_label("", 18, COLOR_SKILL)
+	_draft_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	box.add_child(_draft_label)
 	_timer_label = _make_label("", 18, COLOR_MUTED)
 	_timer_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(_timer_label)
@@ -55,7 +59,11 @@ func _notification(what: int) -> void:
 
 
 ## Показывает предложенных героев (один раз в начале матча).
-func show_offers(offers: Array[HeroData]) -> void:
+func show_offers(offers: Array[HeroData], gods: Array[StringName] = []) -> void:
+	var names: PackedStringArray = []
+	for god: StringName in gods:
+		names.append(IdolSlot.god_name(god))
+	_draft_label.text = "Боги матча: " + " · ".join(names) if not gods.is_empty() else ""
 	for card: PanelContainer in _cards:
 		card.queue_free()
 	_cards.clear()
@@ -99,6 +107,9 @@ func _make_card(hero: HeroData, offer_index: int) -> PanelContainer:
 	hp.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(hp)
 	box.add_child(_make_label(hero.get_passive_text(), 16))
+	if hero.affinity_gift != null:
+		box.add_child(_make_label("Дар %s: %s" % [IdolSlot.god_name(hero.affinity_god),
+				hero.affinity_gift.display_name], 15, COLOR_SKILL))
 	if hero.skill != null:
 		var skill: HeroSkillData = hero.skill
 		box.add_child(_make_label("Навык «%s» · %d зол. · %s" % [skill.display_name, skill.cost,

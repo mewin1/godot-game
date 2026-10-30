@@ -2,6 +2,7 @@ class_name ShopState
 extends RefCounted
 ## Магазин игрока: витрина башен, уровень магазина и цена его повышения.
 
+var active_gods: Array[StringName] = []
 var level: int = 1
 ## Текущая цена повышения (падает на 1 каждый раунд, пока не повысишь). 0 — уровень максимальный.
 var upgrade_cost: int = 0
@@ -85,7 +86,7 @@ func get_rite(index: int) -> RiteData:
 func _append_offer(rng: RandomNumberGenerator, index: int) -> void:
 	var pool: Array[RiteData] = []
 	for rite: RiteData in _config.rites:
-		if rite.tier <= level:
+		if rite.tier <= level and is_god_active(rite.god):
 			pool.append(rite)
 	var rite: RiteData = null
 	if index >= 2 and not pool.is_empty() and rng.randi_range(1, 100) <= _config.rite_offer_percent:
@@ -95,6 +96,8 @@ func _append_offer(rng: RandomNumberGenerator, index: int) -> void:
 
 
 func add_to_hash(hasher: StateHasher) -> void:
+	for god: StringName in active_gods:
+		hasher.add_string(god)
 	hasher.add(level)
 	hasher.add(upgrade_cost)
 	hasher.add(int(is_frozen))
@@ -108,13 +111,22 @@ func add_to_hash(hasher: StateHasher) -> void:
 func _random_tower(rng: RandomNumberGenerator, shooter_only: bool = false) -> TowerData:
 	var total: int = 0
 	for data: TowerData in _config.towers:
-		if data.tier <= level and (not shooter_only or data.attacks):
+		if data.tier <= level and is_god_active(data.god) \
+				and (not shooter_only or (data.attacks and data.damage > 0)):
 			total += data.shop_weight
+	if total <= 0:
+		return null
 	var pick: int = rng.randi_range(1, total)
 	for data: TowerData in _config.towers:
-		if data.tier > level or (shooter_only and not data.attacks):
+		if data.tier > level or not is_god_active(data.god) \
+				or (shooter_only and (not data.attacks or data.damage <= 0)):
 			continue
 		pick -= data.shop_weight
 		if pick <= 0:
 			return data
-	return _config.towers[0]
+	return null
+
+
+## Нейтральные чары разрешены при любом драфте; пустой список — старые правила.
+func is_god_active(god: StringName) -> bool:
+	return god == &"" or active_gods.is_empty() or active_gods.has(god)

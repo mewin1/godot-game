@@ -3,6 +3,8 @@
 [ext_resource type="Script" path="res://src/sim/heroes/hero_effect.gd" id="effect"]
 [ext_resource type="Script" path="res://src/sim/heroes/effects/stat_hero_effect.gd" id="stat"]
 
+[ext_resource type="Resource" path="res://data/towers/wind.tres" id="affinity_gift"]
+
 [sub_resource type="Resource" id="passive_0"]
 script = ExtResource("stat")
 kind = 6
@@ -17,3 +19,6 @@ description = "Каждый моб на вашем поле на середин�
 style = "оборона, лабиринт"
 hp = 40
 passives = Array[ExtResource("effect")]([SubResource("passive_0")])
+
+affinity_god = &"stribog"
+affinity_gift = ExtResource("affinity_gift")

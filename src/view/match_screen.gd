@@ -237,7 +237,7 @@ func _start_match() -> void:
 	_shop_panel.setup(_sim, _human())
 	if _sim.phase == MatchSim.Phase.HERO_SELECT:
 		_hero_select.visible = true
-		_hero_select.show_offers(_human().hero_offers)
+		_hero_select.show_offers(_human().hero_offers, _sim.active_gods)
 
 
 func _create_logger(match_seed: int) -> MatchLogger:

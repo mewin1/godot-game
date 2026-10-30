@@ -47,7 +47,7 @@ func _mob(at_progress: int = 3000) -> MobState:
 
 
 func test_current_content_preserves_army_and_three_empty_idols() -> void:
-	assert_eq(_config.towers.size(), 16)
+	assert_eq(_config.towers.size(), 21)
 	assert_eq(_config.army_base_units, 5)
 	assert_true(_config.school_bonuses.is_empty())
 	assert_eq(_player.field.idols.size(), 3)
@@ -433,7 +433,7 @@ func test_visual_interpolation_spans_all_accelerated_substeps() -> void:
 	assert_eq(mob.progress, before + 5 * mob.speed)
 
 
-func test_wind_levels_strengthen_control_but_gale_levels_strengthen_shots() -> void:
+func test_wind_levels_strengthen_control_without_direct_damage() -> void:
 	var wind: TowerState = _player.field.add_tower(_tower(&"wind"), Vector2i(2, 4), 2)
 	var mob: MobState = _mob(2000)
 	for level: int in range(1, 4):
@@ -444,8 +444,8 @@ func test_wind_levels_strengthen_control_but_gale_levels_strengthen_shots() -> v
 	var gale: TowerState = TowerState.new()
 	gale.data = _tower(&"gale")
 	gale.level = 3
-	assert_eq(DivineCombat.wind_length(_player.field, gale), 4000)
-	assert_eq(_player.field.get_tower_damage(gale), 40)
+	assert_eq(DivineCombat.wind_length(_player.field, gale), 5000)
+	assert_eq(_player.field.get_tower_damage(gale), 0)
 
 
 func test_upgraded_wind_keeps_control_after_reserve_merge_and_caps_power() -> void:

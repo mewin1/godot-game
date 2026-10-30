@@ -26,6 +26,7 @@ const BOT_MAX_ARMY_SHARE: int = 70
 ## Как часто (в тиках) боты думают во время волны — о навыках «в волну».
 const BOT_WAVE_THINK_TICKS: int = 10
 
+var active_gods: Array[StringName] = []
 var config: GameConfig
 var players: Array[PlayerState] = []
 var round_number: int = 0
@@ -61,8 +62,10 @@ func _init(game_config: GameConfig, match_seed: int, player_count: int = 2,
 		human_count: int = 1) -> void:
 	config = game_config
 	_rng.seed = match_seed
+	active_gods = PantheonDraft.draw(config, _rng)
 	for i: int in player_count:
 		var player: PlayerState = PlayerState.new(config, i, _rng.randi())
+		player.shop.active_gods = active_gods.duplicate()
 		player.is_bot = i >= human_count
 		player.display_name = "Вы" if not player.is_bot else "Бот %d" % i
 		players.append(player)
@@ -192,6 +195,8 @@ func state_hash() -> int:
 	hasher.add_many([round_number, phase, phase_tick, tick_count, siege_leader])
 	hasher.add_many(opponent_of)
 	hasher.add(_rng.state)
+	for god: StringName in active_gods:
+		hasher.add_string(god)
 	hasher.add_many([_siege_leader_hp_lost, _siege_damage_remainder])
 	for attacker: int in siege_attackers:
 		hasher.add_many([attacker, _siege_damage_by_attacker.get(attacker, 0)])
@@ -227,7 +232,11 @@ func _tick_hero_select() -> void:
 
 ## Разные герои из общего списка (у разных игроков могут совпадать).
 func _roll_hero_offers() -> Array[HeroData]:
-	var pool: Array[HeroData] = config.heroes.duplicate()
+	var pool: Array[HeroData] = []
+	for hero: HeroData in config.heroes:
+		if hero.affinity_god == &"" or active_gods.is_empty() \
+				or active_gods.has(hero.affinity_god):
+			pool.append(hero)
 	var offers: Array[HeroData] = []
 	for i: int in mini(config.hero_offer_count, pool.size()):
 		var pick: int = _rng.randi_range(0, pool.size() - 1)

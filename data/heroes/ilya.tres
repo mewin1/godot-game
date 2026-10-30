@@ -4,6 +4,8 @@
 [ext_resource type="Script" path="res://src/sim/heroes/effects/damage_field_effect.gd" id="strike"]
 [ext_resource type="Script" path="res://src/sim/heroes/hero_skill_data.gd" id="skill"]
 
+[ext_resource type="Resource" path="res://data/towers/spark.tres" id="affinity_gift"]
+
 [sub_resource type="Resource" id="skill_effect"]
 script = ExtResource("strike")
 percent = 45
@@ -27,3 +29,6 @@ style = "оборона"
 hp = 50
 passives = Array[ExtResource("effect")]([])
 skill = SubResource("skill")
+
+affinity_god = &"perun"
+affinity_gift = ExtResource("affinity_gift")
