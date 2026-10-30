@@ -121,6 +121,7 @@ func _build_ui() -> void:
 	_hud.speed_pressed.connect(_on_hud_speed_pressed)
 	_hud.sound_pressed.connect(_on_hud_sound_pressed)
 	_hud.skill_pressed.connect(_on_hud_skill_pressed)
+	_hud.hero_info_pressed.connect(_on_hud_hero_info_pressed)
 	_hud.set_muted(SoundBank.is_muted())
 	root_box.add_child(_hud)
 	_halves = BoxContainer.new()
@@ -397,6 +398,17 @@ func _show_banner(text: String, color: Color = UiFx.BANNER_COLOR, subtitle: Stri
 func _on_hero_select_hero_chosen(offer_index: int) -> void:
 	_sim.queue_command(HUMAN_INDEX, ChooseHeroCommand.new(offer_index))
 	_sound_bank.play(&"merge")
+
+
+func _on_hud_hero_info_pressed() -> void:
+	var hero: HeroData = _human().hero
+	if hero == null:
+		return
+	var lines: PackedStringArray = [hero.display_name, hero.get_passive_text()]
+	if hero.skill != null:
+		lines.append("Навык «%s» (%s): %s" % [hero.skill.display_name,
+				hero.skill.get_timing_text(), hero.skill.description])
+	_show_toast("\n".join(lines), SUMMARY_SECONDS)
 
 
 func _on_hud_skill_pressed() -> void:

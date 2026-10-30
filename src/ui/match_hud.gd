@@ -8,6 +8,8 @@ signal pause_pressed()
 signal speed_pressed()
 signal sound_pressed()
 signal skill_pressed()
+## Нажали на портрет героя — показать, что он умеет (на телефоне нет наведения).
+signal hero_info_pressed()
 
 const HEART_ICON: Texture2D = preload("res://assets/ui/icon_heart.svg")
 const GOLD_ICON: Texture2D = preload("res://assets/ui/icon_gold.svg")
@@ -58,6 +60,8 @@ func _init() -> void:
 	_phase_label = _add_label(row, 20)
 	_phase_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_hero_portrait = _make_portrait(PORTRAIT_SIZE)
+	_hero_portrait.mouse_filter = Control.MOUSE_FILTER_STOP
+	_hero_portrait.gui_input.connect(_on_hero_portrait_gui_input)
 	row.add_child(_hero_portrait)
 	_skill_button = _add_button(row, "", "Навык героя")
 	_skill_button.theme_type_variation = &"AccentButton"
@@ -243,6 +247,12 @@ func _build_lobby_row() -> void:
 func set_player_count(count: int) -> void:
 	for i: int in _chips.size():
 		_chips[i].visible = i < count
+
+
+func _on_hero_portrait_gui_input(event: InputEvent) -> void:
+	var click: InputEventMouseButton = event as InputEventMouseButton
+	if click != null and click.pressed and click.button_index == MOUSE_BUTTON_LEFT:
+		hero_info_pressed.emit()
 
 
 func _make_portrait(portrait_size: float) -> TextureRect:
