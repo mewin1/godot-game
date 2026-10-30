@@ -11,3 +11,5 @@ stun_ticks = 8
 freeze_ticks = 0
 suppress_status = false
 minimum_statuses = 0
+display_name = "Раскол"
+explanation = "Заморозка → Физика: урон ×1.5, стан 0.4 с; лёд разбивается."

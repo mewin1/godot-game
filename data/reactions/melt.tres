@@ -11,3 +11,5 @@ stun_ticks = 0
 freeze_ticks = 0
 suppress_status = true
 minimum_statuses = 0
+display_name = "Таяние"
+explanation = "Горение → Лёд: урон ×1.5, снимает горение и холод."

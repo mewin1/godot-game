@@ -480,7 +480,7 @@ func _fire(tower: TowerState) -> bool:
 ## Цели — живые мобы в радиусе, дальше всех прошедшие по пути (при равенстве — меньший id).
 func _find_targets(tower: TowerState, center: Vector2i, range_milli: int) -> Array[MobState]:
 	var targets: Array[MobState] = []
-	for i: int in tower.data.targets_per_shot:
+	for i: int in get_tower_targets(tower):
 		var best: MobState = null
 		for mob: MobState in mobs:
 			if targets.has(mob) or not _can_target(tower, center, range_milli, mob):
@@ -602,6 +602,12 @@ func _apply_healing(target: MobState, percent: int) -> void:
 
 
 #region Соседство и бонусы
+
+## Число целей с усилением идола; область по всем целям уже не ограничена счётчиком.
+func get_tower_targets(tower: TowerState) -> int:
+	var idol: IdolState = get_idol(tower.data.god)
+	return tower.data.targets_per_shot + (idol.extra_targets if idol != null else 0)
+
 
 ## Урон башни с уровнем и бонусом соседей.
 func get_tower_damage(tower: TowerState) -> int:

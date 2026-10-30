@@ -7,3 +7,5 @@ incoming = &"curse"
 required = &"wet"
 makes_contagious = true
 consume = Array[StringName]([&"wet"])
+display_name = "Зараза"
+explanation = "Мокрота → Проклятие: взрыв перескочит на соседнего мокрого."

@@ -103,6 +103,9 @@ static func tick_effects(field: FieldState, mob: MobState) -> void:
 static func hit(field: FieldState, tower: TowerState, mob: MobState, damage: int) -> void:
 	if not mob.is_alive():
 		return
+	var idol_bonus: IdolState = field.get_idol(tower.data.god)
+	var status_bonus: int = idol_bonus.status_ticks if idol_bonus != null else 0
+	var chain_roll_chance: int = chain_chance(field, mob)
 	var was_shielded: bool = mob.shield_left > 0
 	var reaction: ReactionData = null
 	if not was_shielded:
@@ -121,7 +124,8 @@ static func hit(field: FieldState, tower: TowerState, mob: MobState, damage: int
 			mob.is_contagious = true
 		if reaction.curse_extra_ticks > 0:
 			CurseCombat.conserve(mob, reaction)
-		field.effect_played.emit(reaction.id, mob)
+		if reaction.chain_chance_bonus == 0:
+			field.effect_played.emit(reaction.id, mob)
 	var was_burning: bool = mob.burn_ticks_left > 0
 	if was_burning:
 		damage += damage * tower.data.burning_target_bonus_percent / 100
@@ -143,20 +147,20 @@ static func hit(field: FieldState, tower: TowerState, mob: MobState, damage: int
 			percent += idol.burn_percent
 		var burn: int = maxi(1, field.get_tower_damage(tower) * percent / 100)
 		mob.burn_damage = maxi(mob.burn_damage, burn)
-		mob.burn_ticks_left = maxi(mob.burn_ticks_left, tower.data.burn_ticks)
+		mob.burn_ticks_left = maxi(mob.burn_ticks_left, tower.data.burn_ticks + status_bonus)
 	if tower.data.cold_ticks > 0 and mob.is_alive() \
 			and (reaction == null or not reaction.suppress_status) \
 			and (mob.can_apply_status(&"cold") or mob.freeze_ticks_left > 0):
-		mob.cold_ticks_left = maxi(mob.cold_ticks_left, tower.data.cold_ticks)
+		mob.cold_ticks_left = maxi(mob.cold_ticks_left, tower.data.cold_ticks + status_bonus)
 		mob.cold_slow_percent = maxi(mob.cold_slow_percent, tower.data.cold_slow_percent)
 	if tower.data.curse_ticks > 0:
-		CurseCombat.apply(tower, mob, field.get_tower_damage(tower))
+		CurseCombat.apply(tower, mob, field.get_tower_damage(tower), status_bonus)
 	if tower.data.charge_ticks > 0 and mob.is_alive() and mob.can_apply_status(&"charge"):
-		mob.charge_ticks_left = maxi(mob.charge_ticks_left, tower.data.charge_ticks)
+		mob.charge_ticks_left = maxi(mob.charge_ticks_left, tower.data.charge_ticks + status_bonus)
 	if tower.data.tags.has(&"lightning") or tower.data.god == &"perun":
 		if field.config.chain_chance_percent < 0:
 			_charge(field, tower, mob, damage)
-		elif field.roll_chance(chain_chance(field, mob)):
+		elif field.roll_chance(chain_roll_chance):
 			_chain(field, tower, mob, damage)
 
 
@@ -202,6 +206,8 @@ static func _chain(field: FieldState, tower: TowerState, mob: MobState, damage: 
 		var next_target: MobState = _nearest_target(field, previous, visited)
 		if next_target == null:
 			return
+		if visited.size() == 1:
+			field.effect_played.emit(&"chain", mob)
 		visited.append(next_target)
 		field.lightning_fired.emit(field.get_mob_position(previous),
 				field.get_mob_position(next_target))

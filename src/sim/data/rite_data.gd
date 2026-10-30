@@ -5,7 +5,7 @@ extends Resource
 enum Target { IDOL, TOWER }
 enum Effect { DAMAGE, CHAIN_HITS, CHAIN_TARGETS, BURN, WIND_POWER, WIND_LENGTH,
 		ENCHANT_DAMAGE, ENCHANT_RATE, ENCHANT_RANGE, AWAKEN_WIDE, AWAKEN_FOCUS,
-		CHAIN_CHANCE, WET_DURATION }
+		CHAIN_CHANCE, WET_DURATION, STATUS_DURATION, TARGETS }
 
 @export var id: StringName = &""
 @export var display_name: String = ""

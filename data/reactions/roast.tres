@@ -9,3 +9,5 @@ consume = Array[StringName]([&"burn"])
 damage_percent = 125
 stun_ticks = 4
 suppress_status = true
+display_name = "Прожарка"
+explanation = "Горение → Молния: урон ×1.25, стан 0.2 с; горение поглощается."

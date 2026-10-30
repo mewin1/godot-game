@@ -132,6 +132,14 @@
 [ext_resource type="Resource" path="res://data/towers/dew.tres" id="new_dew"]
 [ext_resource type="Resource" path="res://data/towers/rain.tres" id="new_rain"]
 
+[ext_resource type="Resource" path="res://data/rites/ice_power.tres" id="rite_ice_power"]
+[ext_resource type="Resource" path="res://data/rites/ice_duration.tres" id="rite_ice_duration"]
+[ext_resource type="Resource" path="res://data/rites/ice_targets.tres" id="rite_ice_targets"]
+[ext_resource type="Resource" path="res://data/rites/curse_power.tres" id="rite_curse_power"]
+[ext_resource type="Resource" path="res://data/rites/curse_targets.tres" id="rite_curse_targets"]
+[ext_resource type="Resource" path="res://data/rites/war_power.tres" id="rite_war_power"]
+[ext_resource type="Resource" path="res://data/rites/war_targets.tres" id="rite_war_targets"]
+
 [resource]
 script = ExtResource("1_script")
 reactions = Array[ExtResource("reaction_type")]([ExtResource("reaction_steam"), ExtResource("reaction_roast"), ExtResource("reaction_melt"), ExtResource("reaction_freeze"), ExtResource("reaction_shatter"), ExtResource("reaction_execute"), ExtResource("reaction_chain"), ExtResource("reaction_infection"), ExtResource("reaction_conservation"), ExtResource("reaction_surge"), ExtResource("reaction_wildfire"), ExtResource("reaction_blizzard"), ExtResource("reaction_frozen_wind")])
@@ -150,7 +158,7 @@ school_bonuses = Array[ExtResource("school_script")]([])
 army_gold_per_hp = 3
 army_rage_percent = 0
 
-rites = Array[ExtResource("rite_type")]([ExtResource("rite_perun_charge"), ExtResource("rite_perun_chain"), ExtResource("rite_perun_power"), ExtResource("rite_svarog_burn"), ExtResource("rite_svarog_power"), ExtResource("rite_stribog_power"), ExtResource("rite_stribog_length"), ExtResource("rite_enchant_damage"), ExtResource("rite_enchant_rate"), ExtResource("rite_enchant_range"), ExtResource("rite_awaken_wide"), ExtResource("rite_awaken_focus"), ExtResource("rite_water_duration")])
+rites = Array[ExtResource("rite_type")]([ExtResource("rite_perun_charge"), ExtResource("rite_perun_chain"), ExtResource("rite_perun_power"), ExtResource("rite_svarog_burn"), ExtResource("rite_svarog_power"), ExtResource("rite_stribog_power"), ExtResource("rite_stribog_length"), ExtResource("rite_enchant_damage"), ExtResource("rite_enchant_rate"), ExtResource("rite_enchant_range"), ExtResource("rite_awaken_wide"), ExtResource("rite_awaken_focus"), ExtResource("rite_water_duration"), ExtResource("rite_ice_power"), ExtResource("rite_ice_duration"), ExtResource("rite_ice_targets"), ExtResource("rite_curse_power"), ExtResource("rite_curse_targets"), ExtResource("rite_war_power"), ExtResource("rite_war_targets")])
 army_base_units = 5
 army_first_round = 2
 army_warmup_percent = Array[int]([0, 25, 35, 65])

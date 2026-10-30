@@ -11,3 +11,6 @@ stun_ticks = 0
 freeze_ticks = 0
 suppress_status = false
 minimum_statuses = 2
+display_name = "Добивание"
+explanation = "Два статуса → Физика: урон ×1.4, статусы поглощаются."
+consume = Array[StringName]([&"wet", &"burn", &"charge", &"cold", &"frozen", &"curse"])

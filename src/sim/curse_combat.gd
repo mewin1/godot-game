@@ -3,12 +3,12 @@ extends RefCounted
 ## Отложенный взрыв и однократная консервация. Награды и броня обрабатываются полем.
 
 ## Повторное попадание усиливает заряд, но не отодвигает взрыв бесконечно.
-static func apply(tower: TowerState, mob: MobState, damage: int) -> void:
+static func apply(tower: TowerState, mob: MobState, damage: int, extra_ticks: int = 0) -> void:
 	if not mob.is_alive() or not mob.can_apply_status(&"curse"):
 		return
 	if mob.curse_ticks_left <= 0:
-		mob.curse_ticks_left = tower.data.curse_ticks
-		mob.curse_delay = tower.data.curse_ticks
+		mob.curse_ticks_left = tower.data.curse_ticks + extra_ticks
+		mob.curse_delay = tower.data.curse_ticks + extra_ticks
 	mob.curse_damage = maxi(mob.curse_damage, damage * tower.data.curse_percent / 100)
 
 

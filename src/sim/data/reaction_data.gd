@@ -2,6 +2,8 @@ class_name ReactionData
 extends Resource
 ## Направленная реакция: тег удара и уже существующий статус.
 
+@export var display_name: String = ""
+@export var explanation: String = ""
 @export var id: StringName = &""
 @export var incoming: StringName = &""
 @export var required: StringName = &""

@@ -19,6 +19,7 @@ var _discover_buttons: Array[Button] = []
 var _ready: Button
 var _reroll: Button
 var _upgrade: Button
+var _reaction_help: Label
 
 
 func _init() -> void:
@@ -31,6 +32,11 @@ func _init() -> void:
 	_upgrade = _button("Магазин", _on_upgrade)
 	actions.add_child(_reroll)
 	actions.add_child(_upgrade)
+	_reaction_help = _label("Реакции ⓘ", 15)
+	_reaction_help.autowrap_mode = TextServer.AUTOWRAP_OFF
+	_reaction_help.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_reaction_help.mouse_filter = Control.MOUSE_FILTER_STOP
+	actions.add_child(_reaction_help)
 	_offer_grid = GridContainer.new()
 	_offer_grid.columns = 3
 	_offer_grid.add_theme_constant_override("h_separation", 5)
@@ -62,6 +68,7 @@ func _init() -> void:
 func setup(sim: MatchSim, player: PlayerState) -> void:
 	_sim = sim
 	_player = player
+	_reaction_help.tooltip_text = ReactionGuide.text(sim.config)
 	for i: int in sim.config.army_upgrades.size():
 		var button: Button = _button("", _on_army.bind(i))
 		_army_grid.add_child(button)

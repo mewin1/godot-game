@@ -11,3 +11,5 @@ stun_ticks = 0
 freeze_ticks = 30
 suppress_status = true
 minimum_statuses = 0
+display_name = "Заморозка"
+explanation = "Мокрота → Лёд: остановка на 1.5 с; мокрота поглощается."

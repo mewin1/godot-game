@@ -3,6 +3,8 @@ extends RefCounted
 ## Одна из трёх пустых основ. Первый заговор посвящает её божеству; следующие усиливают.
 
 var god: StringName = &""
+var status_ticks: int = 0
+var extra_targets: int = 0
 var damage_percent: int = 0
 var chain_reduction: int = 0
 var chain_chance_bonus: int = 0
@@ -28,6 +30,10 @@ func apply_rite(rite: RiteData) -> void:
 	god = rite.god
 	purchases[rite.id] = purchases.get(rite.id, 0) + 1
 	match rite.effect:
+		RiteData.Effect.STATUS_DURATION:
+			status_ticks += rite.value
+		RiteData.Effect.TARGETS:
+			extra_targets += rite.value
 		RiteData.Effect.DAMAGE:
 			damage_percent += rite.value
 		RiteData.Effect.CHAIN_CHANCE:
@@ -49,7 +55,7 @@ func apply_rite(rite: RiteData) -> void:
 ## Все эффекты и счётчики влияют на детерминизм.
 func add_to_hash(hasher: StateHasher) -> void:
 	hasher.add_string(god)
-	hasher.add_many([damage_percent, chain_reduction, chain_chance_bonus, wet_ticks,
+	hasher.add_many([status_ticks, extra_targets, damage_percent, chain_reduction, chain_chance_bonus, wet_ticks,
 			chain_targets, burn_percent,
 			wind_power, wind_length_milli])
 	var keys: Array[StringName] = purchases.keys()
@@ -63,6 +69,8 @@ func add_to_hash(hasher: StateHasher) -> void:
 func duplicate_state() -> IdolState:
 	var result: IdolState = IdolState.new()
 	result.god = god
+	result.status_ticks = status_ticks
+	result.extra_targets = extra_targets
 	result.damage_percent = damage_percent
 	result.chain_reduction = chain_reduction
 	result.chain_chance_bonus = chain_chance_bonus

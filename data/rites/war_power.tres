@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="RiteData" format=3]
+[ext_resource type="Script" path="res://src/sim/data/rite_data.gd" id="1"]
+[resource]
+script = ExtResource("1")
+id = &"war_power"
+display_name = "Слово войны"
+god = &"war"
+effect = 0
+value = 10
+cost = 6
+tier = 1
+max_purchases = 5
+description = "Механизмы Бога войны: +10% базового урона."

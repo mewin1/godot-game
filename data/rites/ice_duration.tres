@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="RiteData" format=3]
+[ext_resource type="Script" path="res://src/sim/data/rite_data.gd" id="1"]
+[resource]
+script = ExtResource("1")
+id = &"ice_duration"
+display_name = "Долгая стужа"
+god = &"ice"
+effect = 13
+value = 20
+cost = 6
+tier = 2
+max_purchases = 2
+description = "Холод от ледяных построек длится на 1 секунду дольше."

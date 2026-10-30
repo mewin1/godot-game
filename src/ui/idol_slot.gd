@@ -19,6 +19,9 @@ func refresh(state: IdolState, editable: bool, ticks_per_second: int = 20) -> vo
 	idol = state
 	can_edit = editable
 	match idol.god:
+		&"ice", &"curse", &"war":
+			tooltip_text = "Урон +%d%% · целей +%d · статус дольше на %.1f с" % [
+					idol.damage_percent, idol.extra_targets, float(idol.status_ticks) / ticks_per_second]
 		&"perun":
 			tooltip_text = "Урон +%d%% · шанс цепи +%d п.п. · цепь +%d" % [
 					idol.damage_percent, idol.chain_chance_bonus, idol.chain_targets]

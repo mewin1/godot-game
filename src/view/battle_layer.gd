@@ -45,6 +45,7 @@ var _catalog: VisualCatalog
 var _origin: Vector2 = Vector2.ZERO
 var _cell_size: float = 32.0
 var _time: float = 0.0
+var _reaction_next_text: Dictionary[StringName, float] = {}
 var _breach_flash_left: float = 0.0
 var _projectiles: Array[Projectile] = []
 var _impacts: Array[Impact] = []
@@ -89,6 +90,7 @@ func set_field(field: FieldState) -> void:
 	_projectiles.clear()
 	_impacts.clear()
 	_texts.clear()
+	_reaction_next_text.clear()
 	_facing_left.clear()
 	_lightning.clear()
 	_field.lightning_fired.connect(_on_lightning_fired)
@@ -166,7 +168,7 @@ func _draw_mob(mob: MobState) -> void:
 	if mob.is_angry:
 		# Злая армия: красноватое «пламя» под ногами.
 		draw_circle(Vector2.ZERO, sprite_size * 0.5, Color(ANGRY_COLOR, 0.25 + 0.15 * sin(phase * 2.0)))
-	if mob.slow_percent > 0 or mob.wind_slow_percent > 0:
+	if mob.slow_percent > 0 or mob.wind_slow_percent > 0 or mob.cold_ticks_left > 0:
 		draw_arc(Vector2.ZERO, sprite_size * 0.42, 0.0, TAU, 24, _style.slow_tint, 3.0, true)
 	var flip: float = -1.0 if _facing_left.get(mob.id, false) else 1.0
 	if mob.data.is_flying:
@@ -178,7 +180,7 @@ func _draw_mob(mob: MobState) -> void:
 		tint.a *= STEALTH_ALPHA
 	if _field.is_enraged:
 		tint = Color(_style.enrage_tint, tint.a)
-	if mob.slow_percent > 0 or mob.wind_slow_percent > 0:
+	if mob.slow_percent > 0 or mob.wind_slow_percent > 0 or mob.cold_ticks_left > 0:
 		tint = tint * _style.slow_tint
 	draw_texture_rect(visual.texture, Rect2(Vector2(-sprite_size * 0.5, -sprite_size),
 			Vector2.ONE * sprite_size), false, tint)
@@ -192,9 +194,15 @@ func _draw_mob(mob: MobState) -> void:
 	if mob.wet_ticks_left > 0:
 		draw_arc(feet - Vector2(0, sprite_size * 0.5), sprite_size * 0.58, 0, TAU,
 				16, Color(0.2, 0.85, 0.95, 0.9), 2.0, true)
-	if mob.charges > 0:
+	if mob.charge_ticks_left > 0:
 		draw_arc(feet - Vector2(0, sprite_size * 0.5), sprite_size * 0.5, 0, TAU,
-				16, Color(0.55, 0.85, 1), float(mob.charges + 1), true)
+				16, Color(0.55, 0.85, 1), float(maxi(2, mob.charges + 1)), true)
+	if mob.freeze_ticks_left > 0:
+		draw_rect(Rect2(feet - Vector2(sprite_size * 0.5, sprite_size),
+				Vector2.ONE * sprite_size), Color(0.5, 0.85, 1, 0.32))
+	if mob.curse_ticks_left > 0:
+		draw_arc(feet - Vector2(0, sprite_size * 0.5), sprite_size * 0.62, 0, TAU,
+				16, Color(0.8, 0.3, 0.9), 3.0, true)
 	if mob.hp < mob.max_hp:
 		_draw_hp_bar(Vector2(feet.x, feet.y - sprite_size - bob - 4.0), sprite_size * 0.7,
 				float(mob.hp) / mob.max_hp)
@@ -403,6 +411,8 @@ func _on_breach_resolved(_mob: MobState, actual_damage: int) -> void:
 ## Особые события поля: удар палицы — волна по всему полю, опалённые башни — дым,
 ## леший отбросил моба — зелёный «пых» из листьев.
 func _on_field_effect_played(effect_id: StringName, mob: MobState) -> void:
+	if mob != null and _show_reaction(effect_id, mob):
+		return
 	match effect_id:
 		&"strike":
 			var center: Vector2 = _origin + Vector2(_field.layout.width, _field.layout.height) \
@@ -485,3 +495,15 @@ class LightningArc:
 	var from_milli: Vector2i
 	var to_milli: Vector2i
 	var age: float = 0.0
+
+
+func _show_reaction(effect_id: StringName, mob: MobState) -> bool:
+	for rule: ReactionData in _field.config.reactions:
+		if rule.id != effect_id:
+			continue
+		if _time >= _reaction_next_text.get(effect_id, 0.0):
+			var spot: Vector2 = _milli_to_screen(Vector2(_field.get_mob_position(mob)))
+			_add_text(spot, rule.display_name, Color(0.95, 0.85, 0.55))
+			_reaction_next_text[effect_id] = _time + 0.7
+		return true
+	return false

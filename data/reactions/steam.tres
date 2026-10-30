@@ -9,3 +9,5 @@ consume = Array[StringName]([&"wet", &"burn"])
 damage_percent = 125
 stun_ticks = 0
 suppress_status = true
+display_name = "Пар"
+explanation = "Мокрота → Огонь: урон ×1.25, снимает мокроту и горение."

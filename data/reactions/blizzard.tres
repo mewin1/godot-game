@@ -9,3 +9,5 @@ spread_radius_milli = 1500
 spread_duration_ticks = 30
 interval_ticks = 20
 spread_slow_percent = 25
+display_name = "Стужа"
+explanation = "Холод / Заморозка → Ветер: разнос холода и замедление."

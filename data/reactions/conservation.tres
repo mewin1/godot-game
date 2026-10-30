@@ -7,3 +7,5 @@ incoming = &"ice"
 required = &"curse"
 curse_extra_ticks = 20
 curse_damage_percent = 150
+display_name = "Консервация"
+explanation = "Проклятие → Лёд: один раз +1 с задержки, сила взрыва ×1.5."

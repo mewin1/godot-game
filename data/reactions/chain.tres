@@ -6,3 +6,6 @@ id = &"chain"
 incoming = &"lightning"
 required = &"wet"
 chain_chance_bonus = 60
+display_name = "Цепь"
+explanation = "Мокрота → Молния: шанс цепи +60 п.п., урон ×1.1; до 100% с идолом."
+damage_percent = 110
