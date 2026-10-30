@@ -2,7 +2,9 @@ class_name SimFixtures
 extends RefCounted
 ## Общие заготовки для тестов симуляции.
 
-const CONFIG_PATH: String = "res://data/game_config.tres"
+# Прежний контент отдельно: регрессии старых особенностей не зависят от состава новой лавки.
+# Новые механики проверяются на настоящем data/game_config.tres в test_divine_rework.gd.
+const CONFIG_PATH: String = "res://tests/fixtures/legacy_game_config.tres"
 
 
 ## Копия настоящего конфига: тест может менять числа, не трогая файл.

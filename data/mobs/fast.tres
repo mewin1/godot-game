@@ -5,7 +5,7 @@
 [resource]
 script = ExtResource("1_script")
 id = &"fast"
-display_name = "Быстрый"
+display_name = "Разведчик"
 hp = 35
 speed_milli_per_tick = 90
 armor = 0
@@ -13,4 +13,4 @@ kill_reward = 1
 breach_damage = 1
 color = Color(1.0, 0.85, 0.3, 1)
 view_size = 0.32
-description = "Быстрый и хлипкий."
+description = "Быстрый и хрупкий разведчик."

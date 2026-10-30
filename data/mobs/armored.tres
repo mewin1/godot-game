@@ -5,7 +5,7 @@
 [resource]
 script = ExtResource("1_script")
 id = &"armored"
-display_name = "Бронированный"
+display_name = "Латник"
 hp = 90
 speed_milli_per_tick = 40
 armor = 4
@@ -13,4 +13,4 @@ kill_reward = 2
 breach_damage = 1
 color = Color(0.65, 0.5, 0.95, 1)
 view_size = 0.48
-description = "Броня 4: вычитается из каждого попадания."
+description = "Крепкий боец в доспехах."

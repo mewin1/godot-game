@@ -15,6 +15,8 @@ var sender_index: int = -1
 var progress: int = 0
 ## Прогресс на прошлом тике — отображение плавно рисует моба между тиками.
 var previous_progress: int = 0
+## Начало общего шага отображения: не влияет на исход боя и не входит в хэш.
+var visual_start_progress: int = 0
 var slow_percent: int = 0
 var slow_ticks_left: int = 0
 var is_breached: bool = false
@@ -26,6 +28,14 @@ var shield_left: int = 0
 var heal_cooldown: int = 0
 ## Юнит злой армии (для отображения; HP уже учтено при создании).
 var is_angry: bool = false
+var charges: int = 0
+var charge_ticks_left: int = 0
+var burn_damage: int = 0
+var burn_ticks_left: int = 0
+var burn_cooldown: int = 0
+var wind_slow_percent: int = 0
+var wind_boost_percent: int = 0
+var is_in_wind: bool = false
 
 
 ## Создаёт моба по данным с бонусами к HP и скорости в процентах.
@@ -67,7 +77,7 @@ func apply_slow(percent: int, ticks: int) -> void:
 
 
 func current_speed() -> int:
-	return speed * (100 - slow_percent) / 100
+	return speed * (100 - maxi(slow_percent, wind_slow_percent) + wind_boost_percent) / 100
 
 
 ## Сдвигает моба по пути на один тик.

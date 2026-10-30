@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="RiteData" format=3]
+
+[ext_resource type="Script" path="res://src/sim/data/rite_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"perun_charge"
+display_name = "Сговор грозы"
+description = "Разряд Перуна после 2 попаданий вместо 3. Предел: один раз."
+god = &"perun"
+target = 0
+effect = 1
+value = 1
+cost = 8
+tier = 1
+max_purchases = 1

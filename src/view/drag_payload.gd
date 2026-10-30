@@ -3,9 +3,11 @@ extends RefCounted
 ## Что перетаскивают: предложение витрины или уже поставленную башню.
 
 ## GIFT — подарок «тройки» (offer_index — номер подарка).
-enum Kind { OFFER, TOWER, GIFT }
+enum Kind { OFFER, TOWER, GIFT, RESERVE, RITE }
 
 var kind: Kind = Kind.OFFER
+var rite: RiteData
+var preview: ShapePreview
 var data: TowerData
 var rotation: int = 0
 var level: int = 1
@@ -36,3 +38,22 @@ static func for_tower(tower: TowerState) -> DragPayload:
 	payload.rotation = tower.rotation
 	payload.level = tower.level
 	return payload
+
+
+## Заговор из общей витрины, без оплаты до успешного сброса.
+static func for_rite(index: int, rite_data: RiteData) -> DragPayload:
+	var payload: DragPayload = DragPayload.new()
+	payload.kind = Kind.RITE
+	payload.offer_index = index
+	payload.rite = rite_data
+	return payload
+
+
+## Поворот в руке не меняет исходную башню до успешного размещения.
+func rotate_preview() -> void:
+	if data == null:
+		return
+	rotation = (rotation + 1) % TowerState.ROTATIONS
+	if is_instance_valid(preview):
+		preview.rotation_turns = rotation
+		preview.queue_redraw()

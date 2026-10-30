@@ -3,6 +3,7 @@ extends RefCounted
 ## Поле одного игрока: путь, сетка, башни и мобы. За тик: появление мобов, движение, выстрелы.
 ## Чистая логика без нод. Золото за убийства и прорывы копит, а забирает их MatchSim.
 
+signal lightning_fired(from_milli: Vector2i, to_milli: Vector2i)
 signal tower_fired(tower: TowerState, mob: MobState)
 signal mob_killed(mob: MobState)
 signal mob_breached(mob: MobState)
@@ -24,6 +25,7 @@ var path_length: int = 0
 var towers: Array[TowerState] = []
 var mobs: Array[MobState] = []
 var wave_tick: int = 0
+var idols: Array[IdolState] = []
 ## Время волны вышло: мобы бегут быстрее (см. GameConfig.wave_enrage_speed_percent).
 var is_enraged: bool = false
 ## Правила героя хозяина поля: чужие армии медленнее, леший отбрасывает на середине пути.
@@ -34,6 +36,8 @@ var silence_ticks_left: int = 0
 ## Накоплено с последнего сбора: золото за убийства и прорвавшиеся мобы.
 var pending_kill_gold: int = 0
 var pending_breaches: Array[MobState] = []
+
+var config: GameConfig
 
 var _config: GameConfig
 ## Клетки пути максимального уровня: на них никогда нельзя строить,
@@ -48,12 +52,15 @@ var _split_queue: Array[MobState] = []
 var _are_bonuses_dirty: bool = true
 
 
-func _init(config: GameConfig, shop_level: int = 1) -> void:
-	_config = config
-	layout = config.board
+func _init(game_config: GameConfig, shop_level: int = 1) -> void:
+	_config = game_config
+	config = game_config
+	layout = game_config.board
 	for cell: Vector2i in layout.path_cells:
 		_reserved[cell] = true
 	set_shop_level(shop_level)
+	for i: int in game_config.idol_slots:
+		idols.append(IdolState.new())
 
 
 #region Путь и сетка
@@ -125,15 +132,37 @@ func can_place_tower_data(data: TowerData, anchor: Vector2i, rotation: int) -> b
 
 ## Ставит башню без проверок (проверять can_place заранее).
 func add_tower(data: TowerData, anchor: Vector2i, rotation: int) -> TowerState:
+	var tower: TowerState = create_tower(data)
+	tower.anchor = anchor
+	tower.rotation = rotation
+	attach_tower(tower)
+	return tower
+
+
+## Создаёт башню с единым id, даже если сначала покупают в резерв.
+func create_tower(data: TowerData) -> TowerState:
 	var tower: TowerState = TowerState.new()
 	tower.id = _next_tower_id
 	_next_tower_id += 1
 	tower.data = data
-	tower.anchor = anchor
-	tower.rotation = rotation
-	towers.append(tower)
-	_occupy(tower)
 	return tower
+
+
+## Возвращает существующую башню из резерва, сохраняя её состояние.
+func attach_tower(tower: TowerState) -> void:
+	towers.append(tower)
+	_next_tower_id = maxi(_next_tower_id, tower.id + 1)
+	_occupy(tower)
+
+
+## Идол божества или null, если ни одна основа ещё ему не посвящена.
+func get_idol(god: StringName) -> IdolState:
+	if god == &"":
+		return null
+	for idol: IdolState in idols:
+		if idol.god == god:
+			return idol
+	return null
 
 
 ## Переносит или поворачивает башню. false — если новое место занято или недоступно.
@@ -150,9 +179,18 @@ func move_tower(tower: TowerState, anchor: Vector2i, rotation: int) -> bool:
 
 ## Ставит копии башен другого поля (для призрака). Поле должно быть того же уровня пути.
 func copy_towers_from(other: FieldState) -> void:
+	path_length = other.path_length
+	enemy_army_slow_percent = other.enemy_army_slow_percent
+	knockback_milli = other.knockback_milli
+	_recalculate_buildable()
 	for source: TowerState in other.towers:
 		var tower: TowerState = add_tower(source.data, source.anchor, source.rotation)
 		tower.level = source.level
+		tower.enchantment = source.enchantment
+		tower.awakening = source.awakening
+	for i: int in idols.size():
+		var source_idol: IdolState = other.idols[i]
+		idols[i] = source_idol.duplicate_state()
 
 
 func remove_tower(tower: TowerState) -> void:
@@ -276,6 +314,13 @@ func breach_all_remaining() -> void:
 	mobs.clear()
 
 
+## По общему пределу оставшиеся отступают без урона и без награды.
+func retreat_remaining() -> void:
+	mobs.clear()
+	_spawn_queue.clear()
+	_split_queue.clear()
+
+
 ## Убирает накопленное: вызывает MatchSim после того, как забрал золото и прорывы.
 func clear_pending() -> void:
 	pending_kill_gold = 0
@@ -288,14 +333,22 @@ func add_to_hash(hasher: StateHasher) -> void:
 	hasher.add(wave_tick)
 	hasher.add(int(is_enraged))
 	hasher.add(silence_ticks_left)
+	hasher.add(_next_tower_id)
+	for idol: IdolState in idols:
+		idol.add_to_hash(hasher)
 	for tower: TowerState in towers:
-		hasher.add_many([tower.id, tower.anchor.x, tower.anchor.y, tower.rotation, tower.level,
-				tower.cooldown_left, tower.invested_total, tower.invested_this_phase])
-		hasher.add_string(tower.data.id)
+		tower.add_to_hash(hasher)
 	for mob: MobState in mobs:
 		hasher.add_many([mob.id, mob.hp, mob.progress, mob.slow_percent, mob.slow_ticks_left,
-				mob.shield_left, mob.heal_cooldown])
+				mob.shield_left, mob.heal_cooldown, mob.speed, mob.armor, mob.max_hp,
+				mob.sender_index, mob.charges, mob.charge_ticks_left, mob.burn_damage,
+				mob.burn_ticks_left, mob.burn_cooldown, mob.wind_slow_percent, mob.wind_boost_percent])
+		hasher.add_string(mob.data.id)
 	hasher.add(_spawn_queue.size())
+	for entry: SpawnEntry in _spawn_queue:
+		hasher.add(entry.spawn_tick)
+		hasher.add_string(entry.mob.data.id)
+		hasher.add_many([entry.mob.hp, entry.mob.speed, entry.mob.sender_index])
 
 #endregion
 
@@ -340,6 +393,10 @@ func _spawn_due_mobs() -> void:
 func _move_mobs() -> void:
 	var end_progress: int = get_path_end_progress()
 	for mob: MobState in mobs:
+		DivineCombat.apply_wind(self, mob)
+		DivineCombat.tick_effects(self, mob)
+		if not mob.is_alive():
+			continue
 		mob.advance()
 		if is_enraged:
 			mob.progress += mob.current_speed() * _config.wave_enrage_speed_percent / 100
@@ -388,7 +445,7 @@ func _fire(tower: TowerState) -> bool:
 		var hit_any: bool = false
 		for mob: MobState in mobs:
 			if _can_target(tower, center, range_milli, mob):
-				_hit(mob, get_tower_damage(tower), tower.data)
+				_hit(mob, get_tower_damage(tower), tower.data, tower)
 				hit_any = true
 		if hit_any:
 			tower_pulsed.emit(tower)
@@ -432,7 +489,7 @@ func _shoot(tower: TowerState, target: MobState) -> void:
 	var damage: int = get_tower_damage(tower)
 	tower_fired.emit(tower, target)
 	var target_position: Vector2i = get_mob_position(target)
-	_hit(target, damage, tower.data)
+	_hit(target, damage, tower.data, tower)
 	if tower.data.splash_radius_milli <= 0:
 		return
 	var splash_damage: int = damage * tower.data.splash_percent / 100
@@ -441,12 +498,20 @@ func _shoot(tower: TowerState, target: MobState) -> void:
 			continue
 		var position: Vector2i = get_mob_position(mob)
 		if _is_in_range(target_position, position, tower.data.splash_radius_milli):
-			_hit(mob, splash_damage, tower.data)
+			_hit(mob, splash_damage, tower.data, tower)
 
 
-func _hit(mob: MobState, damage: int, data: TowerData) -> void:
+func _hit(mob: MobState, damage: int, data: TowerData, tower: TowerState = null) -> void:
 	if data.slow_percent > 0:
 		mob.apply_slow(data.slow_percent, data.slow_ticks)
+	if tower != null and tower.data.god != &"":
+		DivineCombat.hit(self, tower, mob, damage)
+	else:
+		deal_mob_damage(mob, damage)
+
+
+## Единственное место награды за смерть, в том числе от горения и цепи.
+func deal_mob_damage(mob: MobState, damage: int) -> void:
 	if mob.take_damage(damage):
 		pending_kill_gold += mob.kill_reward
 		mob_killed.emit(mob)
@@ -502,20 +567,36 @@ func get_tower_damage(tower: TowerState) -> int:
 	if _are_bonuses_dirty:
 		_refresh_bonuses()
 	var damage: int = _config.get_level_damage(tower.data.damage, tower.level)
-	return damage * (100 + tower.bonus_damage_percent) / 100
+	var bonus: int = tower.bonus_damage_percent
+	var idol: IdolState = get_idol(tower.data.god)
+	if idol != null:
+		bonus += idol.damage_percent
+	if tower.enchantment == RiteData.Effect.ENCHANT_DAMAGE:
+		bonus += _config.enchant_damage_percent
+	if tower.awakening == RiteData.Effect.AWAKEN_FOCUS:
+		bonus += _config.awakening_power_percent
+	return damage * (100 + bonus) / 100
 
 
 ## Перезарядка с бонусом соседей (не меньше 1 тика).
 func get_tower_cooldown(tower: TowerState) -> int:
 	if _are_bonuses_dirty:
 		_refresh_bonuses()
-	return maxi(1, tower.data.cooldown_ticks * 100 / (100 + tower.bonus_fire_rate_percent))
+	var rate: int = tower.bonus_fire_rate_percent
+	if tower.enchantment == RiteData.Effect.ENCHANT_RATE:
+		rate += _config.enchant_rate_percent
+	return maxi(1, tower.data.cooldown_ticks * 100 / (100 + rate))
 
 
 func get_tower_range(tower: TowerState) -> int:
 	if _are_bonuses_dirty:
 		_refresh_bonuses()
-	return tower.data.range_milli + tower.bonus_range_milli
+	var reach: int = tower.data.range_milli + tower.bonus_range_milli
+	if tower.enchantment == RiteData.Effect.ENCHANT_RANGE:
+		reach += _config.enchant_range_milli
+	if tower.awakening == RiteData.Effect.AWAKEN_WIDE:
+		reach += _config.enchant_range_milli
+	return reach
 
 
 ## Соседи башни: постройки, касающиеся её клеток стороной. Порядок — по id (детерминизм).
@@ -621,3 +702,15 @@ func _cell_center(cell: Vector2i) -> Vector2i:
 func _is_in_range(from: Vector2i, to: Vector2i, range_milli: int) -> bool:
 	var delta: Vector2i = to - from
 	return delta.x * delta.x + delta.y * delta.y <= range_milli * range_milli
+
+
+## Запоминает начало отображаемого шага перед несколькими тиками общей перемотки.
+func begin_visual_step() -> void:
+	for mob: MobState in mobs:
+		mob.visual_start_progress = mob.progress
+
+
+## Интерполяция охватывает весь пройденный участок, а не лишь последний тик из пяти.
+func end_visual_step() -> void:
+	for mob: MobState in mobs:
+		mob.previous_progress = mob.visual_start_progress

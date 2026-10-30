@@ -22,8 +22,19 @@ static func build_base_wave(config: GameConfig, round_number: int) -> Array[MobS
 static func schedule_wave(config: GameConfig, field: FieldState, round_number: int,
 		packs: Array[MobState]) -> void:
 	var base_wave: Array[MobState] = build_base_wave(config, round_number)
+	var base_interval: int = _spawn_interval(config, config.wave_spawn_interval_ticks,
+			base_wave.size(), 0)
 	for i: int in base_wave.size():
-		field.schedule_spawn(base_wave[i], i * config.wave_spawn_interval_ticks)
+		field.schedule_spawn(base_wave[i], i * base_interval)
+	var army_interval: int = _spawn_interval(config, config.army_spawn_interval_ticks,
+			packs.size(), config.army_spawn_delay_ticks)
 	for i: int in packs.size():
-		var spawn_tick: int = config.army_spawn_delay_ticks + i * config.army_spawn_interval_ticks
+		var spawn_tick: int = config.army_spawn_delay_ticks + i * army_interval
 		field.schedule_spawn(packs[i], spawn_tick)
+
+
+## Большие армии целиком выходят в начале боя, а не исчезают в очереди по таймеру.
+static func _spawn_interval(config: GameConfig, normal: int, count: int, delay: int) -> int:
+	if config.spawn_window_ticks <= 0 or count <= 1:
+		return normal
+	return mini(normal, maxi(1, (config.spawn_window_ticks - delay) / (count - 1)))

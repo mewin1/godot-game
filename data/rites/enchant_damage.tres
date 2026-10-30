@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="RiteData" format=3]
+
+[ext_resource type="Script" path="res://src/sim/data/rite_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"enchant_damage"
+display_name = "Заговор мощи"
+description = "Одни чары: +30% урона. Ветродуй: +10% силы потока."
+god = &""
+target = 1
+effect = 6
+value = 30
+cost = 6
+tier = 2
+max_purchases = 1

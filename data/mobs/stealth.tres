@@ -5,11 +5,11 @@
 [resource]
 script = ExtResource("1_script")
 id = &"stealth"
-display_name = "Шапка-невидимка"
+display_name = "Лазутчик"
 hp = 40
 speed_milli_per_tick = 55
 armor = 0
 kill_reward = 2
 breach_damage = 1
-description = "Невидим: башни видят его только ближе 1,3 клетки."
+description = "Скрытный боец; обнаруживается близко к башне."
 reveal_radius_milli = 1300

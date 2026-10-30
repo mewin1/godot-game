@@ -7,6 +7,7 @@ var buffs: Array[SendBuffData] = []
 var hp_percent: int = 0
 var speed_percent: int = 0
 var extra_units: int = 0
+var base_units: int = 0
 ## Скидка на прокачку и доход сверху за каждую прокачку (от бафов).
 var cost_discount: int = 0
 var extra_income: int = 0
@@ -23,6 +24,7 @@ var _config: GameConfig
 
 func _init(config: GameConfig) -> void:
 	_config = config
+	base_units = config.army_base_units
 	for i: int in config.army_upgrades.size():
 		upgrade_counts.append(0)
 
@@ -91,7 +93,7 @@ func update_rage(damage_dealt: int) -> void:
 
 
 func get_unit_count() -> int:
-	return _config.army_base_units + extra_units + added_mobs.size()
+	return base_units + extra_units + added_mobs.size()
 
 
 ## Армия на этот раунд: обычные юниты + добавленные, с бонусами HP и скорости.
@@ -101,11 +103,14 @@ func build_pack(sender_index: int, round_number: int) -> Array[MobState]:
 			_config.army_hp_growth_percent)
 	var hp_bonus: int = round_percent * (100 + hp_percent + rage_percent) / 100 - 100
 	var pack: Array[MobState] = []
-	for i: int in _config.army_base_units + extra_units:
+	for i: int in base_units + extra_units:
 		pack.append(MobState.create(_config.army_mob, hp_bonus, speed_percent))
 	for mob_data: MobData in added_mobs + temporary_mobs:
 		pack.append(MobState.create(mob_data, hp_bonus, speed_percent))
 	for mob: MobState in pack:
+		if round_number <= _config.army_warmup_percent.size():
+			mob.max_hp = maxi(1, mob.max_hp * _config.army_warmup_percent[round_number - 1] / 100)
+			mob.hp = mob.max_hp
 		mob.sender_index = sender_index
 		mob.is_angry = rage_percent > 0
 	return pack
@@ -128,9 +133,13 @@ func roll_buff_offers(shop_level: int, rng: RandomNumberGenerator) -> Array[Send
 
 
 func add_to_hash(hasher: StateHasher) -> void:
-	hasher.add_many([hp_percent, speed_percent, extra_units, cost_discount, extra_income,
+	hasher.add_many([base_units, hp_percent, speed_percent, extra_units, cost_discount, extra_income,
 			added_mobs.size(), temporary_mobs.size(), rage_percent])
 	hasher.add_many(upgrade_counts)
+	for data: MobData in added_mobs + temporary_mobs:
+		hasher.add_string(data.id)
+	for buff: SendBuffData in buffs:
+		hasher.add_string(buff.id)
 
 
 func _apply_effect(kind: SendBuffData.Kind, value: int, mob: MobData) -> void:

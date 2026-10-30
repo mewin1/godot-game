@@ -5,7 +5,7 @@
 [resource]
 script = ExtResource("1_script")
 id = &"basic"
-display_name = "Обычный"
+display_name = "Ополченец"
 hp = 22
 speed_milli_per_tick = 50
 armor = 0
@@ -13,4 +13,4 @@ kill_reward = 1
 breach_damage = 1
 color = Color(0.6, 0.75, 0.55, 1)
 view_size = 0.4
-description = "Обычная нечисть базовой волны."
+description = "Крестьянин с копьём. Базовая волна."

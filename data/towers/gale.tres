@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="TowerData" format=3]
+
+[ext_resource type="Script" path="res://src/sim/data/tower_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"gale"
+display_name = "Свистящий столб"
+god = &"stribog"
+school = &"stribog"
+tier = 2
+shape = Array[Vector2i]([Vector2i(0, 0)])
+damage = 10
+cooldown_ticks = 16
+range_milli = 2700
+description = "Стреляет и дует по стрелке. Совместите поток с огненной зоной."
+wind_length_milli = 4000
+wind_power_percent = 20

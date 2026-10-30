@@ -28,6 +28,7 @@ func play_prep(sim: MatchSim, player: PlayerState) -> void:
 	_use_free_rerolls(sim, player)
 	_maybe_upgrade_shop(sim, player)
 	_buy_army_with_budget(sim, player, player.gold * army_share_percent / 100)
+	_buy_rites(sim, player)
 	_buy_towers(sim, player)
 	_merge_all_pairs(sim, player)
 	_buy_towers(sim, player)
@@ -178,6 +179,8 @@ func _find_best_spot(field: FieldState, data: TowerData) -> Vector3i:
 				if not field.can_place(cells):
 					continue
 				var score: int = _score_spot(field, data, cells)
+				if data.wind_length_milli > 0:
+					score = _score_wind(field, data, Vector2i(x, y), turns)
 				if score > best_score:
 					best_score = score
 					best = Vector3i(x, y, turns)
@@ -226,3 +229,43 @@ func _run(sim: MatchSim, player: PlayerState, command: SimCommand) -> bool:
 func _execute(sim: MatchSim, player: PlayerState, command: SimCommand) -> void:
 	if not _run(sim, player, command):
 		return
+
+
+func _score_wind(field: FieldState, data: TowerData, anchor: Vector2i, turns: int) -> int:
+	var tower: TowerState = TowerState.new()
+	tower.data = data
+	tower.anchor = anchor
+	tower.rotation = turns
+	var direction: Vector2i = DivineCombat.wind_direction(tower)
+	var score: int = 0
+	var path: Array[Vector2i] = field.get_active_path()
+	for i: int in range(path.size() - 1):
+		var point: Vector2i = path[i] * FieldState.MILLI + Vector2i(500, 500)
+		if not DivineCombat.is_in_wind(field, tower, point):
+			continue
+		var movement: Vector2i = path[i + 1] - path[i]
+		var alignment: int = movement.x * direction.x + movement.y * direction.y
+		score += 3 if alignment < 0 else (-4 if alignment > 0 else 1)
+	return score
+
+
+func _buy_rites(sim: MatchSim, player: PlayerState) -> void:
+	if _count_shooters(player) < MIN_SHOOTERS_BEFORE_SUPPORT:
+		return
+	for i: int in player.shop.offers.size():
+		var rite: RiteData = player.shop.get_rite(i)
+		if rite == null or player.gold < rite.cost + sim.config.tower_cost:
+			continue
+		if rite.target == RiteData.Target.IDOL:
+			var has_god: bool = false
+			for tower: TowerState in player.field.towers:
+				has_god = has_god or tower.data.god == rite.god
+			if not has_god:
+				continue
+			for slot: int in player.field.idols.size():
+				if _run(sim, player, BuyRiteCommand.new(i, slot)):
+					break
+		else:
+			for tower: TowerState in player.field.towers:
+				if _run(sim, player, BuyRiteCommand.new(i, tower.id)):
+					break

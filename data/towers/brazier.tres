@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="TowerData" format=3]
+
+[ext_resource type="Script" path="res://src/sim/data/tower_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"brazier"
+display_name = "Жаровня Сварога"
+god = &"svarog"
+school = &"svarog"
+tier = 1
+shape = Array[Vector2i]([Vector2i(0, 0), Vector2i(1, 0)])
+damage = 8
+cooldown_ticks = 20
+range_milli = 2400
+description = "Поджигает на 3 секунды. Ветер усиливает горение."
+burn_percent = 50

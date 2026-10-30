@@ -12,6 +12,9 @@ extends Resource
 ## Стиль игры одним-двумя словами («оборона», «экономика»…).
 @export var style: String = ""
 @export var hp: int = 40
+## -1 — обычная общая армия; отдельным героям можно задать иной стартовый состав.
+@export var starting_army_units: int = -1
+@export var starting_army_mobs: Array[MobData] = []
 ## Пассивки: работают сами весь матч.
 @export var passives: Array[HeroEffect] = []
 ## Навык за золото (null — навыка нет).

@@ -31,6 +31,7 @@ const FLY_LIFT: float = 0.45
 const STEALTH_ALPHA: float = 0.45
 
 var interpolation: float = 0.0
+var playback_speed: int = 1
 var is_own_field: bool = false
 var breach_multiplier: int = 1
 var hero_hp: int = 0
@@ -49,6 +50,7 @@ var _breach_flash_left: float = 0.0
 var _projectiles: Array[Projectile] = []
 var _impacts: Array[Impact] = []
 var _texts: Array[FloatText] = []
+var _lightning: Array[LightningArc] = []
 ## Куда смотрит моб (true — влево): сохраняем, чтобы он не «моргал» на вертикальных участках.
 var _facing_left: Dictionary[int, bool] = {}
 
@@ -59,6 +61,7 @@ func _init() -> void:
 
 
 func _process(delta: float) -> void:
+	delta *= playback_speed
 	_time += delta
 	_breach_flash_left = maxf(0.0, _breach_flash_left - delta)
 	_update_projectiles(delta)
@@ -68,12 +71,16 @@ func _process(delta: float) -> void:
 	_texts = _texts.filter(func(text: FloatText) -> bool:
 		text.age += delta
 		return text.age < FLOAT_TEXT_SECONDS)
+	_lightning = _lightning.filter(func(arc: LightningArc) -> bool:
+		arc.age += delta
+		return arc.age < 0.18)
 	queue_redraw()
 
 
 ## Подключает поле (сбрасывает эффекты прошлого поля).
 func set_field(field: FieldState) -> void:
 	if _field != null:
+		_field.lightning_fired.disconnect(_on_lightning_fired)
 		_field.tower_fired.disconnect(_on_field_tower_fired)
 		_field.mob_killed.disconnect(_on_field_mob_killed)
 		_field.mob_breached.disconnect(_on_field_mob_breached)
@@ -84,6 +91,8 @@ func set_field(field: FieldState) -> void:
 	_impacts.clear()
 	_texts.clear()
 	_facing_left.clear()
+	_lightning.clear()
+	_field.lightning_fired.connect(_on_lightning_fired)
 	_field.tower_fired.connect(_on_field_tower_fired)
 	_field.mob_killed.connect(_on_field_mob_killed)
 	_field.mob_breached.connect(_on_field_mob_breached)
@@ -108,6 +117,11 @@ func _draw() -> void:
 	if _field == null:
 		return
 	_draw_mobs()
+	for arc: LightningArc in _lightning:
+		var start: Vector2 = _milli_to_screen(Vector2(arc.from_milli))
+		var end: Vector2 = _milli_to_screen(Vector2(arc.to_milli))
+		var middle: Vector2 = (start + end) * 0.5 + Vector2(5, -7)
+		draw_polyline(PackedVector2Array([start, middle, end]), Color(0.55, 0.85, 1), 3, true)
 	for projectile: Projectile in _projectiles:
 		_draw_projectile(projectile)
 	for impact: Impact in _impacts:
@@ -153,7 +167,7 @@ func _draw_mob(mob: MobState) -> void:
 	if mob.is_angry:
 		# Злая армия: красноватое «пламя» под ногами.
 		draw_circle(Vector2.ZERO, sprite_size * 0.5, Color(ANGRY_COLOR, 0.25 + 0.15 * sin(phase * 2.0)))
-	if mob.slow_percent > 0:
+	if mob.slow_percent > 0 or mob.wind_slow_percent > 0:
 		draw_arc(Vector2.ZERO, sprite_size * 0.42, 0.0, TAU, 24, _style.slow_tint, 3.0, true)
 	var flip: float = -1.0 if _facing_left.get(mob.id, false) else 1.0
 	if mob.data.is_flying:
@@ -165,7 +179,7 @@ func _draw_mob(mob: MobState) -> void:
 		tint.a *= STEALTH_ALPHA
 	if _field.is_enraged:
 		tint = Color(_style.enrage_tint, tint.a)
-	if mob.slow_percent > 0:
+	if mob.slow_percent > 0 or mob.wind_slow_percent > 0:
 		tint = tint * _style.slow_tint
 	draw_texture_rect(visual.texture, Rect2(Vector2(-sprite_size * 0.5, -sprite_size),
 			Vector2.ONE * sprite_size), false, tint)
@@ -173,6 +187,12 @@ func _draw_mob(mob: MobState) -> void:
 	if mob.shield_left > 0:
 		draw_arc(feet - Vector2(0, bob + sprite_size * 0.5), sprite_size * 0.55, -2.4, -0.7, 16,
 				SHIELD_COLOR, 3.0, true)
+	if mob.burn_ticks_left > 0:
+		draw_circle(feet - Vector2(0, sprite_size * 0.55), sprite_size * 0.18,
+				Color(1, 0.4, 0.08, 0.6))
+	if mob.charges > 0:
+		draw_arc(feet - Vector2(0, sprite_size * 0.5), sprite_size * 0.5, 0, TAU,
+				16, Color(0.55, 0.85, 1), float(mob.charges + 1), true)
 	if mob.hp < mob.max_hp:
 		_draw_hp_bar(Vector2(feet.x, feet.y - sprite_size - bob - 4.0), sprite_size * 0.7,
 				float(mob.hp) / mob.max_hp)
@@ -447,4 +467,17 @@ class FloatText:
 	var position: Vector2
 	var text: String
 	var color: Color
+	var age: float = 0.0
+
+
+func _on_lightning_fired(from_milli: Vector2i, to_milli: Vector2i) -> void:
+	var arc: LightningArc = LightningArc.new()
+	arc.from_milli = from_milli
+	arc.to_milli = to_milli
+	_lightning.append(arc)
+
+
+class LightningArc:
+	var from_milli: Vector2i
+	var to_milli: Vector2i
 	var age: float = 0.0

@@ -1,425 +1,208 @@
 class_name ShopPanel
 extends PanelContainer
-## Меню фазы подготовки. Сверху — выбор бафа армии (после битвы), затем две вкладки:
-## «Башни» (витрина, рерол, уровень магазина, выбранная башня) и «Армия»
-## (состав армии и её прокачка). Внизу — «Готов». Команды отдаёт наверх сигналом.
-## Сюда же можно перетащить свою башню с поля — она продаётся.
+## Лавка и улучшения армии слева, без прокрутки. Сброс своей фигуры сюда продаёт её.
 
 signal command_requested(command: SimCommand)
 
-const FONT_SIZE: int = 20
-const BUTTON_HEIGHT: float = 56.0
-const OFFER_COLUMNS: int = 3
-const ARMY_COLUMNS: int = 2
-const ARMY_FONT_SIZE: int = 18
-
 var _sim: MatchSim
 var _player: PlayerState
-var _selected_tower: TowerState
-
-var _buff_box: VBoxContainer
-var _discover_box: VBoxContainer
-var _discover_buttons: Array[Button] = []
-var _gift_box: VBoxContainer
-var _gift_row: HBoxContainer
-var _gift_cards: Array[OfferCard] = []
-var _buff_buttons: Array[Button] = []
-var _towers_tab: Button
-var _army_tab: Button
-var _towers_page: VBoxContainer
-var _army_page: VBoxContainer
 var _offer_grid: GridContainer
-var _offer_cards: Array[OfferCard] = []
-var _reroll_button: Button
-var _upgrade_button: Button
-var _hint_label: Label
-var _schools_label: Label
-var _tower_box: HBoxContainer
-var _tower_label: Label
-var _rotate_button: Button
-var _sell_button: Button
-var _army_label: Label
+var _cards: Array[OfferCard] = []
 var _army_grid: GridContainer
 var _army_buttons: Array[Button] = []
-var _ready_button: Button
+var _army_title: Label
+var _selection: Label
+var _buff_box: VBoxContainer
+var _discover_box: VBoxContainer
+var _buff_buttons: Array[Button] = []
+var _discover_buttons: Array[Button] = []
+var _ready: Button
+var _reroll: Button
+var _upgrade: Button
 
 
 func _init() -> void:
-	# Меню прокручивается, если не влезает (баф + подарки + витрина); «Готов» — всегда внизу.
-	var root: VBoxContainer = VBoxContainer.new()
-	add_child(root)
-	var scroll: ScrollContainer = ScrollContainer.new()
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	root.add_child(scroll)
 	var box: VBoxContainer = VBoxContainer.new()
-	box.add_theme_constant_override("separation", 10)
-	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.add_child(box)
-	_build_buff_box(box)
-	_build_discover_box(box)
-	_build_tabs(box)
-	_build_towers_page(box)
-	_army_page = VBoxContainer.new()
-	_army_page.add_theme_constant_override("separation", 8)
-	box.add_child(_army_page)
-	_army_label = _make_label("", 18)
-	_army_page.add_child(_army_label)
+	box.add_theme_constant_override("separation", 6)
+	add_child(box)
+	var actions: HBoxContainer = HBoxContainer.new()
+	box.add_child(actions)
+	_reroll = _button("Обновить", _on_reroll)
+	_upgrade = _button("Магазин", _on_upgrade)
+	actions.add_child(_reroll)
+	actions.add_child(_upgrade)
+	_offer_grid = GridContainer.new()
+	_offer_grid.columns = 3
+	_offer_grid.add_theme_constant_override("h_separation", 5)
+	_offer_grid.add_theme_constant_override("v_separation", 5)
+	box.add_child(_offer_grid)
+	_army_title = _label("Армия", 17)
+	box.add_child(_army_title)
 	_army_grid = GridContainer.new()
-	_army_grid.columns = ARMY_COLUMNS
-	_army_grid.add_theme_constant_override("h_separation", 8)
-	_army_grid.add_theme_constant_override("v_separation", 8)
-	_army_page.add_child(_army_grid)
-	_ready_button = _make_button("Готов ▶", _on_ready_button_pressed)
-	_ready_button.theme_type_variation = &"AccentButton"
-	root.add_child(_ready_button)
-	_show_page(true)
+	_army_grid.columns = 3
+	_army_grid.add_theme_constant_override("h_separation", 5)
+	_army_grid.add_theme_constant_override("v_separation", 5)
+	box.add_child(_army_grid)
+	var choices: HBoxContainer = HBoxContainer.new()
+	box.add_child(choices)
+	_buff_box = _choice_row(choices, "Баф армии", _buff_buttons, _on_buff)
+	_discover_box = _choice_row(choices, "Подарок", _discover_buttons, _on_discover)
+	var spacer: Control = Control.new()
+	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	box.add_child(spacer)
+	_selection = _label("", 15)
+	box.add_child(_selection)
+	box.add_child(_label("ПКМ — поворот · на лавку — продажа", 14))
+	_ready = _button("Готов ▶", _on_ready)
+	_ready.theme_type_variation = &"AccentButton"
+	box.add_child(_ready)
 
 
-## Кнопки прокачки армии создаются по списку улучшений из конфига.
+## Настраивает каталог армии один раз при начале матча.
 func setup(sim: MatchSim, player: PlayerState) -> void:
 	_sim = sim
 	_player = player
 	for i: int in sim.config.army_upgrades.size():
-		var button: Button = _make_button("", _on_army_button_pressed.bind(i))
-		button.custom_minimum_size = Vector2(0, BUTTON_HEIGHT + 8)
-		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		button.add_theme_font_size_override("font_size", ARMY_FONT_SIZE)
+		var button: Button = _button("", _on_army.bind(i))
 		_army_grid.add_child(button)
 		_army_buttons.append(button)
 
 
-## Обновляет тексты и доступность кнопок из состояния симуляции (каждый кадр).
+## Компактные карточки и кнопки всегда остаются в своих местах.
 func refresh(selected_tower: TowerState) -> void:
 	if _player == null:
 		return
-	_selected_tower = selected_tower
-	_refresh_buffs()
-	_refresh_gifts()
-	_refresh_offers()
-	_refresh_shop_actions()
-	_refresh_tower_box()
-	_refresh_schools()
-	_refresh_army()
-	_ready_button.disabled = _player.is_ready
-	_ready_button.text = "Ждём соперника…" if _player.is_ready else "Готов ▶"
+	_offer_grid.columns = 4 if _player.shop.offers.size() > 6 else 3
+	while _cards.size() < _player.shop.offers.size():
+		var card: OfferCard = OfferCard.new()
+		card.offer_index = _cards.size()
+		card.clicked.connect(_on_offer)
+		_offer_grid.add_child(card)
+		_cards.append(card)
+	for i: int in _cards.size():
+		var card: OfferCard = _cards[i]
+		card.visible = i < _player.shop.offers.size()
+		if not card.visible:
+			continue
+		var rite: RiteData = _player.shop.get_rite(i)
+		card.is_active = _player.gold >= (rite.cost if rite != null else _sim.config.tower_cost)
+		card.show_offer(_player.shop.get_offer(i))
+		if rite != null:
+			card.show_rite(rite)
+	var reroll_price: int = _player.get_reroll_price()
+	_reroll.text = "Обновить · %d" % reroll_price
+	_reroll.disabled = _player.gold < reroll_price
+	var upgrade_price: int = _player.get_shop_upgrade_price()
+	_upgrade.text = "Магазин %d → %d · %d" % [_player.shop.level,
+			_player.shop.level + 1, upgrade_price] if _player.shop.can_upgrade() else "Магазин 4"
+	_upgrade.disabled = not _player.shop.can_upgrade() or _player.gold < upgrade_price
+	_army_title.text = "Армия: %d бойцов · доход %d" % [
+			_player.army.get_unit_count(), _player.get_total_income()]
+	for i: int in _army_buttons.size():
+		var army: ArmyState = _player.army
+		var cost: int = army.get_upgrade_cost(i)
+		var locked: String = army.check_upgrade_available(i, _player.shop.level)
+		_army_buttons[i].text = "%s\n%d · +%d доход" % [
+				army.get_upgrade(i).display_name, cost, army.get_upgrade_income(i)]
+		_army_buttons[i].disabled = locked != "" or _player.gold < cost
+		_army_buttons[i].tooltip_text = locked
+	_refresh_choices()
+	_selection.visible = selected_tower != null
+	if selected_tower != null:
+		_selection.text = "%s · ур.%d · продажа %d" % [selected_tower.data.display_name,
+				selected_tower.level, _player.get_sell_price(selected_tower)]
+	_ready.disabled = _player.is_ready
+	_ready.text = "Ждём остальных…" if _player.is_ready else "Готов ▶"
 
 
-func _can_drop_data(_at_position: Vector2, data: Variant) -> bool:
-	if not (data is DragPayload):
+func _refresh_choices() -> void:
+	_buff_box.visible = not _player.buff_offers.is_empty()
+	_discover_box.visible = not _player.discover_offers.is_empty()
+	for i: int in 3:
+		_buff_buttons[i].visible = i < _player.buff_offers.size()
+		if _buff_buttons[i].visible:
+			_buff_buttons[i].text = _player.buff_offers[i].display_name
+		_discover_buttons[i].visible = i < _player.discover_offers.size()
+		if _discover_buttons[i].visible:
+			_discover_buttons[i].text = _player.discover_offers[i].display_name
+
+
+func _can_drop_data(_at_position: Vector2, value: Variant) -> bool:
+	if _sim == null or _sim.phase != MatchSim.Phase.PREP or not (value is DragPayload):
 		return false
-	var payload: DragPayload = data
-	return payload.kind == DragPayload.Kind.TOWER
+	var payload: DragPayload = value
+	return payload.kind in [DragPayload.Kind.TOWER, DragPayload.Kind.RESERVE, DragPayload.Kind.GIFT]
 
 
-func _drop_data(_at_position: Vector2, data: Variant) -> void:
-	var payload: DragPayload = data
-	command_requested.emit(SellTowerCommand.new(payload.tower_id))
+func _drop_data(_at_position: Vector2, value: Variant) -> void:
+	var payload: DragPayload = value
+	if payload.kind == DragPayload.Kind.GIFT:
+		command_requested.emit(GiftCommand.new(GiftCommand.Action.SELL, payload.offer_index))
+	else:
+		command_requested.emit(SellTowerCommand.new(payload.tower_id))
 
 
-#region Построение
-
-func _build_buff_box(parent: Container) -> void:
-	_buff_box = VBoxContainer.new()
-	_buff_box.add_child(_make_label("Выбери баф армии (бесплатно, на весь матч):", FONT_SIZE))
-	var row: HBoxContainer = HBoxContainer.new()
-	_buff_box.add_child(row)
-	for i: int in 3:
-		var button: Button = _make_button("", _on_buff_button_pressed.bind(i))
-		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		button.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		button.custom_minimum_size = Vector2(0, BUTTON_HEIGHT + 20)
-		row.add_child(button)
-		_buff_buttons.append(button)
-	parent.add_child(_buff_box)
-
-
-## «Тройка → открытие»: выбор подарка и ряд подарков, которые можно перетащить на поле.
-func _build_discover_box(parent: Container) -> void:
-	_discover_box = VBoxContainer.new()
-	_discover_box.add_child(_make_label("Тройка! Выберите постройку в подарок:", FONT_SIZE))
-	var row: HBoxContainer = HBoxContainer.new()
-	_discover_box.add_child(row)
-	for i: int in 3:
-		var button: Button = _make_button("", _on_discover_button_pressed.bind(i))
-		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		button.custom_minimum_size = Vector2(0, BUTTON_HEIGHT + 12)
-		row.add_child(button)
-		_discover_buttons.append(button)
-	parent.add_child(_discover_box)
-	_gift_box = VBoxContainer.new()
-	_gift_box.add_child(_make_label("Подарки — перетащите на поле бесплатно:", FONT_SIZE))
-	_gift_row = HBoxContainer.new()
-	_gift_box.add_child(_gift_row)
-	parent.add_child(_gift_box)
-
-
-func _build_tabs(parent: Container) -> void:
-	var row: HBoxContainer = HBoxContainer.new()
-	parent.add_child(row)
-	_towers_tab = _make_button("Башни", _show_page.bind(true))
-	_army_tab = _make_button("Армия", _show_page.bind(false))
-	for tab: Button in [_towers_tab, _army_tab]:
-		tab.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		row.add_child(tab)
-
-
-func _build_towers_page(parent: Container) -> void:
-	_towers_page = VBoxContainer.new()
-	_towers_page.add_theme_constant_override("separation", 10)
-	parent.add_child(_towers_page)
-	_offer_grid = GridContainer.new()
-	_offer_grid.columns = OFFER_COLUMNS
-	_offer_grid.add_theme_constant_override("h_separation", 8)
-	_offer_grid.add_theme_constant_override("v_separation", 8)
-	_towers_page.add_child(_offer_grid)
-	var row: HBoxContainer = HBoxContainer.new()
-	_towers_page.add_child(row)
-	_reroll_button = _make_button("", _on_command_button_pressed.bind(RerollShopCommand.new()))
-	_upgrade_button = _make_button("", _on_command_button_pressed.bind(UpgradeShopCommand.new()))
-	for button: Button in [_reroll_button, _upgrade_button]:
-		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		button.custom_minimum_size = Vector2(0, BUTTON_HEIGHT + 12)
-		row.add_child(button)
-	_schools_label = _make_label("", 16)
-	_schools_label.add_theme_color_override("font_color", Color(0.91, 0.65, 0.29))
-	_towers_page.add_child(_schools_label)
-	_hint_label = _make_label("Перетащи карточку на поле — купить. На такую же башню — слияние.\n"
-			+ "Нажми на свою башню — выделишь: появятся «Повернуть» и «Продать». "
-			+ "Ещё нажатие — поворот. Продать можно и перетащив башню сюда, в меню.", 16)
-	_towers_page.add_child(_hint_label)
-	_build_tower_box(_towers_page)
-
-
-func _build_tower_box(parent: Container) -> void:
-	_tower_box = HBoxContainer.new()
-	parent.add_child(_tower_box)
-	_tower_label = _make_label("", 18)
-	_tower_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_tower_box.add_child(_tower_label)
-	_rotate_button = _make_button("⟳ Повернуть", _on_rotate_button_pressed)
-	_tower_box.add_child(_rotate_button)
-	_sell_button = _make_button("", _on_sell_button_pressed)
-	_tower_box.add_child(_sell_button)
-
-
-func _make_button(text: String, on_pressed: Callable) -> Button:
+func _button(text: String, callback: Callable) -> Button:
 	var button: Button = Button.new()
 	button.text = text
-	button.custom_minimum_size = Vector2(0, BUTTON_HEIGHT)
+	button.custom_minimum_size = Vector2(0, 40)
+	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	button.add_theme_font_size_override("font_size", 15)
+	button.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	button.focus_mode = Control.FOCUS_NONE
-	button.add_theme_font_size_override("font_size", FONT_SIZE)
-	button.pressed.connect(on_pressed)
-	UiFx.add_press_feedback(button)
+	button.pressed.connect(callback)
 	return button
 
 
-func _make_label(text: String, font_size: int) -> Label:
+func _label(text: String, font_size: int) -> Label:
 	var label: Label = Label.new()
 	label.text = text
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	label.add_theme_font_size_override("font_size", font_size)
 	return label
 
-#endregion
+
+func _choice_row(parent: Container, title: String, buttons: Array[Button],
+		callback: Callable) -> VBoxContainer:
+	var box: VBoxContainer = VBoxContainer.new()
+	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	parent.add_child(box)
+	box.add_child(_label(title, 14))
+	var row: HBoxContainer = HBoxContainer.new()
+	box.add_child(row)
+	for i: int in 3:
+		var button: Button = _button("", callback.bind(i))
+		button.add_theme_font_size_override("font_size", 13)
+		row.add_child(button)
+		buttons.append(button)
+	return box
 
 
-#region Обновление
-
-func _show_page(is_towers: bool) -> void:
-	_towers_page.visible = is_towers
-	_army_page.visible = not is_towers
-	_towers_tab.theme_type_variation = &"TabActiveButton" if is_towers else &""
-	_army_tab.theme_type_variation = &"" if is_towers else &"TabActiveButton"
+func _on_offer(index: int) -> void:
+	# Заговоры применяются только перетаскиванием на видимую цель.
+	if _player.shop.get_rite(index) == null:
+		command_requested.emit(ReserveCommand.new(ReserveCommand.Action.BUY, index))
 
 
-func _refresh_buffs() -> void:
-	var offers: Array[SendBuffData] = _player.buff_offers
-	_buff_box.visible = not offers.is_empty()
-	for i: int in _buff_buttons.size():
-		var button: Button = _buff_buttons[i]
-		button.visible = i < offers.size()
-		if button.visible:
-			var buff: SendBuffData = offers[i]
-			button.text = ("★ " if buff.is_rare else "") + buff.display_name
+func _on_reroll() -> void:
+	command_requested.emit(RerollShopCommand.new())
 
 
-func _refresh_gifts() -> void:
-	var offers: Array[TowerData] = _player.discover_offers
-	_discover_box.visible = not offers.is_empty()
-	for i: int in _discover_buttons.size():
-		_discover_buttons[i].visible = i < offers.size()
-		if i < offers.size():
-			_discover_buttons[i].text = offers[i].display_name
-	var gifts: Array[TowerData] = _player.gift_towers
-	_gift_box.visible = not gifts.is_empty()
-	while _gift_cards.size() < gifts.size():
-		var card: OfferCard = OfferCard.new()
-		card.is_gift = true
-		card.offer_index = _gift_cards.size()
-		card.ticks_per_second = _sim.config.ticks_per_second
-		_gift_row.add_child(card)
-		_gift_cards.append(card)
-	for i: int in _gift_cards.size():
-		_gift_cards[i].visible = i < gifts.size()
-		if i < gifts.size():
-			_gift_cards[i].show_offer(gifts[i])
+func _on_upgrade() -> void:
+	command_requested.emit(UpgradeShopCommand.new())
 
 
-func _refresh_offers() -> void:
-	var offers: Array[TowerData] = _player.shop.offers
-	while _offer_cards.size() < offers.size():
-		var card: OfferCard = OfferCard.new()
-		card.offer_index = _offer_cards.size()
-		card.ticks_per_second = _sim.config.ticks_per_second
-		_offer_grid.add_child(card)
-		_offer_cards.append(card)
-	for i: int in _offer_cards.size():
-		var card: OfferCard = _offer_cards[i]
-		card.visible = i < offers.size()
-		if card.visible:
-			card.show_offer(offers[i])
-			card.is_active = _player.gold >= _sim.config.tower_cost
+func _on_ready() -> void:
+	command_requested.emit(ReadyCommand.new())
 
 
-func _refresh_shop_actions() -> void:
-	var reroll_price: int = _player.get_reroll_price()
-	var reroll_text: String = "бесплатно" if reroll_price == 0 else "%d зол." % reroll_price
-	_reroll_button.text = "Обновить\n" + reroll_text
-	_reroll_button.disabled = _player.gold < reroll_price
-	var shop: ShopState = _player.shop
-	var upgrade_price: int = _player.get_shop_upgrade_price()
-	if shop.can_upgrade():
-		_upgrade_button.text = "Магазин → ур.%d\n%d зол." % [shop.level + 1, upgrade_price]
-	else:
-		_upgrade_button.text = "Магазин\nмакс. уровень"
-	_upgrade_button.disabled = not shop.can_upgrade() or _player.gold < upgrade_price
-
-
-func _refresh_tower_box() -> void:
-	var tower: TowerState = _selected_tower
-	_tower_box.visible = tower != null
-	_hint_label.visible = tower == null
-	if tower == null:
-		return
-	_tower_label.text = "%s, ур. %d\n%s" % [tower.data.display_name, tower.level,
-			_tower_details(tower)]
-	_sell_button.text = "Продать +%d" % _player.get_sell_price(tower)
-
-
-## Бонусы школ: сколько построек каждой школы и что это даёт (или сколько до следующей ступени).
-func _refresh_schools() -> void:
-	var counts: Dictionary[StringName, int] = _player.field.count_schools()
-	var parts: PackedStringArray = []
-	for bonus: SchoolBonusData in _sim.config.school_bonuses:
-		var count: int = counts.get(bonus.school, 0)
-		var value: int = bonus.get_value(count)
-		var next_count: int = bonus.get_next_count(count)
-		var text: String = "%s %d" % [bonus.display_name, count]
-		if value > 0:
-			text += ": " + bonus.get_effect_text(value)
-		elif next_count > 0:
-			text += "/%d" % next_count
-		parts.append(text)
-	_schools_label.text = "Школы: " + " · ".join(parts)
-
-
-## Статы выбранной постройки с бонусами соседей, или что она даёт (усилитель, лавка).
-func _tower_details(tower: TowerState) -> String:
-	var field: FieldState = _player.field
-	var config: GameConfig = _sim.config
-	var data: TowerData = tower.data
-	if not data.attacks:
-		var parts: PackedStringArray = []
-		if data.neighbor_damage_percent > 0:
-			parts.append("соседям +%d%% урона" % config.get_level_damage(
-					data.neighbor_damage_percent, tower.level))
-		if data.neighbor_fire_rate_percent > 0:
-			parts.append("соседям +%d%% скорости стрельбы" % config.get_level_damage(
-					data.neighbor_fire_rate_percent, tower.level))
-		if data.neighbor_range_milli > 0:
-			parts.append("соседям +%.1f радиуса" % (config.get_level_damage(
-					data.neighbor_range_milli, tower.level) / 1000.0))
-		if data.income_per_round > 0:
-			parts.append("+%d дохода за раунд" % config.get_level_damage(data.income_per_round,
-					tower.level))
-		return "%s · соседей: %d" % [", ".join(parts), field.get_neighbors(tower).size()]
-	var shots: float = float(config.ticks_per_second) / field.get_tower_cooldown(tower)
-	var text: String = "урон %d · %.1f выстр./с · радиус %.1f" % [field.get_tower_damage(tower),
-			shots, field.get_tower_range(tower) / 1000.0]
-	if tower.bonus_damage_percent > 0 or tower.bonus_fire_rate_percent > 0 \
-			or tower.bonus_range_milli > 0:
-		text += "\nот соседей: +%d%% урона, +%d%% скорости, +%.1f радиуса" % [
-				tower.bonus_damage_percent, tower.bonus_fire_rate_percent,
-				tower.bonus_range_milli / 1000.0]
-	return text
-
-
-func _refresh_army() -> void:
-	var army: ArmyState = _player.army
-	_army_label.text = _army_summary(army)
-	for i: int in _army_buttons.size():
-		var button: Button = _army_buttons[i]
-		var upgrade: ArmyUpgradeData = army.get_upgrade(i)
-		var cost: int = army.get_upgrade_cost(i)
-		var locked: String = army.check_upgrade_available(i, _player.shop.level)
-		var bought: String = "есть %d" % army.upgrade_counts[i]
-		if upgrade.max_purchases > 0:
-			bought += "/%d" % upgrade.max_purchases
-		var details: String = locked
-		if locked == "":
-			details = "%d зол. · +%d доход · %s" % [cost, army.get_upgrade_income(i), bought]
-		button.text = "%s\n%s" % [upgrade.display_name, details]
-		button.disabled = locked != "" or _player.gold < cost
-
-
-## Состав армии: сколько и каких юнитов, бонусы HP и скорости.
-func _army_summary(army: ArmyState) -> String:
-	var counts: Dictionary[String, int] = {}
-	counts[_sim.config.army_mob.display_name] = _sim.config.army_base_units + army.extra_units
-	for mob: MobData in army.added_mobs:
-		counts[mob.display_name] = counts.get(mob.display_name, 0) + 1
-	var parts: PackedStringArray = []
-	for unit_name: String in counts:
-		parts.append("%s ×%d" % [unit_name, counts[unit_name]])
-	if not army.temporary_mobs.is_empty():
-		parts.append("%s ×%d (на эту волну)" % [army.temporary_mobs[0].display_name,
-				army.temporary_mobs.size()])
-	var rage: String = ""
-	if army.rage_percent > 0:
-		rage = " · злость +%d%% HP (армия не дошла)" % army.rage_percent
-	return ("Армия сама идёт к сопернику каждый раунд. Прокачка — навсегда и +доход.\n"
-			+ "Состав: %s · HP +%d%% · скорость +%d%%%s") % [
-			", ".join(parts), army.hp_percent, army.speed_percent, rage]
-
-#endregion
-
-
-func _on_buff_button_pressed(index: int) -> void:
-	command_requested.emit(ChooseBuffCommand.new(index))
-
-
-func _on_discover_button_pressed(index: int) -> void:
-	command_requested.emit(ChooseDiscoverCommand.new(index))
-
-
-func _on_command_button_pressed(command: SimCommand) -> void:
-	command_requested.emit(command)
-
-
-func _on_army_button_pressed(index: int) -> void:
+func _on_army(index: int) -> void:
 	command_requested.emit(BuyArmyUpgradeCommand.new(index))
 
 
-func _on_rotate_button_pressed() -> void:
-	if _selected_tower != null:
-		command_requested.emit(RotateTowerCommand.new(_selected_tower.id))
+func _on_buff(index: int) -> void:
+	command_requested.emit(ChooseBuffCommand.new(index))
 
 
-func _on_sell_button_pressed() -> void:
-	if _selected_tower != null:
-		command_requested.emit(SellTowerCommand.new(_selected_tower.id))
-
-
-func _on_ready_button_pressed() -> void:
-	command_requested.emit(ReadyCommand.new())
+func _on_discover(index: int) -> void:
+	command_requested.emit(ChooseDiscoverCommand.new(index))

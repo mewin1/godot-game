@@ -1,0 +1,94 @@
+[gd_resource type="Resource" script_class="GameConfig" format=3]
+
+[ext_resource type="Script" path="res://src/sim/data/game_config.gd" id="1_script"]
+[ext_resource type="Resource" path="res://data/board/board_default.tres" id="2_ext"]
+[ext_resource type="Resource" path="res://data/mobs/basic.tres" id="3_ext"]
+[ext_resource type="Resource" path="res://data/mobs/send_unit.tres" id="4_ext"]
+[ext_resource type="Script" path="res://src/sim/data/tower_data.gd" id="5_ext"]
+[ext_resource type="Script" path="res://src/sim/data/send_buff_data.gd" id="6_ext"]
+[ext_resource type="Resource" path="res://data/towers/fire_1.tres" id="7_ext"]
+[ext_resource type="Resource" path="res://data/towers/ice_1.tres" id="8_ext"]
+[ext_resource type="Resource" path="res://data/towers/mech_1.tres" id="9_ext"]
+[ext_resource type="Resource" path="res://data/towers/fire_2.tres" id="10_ext"]
+[ext_resource type="Resource" path="res://data/towers/ice_2.tres" id="11_ext"]
+[ext_resource type="Resource" path="res://data/towers/mech_2.tres" id="12_ext"]
+[ext_resource type="Resource" path="res://data/buffs/hp_small.tres" id="13_ext"]
+[ext_resource type="Resource" path="res://data/buffs/speed_small.tres" id="14_ext"]
+[ext_resource type="Resource" path="res://data/buffs/units_small.tres" id="15_ext"]
+[ext_resource type="Resource" path="res://data/buffs/add_fast.tres" id="16_ext"]
+[ext_resource type="Resource" path="res://data/buffs/discount.tres" id="17_ext"]
+[ext_resource type="Resource" path="res://data/buffs/hp_big.tres" id="18_ext"]
+[ext_resource type="Resource" path="res://data/buffs/speed_big.tres" id="19_ext"]
+[ext_resource type="Resource" path="res://data/buffs/units_big.tres" id="20_ext"]
+[ext_resource type="Resource" path="res://data/buffs/add_armored.tres" id="21_ext"]
+[ext_resource type="Resource" path="res://data/buffs/add_boss.tres" id="22_ext"]
+[ext_resource type="Resource" path="res://data/buffs/income.tres" id="23_ext"]
+[ext_resource type="Script" path="res://src/sim/data/army_upgrade_data.gd" id="24_ext"]
+[ext_resource type="Resource" path="res://data/army/army_units.tres" id="25_ext"]
+[ext_resource type="Resource" path="res://data/army/army_hp.tres" id="26_ext"]
+[ext_resource type="Resource" path="res://data/army/army_speed.tres" id="27_ext"]
+[ext_resource type="Resource" path="res://data/army/army_fast.tres" id="28_ext"]
+[ext_resource type="Resource" path="res://data/army/army_armored.tres" id="29_ext"]
+[ext_resource type="Resource" path="res://data/army/army_boss.tres" id="30_ext"]
+[ext_resource type="Resource" path="res://data/heroes/baba_yaga.tres" id="hero_baba_yaga"]
+[ext_resource type="Resource" path="res://data/heroes/domovoy.tres" id="hero_domovoy"]
+[ext_resource type="Resource" path="res://data/heroes/cosmonaut.tres" id="hero_cosmonaut"]
+[ext_resource type="Resource" path="res://data/heroes/ilya.tres" id="hero_ilya"]
+[ext_resource type="Resource" path="res://data/heroes/leshy.tres" id="hero_leshy"]
+[ext_resource type="Resource" path="res://data/heroes/babushka.tres" id="hero_babushka"]
+[ext_resource type="Resource" path="res://data/heroes/solovey.tres" id="hero_solovey"]
+[ext_resource type="Resource" path="res://data/heroes/gorynych.tres" id="hero_gorynych"]
+[ext_resource type="Resource" path="res://data/heroes/koschei.tres" id="hero_koschei"]
+[ext_resource type="Resource" path="res://data/heroes/skomorokh.tres" id="hero_skomorokh"]
+[ext_resource type="Script" path="res://src/sim/heroes/hero_data.gd" id="hero_script"]
+[ext_resource type="Resource" path="res://data/towers/forge.tres" id="tower_forge"]
+[ext_resource type="Resource" path="res://data/towers/samovar.tres" id="tower_samovar"]
+[ext_resource type="Resource" path="res://data/towers/trap.tres" id="tower_trap"]
+[ext_resource type="Resource" path="res://data/towers/stall.tres" id="tower_stall"]
+[ext_resource type="Resource" path="res://data/towers/watchtower.tres" id="tower_watchtower"]
+[ext_resource type="Resource" path="res://data/towers/cat.tres" id="tower_cat"]
+[ext_resource type="Resource" path="res://data/towers/bogatyr.tres" id="tower_bogatyr"]
+[ext_resource type="Resource" path="res://data/towers/banya.tres" id="tower_banya"]
+[ext_resource type="Resource" path="res://data/towers/panelka.tres" id="tower_panelka"]
+[ext_resource type="Resource" path="res://data/waves/special_kolobok.tres" id="wave_kolobok"]
+[ext_resource type="Resource" path="res://data/waves/special_bat.tres" id="wave_bat"]
+[ext_resource type="Resource" path="res://data/waves/special_healer.tres" id="wave_healer"]
+[ext_resource type="Resource" path="res://data/waves/special_knight.tres" id="wave_knight"]
+[ext_resource type="Resource" path="res://data/waves/special_stealth.tres" id="wave_stealth"]
+[ext_resource type="Resource" path="res://data/waves/special_courier.tres" id="wave_courier"]
+[ext_resource type="Resource" path="res://data/army/army_kolobok.tres" id="army_kolobok"]
+[ext_resource type="Resource" path="res://data/army/army_bat.tres" id="army_bat"]
+[ext_resource type="Resource" path="res://data/army/army_healer.tres" id="army_healer"]
+[ext_resource type="Resource" path="res://data/army/army_knight.tres" id="army_knight"]
+[ext_resource type="Resource" path="res://data/army/army_stealth.tres" id="army_stealth"]
+[ext_resource type="Script" path="res://src/sim/data/wave_special_data.gd" id="wave_script"]
+[ext_resource type="Resource" path="res://data/schools/fire.tres" id="school_fire"]
+[ext_resource type="Resource" path="res://data/schools/ice.tres" id="school_ice"]
+[ext_resource type="Resource" path="res://data/schools/mech.tres" id="school_mech"]
+[ext_resource type="Resource" path="res://data/schools/folk.tres" id="school_folk"]
+[ext_resource type="Script" path="res://src/sim/data/school_bonus_data.gd" id="school_script"]
+[ext_resource type="Resource" path="res://data/towers/firebird.tres" id="tower_firebird"]
+[ext_resource type="Resource" path="res://data/towers/morozko.tres" id="tower_morozko"]
+[ext_resource type="Resource" path="res://data/towers/tsar_cannon.tres" id="tower_tsar_cannon"]
+[ext_resource type="Resource" path="res://data/towers/belfry.tres" id="tower_belfry"]
+[ext_resource type="Resource" path="res://data/towers/perun.tres" id="tower_perun"]
+[ext_resource type="Resource" path="res://data/towers/rocket.tres" id="tower_rocket"]
+[ext_resource type="Resource" path="res://data/heroes/vasilisa.tres" id="hero_vasilisa"]
+
+[resource]
+script = ExtResource("1_script")
+board = ExtResource("2_ext")
+towers = Array[ExtResource("5_ext")]([ExtResource("7_ext"), ExtResource("8_ext"), ExtResource("9_ext"), ExtResource("10_ext"), ExtResource("11_ext"), ExtResource("12_ext"), ExtResource("tower_forge"), ExtResource("tower_samovar"), ExtResource("tower_trap"), ExtResource("tower_stall"), ExtResource("tower_watchtower"), ExtResource("tower_cat"), ExtResource("tower_bogatyr"), ExtResource("tower_banya"), ExtResource("tower_panelka"), ExtResource("tower_firebird"), ExtResource("tower_morozko"), ExtResource("tower_tsar_cannon"), ExtResource("tower_belfry"), ExtResource("tower_perun"), ExtResource("tower_rocket")])
+send_buffs = Array[ExtResource("6_ext")]([ExtResource("13_ext"), ExtResource("14_ext"), ExtResource("15_ext"), ExtResource("16_ext"), ExtResource("17_ext"), ExtResource("18_ext"), ExtResource("19_ext"), ExtResource("20_ext"), ExtResource("21_ext"), ExtResource("22_ext"), ExtResource("23_ext")])
+wave_mob = ExtResource("3_ext")
+army_mob = ExtResource("4_ext")
+army_hp_growth_percent = 21
+breach_multiplier_start_rounds = Array[int]([14, 17])
+army_upgrades = Array[ExtResource("24_ext")]([ExtResource("25_ext"), ExtResource("26_ext"), ExtResource("27_ext"), ExtResource("28_ext"), ExtResource("29_ext"), ExtResource("30_ext"), ExtResource("army_kolobok"), ExtResource("army_bat"), ExtResource("army_healer"), ExtResource("army_knight"), ExtResource("army_stealth")])
+heroes = Array[ExtResource("hero_script")]([ExtResource("hero_baba_yaga"), ExtResource("hero_domovoy"), ExtResource("hero_cosmonaut"), ExtResource("hero_ilya"), ExtResource("hero_leshy"), ExtResource("hero_babushka"), ExtResource("hero_solovey"), ExtResource("hero_gorynych"), ExtResource("hero_koschei"), ExtResource("hero_skomorokh"), ExtResource("hero_vasilisa")])
+wave_specials = Array[ExtResource("wave_script")]([ExtResource("wave_kolobok"), ExtResource("wave_bat"), ExtResource("wave_healer"), ExtResource("wave_knight"), ExtResource("wave_stealth"), ExtResource("wave_courier")])
+school_bonuses = Array[ExtResource("school_script")]([ExtResource("school_fire"), ExtResource("school_ice"), ExtResource("school_mech"), ExtResource("school_folk")])
+army_gold_per_hp = 3
+army_rage_percent = 50
+
+early_prep_rounds = 0

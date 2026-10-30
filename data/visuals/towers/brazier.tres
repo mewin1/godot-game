@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="TowerVisual" format=3]
+
+[ext_resource type="Script" path="res://src/view/visuals/tower_visual.gd" id="1"]
+[ext_resource type="Texture2D" path="res://assets/towers/fire_1.svg" id="2"]
+
+[resource]
+script = ExtResource("1")
+tower_id = &"brazier"
+icon = ExtResource("2")
+plate_color = Color(0.65, 0.3, 0.12, 1)
+plate_edge_color = Color(0.65, 0.3, 0.12, 1)
+projectile = 0
+projectile_color = Color(0.65, 0.3, 0.12, 1)
+impact_color = Color(0.65, 0.3, 0.12, 1)

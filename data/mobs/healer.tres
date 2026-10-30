@@ -5,13 +5,13 @@
 [resource]
 script = ExtResource("1_script")
 id = &"healer"
-display_name = "Знахарка"
+display_name = "Лекарь"
 hp = 45
 speed_milli_per_tick = 45
 armor = 0
 kill_reward = 2
 breach_damage = 1
-description = "Раз в секунду лечит мобов рядом на 6% их HP."
+description = "Лечит соратников рядом."
 heal_percent = 6
 heal_radius_milli = 1500
 heal_interval_ticks = 20

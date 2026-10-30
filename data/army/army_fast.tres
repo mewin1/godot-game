@@ -6,7 +6,7 @@
 [resource]
 script = ExtResource("1_script")
 id = &"army_fast"
-display_name = "Быстрый юнит"
+display_name = "Разведчик"
 kind = 3
 value = 1
 base_cost = 7

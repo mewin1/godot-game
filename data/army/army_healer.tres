@@ -6,7 +6,7 @@
 [resource]
 script = ExtResource("1_script")
 id = &"army_healer"
-display_name = "Знахарка"
+display_name = "Лекарь"
 kind = 3
 value = 1
 base_cost = 10

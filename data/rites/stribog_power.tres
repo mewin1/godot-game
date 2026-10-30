@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="RiteData" format=3]
+
+[ext_resource type="Script" path="res://src/sim/data/rite_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"stribog_power"
+display_name = "Вольный ветер"
+description = "Поток Стрибога сильнее на 5%. Попутный тоже ускоряет сильнее."
+god = &"stribog"
+target = 0
+effect = 4
+value = 5
+cost = 6
+tier = 1
+max_purchases = 4

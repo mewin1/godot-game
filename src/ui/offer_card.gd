@@ -1,127 +1,162 @@
 class_name OfferCard
 extends Control
-## Карточка предложения витрины. Перетащи на своё поле, чтобы купить и поставить.
-## Кнопка ⟳ поворачивает фигуру перед покупкой.
+## Карточка лавки, резерва или подарка. ЛКМ покупает/выбирает, ПКМ поворачивает.
 
-const CARD_SIZE: Vector2 = Vector2(196, 150)
-const ROTATE_BUTTON_SIZE: Vector2 = Vector2(48, 48)
-const NAME_FONT_SIZE: int = 20
-const INFO_FONT_SIZE: int = 15
-const COLOR_CARD: Color = Color(0.18, 0.135, 0.1)
-const COLOR_CARD_SHADE: Color = Color(0.11, 0.08, 0.06)
-const COLOR_EMPTY: Color = Color(0.1, 0.075, 0.057, 0.7)
-const COLOR_NAME: Color = Color(0.95, 0.8, 0.52)
-const COLOR_STATS: Color = Color(0.94, 0.89, 0.81, 0.85)
-const COLOR_EFFECTS: Color = Color(0.75, 0.86, 0.9, 0.9)
-const MAX_SHAPE_CELL: float = 36.0
+signal clicked(index: int)
+signal item_dropped(payload: DragPayload, target_id: int)
+signal rotation_requested(tower_id: int)
+
+const CARD_SIZE: Vector2 = Vector2(175, 104)
+const TAP_SLOP: float = 10.0
+const CARD_COLOR: Color = Color(0.17, 0.13, 0.1)
+const TEXT_COLOR: Color = Color(0.94, 0.87, 0.74)
 
 var offer_index: int = 0
+var rite: RiteData
+var stored_tower: TowerState
+var is_reserve_slot: bool = false
 var data: TowerData
 var rotation_turns: int = 0
-## Можно ли сейчас покупать (фаза подготовки).
 var is_active: bool = true
-## Из конфига: нужен, чтобы показать скорострельность в выстрелах в секунду.
 var ticks_per_second: int = 20
-## Подарок «тройки»: ставится бесплатно, рисуется в золотой рамке.
 var is_gift: bool = false
 
-var _rotate_button: Button
+var _press_position: Vector2 = Vector2.ZERO
+var _rite_label: Label
 
 
 func _init() -> void:
 	custom_minimum_size = CARD_SIZE
-	_rotate_button = Button.new()
-	_rotate_button.text = "⟳"
-	_rotate_button.custom_minimum_size = ROTATE_BUTTON_SIZE
-	_rotate_button.focus_mode = Control.FOCUS_NONE
-	_rotate_button.pressed.connect(_on_rotate_button_pressed)
-	add_child(_rotate_button)
-
-
-func _ready() -> void:
-	_place_rotate_button()
+	size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_rite_label = Label.new()
+	_rite_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_rite_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_rite_label.add_theme_font_size_override("font_size", 14)
+	_rite_label.max_lines_visible = 4
+	_rite_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	add_child(_rite_label)
 
 
 func _notification(what: int) -> void:
-	if what == NOTIFICATION_RESIZED and _rotate_button != null:
-		_place_rotate_button()
+	if what == NOTIFICATION_RESIZED and _rite_label != null:
+		_rite_label.position = Vector2(8, 4)
+		_rite_label.size = Vector2(size.x - 16, size.y - 28)
 
 
-## Показывает предложение (null — место пустое: башню уже купили).
+func _gui_input(event: InputEvent) -> void:
+	var button: InputEventMouseButton = event as InputEventMouseButton
+	if button == null or not is_active:
+		return
+	if button.button_index == MOUSE_BUTTON_RIGHT and button.pressed and data != null:
+		if stored_tower != null:
+			rotation_requested.emit(stored_tower.id)
+		else:
+			rotation_turns = (rotation_turns + 1) % TowerState.ROTATIONS
+		queue_redraw()
+		accept_event()
+	elif button.button_index == MOUSE_BUTTON_LEFT:
+		if button.pressed:
+			_press_position = button.position
+		elif button.position.distance_to(_press_position) <= TAP_SLOP \
+				and not get_viewport().gui_is_dragging():
+			clicked.emit(offer_index)
+
+
+## null означает пустое место; поворот сохраняется, пока предложение то же.
 func show_offer(tower_data: TowerData) -> void:
-	if tower_data != data:
+	if data != tower_data:
 		rotation_turns = 0
 	data = tower_data
-	_rotate_button.visible = data != null
+	rite = null
+	_rite_label.visible = false
+	tooltip_text = data.description if data != null else ""
+	queue_redraw()
+
+
+## Заговор перетаскивается прямо на идол или собственную постройку.
+func show_rite(rite_data: RiteData) -> void:
+	rite = rite_data
+	data = null
+	_rite_label.visible = true
+	_rite_label.text = "%s\n%s" % [rite.display_name, rite.description.get_slice(". ", 0)]
+	tooltip_text = "%s\n%s · %d зол." % [rite.description,
+			"На идол" if rite.target == RiteData.Target.IDOL else "На башню", rite.cost]
 	queue_redraw()
 
 
 func _get_drag_data(_at_position: Vector2) -> Variant:
-	if data == null or not is_active:
+	if not is_active:
 		return null
-	set_drag_preview(ShapePreview.create_drag_preview(data, rotation_turns, 1, 40.0))
+	if rite != null:
+		var label: Label = Label.new()
+		label.text = rite.display_name
+		label.add_theme_font_size_override("font_size", 20)
+		set_drag_preview(label)
+		return DragPayload.for_rite(offer_index, rite)
+	if data == null:
+		return null
+	var payload: DragPayload
 	if is_gift:
-		return DragPayload.for_gift(offer_index, data, rotation_turns)
-	return DragPayload.for_offer(offer_index, data, rotation_turns)
+		payload = DragPayload.for_gift(offer_index, data, rotation_turns)
+	elif is_reserve_slot and stored_tower != null:
+		payload = DragPayload.for_tower(stored_tower)
+		payload.kind = DragPayload.Kind.RESERVE
+	else:
+		payload = DragPayload.for_offer(offer_index, data, rotation_turns)
+	var preview: ShapePreview = ShapePreview.create_drag_preview(data, payload.rotation,
+			payload.level, 38.0)
+	payload.preview = preview
+	set_drag_preview(preview)
+	return payload
+
+
+func _can_drop_data(_at_position: Vector2, value: Variant) -> bool:
+	if not is_reserve_slot or not is_active or not (value is DragPayload):
+		return false
+	var payload: DragPayload = value
+	if payload.kind == DragPayload.Kind.RITE:
+		return stored_tower != null and payload.rite.target == RiteData.Target.TOWER
+	if stored_tower == null:
+		return payload.kind != DragPayload.Kind.RESERVE
+	return (payload.tower_id != stored_tower.id and payload.data == stored_tower.data
+			and payload.level == stored_tower.level and stored_tower.level < 3)
+
+
+func _drop_data(_at_position: Vector2, value: Variant) -> void:
+	var payload: DragPayload = value
+	item_dropped.emit(payload, stored_tower.id if stored_tower != null else 0)
 
 
 func _draw() -> void:
 	var rect: Rect2 = Rect2(Vector2.ZERO, size)
+	draw_rect(rect.grow(-1), CARD_COLOR)
+	var font: Font = get_theme_default_font()
+	if rite != null:
+		draw_rect(rect.grow(-2), Color(0.45, 0.65, 0.85), false, 2)
+		draw_string(font, Vector2(8, size.y - 8), "%s · %d" % [
+				"На идол" if rite.target == RiteData.Target.IDOL else "На башню", rite.cost],
+				HORIZONTAL_ALIGNMENT_LEFT, size.x - 16, 15, TEXT_COLOR)
+		return
 	if data == null:
-		draw_rect(rect, COLOR_EMPTY)
-		draw_string(get_theme_default_font(), Vector2(0, size.y / 2), "куплено",
-				HORIZONTAL_ALIGNMENT_CENTER, size.x, INFO_FONT_SIZE, Color(COLOR_STATS, 0.4))
+		draw_rect(rect.grow(-2), Color(0.35, 0.29, 0.22), false, 1)
 		return
 	var visual: TowerVisual = VisualCatalog.get_default().get_tower(data.id)
-	draw_rect(rect, COLOR_CARD_SHADE)
-	draw_rect(rect.grow(-3.0), COLOR_CARD)
-	draw_rect(Rect2(rect.position + Vector2(3, size.y - 50), Vector2(size.x - 6, 47)),
-			COLOR_CARD_SHADE)
-	draw_rect(rect.grow(-1.5), visual.plate_edge_color, false, 3.0)
-	var font: Font = get_theme_default_font()
-	draw_string(font, Vector2(10, 26), data.display_name, HORIZONTAL_ALIGNMENT_LEFT,
-			size.x - ROTATE_BUTTON_SIZE.x - 14, NAME_FONT_SIZE, COLOR_NAME)
-	draw_string(font, Vector2(10, size.y - 30), _stats_text(), HORIZONTAL_ALIGNMENT_LEFT,
-			size.x - 14, INFO_FONT_SIZE, COLOR_STATS)
-	draw_string(font, Vector2(10, size.y - 10), _effects_text(), HORIZONTAL_ALIGNMENT_LEFT,
-			size.x - 14, INFO_FONT_SIZE, COLOR_EFFECTS)
-	var shape_area: Rect2 = Rect2(Vector2(10, 34), Vector2(size.x - 20, size.y - 76))
+	draw_rect(rect.grow(-2), visual.plate_edge_color, false, 2)
+	var font_size: int = 13 if is_reserve_slot else 17
+	draw_string(font, Vector2(5, 20), data.display_name, HORIZONTAL_ALIGNMENT_LEFT,
+			size.x - 10, font_size, TEXT_COLOR)
 	var bounds: Vector2 = Vector2(ShapePreview.get_shape_size(data, rotation_turns))
-	var cell: float = floorf(minf(MAX_SHAPE_CELL, minf(shape_area.size.x / bounds.x,
-			shape_area.size.y / bounds.y)))
-	var top_left: Vector2 = shape_area.position + (shape_area.size - bounds * cell) / 2.0
-	ShapePreview.draw_shape(self, data, rotation_turns, 1, top_left, cell)
+	var available: Vector2 = Vector2(size.x - 12, maxf(12, size.y - 58))
+	var cell: float = minf(36, minf(available.x / bounds.x, available.y / bounds.y))
+	var origin: Vector2 = Vector2((size.x - bounds.x * cell) / 2, 31)
+	ShapePreview.draw_shape(self, data, rotation_turns,
+			stored_tower.level if stored_tower != null else 1, origin, cell)
+	var caption: String = ""
+	if not is_reserve_slot:
+		caption = "Подарок" if is_gift else "6 зол. · " + IdolSlot.god_name(data.god)
+	elif stored_tower != null and stored_tower.enchantment >= 0:
+		caption = "Чары"
+	draw_string(font, Vector2(6, size.y - 6), caption, HORIZONTAL_ALIGNMENT_LEFT,
+			size.x - 12, 13, TEXT_COLOR)
 	if not is_active:
-		draw_rect(rect, Color(0, 0, 0, 0.45))
-	if is_gift:
-		draw_rect(rect.grow(-1.5), Color(0.95, 0.75, 0.3), false, 3.0)
-
-
-func _stats_text() -> String:
-	if not data.attacks:
-		return "не стреляет"
-	var shots_per_second: float = float(ticks_per_second) / data.cooldown_ticks
-	return "урон %d · %.1f выстр./с" % [data.damage, shots_per_second]
-
-
-func _effects_text() -> String:
-	if not data.attacks or data.hits_all_in_range or data.targets_per_shot > 1 \
-			or not data.can_hit_flying:
-		return data.description.trim_prefix("Не стреляет. ").get_slice(".", 0)
-	var parts: PackedStringArray = []
-	parts.append("радиус %.1f" % (data.range_milli / 1000.0))
-	if data.splash_radius_milli > 0:
-		parts.append("по площади")
-	if data.slow_percent > 0:
-		parts.append("замедл. %d%%" % data.slow_percent)
-	return " · ".join(parts)
-
-
-func _place_rotate_button() -> void:
-	_rotate_button.position = Vector2(size.x - ROTATE_BUTTON_SIZE.x - 4, 4)
-	_rotate_button.size = ROTATE_BUTTON_SIZE
-
-
-func _on_rotate_button_pressed() -> void:
-	rotation_turns = (rotation_turns + 1) % TowerState.ROTATIONS
-	queue_redraw()
+		draw_rect(rect, Color(0, 0, 0, 0.35))

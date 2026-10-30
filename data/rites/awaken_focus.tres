@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="RiteData" format=3]
+
+[ext_resource type="Script" path="res://src/sim/data/rite_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"awaken_focus"
+display_name = "Пробуждение силы"
+description = "Башня ур.3 с чарами: +75% урона. Ветер: длиннее поток."
+god = &""
+target = 1
+effect = 10
+value = 75
+cost = 16
+tier = 4
+max_purchases = 1

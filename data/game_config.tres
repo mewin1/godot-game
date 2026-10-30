@@ -75,18 +75,53 @@
 [ext_resource type="Resource" path="res://data/towers/rocket.tres" id="tower_rocket"]
 [ext_resource type="Resource" path="res://data/heroes/vasilisa.tres" id="hero_vasilisa"]
 
+[ext_resource type="Script" path="res://src/sim/data/rite_data.gd" id="rite_type"]
+[ext_resource type="Resource" path="res://data/towers/spark.tres" id="new_spark"]
+[ext_resource type="Resource" path="res://data/towers/thunder.tres" id="new_thunder"]
+[ext_resource type="Resource" path="res://data/towers/brazier.tres" id="new_brazier"]
+[ext_resource type="Resource" path="res://data/towers/furnace.tres" id="new_furnace"]
+[ext_resource type="Resource" path="res://data/towers/wind.tres" id="new_wind"]
+[ext_resource type="Resource" path="res://data/towers/gale.tres" id="new_gale"]
+[ext_resource type="Resource" path="res://data/rites/perun_charge.tres" id="rite_perun_charge"]
+[ext_resource type="Resource" path="res://data/rites/perun_chain.tres" id="rite_perun_chain"]
+[ext_resource type="Resource" path="res://data/rites/perun_power.tres" id="rite_perun_power"]
+[ext_resource type="Resource" path="res://data/rites/svarog_burn.tres" id="rite_svarog_burn"]
+[ext_resource type="Resource" path="res://data/rites/svarog_power.tres" id="rite_svarog_power"]
+[ext_resource type="Resource" path="res://data/rites/stribog_power.tres" id="rite_stribog_power"]
+[ext_resource type="Resource" path="res://data/rites/stribog_length.tres" id="rite_stribog_length"]
+[ext_resource type="Resource" path="res://data/rites/enchant_damage.tres" id="rite_enchant_damage"]
+[ext_resource type="Resource" path="res://data/rites/enchant_rate.tres" id="rite_enchant_rate"]
+[ext_resource type="Resource" path="res://data/rites/enchant_range.tres" id="rite_enchant_range"]
+[ext_resource type="Resource" path="res://data/rites/awaken_wide.tres" id="rite_awaken_wide"]
+[ext_resource type="Resource" path="res://data/rites/awaken_focus.tres" id="rite_awaken_focus"]
+
 [resource]
 script = ExtResource("1_script")
 board = ExtResource("2_ext")
-towers = Array[ExtResource("5_ext")]([ExtResource("7_ext"), ExtResource("8_ext"), ExtResource("9_ext"), ExtResource("10_ext"), ExtResource("11_ext"), ExtResource("12_ext"), ExtResource("tower_forge"), ExtResource("tower_samovar"), ExtResource("tower_trap"), ExtResource("tower_stall"), ExtResource("tower_watchtower"), ExtResource("tower_cat"), ExtResource("tower_bogatyr"), ExtResource("tower_banya"), ExtResource("tower_panelka"), ExtResource("tower_firebird"), ExtResource("tower_morozko"), ExtResource("tower_tsar_cannon"), ExtResource("tower_belfry"), ExtResource("tower_perun"), ExtResource("tower_rocket")])
+towers = Array[ExtResource("5_ext")]([ExtResource("new_spark"), ExtResource("new_thunder"), ExtResource("new_brazier"), ExtResource("new_furnace"), ExtResource("new_wind"), ExtResource("new_gale")])
 send_buffs = Array[ExtResource("6_ext")]([ExtResource("13_ext"), ExtResource("14_ext"), ExtResource("15_ext"), ExtResource("16_ext"), ExtResource("17_ext"), ExtResource("18_ext"), ExtResource("19_ext"), ExtResource("20_ext"), ExtResource("21_ext"), ExtResource("22_ext"), ExtResource("23_ext")])
 wave_mob = ExtResource("3_ext")
 army_mob = ExtResource("4_ext")
-army_hp_growth_percent = 21
+army_hp_growth_percent = 12
 breach_multiplier_start_rounds = Array[int]([14, 17])
-army_upgrades = Array[ExtResource("24_ext")]([ExtResource("25_ext"), ExtResource("26_ext"), ExtResource("27_ext"), ExtResource("28_ext"), ExtResource("29_ext"), ExtResource("30_ext"), ExtResource("army_kolobok"), ExtResource("army_bat"), ExtResource("army_healer"), ExtResource("army_knight"), ExtResource("army_stealth")])
+army_upgrades = Array[ExtResource("24_ext")]([ExtResource("25_ext"), ExtResource("26_ext"), ExtResource("27_ext"), ExtResource("28_ext"), ExtResource("29_ext"), ExtResource("30_ext"), ExtResource("army_healer"), ExtResource("army_knight"), ExtResource("army_stealth")])
 heroes = Array[ExtResource("hero_script")]([ExtResource("hero_baba_yaga"), ExtResource("hero_domovoy"), ExtResource("hero_cosmonaut"), ExtResource("hero_ilya"), ExtResource("hero_leshy"), ExtResource("hero_babushka"), ExtResource("hero_solovey"), ExtResource("hero_gorynych"), ExtResource("hero_koschei"), ExtResource("hero_skomorokh"), ExtResource("hero_vasilisa")])
-wave_specials = Array[ExtResource("wave_script")]([ExtResource("wave_kolobok"), ExtResource("wave_bat"), ExtResource("wave_healer"), ExtResource("wave_knight"), ExtResource("wave_stealth"), ExtResource("wave_courier")])
-school_bonuses = Array[ExtResource("school_script")]([ExtResource("school_fire"), ExtResource("school_ice"), ExtResource("school_mech"), ExtResource("school_folk")])
+wave_specials = Array[ExtResource("wave_script")]([])
+school_bonuses = Array[ExtResource("school_script")]([])
 army_gold_per_hp = 3
-army_rage_percent = 50
+army_rage_percent = 0
+
+rites = Array[ExtResource("rite_type")]([ExtResource("rite_perun_charge"), ExtResource("rite_perun_chain"), ExtResource("rite_perun_power"), ExtResource("rite_svarog_burn"), ExtResource("rite_svarog_power"), ExtResource("rite_stribog_power"), ExtResource("rite_stribog_length"), ExtResource("rite_enchant_damage"), ExtResource("rite_enchant_rate"), ExtResource("rite_enchant_range"), ExtResource("rite_awaken_wide"), ExtResource("rite_awaken_focus")])
+army_base_units = 5
+army_first_round = 2
+army_warmup_percent = Array[int]([0, 25, 35, 65])
+prep_ticks = 1200
+early_prep_ticks = 600
+shop_upgrade_costs = Array[int]([18, 36, 60])
+shop_upgrade_min_cost = 10
+synchronized_battle = true
+wave_max_ticks = 800
+enchant_damage_percent = 30
+enchant_rate_percent = 25
+awakening_power_percent = 75
+spawn_window_ticks = 200

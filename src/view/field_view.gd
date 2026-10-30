@@ -41,6 +41,10 @@ var hero_hp: int = 0
 ## Можно ли сейчас менять поле (своё поле в фазе подготовки).
 var can_edit: bool = false
 var selected_tower_id: int = 0
+var playback_speed: int = 1:
+	set(value):
+		playback_speed = value
+		_battle.playback_speed = value
 ## Доля пути до следующего тика (0..1): мобы рисуются плавно между тиками.
 var interpolation: float = 0.0:
 	set(value):
@@ -88,6 +92,9 @@ func _init() -> void:
 
 
 func _process(delta: float) -> void:
+	delta *= playback_speed
+	if _hover != null and get_viewport().gui_is_dragging():
+		_update_hover(_hover, get_local_mouse_position())
 	for tower_id: int in _fire_pulses.keys():
 		_fire_pulses[tower_id] -= delta
 		if _fire_pulses[tower_id] <= 0.0:
@@ -104,6 +111,8 @@ func _process(delta: float) -> void:
 
 
 func _notification(what: int) -> void:
+	if what == NOTIFICATION_RESIZED and field != null:
+		_update_layout()
 	if what == NOTIFICATION_DRAG_END:
 		_hover = null
 		_hover_merge_target = null
@@ -111,13 +120,19 @@ func _notification(what: int) -> void:
 
 func _gui_input(event: InputEvent) -> void:
 	var button: InputEventMouseButton = event as InputEventMouseButton
-	if button == null or button.button_index != MOUSE_BUTTON_LEFT or field == null:
+	if button == null or field == null:
 		return
-	if button.pressed:
-		_press_position = button.position
-	elif button.position.distance_to(_press_position) <= TAP_SLOP:
+	if button.button_index == MOUSE_BUTTON_RIGHT and button.pressed and can_edit:
 		var tower: TowerState = field.get_tower_at(_cell_at(button.position))
-		tower_tapped.emit(tower.id if tower != null else 0)
+		if tower != null:
+			command_requested.emit(RotateTowerCommand.new(tower.id))
+		accept_event()
+	elif button.button_index == MOUSE_BUTTON_LEFT:
+		if button.pressed:
+			_press_position = button.position
+		elif button.position.distance_to(_press_position) <= TAP_SLOP:
+			var tower: TowerState = field.get_tower_at(_cell_at(button.position))
+			tower_tapped.emit(tower.id if tower != null else 0)
 
 
 ## Подключает поле. Повторный вызов с другим полем переключает отображение.
@@ -130,6 +145,7 @@ func show_field(field_state: FieldState, game_config: GameConfig, caption: Strin
 		field.tower_fired.disconnect(_on_field_tower_fired)
 		field.mob_breached.disconnect(_on_field_mob_breached)
 	field = field_state
+	_update_layout()
 	_fire_pulses.clear()
 	_pops.clear()
 	_remember_towers()
@@ -151,9 +167,11 @@ func _get_drag_data(at_position: Vector2) -> Variant:
 	var tower: TowerState = field.get_tower_at(_cell_at(at_position))
 	if tower == null:
 		return null
-	set_drag_preview(ShapePreview.create_drag_preview(tower.data, tower.rotation, tower.level,
-			_cell_size * 0.6))
-	return DragPayload.for_tower(tower)
+	var payload: DragPayload = DragPayload.for_tower(tower)
+	payload.preview = ShapePreview.create_drag_preview(tower.data, tower.rotation, tower.level,
+			_cell_size * 0.6)
+	set_drag_preview(payload.preview)
+	return payload
 
 
 func _can_drop_data(at_position: Vector2, data: Variant) -> bool:
@@ -165,8 +183,9 @@ func _can_drop_data(at_position: Vector2, data: Variant) -> bool:
 	return _hover_valid
 
 
-func _drop_data(_at_position: Vector2, data: Variant) -> void:
+func _drop_data(at_position: Vector2, data: Variant) -> void:
 	var payload: DragPayload = data
+	_update_hover(payload, at_position)
 	var command: SimCommand = _make_drop_command(payload)
 	_hover = null
 	_hover_merge_target = null
@@ -177,6 +196,11 @@ func _drop_data(_at_position: Vector2, data: Variant) -> void:
 func _update_hover(payload: DragPayload, at_position: Vector2) -> void:
 	_hover = payload
 	var cell: Vector2i = _cell_at(at_position)
+	if payload.kind == DragPayload.Kind.RITE:
+		_hover_merge_target = field.get_tower_at(cell)
+		_hover_valid = (payload.rite.target == RiteData.Target.TOWER
+				and _hover_merge_target != null)
+		return
 	_hover_merge_target = _find_merge_target(payload, cell)
 	if _hover_merge_target != null:
 		_hover_valid = true
@@ -191,7 +215,7 @@ func _update_hover(payload: DragPayload, at_position: Vector2) -> void:
 ## Башня под пальцем, с которой можно слить перетаскиваемую (та же башня, тот же уровень).
 func _find_merge_target(payload: DragPayload, cell: Vector2i) -> TowerState:
 	var target: TowerState = field.get_tower_at(cell)
-	if target == null or target.id == payload.tower_id or payload.kind == DragPayload.Kind.GIFT:
+	if target == null or target.id == payload.tower_id:
 		return null
 	if target.data != payload.data or target.level != payload.level:
 		return null
@@ -203,7 +227,12 @@ func _find_merge_target(payload: DragPayload, cell: Vector2i) -> TowerState:
 func _make_drop_command(payload: DragPayload) -> SimCommand:
 	if not _hover_valid:
 		return null
+	if payload.kind == DragPayload.Kind.RITE:
+		return BuyRiteCommand.new(payload.offer_index, _hover_merge_target.id)
 	if payload.kind == DragPayload.Kind.GIFT:
+		if _hover_merge_target != null:
+			return GiftCommand.new(GiftCommand.Action.MERGE, payload.offer_index,
+					_hover_merge_target.id)
 		return PlaceGiftCommand.new(payload.offer_index, _hover_anchor, payload.rotation)
 	if payload.kind == DragPayload.Kind.OFFER:
 		if _hover_merge_target != null:
@@ -230,6 +259,7 @@ func _draw() -> void:
 	_draw_decor()
 	_draw_spawn()
 	_draw_knockback_mark()
+	_draw_wind()
 	_draw_towers()
 	_draw_hover()
 	_draw_hero()
@@ -241,7 +271,8 @@ func _update_layout() -> void:
 	# Поле с рамкой: клетка считается с запасом на рамку с обеих сторон.
 	var frame: Vector2 = Vector2.ONE * FRAME_MARGIN * 2.0
 	var cells_with_frame: Vector2 = Vector2(board.width, board.height) + frame
-	_cell_size = floorf(minf(available.x / cells_with_frame.x, available.y / cells_with_frame.y))
+	_cell_size = maxf(1.0, floorf(minf(available.x / cells_with_frame.x,
+			available.y / cells_with_frame.y)))
 	var board_size: Vector2 = Vector2(board.width, board.height) * _cell_size
 	_origin = Vector2(0, TITLE_HEIGHT) + (available - board_size) / 2.0
 
@@ -414,6 +445,11 @@ func _draw_scorched(tower: TowerState) -> void:
 func _draw_hover() -> void:
 	if _hover == null:
 		return
+	if _hover.kind == DragPayload.Kind.RITE:
+		if _hover_merge_target != null:
+			for cell: Vector2i in _hover_merge_target.cells():
+				draw_rect(_cell_rect(cell).grow(-2), Color(0.4, 0.75, 1, 0.4))
+		return
 	if _hover_merge_target != null:
 		for cell: Vector2i in _hover_merge_target.cells():
 			draw_rect(_cell_rect(cell), _style.selected_color, false, 5.0)
@@ -533,3 +569,39 @@ func _on_field_mob_breached(_mob: MobState) -> void:
 
 func _on_battle_sound_requested(sound_id: StringName) -> void:
 	sound_requested.emit(sound_id)
+
+
+## Стрелка всегда видна; при выборе подсвечивается реальная полоса на дороге.
+func _draw_wind() -> void:
+	for tower: TowerState in field.towers:
+		if tower.data.wind_length_milli > 0:
+			_draw_wind_tower(tower, tower.id == selected_tower_id)
+	if _hover != null and _hover.data != null and _hover.data.wind_length_milli > 0 and _hover_merge_target == null:
+		var preview: TowerState = TowerState.new()
+		preview.data = _hover.data
+		preview.anchor = _hover_anchor
+		preview.rotation = _hover.rotation
+		_draw_wind_tower(preview, true)
+
+
+func _draw_wind_tower(tower: TowerState, show_area: bool) -> void:
+	var direction: Vector2i = DivineCombat.wind_direction(tower)
+	var start: Vector2 = _to_screen(Vector2(tower.center_milli()))
+	var end: Vector2 = start + Vector2(direction) * _cell_size * 1.6
+	var color: Color = Color(0.6, 0.93, 0.79, 0.9)
+	draw_line(start, end, color, 3, true)
+	var side: Vector2 = Vector2(-direction.y, direction.x) * _cell_size * 0.16
+	var behind: Vector2 = end - Vector2(direction) * _cell_size * 0.3
+	draw_colored_polygon(PackedVector2Array([end, behind + side, behind - side]), color)
+	if not show_area:
+		return
+	var path: Array[Vector2i] = field.get_active_path()
+	for i: int in path.size():
+		var point: Vector2i = path[i] * FieldState.MILLI + Vector2i(500, 500)
+		if not DivineCombat.is_in_wind(field, tower, point):
+			continue
+		var next: int = mini(i + 1, path.size() - 1)
+		var movement: Vector2i = path[next] - path[maxi(0, next - 1)]
+		var alignment: int = movement.x * direction.x + movement.y * direction.y
+		var tint: Color = Color(0.85, 0.3, 0.2, 0.35) if alignment > 0 				else Color(0.3, 0.85, 0.65, 0.3)
+		draw_rect(_cell_rect(path[i]).grow(-2), tint)

@@ -51,6 +51,13 @@
 [ext_resource type="Texture2D" path="res://assets/ui/icon_heart.svg" id="25_r"]
 [ext_resource type="Texture2D" path="res://assets/ui/icon_star.svg" id="26_r"]
 
+[ext_resource type="Resource" path="res://data/visuals/towers/spark.tres" id="new_spark"]
+[ext_resource type="Resource" path="res://data/visuals/towers/thunder.tres" id="new_thunder"]
+[ext_resource type="Resource" path="res://data/visuals/towers/brazier.tres" id="new_brazier"]
+[ext_resource type="Resource" path="res://data/visuals/towers/furnace.tres" id="new_furnace"]
+[ext_resource type="Resource" path="res://data/visuals/towers/wind.tres" id="new_wind"]
+[ext_resource type="Resource" path="res://data/visuals/towers/gale.tres" id="new_gale"]
+
 [sub_resource type="Resource" id="field_style"]
 script = ExtResource("2_field")
 grass_textures = Array[Texture2D]([ExtResource("14_r"), ExtResource("15_r"), ExtResource("16_r")])
@@ -62,6 +69,6 @@ star_icon = ExtResource("26_r")
 
 [resource]
 script = ExtResource("1_script")
-towers = Array[ExtResource("2_tower")]([ExtResource("3_r"), ExtResource("4_r"), ExtResource("5_r"), ExtResource("6_r"), ExtResource("7_r"), ExtResource("8_r"), ExtResource("v_tower_forge"), ExtResource("v_tower_samovar"), ExtResource("v_tower_trap"), ExtResource("v_tower_stall"), ExtResource("v_tower_watchtower"), ExtResource("v_tower_cat"), ExtResource("v_tower_bogatyr"), ExtResource("v_tower_banya"), ExtResource("v_tower_panelka"), ExtResource("v_tower_firebird"), ExtResource("v_tower_morozko"), ExtResource("v_tower_tsar_cannon"), ExtResource("v_tower_belfry"), ExtResource("v_tower_perun"), ExtResource("v_tower_rocket")])
+towers = Array[ExtResource("2_tower")]([ExtResource("3_r"), ExtResource("4_r"), ExtResource("5_r"), ExtResource("6_r"), ExtResource("7_r"), ExtResource("8_r"), ExtResource("v_tower_forge"), ExtResource("v_tower_samovar"), ExtResource("v_tower_trap"), ExtResource("v_tower_stall"), ExtResource("v_tower_watchtower"), ExtResource("v_tower_cat"), ExtResource("v_tower_bogatyr"), ExtResource("v_tower_banya"), ExtResource("v_tower_panelka"), ExtResource("v_tower_firebird"), ExtResource("v_tower_morozko"), ExtResource("v_tower_tsar_cannon"), ExtResource("v_tower_belfry"), ExtResource("v_tower_perun"), ExtResource("v_tower_rocket"), ExtResource("new_spark"), ExtResource("new_thunder"), ExtResource("new_brazier"), ExtResource("new_furnace"), ExtResource("new_wind"), ExtResource("new_gale")])
 mobs = Array[ExtResource("2_mob")]([ExtResource("9_r"), ExtResource("10_r"), ExtResource("11_r"), ExtResource("12_r"), ExtResource("13_r"), ExtResource("mob_robber"), ExtResource("v_mob_kolobok"), ExtResource("v_mob_kolobok_small"), ExtResource("v_mob_bat"), ExtResource("v_mob_healer"), ExtResource("v_mob_knight"), ExtResource("v_mob_stealth"), ExtResource("v_mob_courier")])
 field = SubResource("field_style")

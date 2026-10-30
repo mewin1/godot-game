@@ -7,6 +7,14 @@ extends Resource
 @export var display_name: String = ""
 ## Школа башни: &"fire", &"ice", &"mech".
 @export var school: StringName = &""
+## Божество; пусто у прежних построек. Основные эффекты не требуют идола.
+@export var god: StringName = &""
+@export var burn_percent: int = 0
+@export var burn_ticks: int = 60
+@export var burning_target_bonus_percent: int = 0
+@export var wind_length_milli: int = 0
+@export var wind_half_width_milli: int = 1500
+@export var wind_power_percent: int = 30
 ## Тир 1–4: с какого уровня магазина башня может попасть на витрину.
 @export var tier: int = 1
 ## Клетки фигуры относительно левого верхнего угла (без поворота).

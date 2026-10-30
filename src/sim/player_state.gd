@@ -37,6 +37,7 @@ var next_tower_bonus_levels: int = 0
 ## «Тройка → открытие»: постройки на выбор (пусто — выбирать нечего) и подарки, ждущие места.
 var discover_offers: Array[TowerData] = []
 var gift_towers: Array[TowerData] = []
+var reserve: Array[TowerState] = []
 var gold: int = 0
 var income: int = 0
 var is_alive: bool = true
@@ -94,7 +95,7 @@ func buy_tower_into(offer_index: int, target_id: int) -> String:
 	var error: String = _check_can_buy(data)
 	if error != "":
 		return error
-	var target: TowerState = field.get_tower(target_id)
+	var target: TowerState = get_owned_tower(target_id)
 	if target == null or target.data != data or target.level != 1:
 		return "Слить можно только с такой же башней 1-го уровня"
 	_pay_for_offer(offer_index)
@@ -104,9 +105,11 @@ func buy_tower_into(offer_index: int, target_id: int) -> String:
 
 
 func move_tower(tower_id: int, anchor: Vector2i, rotation: int) -> String:
-	var tower: TowerState = field.get_tower(tower_id)
+	var tower: TowerState = get_owned_tower(tower_id)
 	if tower == null:
 		return "Нет такой башни"
+	if reserve.has(tower):
+		return place_from_reserve(tower_id, anchor, rotation)
 	if not field.move_tower(tower, anchor, rotation):
 		return "Сюда не встанет"
 	return ""
@@ -115,10 +118,13 @@ func move_tower(tower_id: int, anchor: Vector2i, rotation: int) -> String:
 ## Поворот на 90° по часовой. Сначала пробует то же место, потом ближайшие сдвиги
 ## (порядок перебора фиксированный — детерминизм).
 func rotate_tower(tower_id: int) -> String:
-	var tower: TowerState = field.get_tower(tower_id)
+	var tower: TowerState = get_owned_tower(tower_id)
 	if tower == null:
 		return "Нет такой башни"
 	var turns: int = (tower.rotation + 1) % TowerState.ROTATIONS
+	if reserve.has(tower):
+		tower.rotation = turns
+		return ""
 	for offset: Vector2i in ROTATE_OFFSETS:
 		if field.move_tower(tower, tower.anchor + offset, turns):
 			return ""
@@ -127,8 +133,8 @@ func rotate_tower(tower_id: int) -> String:
 
 ## Две одинаковые башни одного уровня → одна (target) уровнем выше. Клетки source освобождаются.
 func merge_towers(source_id: int, target_id: int) -> String:
-	var source: TowerState = field.get_tower(source_id)
-	var target: TowerState = field.get_tower(target_id)
+	var source: TowerState = get_owned_tower(source_id)
+	var target: TowerState = get_owned_tower(target_id)
 	if source == null or target == null or source == target:
 		return "Нет такой башни"
 	if source.data != target.data or source.level != target.level:
@@ -138,7 +144,9 @@ func merge_towers(source_id: int, target_id: int) -> String:
 	target.level += 1
 	target.invested_total += source.invested_total
 	target.invested_this_phase += source.invested_this_phase
-	field.remove_tower(source)
+	if target.enchantment < 0:
+		target.enchantment = source.enchantment
+	_remove_owned_tower(source)
 	field.mark_towers_changed()
 	_check_discover(target)
 	return ""
@@ -153,11 +161,11 @@ func get_sell_price(tower: TowerState) -> int:
 
 
 func sell_tower(tower_id: int) -> String:
-	var tower: TowerState = field.get_tower(tower_id)
+	var tower: TowerState = get_owned_tower(tower_id)
 	if tower == null:
 		return "Нет такой башни"
 	gold += get_sell_price(tower)
-	field.remove_tower(tower)
+	_remove_owned_tower(tower)
 	return ""
 
 
@@ -271,6 +279,9 @@ func pick_hero(hero_data: HeroData) -> void:
 	hero_offers.clear()
 	hero_hp = hero_data.hp
 	hero_max_hp = hero_data.hp
+	if hero_data.starting_army_units >= 0:
+		army.base_units = hero_data.starting_army_units
+	army.added_mobs.append_array(hero_data.starting_army_mobs)
 	for effect: HeroEffect in hero_data.passives:
 		effect.on_picked(self)
 
@@ -347,7 +358,7 @@ func end_prep() -> void:
 		_take_buff(0)
 	if not discover_offers.is_empty():
 		choose_discover(0)
-	for tower: TowerState in field.towers:
+	for tower: TowerState in get_all_towers():
 		tower.invested_this_phase = 0
 
 
@@ -360,6 +371,11 @@ func add_to_hash(hasher: StateHasher) -> void:
 	shop.add_to_hash(hasher)
 	army.add_to_hash(hasher)
 	field.add_to_hash(hasher)
+	hasher.add(reserve.size())
+	for tower: TowerState in reserve:
+		tower.add_to_hash(hasher)
+	for data: TowerData in discover_offers + gift_towers:
+		hasher.add_string(data.id)
 
 #endregion
 
@@ -411,3 +427,169 @@ func _take_buff(offer_index: int) -> void:
 func _add_investment(tower: TowerState, amount: int) -> void:
 	tower.invested_total += amount
 	tower.invested_this_phase += amount
+
+
+## Все собственные башни, включая запас; порядок стабилен.
+func get_all_towers() -> Array[TowerState]:
+	var result: Array[TowerState] = field.towers.duplicate()
+	result.append_array(reserve)
+	return result
+
+
+## Единый поиск для продажи, слияния и заговоров.
+func get_owned_tower(tower_id: int) -> TowerState:
+	var tower: TowerState = field.get_tower(tower_id)
+	if tower != null:
+		return tower
+	for stored: TowerState in reserve:
+		if stored.id == tower_id:
+			return stored
+	return null
+
+
+## Вместимость резерва зависит от магазина.
+func get_reserve_capacity() -> int:
+	return _config.reserve_capacity_by_level[shop.level - 1]
+
+
+## Покупает башню без установки. Полный резерв не тратит золото и предложение.
+func buy_to_reserve(offer_index: int) -> String:
+	var data: TowerData = shop.get_offer(offer_index)
+	var error: String = _check_can_buy(data)
+	if error != "":
+		return error
+	if reserve.size() >= get_reserve_capacity():
+		return "Резерв полон: поставьте, слейте или продайте постройку"
+	_pay_for_offer(offer_index)
+	var tower: TowerState = field.create_tower(data)
+	_add_investment(tower, _config.tower_cost)
+	_apply_brew(tower, 0)
+	reserve.append(tower)
+	return ""
+
+
+## Убирает башню с поля, не меняя вложения и чары.
+func store_tower(tower_id: int) -> String:
+	var tower: TowerState = field.get_tower(tower_id)
+	if tower == null:
+		return "Выберите постройку на поле"
+	if reserve.size() >= get_reserve_capacity():
+		return "Резерв полон"
+	field.remove_tower(tower)
+	reserve.append(tower)
+	return ""
+
+
+## Выставляет существующую постройку из резерва.
+func place_from_reserve(tower_id: int, anchor: Vector2i, rotation: int) -> String:
+	var tower: TowerState = get_owned_tower(tower_id)
+	if tower == null or not reserve.has(tower):
+		return "Нет такой постройки в резерве"
+	if not field.can_place_tower_data(tower.data, anchor, rotation):
+		return "Сюда не встанет"
+	reserve.erase(tower)
+	tower.anchor = anchor
+	tower.rotation = rotation
+	field.attach_tower(tower)
+	return ""
+
+
+## Забирает подарок в резерв без оплаты, если есть место.
+func gift_to_reserve(gift_index: int) -> String:
+	if gift_index < 0 or gift_index >= gift_towers.size():
+		return "Нет такого подарка"
+	if reserve.size() >= get_reserve_capacity():
+		return "Резерв полон: подарок можно сразу поставить на поле"
+	var tower: TowerState = field.create_tower(gift_towers[gift_index])
+	tower.invested_total = _config.tower_cost
+	gift_towers.remove_at(gift_index)
+	reserve.append(tower)
+	return ""
+
+
+## Применяет купленный заговор; target_id — номер идола или id постройки.
+func buy_rite(offer_index: int, target_id: int) -> String:
+	var rite: RiteData = shop.get_rite(offer_index)
+	if rite == null:
+		return "Заговора больше нет в лавке"
+	if gold < rite.cost:
+		return "Не хватает золота"
+	var error: String = ""
+	if rite.target == RiteData.Target.IDOL:
+		error = _apply_idol_rite(rite, target_id)
+	else:
+		error = _apply_tower_rite(rite, target_id)
+	if error != "":
+		return error
+	gold -= rite.cost
+	shop.remove_offer(offer_index)
+	field.mark_towers_changed()
+	return ""
+
+
+func _apply_idol_rite(rite: RiteData, slot: int) -> String:
+	if slot < 0 or slot >= field.idols.size():
+		return "Выберите одну из трёх основ идола"
+	var idol: IdolState = field.idols[slot]
+	if idol.god == &"" and field.get_idol(rite.god) != null:
+		return "Идол этого божества уже есть: выберите его"
+	var error: String = idol.check_rite(rite)
+	if error != "":
+		return error
+	idol.apply_rite(rite)
+	return ""
+
+
+func _apply_tower_rite(rite: RiteData, tower_id: int) -> String:
+	var tower: TowerState = get_owned_tower(tower_id)
+	if tower == null:
+		return "Выберите башню на поле или в резерве"
+	if rite.effect == RiteData.Effect.ENCHANT_RATE and not tower.data.attacks:
+		return "Ритм подходит только стреляющей постройке"
+	var is_awakening: bool = rite.effect >= RiteData.Effect.AWAKEN_WIDE
+	if is_awakening:
+		if tower.level < _config.max_tower_level or tower.enchantment < 0:
+			return "Пробуждение требует башню 3-го уровня с чарами"
+		if tower.awakening >= 0:
+			return "Башня уже пробуждена"
+		tower.awakening = rite.effect
+	else:
+		if tower.enchantment >= 0:
+			return "На башне уже есть чары; сохраняются при слиянии"
+		tower.enchantment = rite.effect
+	_add_investment(tower, rite.cost)
+	return ""
+
+
+func _remove_owned_tower(tower: TowerState) -> void:
+	if reserve.has(tower):
+		reserve.erase(tower)
+	else:
+		field.remove_tower(tower)
+
+
+## Сливает подарок напрямую, даже когда на поле и в резерве нет свободного места.
+func gift_into(gift_index: int, target_id: int) -> String:
+	if gift_index < 0 or gift_index >= gift_towers.size():
+		return "Нет такого подарка"
+	var target: TowerState = get_owned_tower(target_id)
+	if target == null or target.data != gift_towers[gift_index] or target.level != 1:
+		return "Подарок сливается с такой же постройкой 1-го уровня"
+	gift_towers.remove_at(gift_index)
+	target.level += 1
+	# Подарок не был оплачен в эту подготовку: перенос не даёт полный возврат цены.
+	target.invested_total += _config.tower_cost
+	field.mark_towers_changed()
+	return ""
+
+
+## Продажа подарка равноценна продаже сразу после его бесплатной установки.
+func sell_gift(gift_index: int) -> String:
+	if gift_index < 0 or gift_index >= gift_towers.size():
+		return "Нет такого подарка"
+	var gift: TowerState = TowerState.new()
+	gift.data = gift_towers[gift_index]
+	gift.invested_total = _config.tower_cost
+	gold += get_sell_price(gift)
+	gift_towers.remove_at(gift_index)
+	return ""

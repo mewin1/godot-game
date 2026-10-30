@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="RiteData" format=3]
+
+[ext_resource type="Script" path="res://src/sim/data/rite_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"svarog_burn"
+display_name = "Наговор пламени"
+description = "Горение Сварога сильнее на 15% базового удара."
+god = &"svarog"
+target = 0
+effect = 3
+value = 15
+cost = 6
+tier = 1
+max_purchases = 5

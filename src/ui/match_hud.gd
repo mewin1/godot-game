@@ -163,6 +163,9 @@ func _phase_text(sim: MatchSim) -> String:
 func _wave_text(sim: MatchSim) -> String:
 	var config: GameConfig = sim.config
 	var ticks_left: int = config.wave_max_ticks - sim.phase_tick
+	if config.synchronized_battle:
+		return "Бой · %d с · темп ×%d" % [
+				ceili(float(maxi(0, ticks_left)) / config.ticks_per_second), sim.get_battle_speed()]
 	if ticks_left > 0:
 		return "Волна · %d с" % ceili(float(ticks_left) / config.ticks_per_second)
 	ticks_left = maxi(0, ticks_left + config.wave_enrage_extra_ticks)

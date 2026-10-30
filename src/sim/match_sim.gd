@@ -153,7 +153,7 @@ func tick() -> void:
 func get_phase_ticks_left() -> int:
 	var total: int = config.wave_max_ticks
 	if phase == Phase.PREP:
-		total = config.prep_ticks
+		total = get_prep_ticks()
 	elif phase == Phase.HERO_SELECT:
 		total = config.hero_select_ticks
 	return maxi(0, total - phase_tick)
@@ -232,9 +232,16 @@ func _roll_hero_offers() -> Array[HeroData]:
 	return offers
 
 
+## Подготовка имеет собственное время и не зависит от ускорения боя.
+func get_prep_ticks() -> int:
+	if round_number <= config.early_prep_rounds:
+		return mini(config.prep_ticks, config.early_prep_ticks)
+	return config.prep_ticks
+
+
 func _tick_prep() -> void:
 	phase_tick += 1
-	if phase_tick >= config.prep_ticks or _are_all_humans_ready():
+	if phase_tick >= get_prep_ticks() or _are_all_humans_ready():
 		_start_wave()
 
 
@@ -252,6 +259,7 @@ func _start_round(number: int) -> void:
 	_plan_pairs()
 	for player: PlayerState in get_alive_players():
 		player.field.calm_down()
+
 		player.army_damage_dealt = 0
 		player.army.temporary_mobs.clear()
 		if number > 1:
@@ -297,6 +305,7 @@ func _start_ghost_wave() -> void:
 		return
 	var source: PlayerState = players[ghost_source]
 	ghost_field = FieldState.new(config, source.shop.level)
+	ghost_field.path_length = source.field.path_length
 	ghost_field.copy_towers_from(source.field)
 	ghost_field.start_wave()
 	var army: Array[MobState] = []
@@ -306,6 +315,9 @@ func _start_ghost_wave() -> void:
 
 
 func _tick_wave() -> void:
+	if config.synchronized_battle:
+		_tick_synchronized_wave()
+		return
 	phase_tick += 1
 	var is_overtime: bool = phase_tick >= config.wave_max_ticks
 	var timed_out: bool = phase_tick >= config.wave_max_ticks + config.wave_enrage_extra_ticks
@@ -325,6 +337,41 @@ func _tick_wave() -> void:
 			ghost_field.enrage()
 		all_done = _tick_ghost_field(timed_out) and all_done
 	if all_done:
+		_finish_round()
+
+
+## Общая перемотка исполняет обычные тики боя: одинаково для всех полей и эффектов.
+func _tick_synchronized_wave() -> void:
+	phase_tick += 1
+	var speed: int = get_battle_speed()
+	if phase_tick % BOT_WAVE_THINK_TICKS == 0:
+		_let_bots_play_wave()
+	for player: PlayerState in get_alive_players():
+		player.field.begin_visual_step()
+	if ghost_field != null:
+		ghost_field.begin_visual_step()
+	for substep: int in speed:
+		var all_done: bool = true
+		for player: PlayerState in get_alive_players():
+			player.field.tick()
+			_collect_field_results(player)
+			all_done = all_done and player.field.is_wave_done()
+		if ghost_field != null:
+			ghost_field.tick()
+			ghost_field.clear_pending()
+			all_done = all_done and ghost_field.is_wave_done()
+		if all_done:
+			_finish_round()
+			return
+	for player: PlayerState in get_alive_players():
+		player.field.end_visual_step()
+	if ghost_field != null:
+		ghost_field.end_visual_step()
+	if phase_tick >= config.battle_real_ticks:
+		for player: PlayerState in get_alive_players():
+			player.field.retreat_remaining()
+		if ghost_field != null:
+			ghost_field.retreat_remaining()
 		_finish_round()
 
 
@@ -365,7 +412,7 @@ func _collect_field_results(player: PlayerState) -> void:
 	if player.hero_hp < hp_before:
 		player.notify_hp_lost(self)
 	if player.hero_hp <= 0 and player.fell_tick < 0:
-		player.fell_tick = tick_count
+		player.fell_tick = player.field.wave_tick if config.synchronized_battle else tick_count
 
 
 ## Урон армии атакующего по лидеру осады: siege_leader_damage_percent от полного.
@@ -514,3 +561,14 @@ func _pair(first: int, second: int) -> void:
 	opponent_of[second] = first
 	_army_routes.append(Vector2i(first, second))
 	_army_routes.append(Vector2i(second, first))
+
+
+## Скорость общей перемотки, без ручной кнопки ×2. Правила используют её же, что и HUD.
+func get_battle_speed() -> int:
+	if phase != Phase.WAVE or not config.synchronized_battle:
+		return 1
+	var speed_index: int = 0
+	for threshold: int in config.battle_speed_thresholds:
+		if phase_tick > threshold:
+			speed_index += 1
+	return config.battle_speeds[speed_index]

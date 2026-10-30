@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="RiteData" format=3]
+
+[ext_resource type="Script" path="res://src/sim/data/rite_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"stribog_length"
+display_name = "Дальнее дыхание"
+description = "Потоки Стрибога длиннее на одну клетку."
+god = &"stribog"
+target = 0
+effect = 5
+value = 1000
+cost = 7
+tier = 2
+max_purchases = 3

@@ -6,6 +6,29 @@ extends Resource
 @export_group("Контент")
 @export var board: BoardLayout
 @export var towers: Array[TowerData] = []
+@export var rites: Array[RiteData] = []
+@export var rite_offer_percent: int = 30
+@export var reserve_capacity_by_level: Array[int] = [8, 10, 12, 14]
+@export var idol_slots: int = 3
+@export var spawn_window_ticks: int = 0
+@export var early_prep_rounds: int = 2
+@export var early_prep_ticks: int = 600
+@export var army_warmup_percent: Array[int] = []
+@export var synchronized_battle: bool = false
+@export var battle_real_ticks: int = 800
+@export var battle_speed_thresholds: Array[int] = [400, 600]
+@export var battle_speeds: Array[int] = [1, 2, 5]
+@export var chain_hits: int = 3
+@export var chain_percent: int = 40
+@export var chain_range_milli: int = 2000
+@export var chain_lifetime_ticks: int = 60
+@export var max_wind_slow_percent: int = 55
+@export var wind_fire_bonus_percent: int = 25
+@export var enchant_damage_percent: int = 20
+@export var enchant_rate_percent: int = 15
+@export var enchant_range_milli: int = 500
+@export var awakening_power_percent: int = 30
+@export var awakening_extra_targets: int = 1
 @export var send_buffs: Array[SendBuffData] = []
 ## Моб базовой волны и обычный юнит армии.
 @export var wave_mob: MobData

@@ -10,8 +10,8 @@ const COLOR_HP: Color = Color(0.92, 0.5, 0.42)
 const COLOR_SKILL: Color = Color(0.91, 0.65, 0.29)
 const COLOR_TEXT: Color = Color(0.94, 0.89, 0.81)
 
-const MOB_IDS: Array[StringName] = [&"basic", &"fast", &"armored", &"boss", &"kolobok", &"bat",
-		&"healer", &"knight", &"stealth", &"courier", &"robber", &"send_unit"]
+const MOB_IDS: Array[StringName] = [&"basic", &"send_unit", &"fast", &"armored",
+		&"healer", &"knight", &"stealth", &"boss", &"robber"]
 
 var _grids: Array[GridContainer] = []
 
