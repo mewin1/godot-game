@@ -86,7 +86,8 @@ func _write_match_start(source: String, extra: Dictionary) -> void:
 		players.append({"index": player.index, "name": player.display_name, "bot": player.is_bot,
 				"bot_army_share": _sim.get_bot_army_share(player.index)})
 	var event: Dictionary = {"event": "match_start", "version": LOG_VERSION, "source": source,
-			"players": players, "config": _config_numbers()}
+			"players": players, "config": _config_numbers(),
+			"config_path": _sim.config.resource_path, "bot_version": BotBrain.VERSION}
 	event.merge(extra)
 	_write(event)
 
@@ -127,7 +128,7 @@ func _player_snapshot(player: PlayerState) -> Dictionary:
 			"placements": _placement_snapshot(player),
 			"reserve": _reserve_snapshot(player), "idols": _idol_snapshot(player),
 			"skill_uses": player.skill_uses, "building_income": player.field.get_round_income(),
-			"alive": player.is_alive, "hp": player.hero_hp,
+			"alive": player.is_alive, "hp": player.hero_hp, "max_hp": player.hero_max_hp,
 			"gold": player.gold, "income": player.income, "shop_level": player.shop.level,
 			"towers": towers, "cells_used": player.get_cells_used(),
 			"buildable_cells": player.field.get_buildable_cells().size(),

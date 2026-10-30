@@ -243,3 +243,56 @@ func test_merge_to_max_level_gives_discover_and_free_gift() -> void:
 				placed = true
 	assert_eq(player.gift_towers.size(), 0)
 	assert_eq(player.gold, gold, "подарок бесплатный")
+
+
+func test_multiple_healers_do_not_stack_even_with_staggered_pulses() -> void:
+	var field: FieldState = FieldState.new(_config)
+	var first: MobState = _spawn(field, SimFixtures.find_mob(&"healer"))
+	var second: MobState = _spawn(field, SimFixtures.find_mob(&"healer"))
+	var target: MobState = _spawn(field, _config.army_mob)
+	field.tick()
+	target.max_hp = 1000
+	target.hp = 100
+	first.heal_cooldown = 1
+	second.heal_cooldown = 2
+	_tick(field, 2)
+	assert_eq(target.hp, 160, "две последовательные ауры дают только 6% за окно")
+	_tick(field, 19)
+	assert_eq(target.hp, 220, "через секунду лечение снова доступно")
+
+
+func test_stronger_heal_only_tops_up_the_current_window() -> void:
+	var field: FieldState = FieldState.new(_config)
+	var weak_data: MobData = SimFixtures.find_mob(&"healer").duplicate() as MobData
+	weak_data.heal_percent = 3
+	var weak: MobState = _spawn(field, weak_data)
+	var strong: MobState = _spawn(field, SimFixtures.find_mob(&"healer"))
+	var target: MobState = _spawn(field, _config.army_mob)
+	field.tick()
+	target.max_hp = 1000
+	target.hp = 100
+	weak.heal_cooldown = 1
+	strong.heal_cooldown = 2
+	_tick(field, 2)
+	assert_eq(target.hp, 160, "3% затем 6% дают всего 6%, а не 9%")
+
+
+func test_healing_ignores_dead_breached_and_out_of_range_targets() -> void:
+	var field: FieldState = FieldState.new(_config)
+	var healer: MobState = _spawn(field, SimFixtures.find_mob(&"healer"))
+	var target: MobState = _spawn(field, _config.army_mob)
+	field.tick()
+	healer.heal_cooldown = 1
+	target.hp = 0
+	field._heal_mobs()
+	assert_eq(target.hp, 0)
+	target.hp = 1
+	target.is_breached = true
+	healer.heal_cooldown = 1
+	field._heal_mobs()
+	assert_eq(target.hp, 1)
+	target.is_breached = false
+	target.progress = 8000
+	healer.heal_cooldown = 1
+	field._heal_mobs()
+	assert_eq(target.hp, 1)

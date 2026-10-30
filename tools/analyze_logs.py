@@ -135,6 +135,59 @@ def print_heroes(matches: list[list[dict]]) -> None:
               f"навык {mean(skill_uses[hero]):.1f} ({len(values)})")
 
 
+def print_pressure(matches: list[list[dict]]) -> None:
+    """Обрывы после спокойных серий, доступ к развитию и длительность без готовности."""
+    deaths = abrupt = after_clean = 0
+    shop_four, awakened = set(), set()
+    player_keys = set()
+    first_shop_four, durations, siege_losses = [], [], []
+    for match_index, events in enumerate(matches):
+        start = next(e for e in events if e["event"] == "match_start")
+        config = start.get("config", {})
+        tps = config.get("ticks_per_second", 20)
+        waves, clean = {}, defaultdict(int)
+        siege_leader = -1
+        seconds = 0.0
+        for event in events:
+            number = event.get("round", 0)
+            if event["event"] == "round_start":
+                siege_leader = event.get("siege_leader", -1)
+            elif event["event"] == "wave_start":
+                waves = {p["player"]: p for p in event["players"]}
+                seconds += event.get("prep_ticks", config.get("prep_ticks", 0)) / tps
+                for player in event["players"]:
+                    key = match_index, player["player"]
+                    player_keys.add(key)
+                    if player["shop_level"] == 4 and key not in shop_four:
+                        shop_four.add(key)
+                        first_shop_four.append(number)
+                    if any(p.get("awakening", -1) >= 0 for p in player.get("placements", [])):
+                        awakened.add(key)
+            elif event["event"] == "round_end":
+                seconds += event.get("wave_ticks", 0) / tps
+                for player in event["players"]:
+                    index = player["player"]
+                    before = waves.get(index, {})
+                    if index == siege_leader:
+                        siege_losses.append(player["hp_lost"])
+                    if player["hp"] <= 0:
+                        deaths += 1
+                        maximum = before.get("max_hp", config.get("hero_hp", 40))
+                        abrupt += before.get("hp", 0) * 2 >= maximum
+                        after_clean += clean[index] >= 3
+                    clean[index] = clean[index] + 1 if player["hp_lost"] == 0 else 0
+        durations.append(seconds / 60)
+    count = max(1, len(player_keys))
+    print("\nДавление и развитие (боты, не оценка удовольствия):")
+    print(f"  смертей {deaths}, из >= половины HP {abrupt}, после >=3 чистых волн {after_clean}")
+    print(f"  магазин 4: {100 * len(shop_four) / count:.1f}% игроков, "
+          f"первый доступ в среднем р{mean(first_shop_four):.1f}; "
+          f"пробуждение: {100 * len(awakened) / count:.1f}%")
+    print(f"  потери лидера осады в среднем: {mean(siege_losses):.1f} HP")
+    print(f"  полная подготовка + обычный просмотр боя: {mean(durations):.1f} мин "
+          "(без ручной готовности, пауз, выбора героя и кнопки ×2)")
+
+
 def main() -> None:
     if len(sys.argv) != 2:
         print(__doc__)
@@ -148,6 +201,7 @@ def main() -> None:
     print_eliminations(matches)
     print_styles(matches)
     print_heroes(matches)
+    print_pressure(matches)
 
 
 if __name__ == "__main__":

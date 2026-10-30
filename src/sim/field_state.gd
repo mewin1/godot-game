@@ -340,7 +340,8 @@ func add_to_hash(hasher: StateHasher) -> void:
 		tower.add_to_hash(hasher)
 	for mob: MobState in mobs:
 		hasher.add_many([mob.id, mob.hp, mob.progress, mob.slow_percent, mob.slow_ticks_left,
-				mob.shield_left, mob.heal_cooldown, mob.speed, mob.armor, mob.max_hp,
+				mob.shield_left, mob.heal_cooldown, mob.heal_window_ticks,
+				mob.heal_window_percent, mob.speed, mob.armor, mob.max_hp,
 				mob.sender_index, mob.charges, mob.charge_ticks_left, mob.burn_damage,
 				mob.burn_ticks_left, mob.burn_cooldown, mob.wind_slow_percent, mob.wind_boost_percent])
 		hasher.add_string(mob.data.id)
@@ -542,22 +543,41 @@ func _add_split_mobs() -> void:
 	_split_queue.clear()
 
 
-## Лекари раз в интервал лечат мобов рядом (и себя) на процент их HP.
+## Лечение одной цели не складывается, даже если импульсы лекарей сдвинуты во времени.
 func _heal_mobs() -> void:
+	for mob: MobState in mobs:
+		if mob.heal_window_ticks > 0:
+			mob.heal_window_ticks -= 1
+			if mob.heal_window_ticks == 0:
+				mob.heal_window_percent = 0
+		if mob.data.heal_percent > 0 and mob.is_alive():
+			mob.heal_cooldown -= 1
+	for target: MobState in mobs:
+		if not target.is_alive() or target.hp >= target.max_hp:
+			continue
+		var percent: int = target.heal_window_percent
+		for healer: MobState in mobs:
+			if healer.is_alive() and healer.data.heal_percent > percent \
+					and healer.heal_cooldown <= 0 and _is_in_range(get_mob_position(healer),
+					get_mob_position(target), healer.data.heal_radius_milli):
+				percent = healer.data.heal_percent
+		if percent > target.heal_window_percent:
+			_apply_healing(target, percent)
 	for healer: MobState in mobs:
-		if healer.data.heal_percent <= 0 or not healer.is_alive():
-			continue
-		healer.heal_cooldown -= 1
-		if healer.heal_cooldown > 0:
-			continue
-		healer.heal_cooldown = healer.data.heal_interval_ticks
-		var center: Vector2i = get_mob_position(healer)
-		for mob: MobState in mobs:
-			if mob.is_alive() and mob.hp < mob.max_hp \
-					and _is_in_range(center, get_mob_position(mob), healer.data.heal_radius_milli):
-				var heal: int = maxi(1, mob.max_hp * healer.data.heal_percent / 100)
-				mob.hp = mini(mob.max_hp, mob.hp + heal)
-		effect_played.emit(&"heal", healer)
+		if healer.is_alive() and healer.data.heal_percent > 0 and healer.heal_cooldown <= 0:
+			healer.heal_cooldown = healer.data.heal_interval_ticks
+			effect_played.emit(&"heal", healer)
+
+
+func _apply_healing(target: MobState, percent: int) -> void:
+	var previous: int = 0
+	if target.heal_window_percent > 0:
+		previous = maxi(1, target.max_hp * target.heal_window_percent / 100)
+	var amount: int = maxi(1, target.max_hp * percent / 100) - previous
+	target.hp = mini(target.max_hp, target.hp + amount)
+	if target.heal_window_ticks == 0:
+		target.heal_window_ticks = _config.ticks_per_second
+	target.heal_window_percent = percent
 
 
 #region Соседство и бонусы

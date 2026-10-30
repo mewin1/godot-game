@@ -3,7 +3,7 @@ extends SceneTree
 ## Запуск:
 ##   godot --headless --path . -s res://tools/balance_sim.gd -- --matches=100 --players=5
 ## Параметры: --matches=N, --players=N, --threads=N (по умолчанию — все ядра),
-##   --seed=N (первый сид, дальше по порядку), --no-log (без логов).
+##   --seed=N (первый сид), --config=res://... (вариант конфига), --no-log.
 ## Логи: logs/bots/<дата_время>/match_*.jsonl и summary.json с итогами.
 
 const CONFIG_PATH: String = "res://data/game_config.tres"
@@ -16,7 +16,16 @@ func _initialize() -> void:
 	var player_count: int = _arg_int(args, "players", 5)
 	var thread_count: int = _arg_int(args, "threads", OS.get_processor_count())
 	var first_seed: int = _arg_int(args, "seed", 1)
-	var config: GameConfig = load(CONFIG_PATH) as GameConfig
+	var config_path: String = args.get("config", CONFIG_PATH)
+	if not config_path.begins_with("res://"):
+		push_error("Конфиг должен находиться внутри проекта: res://...")
+		quit(1)
+		return
+	var config: GameConfig = load(config_path) as GameConfig
+	if config == null:
+		push_error("Не удалось загрузить конфиг: %s" % config_path)
+		quit(1)
+		return
 	var run_dir: String = ""
 	if not args.has("no-log"):
 		run_dir = ProjectSettings.globalize_path(LOG_ROOT).path_join(_timestamp())

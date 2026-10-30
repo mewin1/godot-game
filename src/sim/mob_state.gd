@@ -26,6 +26,9 @@ var was_knocked_back: bool = false
 var shield_left: int = 0
 ## Тиков до следующего лечения (лекарь).
 var heal_cooldown: int = 0
+## Общее окно лечения цели: в секунду учитывается сильнейший процент, без сложения.
+var heal_window_ticks: int = 0
+var heal_window_percent: int = 0
 ## Юнит злой армии (для отображения; HP уже учтено при создании).
 var is_angry: bool = false
 var charges: int = 0
