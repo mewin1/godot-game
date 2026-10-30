@@ -6,7 +6,7 @@ extends RefCounted
 ## игра) логов не оставляют.
 ## События: match_start, round_start, command, wave_start, round_end, eliminated, match_end.
 
-const LOG_VERSION: int = 4
+const LOG_VERSION: int = 5
 
 var _sim: MatchSim
 var _path: String = ""
@@ -87,6 +87,7 @@ func _write_match_start(source: String, extra: Dictionary) -> void:
 				"bot_army_share": _sim.get_bot_army_share(player.index)})
 	var event: Dictionary = {"event": "match_start", "version": LOG_VERSION, "source": source,
 			"players": players, "config": _config_numbers(),
+			"active_gods": _sim.active_gods,
 			"config_path": _sim.config.resource_path, "bot_version": BotBrain.VERSION}
 	event.merge(extra)
 	_write(event)

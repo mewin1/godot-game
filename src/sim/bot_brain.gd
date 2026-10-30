@@ -4,7 +4,7 @@ extends RefCounted
 ## поэтому бот тоже детерминирован. Действует один раз в начале каждой подготовки.
 
 ## Повышать магазин, только когда цена упала до этого значения (или раунд уже поздний).
-const VERSION: int = 2
+const VERSION: int = 4
 const CHEAP_UPGRADE_COST: int = 5
 const LATE_ROUND: int = 4
 ## Пока стреляющих башен меньше — бот берёт только стрелков (усилители и лавки потом).
@@ -23,6 +23,7 @@ func pick_hero(player: PlayerState) -> int:
 
 
 func play_prep(sim: MatchSim, player: PlayerState) -> void:
+	_take_gifts(sim, player)
 	_choose_buff(sim, player)
 	_merge_all_pairs(sim, player)
 	_maybe_use_skill(sim, player, HeroSkillData.Timing.PREP)
@@ -148,21 +149,21 @@ func _buy_towers(sim: MatchSim, player: PlayerState) -> void:
 
 func _wants_tower(player: PlayerState, data: TowerData) -> bool:
 	if data.wet_ticks > 0:
-		var perun: int = 0
+		var partners: int = 0
 		var water: int = 0
 		var can_merge: bool = false
 		for tower: TowerState in player.field.towers:
-			perun += 1 if tower.data.god == &"perun" else 0
+			partners += 1 if _uses_wet(tower.data) else 0
 			water += 1 if tower.data.wet_ticks > 0 else 0
 			can_merge = can_merge or (tower.data == data and tower.level == 1)
-		return perun >= 2 and (can_merge or water < maxi(1, perun / 4))
+		return partners >= 2 and (can_merge or water < maxi(1, partners / 4))
 	return data.attacks or _count_shooters(player) >= MIN_SHOOTERS_BEFORE_SUPPORT
 
 
 func _count_shooters(player: PlayerState) -> int:
 	var count: int = 0
 	for tower: TowerState in player.field.towers:
-		if tower.data.attacks:
+		if tower.data.attacks and tower.data.damage > 0:
 			count += 1
 	return count
 
@@ -243,7 +244,7 @@ func _execute(sim: MatchSim, player: PlayerState, command: SimCommand) -> void:
 		return
 
 
-## Вода должна накрывать общий с Перуном участок, а не свободный конец дороги.
+## Вода должна накрывать общий участок с башнями, использующими мокроту.
 func _score_water(field: FieldState, data: TowerData, cells: Array[Vector2i]) -> int:
 	var center: Vector2i = TowerState.center_of(cells)
 	var score: int = 0
@@ -254,7 +255,7 @@ func _score_water(field: FieldState, data: TowerData, cells: Array[Vector2i]) ->
 			continue
 		score += 1
 		for tower: TowerState in field.towers:
-			if tower.data.god != &"perun":
+			if not _uses_wet(tower.data):
 				continue
 			var reach: int = field.get_tower_range(tower)
 			var distance: Vector2i = position - tower.center_milli()
@@ -301,3 +302,8 @@ func _buy_rites(sim: MatchSim, player: PlayerState) -> void:
 			for tower: TowerState in player.field.towers:
 				if _run(sim, player, BuyRiteCommand.new(i, tower.id)):
 					break
+
+
+func _uses_wet(data: TowerData) -> bool:
+	return data.tags.has(&"lightning") or data.tags.has(&"ice") \
+			or data.tags.has(&"curse") or data.tags.has(&"fire") or data.god == &"perun"

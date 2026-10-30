@@ -149,3 +149,32 @@ func test_every_draft_can_defend_first_wave_with_three_starter_shooters() -> voi
 							break
 					assert_true(field.is_wave_done(), str(gods))
 					assert_eq(field.pending_breaches.size(), 0, str(gods))
+
+
+func test_bot_accepts_water_with_ice_or_curse_and_does_not_count_water_as_shooter() -> void:
+	var player: PlayerState = PlayerState.new(_config, 0, 21)
+	var brain: BotBrain = BotBrain.new(0)
+	var water: TowerData = load("res://data/towers/water.tres") as TowerData
+	var ice: TowerData = load("res://data/towers/rime.tres") as TowerData
+	player.field.add_tower(ice, Vector2i(2, 4), 0)
+	player.field.add_tower(ice, Vector2i(3, 4), 0)
+	assert_true(brain._wants_tower(player, water))
+	player.field.add_tower(water, Vector2i(4, 4), 0)
+	assert_eq(brain._count_shooters(player), 2)
+
+
+func test_active_draft_and_bots_replay_identically_through_battle() -> void:
+	var config: GameConfig = _config.duplicate() as GameConfig
+	config.prep_ticks = 1
+	config.early_prep_ticks = 1
+	config.battle_real_ticks = 120
+	var first: MatchSim = MatchSim.new(config, 551, 2, 0)
+	var second: MatchSim = MatchSim.new(config, 551, 2, 0)
+	first.start_with_hero_select()
+	second.start_with_hero_select()
+	for tick_index: int in 600:
+		first.tick()
+		second.tick()
+		if tick_index % 60 == 0:
+			assert_eq(first.state_hash(), second.state_hash())
+	assert_gt(first.round_number, 2)
