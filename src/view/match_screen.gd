@@ -34,6 +34,8 @@ const PREP_TIPS: Dictionary[int, String] = {
 const WAVE_TIP: String = "Слева — поле соперника: туда идёт ваша армия. Справа — ваше поле и терем."
 const TIP_SECONDS: float = 9.0
 const TIP_FONT_SIZE: int = 19
+## Отступ подсказки от низа экрана в волну (выше всплывающей сводки).
+const TIP_BOTTOM_MARGIN: float = 130.0
 
 ## Игроков в лобби: вы + боты.
 @export var player_count: int = 5
@@ -226,7 +228,11 @@ func _update_tip() -> void:
 	if _tip_time_left <= 0.0:
 		return
 	_tip_panel.reset_size()
-	_tip_panel.position = Vector2((size.x - _tip_panel.size.x) / 2.0, _hud.size.y + 8.0)
+	# В подготовку — сверху; в волну — снизу, чтобы не закрывать подписи полей.
+	var top: float = _hud.size.y + 8.0
+	if _sim.phase == MatchSim.Phase.WAVE:
+		top = size.y - _tip_panel.size.y - TIP_BOTTOM_MARGIN
+	_tip_panel.position = Vector2((size.x - _tip_panel.size.x) / 2.0, top)
 
 
 func _build_end_layer() -> void:
