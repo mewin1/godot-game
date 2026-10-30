@@ -121,22 +121,35 @@ def main() -> None:
     page = TEMPLATE.replace("{{TITLE}}", html.escape(content["title"])).replace(
         "{{SUBTITLE}}", content["subtitle"]).replace("{{SECTIONS}}", "\n".join(sections))
     (OUT / "index.html").write_text(page, encoding="utf-8")
+    # Версия для публикации страницей: без doctype/html/head/body (их добавляет сервис).
+    head = page.split("<!--PAGE-->", 1)[1].split("</head>", 1)[0]
+    body = page.split("<!--BODY-->", 1)[1].split("</body>", 1)[0]
+    (OUT / "page_fragment.html").write_text(head + body, encoding="utf-8")
     print("Готово:", OUT / "index.html")
 
 
 TEMPLATE = """<!doctype html>
-<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Застава: ночь героев</title>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!--PAGE-->
+<title>Ночь героев Заставы</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Ruslan+Display&family=PT+Sans:wght@400;700&display=swap">
 <style>
-:root { --bg:#14100d; --panel:#2a1f18; --panel2:#47362a; --text:#efe4cf; --muted:#b9aa90;
+/* Один тёмный мир «ночной корчмы»: тёмный дуб, янтарь свечи, кумач; заголовки — старорусская вязь */
+:root { color-scheme:dark; --display:"Ruslan Display","PT Serif",Georgia,serif; --body:"PT Sans","Segoe UI",system-ui,sans-serif;
+  --hp:#e87f6e; --bg:#14100d; --panel:#2a1f18; --panel2:#47362a; --text:#efe4cf; --muted:#b9aa90;
   --amber:#e8a64a; --red:#b4473a; --frost:#8fb8c9; --brass:#c49a52; }
 * { box-sizing:border-box; }
 body { margin:0; background:radial-gradient(circle at 50% 0%, #2a1f18 0%, var(--bg) 60%); color:var(--text);
-  font-family:"PT Sans","Segoe UI",system-ui,sans-serif; line-height:1.45; }
-header { text-align:center; padding:56px 16px 24px; }
+  font-family:var(--body); line-height:1.45; }
+h1, h2 { font-family:var(--display); font-weight:400; text-wrap:balance; }
+header, section { padding-left:max(16px, env(safe-area-inset-left, 0px)); padding-right:max(16px, env(safe-area-inset-right, 0px)); }
+header { text-align:center; padding-block:56px 24px; }
 header h1 { font-size:clamp(34px,6vw,64px); margin:0; color:var(--amber); letter-spacing:1px; }
 header p { color:var(--muted); font-size:20px; margin:8px 0 0; }
-section { max-width:1180px; margin:0 auto; padding:36px 16px; border-top:2px solid #3a2c22; }
+header .kicker { color:var(--text); font-family:var(--display); font-size:clamp(22px,3.4vw,32px); }
+section { max-width:1180px; margin:0 auto; padding-block:36px; border-top:2px solid var(--panel2); }
+.card, figure { min-width:0; } .card svg { max-width:100%; height:auto; }
 h2 { font-size:clamp(26px,4vw,40px); color:var(--amber); margin:0 0 12px; }
 h2::before { content:"◆ "; color:var(--red); font-size:.7em; vertical-align:middle; }
 .lead { font-size:20px; color:var(--text); max-width:900px; }
@@ -146,7 +159,7 @@ ul { font-size:19px; padding-left:22px; } li { margin:6px 0; } li b { color:var(
 .card svg:first-child { display:block; margin:0 auto 6px; }
 .card h3 { margin:4px 0; text-align:center; font-size:22px; }
 .card p { margin:6px 0; font-size:15.5px; } .epithet { text-align:center; color:var(--muted); font-size:13px; }
-.hp { color:#e87f6e; font-weight:bold; } .style { color:var(--frost); } .skill { color:var(--amber); }
+.hp { color:var(--hp); font-weight:bold; } .style { color:var(--frost); } .skill { color:var(--amber); }
 .shape { vertical-align:middle; fill:var(--brass); }
 figure { margin:18px 0; } figure img { width:100%; border-radius:12px; border:2px solid var(--panel2); }
 figcaption { color:var(--muted); font-size:17px; margin-top:6px; }
@@ -155,7 +168,8 @@ figcaption { color:var(--muted); font-size:17px; margin-top:6px; }
 .bar b { text-align:right; }
 @media (max-width:600px) { .bar { grid-template-columns:120px 1fr 48px; font-size:15px; } }
 </style></head><body>
-<header><h1>{{TITLE}}</h1><p>{{SUBTITLE}}</p></header>
+<!--BODY-->
+<header><h1>Застава</h1><p class="kicker">ночь героев</p><p>{{SUBTITLE}}</p></header>
 {{SECTIONS}}
 </body></html>
 """

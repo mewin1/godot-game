@@ -1,16 +1,25 @@
 <!doctype html>
-<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Застава: ночь героев</title>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!--PAGE-->
+<title>Ночь героев Заставы</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Ruslan+Display&family=PT+Sans:wght@400;700&display=swap">
 <style>
-:root { --bg:#14100d; --panel:#2a1f18; --panel2:#47362a; --text:#efe4cf; --muted:#b9aa90;
+/* Один тёмный мир «ночной корчмы»: тёмный дуб, янтарь свечи, кумач; заголовки — старорусская вязь */
+:root { color-scheme:dark; --display:"Ruslan Display","PT Serif",Georgia,serif; --body:"PT Sans","Segoe UI",system-ui,sans-serif;
+  --hp:#e87f6e; --bg:#14100d; --panel:#2a1f18; --panel2:#47362a; --text:#efe4cf; --muted:#b9aa90;
   --amber:#e8a64a; --red:#b4473a; --frost:#8fb8c9; --brass:#c49a52; }
 * { box-sizing:border-box; }
 body { margin:0; background:radial-gradient(circle at 50% 0%, #2a1f18 0%, var(--bg) 60%); color:var(--text);
-  font-family:"PT Sans","Segoe UI",system-ui,sans-serif; line-height:1.45; }
-header { text-align:center; padding:56px 16px 24px; }
+  font-family:var(--body); line-height:1.45; }
+h1, h2 { font-family:var(--display); font-weight:400; text-wrap:balance; }
+header, section { padding-left:max(16px, env(safe-area-inset-left, 0px)); padding-right:max(16px, env(safe-area-inset-right, 0px)); }
+header { text-align:center; padding-block:56px 24px; }
 header h1 { font-size:clamp(34px,6vw,64px); margin:0; color:var(--amber); letter-spacing:1px; }
 header p { color:var(--muted); font-size:20px; margin:8px 0 0; }
-section { max-width:1180px; margin:0 auto; padding:36px 16px; border-top:2px solid #3a2c22; }
+header .kicker { color:var(--text); font-family:var(--display); font-size:clamp(22px,3.4vw,32px); }
+section { max-width:1180px; margin:0 auto; padding-block:36px; border-top:2px solid var(--panel2); }
+.card, figure { min-width:0; } .card svg { max-width:100%; height:auto; }
 h2 { font-size:clamp(26px,4vw,40px); color:var(--amber); margin:0 0 12px; }
 h2::before { content:"◆ "; color:var(--red); font-size:.7em; vertical-align:middle; }
 .lead { font-size:20px; color:var(--text); max-width:900px; }
@@ -20,7 +29,7 @@ ul { font-size:19px; padding-left:22px; } li { margin:6px 0; } li b { color:var(
 .card svg:first-child { display:block; margin:0 auto 6px; }
 .card h3 { margin:4px 0; text-align:center; font-size:22px; }
 .card p { margin:6px 0; font-size:15.5px; } .epithet { text-align:center; color:var(--muted); font-size:13px; }
-.hp { color:#e87f6e; font-weight:bold; } .style { color:var(--frost); } .skill { color:var(--amber); }
+.hp { color:var(--hp); font-weight:bold; } .style { color:var(--frost); } .skill { color:var(--amber); }
 .shape { vertical-align:middle; fill:var(--brass); }
 figure { margin:18px 0; } figure img { width:100%; border-radius:12px; border:2px solid var(--panel2); }
 figcaption { color:var(--muted); font-size:17px; margin-top:6px; }
@@ -29,7 +38,8 @@ figcaption { color:var(--muted); font-size:17px; margin-top:6px; }
 .bar b { text-align:right; }
 @media (max-width:600px) { .bar { grid-template-columns:120px 1fr 48px; font-size:15px; } }
 </style></head><body>
-<header><h1>Застава: ночь героев</h1><p>Что сделано за ночь 30 октября 2026 — герои, постройки, мобы</p></header>
+<!--BODY-->
+<header><h1>Застава</h1><p class="kicker">ночь героев</p><p>Что сделано за ночь 30 октября 2026 — герои, постройки, мобы</p></header>
 <section><h2>Что изменилось за ночь</h2><ul><li><b>10 героев</b>: перед матчем выбираешь 1 из 3 случайных (боты тоже). У каждого — своё HP, пассивка и/или <b>навык за золото</b></li><li><b>9 новых построек</b>: кузница, самовар, вышка дают бонус <b>соседям</b>; капкан, баня, кот учёный, богатырь, панелька, лавка — каждая со своей механикой</li><li><b>6 построек тиров 3–4</b>: Жар-птица, Морозко, Царь-пушка, Колокольня, Молния Перуна, Ракета «Заря» — куда тратить золото к концу матча</li><li><b>7 новых мобов</b>: летает, лечит, делится, щит, невидимка, рывок, разбойник. Появляются в базовой волне и покупаются в армию</li><li><b>Бонусы школ</b> (2/4/6 построек одной школы) и <b>«тройка → открытие»</b>: постройка 3-го уровня дарит выбор 1 из 3 посильнее</li><li>Подсказки новичку в первых раундах, меню подготовки прокручивается</li><li>Баланс подобран по <b>сотням матчей ботов</b>: все герои побеждают в 12–25% матчей, матч — 15 раундов</li><li>Тестов было 93 — стало <b>137</b>, все проходят; детерминизм с героями проверен</li></ul></section>
 <section><h2>Как теперь начинается матч</h2><p class="lead">Три карточки: портрет, HP, пассивка, навык с ценой и фазой. 30 секунд на выбор — потом берётся первый.</p><figure><img src="shot_hero_select.png" alt=""><figcaption>Выбор героя (широкий экран)</figcaption></figure><figure><img src="shot_portrait_select.png" alt=""><figcaption>Выбор героя на вертикальном экране</figcaption></figure></section>
 <section><h2>10 героев</h2><p class="lead">Навык — кнопка вверху панели: стоит золото, раз за раунд, после применения дорожает. Одни навыки — в подготовку, другие — в волну.</p><div class="grid"><div class="card"><svg xmlns="http://www.w3.org/2000/svg" width="112" height="112" viewBox="0 0 128 128"><circle cx="64" cy="64" r="62" fill="#2a1f18"/><circle cx="64" cy="64" r="58" fill="none" stroke="#c49a52" stroke-width="3" opacity="0.6"/>
