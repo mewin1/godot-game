@@ -98,7 +98,7 @@ func _make_card(hero: HeroData, offer_index: int) -> PanelContainer:
 	var hp: Label = _make_label("♥ %d HP · %s" % [hero.hp, hero.style], 17, COLOR_HP)
 	hp.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(hp)
-	box.add_child(_make_label(hero.description, 16))
+	box.add_child(_make_label(hero.get_passive_text(), 16))
 	if hero.skill != null:
 		var skill: HeroSkillData = hero.skill
 		box.add_child(_make_label("Навык «%s» · %d зол. · %s" % [skill.display_name, skill.cost,

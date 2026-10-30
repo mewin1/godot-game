@@ -140,7 +140,7 @@ func _make_card(hero: HeroData) -> PanelContainer:
 	row.add_child(text)
 	text.add_child(_make_label(hero.display_name, 22, COLOR_TEXT))
 	text.add_child(_make_label("♥ %d HP · %s" % [hero.hp, hero.style], 16, COLOR_HP))
-	text.add_child(_make_label(hero.description, 15, COLOR_TEXT))
+	text.add_child(_make_label(hero.get_passive_text(), 15, COLOR_TEXT))
 	if hero.skill != null:
 		var skill: HeroSkillData = hero.skill
 		text.add_child(_make_label("Навык «%s» · %d зол. · %s" % [skill.display_name, skill.cost,

@@ -16,3 +16,8 @@ extends Resource
 @export var passives: Array[HeroEffect] = []
 ## Навык за золото (null — навыка нет).
 @export var skill: HeroSkillData
+
+
+## Текст пассивки для карточек: «Пассивка: …» (у героев только с навыком — просто описание).
+func get_passive_text() -> String:
+	return ("Пассивка: " if not passives.is_empty() else "") + description
