@@ -10,6 +10,8 @@ signal sound_pressed()
 signal skill_pressed()
 ## Нажали на портрет героя — показать, что он умеет (на телефоне нет наведения).
 signal hero_info_pressed()
+## Нажали на фишку игрока — показать его героя.
+signal player_chip_pressed(player_index: int)
 
 const HEART_ICON: Texture2D = preload("res://assets/ui/icon_heart.svg")
 const GOLD_ICON: Texture2D = preload("res://assets/ui/icon_gold.svg")
@@ -231,6 +233,8 @@ func _build_lobby_row() -> void:
 		chip.theme_type_variation = &"CardPanel"
 		chip.visible = false
 		row.add_child(chip)
+		chip.mouse_filter = Control.MOUSE_FILTER_STOP
+		chip.gui_input.connect(_on_chip_gui_input.bind(i))
 		var chip_box: HBoxContainer = HBoxContainer.new()
 		chip_box.add_theme_constant_override("separation", 4)
 		chip.add_child(chip_box)
@@ -253,6 +257,12 @@ func _on_hero_portrait_gui_input(event: InputEvent) -> void:
 	var click: InputEventMouseButton = event as InputEventMouseButton
 	if click != null and click.pressed and click.button_index == MOUSE_BUTTON_LEFT:
 		hero_info_pressed.emit()
+
+
+func _on_chip_gui_input(event: InputEvent, player_index: int) -> void:
+	var click: InputEventMouseButton = event as InputEventMouseButton
+	if click != null and click.pressed and click.button_index == MOUSE_BUTTON_LEFT:
+		player_chip_pressed.emit(player_index)
 
 
 func _make_portrait(portrait_size: float) -> TextureRect:

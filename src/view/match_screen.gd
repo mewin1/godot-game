@@ -122,6 +122,7 @@ func _build_ui() -> void:
 	_hud.sound_pressed.connect(_on_hud_sound_pressed)
 	_hud.skill_pressed.connect(_on_hud_skill_pressed)
 	_hud.hero_info_pressed.connect(_on_hud_hero_info_pressed)
+	_hud.player_chip_pressed.connect(_on_hud_player_chip_pressed)
 	_hud.set_muted(SoundBank.is_muted())
 	root_box.add_child(_hud)
 	_halves = BoxContainer.new()
@@ -401,10 +402,21 @@ func _on_hero_select_hero_chosen(offer_index: int) -> void:
 
 
 func _on_hud_hero_info_pressed() -> void:
-	var hero: HeroData = _human().hero
+	_show_hero_info(_human())
+
+
+func _on_hud_player_chip_pressed(player_index: int) -> void:
+	if player_index < _sim.players.size():
+		_show_hero_info(_sim.players[player_index])
+
+
+## Тост с героем игрока: имя, пассивка, навык.
+func _show_hero_info(player: PlayerState) -> void:
+	var hero: HeroData = player.hero
 	if hero == null:
 		return
-	var lines: PackedStringArray = [hero.display_name, hero.get_passive_text()]
+	var prefix: String = "" if player.index == HUMAN_INDEX else "%s: " % player.display_name
+	var lines: PackedStringArray = [prefix + hero.display_name, hero.get_passive_text()]
 	if hero.skill != null:
 		lines.append("Навык «%s» (%s): %s" % [hero.skill.display_name,
 				hero.skill.get_timing_text(), hero.skill.description])
