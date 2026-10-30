@@ -399,7 +399,7 @@ func _on_hud_skill_pressed() -> void:
 func _on_sim_hero_event(player_index: int, message: String) -> void:
 	if player_index == HUMAN_INDEX:
 		_show_toast(message, SUMMARY_SECONDS)
-		_sound_bank.play(&"siege" if _sim.phase == MatchSim.Phase.WAVE else &"merge", 0.0)
+		_sound_bank.play(&"skill", 0.0)
 		return
 	var attacker: PlayerState = _sim.players[player_index]
 	if _sim.get_army_target_fields(player_index).has(_human().field):

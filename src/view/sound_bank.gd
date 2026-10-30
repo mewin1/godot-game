@@ -91,6 +91,8 @@ func _build_sounds() -> void:
 	_add(&"round", _bell(330.0, 1.4), -4.0)
 	_add(&"siege", _bell(220.0, 1.8), 0.0)
 	_add(&"click", _tones([1400.0], 0.04, 80.0), -14.0)
+	# Навык героя: быстрый «волшебный» перелив вверх.
+	_add(&"skill", _arpeggio([523.0, 784.0, 1046.0, 1568.0, 2093.0], 0.05, 0.6), -5.0)
 
 
 func _add(sound_id: StringName, samples: PackedFloat32Array, volume_db: float) -> void:
