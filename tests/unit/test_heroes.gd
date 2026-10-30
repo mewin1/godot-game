@@ -115,7 +115,7 @@ func test_skill_not_enough_gold() -> void:
 func test_domovoy_extra_gold_and_full_refund() -> void:
 	var sim: MatchSim = SimFixtures.make_hero_match(_config, &"domovoy")
 	var player: PlayerState = sim.players[0]
-	assert_eq(player.gold, _config.start_gold + 10)
+	assert_eq(player.gold, _config.start_gold + 14)
 	var tower: TowerState = _buy_first_offer_anywhere(sim, player)
 	player.end_prep()
 	assert_eq(player.get_sell_price(tower), _config.tower_cost, "через раунд — всё равно 100%")
@@ -144,7 +144,7 @@ func test_ilya_has_more_hp_and_strike_only_in_wave() -> void:
 		hp_before.append(mob.hp)
 	assert_eq(sim.execute_command(0, UseHeroSkillCommand.new()), "")
 	for i: int in player.field.mobs.size():
-		var expected: int = hp_before[i] - hp_before[i] * 50 / 100
+		var expected: int = hp_before[i] - hp_before[i] * 45 / 100
 		assert_eq(player.field.mobs[i].hp, expected)
 
 

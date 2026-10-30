@@ -28,6 +28,7 @@ var _offer_cards: Array[OfferCard] = []
 var _reroll_button: Button
 var _upgrade_button: Button
 var _hint_label: Label
+var _schools_label: Label
 var _tower_box: HBoxContainer
 var _tower_label: Label
 var _rotate_button: Button
@@ -83,6 +84,7 @@ func refresh(selected_tower: TowerState) -> void:
 	_refresh_offers()
 	_refresh_shop_actions()
 	_refresh_tower_box()
+	_refresh_schools()
 	_refresh_army()
 	_ready_button.disabled = _player.is_ready
 	_ready_button.text = "Ждём соперника…" if _player.is_ready else "Готов ▶"
@@ -144,6 +146,9 @@ func _build_towers_page(parent: Container) -> void:
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		button.custom_minimum_size = Vector2(0, BUTTON_HEIGHT + 12)
 		row.add_child(button)
+	_schools_label = _make_label("", 16)
+	_schools_label.add_theme_color_override("font_color", Color(0.91, 0.65, 0.29))
+	_towers_page.add_child(_schools_label)
 	_hint_label = _make_label("Перетащи карточку на поле — купить. На такую же башню — слияние.\n"
 			+ "Нажми на свою башню — выделишь: появятся «Повернуть» и «Продать». "
 			+ "Ещё нажатие — поворот. Продать можно и перетащив башню сюда, в меню.", 16)
@@ -243,6 +248,23 @@ func _refresh_tower_box() -> void:
 	_tower_label.text = "%s, ур. %d\n%s" % [tower.data.display_name, tower.level,
 			_tower_details(tower)]
 	_sell_button.text = "Продать +%d" % _player.get_sell_price(tower)
+
+
+## Бонусы школ: сколько построек каждой школы и что это даёт (или сколько до следующей ступени).
+func _refresh_schools() -> void:
+	var counts: Dictionary[StringName, int] = _player.field.count_schools()
+	var parts: PackedStringArray = []
+	for bonus: SchoolBonusData in _sim.config.school_bonuses:
+		var count: int = counts.get(bonus.school, 0)
+		var value: int = bonus.get_value(count)
+		var next_count: int = bonus.get_next_count(count)
+		var text: String = "%s %d" % [bonus.display_name, count]
+		if value > 0:
+			text += ": " + bonus.get_effect_text(value)
+		elif next_count > 0:
+			text += "/%d" % next_count
+		parts.append(text)
+	_schools_label.text = "Школы: " + " · ".join(parts)
 
 
 ## Статы выбранной постройки с бонусами соседей, или что она даёт (усилитель, лавка).

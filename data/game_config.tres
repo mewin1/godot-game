@@ -62,6 +62,11 @@
 [ext_resource type="Resource" path="res://data/army/army_knight.tres" id="army_knight"]
 [ext_resource type="Resource" path="res://data/army/army_stealth.tres" id="army_stealth"]
 [ext_resource type="Script" path="res://src/sim/data/wave_special_data.gd" id="wave_script"]
+[ext_resource type="Resource" path="res://data/schools/fire.tres" id="school_fire"]
+[ext_resource type="Resource" path="res://data/schools/ice.tres" id="school_ice"]
+[ext_resource type="Resource" path="res://data/schools/mech.tres" id="school_mech"]
+[ext_resource type="Resource" path="res://data/schools/folk.tres" id="school_folk"]
+[ext_resource type="Script" path="res://src/sim/data/school_bonus_data.gd" id="school_script"]
 
 [resource]
 script = ExtResource("1_script")
@@ -75,3 +80,4 @@ breach_multiplier_start_rounds = Array[int]([16, 19])
 army_upgrades = Array[ExtResource("24_ext")]([ExtResource("25_ext"), ExtResource("26_ext"), ExtResource("27_ext"), ExtResource("28_ext"), ExtResource("29_ext"), ExtResource("30_ext"), ExtResource("army_kolobok"), ExtResource("army_bat"), ExtResource("army_healer"), ExtResource("army_knight"), ExtResource("army_stealth")])
 heroes = Array[ExtResource("hero_script")]([ExtResource("hero_baba_yaga"), ExtResource("hero_domovoy"), ExtResource("hero_cosmonaut"), ExtResource("hero_ilya"), ExtResource("hero_leshy"), ExtResource("hero_babushka"), ExtResource("hero_solovey"), ExtResource("hero_gorynych"), ExtResource("hero_koschei"), ExtResource("hero_skomorokh")])
 wave_specials = Array[ExtResource("wave_script")]([ExtResource("wave_kolobok"), ExtResource("wave_bat"), ExtResource("wave_healer"), ExtResource("wave_knight"), ExtResource("wave_stealth"), ExtResource("wave_courier")])
+school_bonuses = Array[ExtResource("school_script")]([ExtResource("school_fire"), ExtResource("school_ice"), ExtResource("school_mech"), ExtResource("school_folk")])

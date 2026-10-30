@@ -200,3 +200,20 @@ func _has_mob(mobs: Array[MobState], mob_id: StringName) -> bool:
 		if mob.data.id == mob_id:
 			return true
 	return false
+
+
+func test_two_fire_buildings_get_school_damage_bonus() -> void:
+	var field: FieldState = FieldState.new(_config)
+	var first: TowerState = field.add_tower(_tower(&"fire_1"), Vector2i(2, 2), 0)
+	field.refresh_bonuses()
+	assert_eq(first.bonus_damage_percent, 0, "одна — ступень не набрана")
+	field.add_tower(_tower(&"fire_1"), Vector2i(2, 7), 0)
+	field.refresh_bonuses()
+	assert_eq(first.bonus_damage_percent, 15)
+
+
+func test_folk_school_adds_income() -> void:
+	var field: FieldState = FieldState.new(_config)
+	field.add_tower(_tower(&"stall"), Vector2i(2, 5), 0)
+	field.add_tower(_tower(&"samovar"), Vector2i(3, 2), 0)
+	assert_eq(field.get_round_income(), 2 + 1, "лавка 2 + «Двор» за две постройки 1")

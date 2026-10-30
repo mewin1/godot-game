@@ -526,9 +526,17 @@ func get_neighbors(tower: TowerState) -> Array[TowerState]:
 	return result
 
 
-## Доход от построек (лавки) в конце раунда.
+## Сколько построек каждой школы стоит на поле (слитая считается одной).
+func count_schools() -> Dictionary[StringName, int]:
+	var counts: Dictionary[StringName, int] = {}
+	for tower: TowerState in towers:
+		counts[tower.data.school] = counts.get(tower.data.school, 0) + 1
+	return counts
+
+
+## Доход от построек (лавки) и бонуса школы «Двор» в конце раунда.
 func get_round_income() -> int:
-	var total: int = 0
+	var total: int = _school_income()
 	for tower: TowerState in towers:
 		if tower.data.income_per_round > 0:
 			total += _config.get_level_damage(tower.data.income_per_round, tower.level)
@@ -546,6 +554,7 @@ func _refresh_bonuses() -> void:
 		tower.bonus_damage_percent = 0
 		tower.bonus_fire_rate_percent = 0
 		tower.bonus_range_milli = 0
+	_apply_school_bonuses()
 	for support: TowerState in towers:
 		if not support.data.is_support():
 			continue
@@ -559,6 +568,35 @@ func _refresh_bonuses() -> void:
 					data.neighbor_range_milli, support.level)
 
 #endregion
+
+
+func _apply_school_bonuses() -> void:
+	var counts: Dictionary[StringName, int] = count_schools()
+	for bonus: SchoolBonusData in _config.school_bonuses:
+		var count: int = counts.get(bonus.school, 0)
+		var value: int = bonus.get_value(count)
+		if value == 0 or bonus.kind == SchoolBonusData.Kind.INCOME:
+			continue
+		for tower: TowerState in towers:
+			if tower.data.school != bonus.school:
+				continue
+			match bonus.kind:
+				SchoolBonusData.Kind.DAMAGE_PERCENT:
+					tower.bonus_damage_percent += value
+				SchoolBonusData.Kind.FIRE_RATE_PERCENT:
+					tower.bonus_fire_rate_percent += value
+				SchoolBonusData.Kind.RANGE_MILLI:
+					tower.bonus_range_milli += value
+
+
+func _school_income() -> int:
+	var counts: Dictionary[StringName, int] = count_schools()
+	var total: int = 0
+	for bonus: SchoolBonusData in _config.school_bonuses:
+		var count: int = counts.get(bonus.school, 0)
+		if bonus.kind == SchoolBonusData.Kind.INCOME:
+			total += bonus.get_value(count)
+	return total
 
 
 func _remove_finished_mobs() -> void:

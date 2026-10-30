@@ -10,6 +10,8 @@ extends Resource
 ## Моб базовой волны и обычный юнит армии.
 @export var wave_mob: MobData
 @export var army_mob: MobData
+## Бонусы школ (2/4/6 построек одной школы на поле).
+@export var school_bonuses: Array[SchoolBonusData] = []
 ## Особые мобы базовой волны: с какого раунда и сколько.
 @export var wave_specials: Array[WaveSpecialData] = []
 ## Улучшения армии (вкладка «Армия»), по порядку показа.

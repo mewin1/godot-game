@@ -56,10 +56,13 @@ func test_ghost_fight_both_ways() -> void:
 	var my_army: Dictionary[int, bool] = {}
 	while sim.phase == MatchSim.Phase.WAVE:
 		for mob: MobState in sim.players[lonely].field.mobs:
+			# Детёныши колобка появляются при смерти — это не новые юниты армии.
+			if mob.data.id == &"kolobok_small":
+				continue
 			if mob.sender_index == MatchSim.GHOST and mob.data != _config.wave_mob:
 				ghost_army[mob.id] = true
 		for mob: MobState in sim.ghost_field.mobs:
-			if mob.sender_index == lonely:
+			if mob.sender_index == lonely and mob.data.id != &"kolobok_small":
 				my_army[mob.id] = true
 		sim.tick()
 	assert_eq(ghost_army.size(), ghost_army_size, "армия призрака идёт ко мне")

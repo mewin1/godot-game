@@ -22,6 +22,16 @@ const COLOR_BACKGROUND: Color = Color(0.08, 0.06, 0.047)
 const COLOR_TOAST: Color = Color(1.0, 0.8, 0.45)
 const COLOR_SIEGE: Color = Color(1.0, 0.45, 0.35)
 const SPEEDS: Array[int] = [1, 2]
+## Подсказки новичку: в начале подготовки раунда N (и в первой волне).
+const PREP_TIPS: Dictionary[int, String] = {
+	1: "Перетащите постройку с витрины на светлую клетку у дороги — она куплена и стоит.",
+	2: "Сверху меню — бесплатный баф армии. Две одинаковые постройки сливаются: перетащите одну на другую.",
+	3: "Кузница, самовар и вышка не стреляют, а усиливают соседей: ставьте их вплотную к стрелкам.",
+	4: "Навык героя — кнопка вверху. 2, 4 и 6 построек одной школы дают бонус (строка «Школы» в меню).",
+}
+const WAVE_TIP: String = "Слева — поле соперника: туда идёт ваша армия. Справа — ваше поле и терем."
+const TIP_SECONDS: float = 9.0
+const TIP_FONT_SIZE: int = 19
 
 ## Игроков в лобби: вы + боты.
 @export var player_count: int = 5
@@ -54,6 +64,9 @@ var _toast_label: Label
 var _end_layer: Control
 var _end_panel: MatchEndPanel
 var _hero_select: HeroSelectPanel
+var _tip_panel: PanelContainer
+var _tip_label: Label
+var _tip_time_left: float = 0.0
 var _sound_bank: SoundBank
 
 
@@ -114,6 +127,7 @@ func _build_ui() -> void:
 	_overlay = Control.new()
 	_add_full_rect(self, _overlay)
 	_build_toast()
+	_build_tip()
 	_hero_select = HeroSelectPanel.new()
 	_hero_select.visible = false
 	_hero_select.hero_chosen.connect(_on_hero_select_hero_chosen)
@@ -179,6 +193,34 @@ func _build_toast() -> void:
 	_toast_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_toast_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_toast_panel.add_child(_toast_label)
+
+
+func _build_tip() -> void:
+	_tip_panel = PanelContainer.new()
+	_tip_panel.theme_type_variation = &"CardPanel"
+	_tip_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_tip_panel.modulate.a = 0.0
+	_overlay.add_child(_tip_panel)
+	_tip_label = Label.new()
+	_tip_label.add_theme_font_size_override("font_size", TIP_FONT_SIZE)
+	_tip_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_tip_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_tip_panel.add_child(_tip_label)
+
+
+## Подсказка новичку вверху экрана под панелью (держится TIP_SECONDS).
+func _show_tip(text: String) -> void:
+	_tip_label.text = "Подсказка: " + text
+	var width: float = minf(size.x - 32.0, 760.0)
+	_tip_panel.custom_minimum_size = Vector2(width, 0)
+	_tip_panel.reset_size()
+	_tip_panel.position = Vector2((size.x - width) / 2.0, _hud.size.y + 8.0)
+	_tip_time_left = TIP_SECONDS
+
+
+func _update_tip() -> void:
+	_tip_time_left = maxf(0.0, _tip_time_left - get_process_delta_time())
+	_tip_panel.modulate.a = clampf(_tip_time_left * 1.5, 0.0, 1.0)
 
 
 func _build_end_layer() -> void:
@@ -320,6 +362,7 @@ func _announce_enrage(is_enraged: bool) -> void:
 
 
 func _update_toast() -> void:
+	_update_tip()
 	_toast_time_left = maxf(0.0, _toast_time_left - get_process_delta_time())
 	_toast_panel.modulate.a = clampf(_toast_time_left * 2.0, 0.0, 1.0)
 
@@ -455,6 +498,8 @@ func _round_target_name() -> String:
 
 func _on_sim_round_started(round_number: int) -> void:
 	_hp_at_round_start = _human().hero_hp
+	if PREP_TIPS.has(round_number):
+		_show_tip(PREP_TIPS[round_number])
 	if not _sim.is_siege_round(round_number):
 		_show_banner("Раунд %d" % round_number)
 		_sound_bank.play(&"round", 0.0)
@@ -474,6 +519,8 @@ func _on_sim_phase_changed(phase: MatchSim.Phase) -> void:
 		var hero: HeroData = _human().hero
 		if hero != null:
 			_show_banner(hero.display_name, UiFx.BANNER_COLOR, hero.description)
+	if phase == MatchSim.Phase.WAVE and _sim.round_number == 1:
+		_show_tip(WAVE_TIP)
 	if phase == MatchSim.Phase.WAVE:
 		_show_banner("Волна!")
 		_sound_bank.play(&"wave", 0.0)
