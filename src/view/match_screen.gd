@@ -336,8 +336,9 @@ func _refresh_opponent_view() -> void:
 	_opponent_view.visible = not _shop_panel.visible
 	var opponent: PlayerState = _opponent()
 	if opponent != null:
+		var hero_name: String = " (%s)" % opponent.hero.display_name if opponent.hero != null else ""
 		_opponent_view.show_field(opponent.field, _sim.config,
-				"Поле соперника: %s · туда идёт ваша армия" % opponent.display_name)
+				"Поле соперника: %s%s · туда идёт ваша армия" % [opponent.display_name, hero_name])
 		_opponent_view.hero_hp = opponent.hero_hp
 		return
 	if _sim.ghost_target == HUMAN_INDEX and _sim.ghost_field != null:
