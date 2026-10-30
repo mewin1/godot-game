@@ -209,7 +209,7 @@ func test_two_fire_buildings_get_school_damage_bonus() -> void:
 	assert_eq(first.bonus_damage_percent, 0, "одна — ступень не набрана")
 	field.add_tower(_tower(&"fire_1"), Vector2i(2, 7), 0)
 	field.refresh_bonuses()
-	assert_eq(first.bonus_damage_percent, 15)
+	assert_eq(first.bonus_damage_percent, 10)
 
 
 func test_folk_school_adds_income() -> void:

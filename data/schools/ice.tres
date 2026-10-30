@@ -8,4 +8,4 @@ school = &"ice"
 display_name = "Лёд"
 kind = 2
 counts = Array[int]([2, 4, 6])
-values = Array[int]([300, 600, 1000])
+values = Array[int]([200, 400, 700])

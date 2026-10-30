@@ -8,4 +8,4 @@ school = &"fire"
 display_name = "Огонь"
 kind = 0
 counts = Array[int]([2, 4, 6])
-values = Array[int]([15, 30, 50])
+values = Array[int]([10, 20, 35])
