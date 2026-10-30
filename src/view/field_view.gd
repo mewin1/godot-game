@@ -349,12 +349,30 @@ func _draw_towers() -> void:
 		draw_set_transform_matrix(Transform2D.IDENTITY)
 		if field.silence_ticks_left > 0:
 			_draw_scorched(tower)
+		_draw_boost_mark(tower)
 		if tower.id == selected_tower_id:
 			for cell: Vector2i in tower.cells():
 				draw_rect(_cell_rect(cell).grow(-1.0), _style.selected_color, false, 3.0)
 			if tower.data.attacks:
 				_draw_range(tower.center_milli(), field.get_tower_range(tower), _style.selected_color)
 			_draw_neighbor_links(tower)
+
+
+## Значок «усилена»: золотой уголок со стрелкой, если соседи или школа дают бонус.
+func _draw_boost_mark(tower: TowerState) -> void:
+	# Геттер сам пересчитает бонусы, если башни менялись.
+	field.get_tower_damage(tower)
+	if not tower.data.attacks:
+		return
+	if tower.bonus_damage_percent <= 0 and tower.bonus_fire_rate_percent <= 0 \
+			and tower.bonus_range_milli <= 0:
+		return
+	var corner: Vector2 = _cell_rect(tower.cells()[0]).position + Vector2.ONE * _cell_size * 0.08
+	var mark: float = _cell_size * 0.22
+	var triangle: PackedVector2Array = [corner + Vector2(mark * 0.5, 0), corner + Vector2(mark, mark),
+			corner + Vector2(0, mark)]
+	draw_colored_polygon(triangle, _style.selected_color)
+	draw_polyline(triangle + PackedVector2Array([triangle[0]]), Color(0.11, 0.08, 0.06), 1.5)
 
 
 ## Соседи выбранной постройки: золотые линии от центра к центрам соседей.
