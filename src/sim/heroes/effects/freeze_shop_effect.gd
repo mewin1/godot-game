@@ -12,11 +12,7 @@ func activate(_sim: MatchSim, player: PlayerState) -> String:
 	return ""
 
 
-## Боту — когда на витрине осталось что-то, а золота на покупку уже нет.
-func bot_wants_to_use(sim: MatchSim, player: PlayerState) -> bool:
-	if player.gold - player.get_skill_cost() >= sim.config.tower_cost:
-		return false
-	for data: TowerData in player.shop.offers:
-		if data != null:
-			return true
+## Бот не умеет планировать витрину на два раунда: с заморозкой он играл хуже (6% побед против
+## 15–20% без неё), поэтому навык не жмёт. Это навык для человека.
+func bot_wants_to_use(_sim: MatchSim, _player: PlayerState) -> bool:
 	return false
