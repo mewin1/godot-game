@@ -24,6 +24,7 @@ const STRIKE_COLOR: Color = Color(1.0, 0.85, 0.5)
 const SILENCE_TEXT_COLOR: Color = Color(1.0, 0.55, 0.3)
 const KNOCKBACK_COLOR: Color = Color(0.55, 0.8, 0.35)
 const HEAL_COLOR: Color = Color(0.56, 0.82, 0.42)
+const ANGRY_COLOR: Color = Color(0.95, 0.3, 0.2)
 const SHIELD_COLOR: Color = Color(0.77, 0.6, 0.32)
 ## Летающие рисуются выше земли (в долях своего размера), невидимки — полупрозрачными.
 const FLY_LIFT: float = 0.45
@@ -149,6 +150,9 @@ func _draw_mob(mob: MobState) -> void:
 		# Чья армия: кольцо цвета игрока под юнитом.
 		draw_arc(Vector2.ZERO, sprite_size * 0.36, 0.0, TAU, 24,
 				_style.get_player_color(mob.sender_index), 5.0, true)
+	if mob.is_angry:
+		# Злая армия: красноватое «пламя» под ногами.
+		draw_circle(Vector2.ZERO, sprite_size * 0.5, Color(ANGRY_COLOR, 0.25 + 0.15 * sin(phase * 2.0)))
 	if mob.slow_percent > 0:
 		draw_arc(Vector2.ZERO, sprite_size * 0.42, 0.0, TAU, 24, _style.slow_tint, 3.0, true)
 	var flip: float = -1.0 if _facing_left.get(mob.id, false) else 1.0

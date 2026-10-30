@@ -107,6 +107,7 @@ func build_pack(sender_index: int, round_number: int) -> Array[MobState]:
 		pack.append(MobState.create(mob_data, hp_bonus, speed_percent))
 	for mob: MobState in pack:
 		mob.sender_index = sender_index
+		mob.is_angry = rage_percent > 0
 	return pack
 
 

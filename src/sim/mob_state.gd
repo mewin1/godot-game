@@ -24,6 +24,8 @@ var was_knocked_back: bool = false
 var shield_left: int = 0
 ## Тиков до следующего лечения (лекарь).
 var heal_cooldown: int = 0
+## Юнит злой армии (для отображения; HP уже учтено при создании).
+var is_angry: bool = false
 
 
 ## Создаёт моба по данным с бонусами к HP и скорости в процентах.
