@@ -101,7 +101,7 @@ func _stats_text() -> String:
 func _effects_text() -> String:
 	if not data.attacks or data.hits_all_in_range or data.targets_per_shot > 1 \
 			or not data.can_hit_flying:
-		return data.description.get_slice(".", 0)
+		return data.description.trim_prefix("Не стреляет. ").get_slice(".", 0)
 	var parts: PackedStringArray = []
 	parts.append("радиус %.1f" % (data.range_milli / 1000.0))
 	if data.splash_radius_milli > 0:

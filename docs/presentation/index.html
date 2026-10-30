@@ -29,10 +29,10 @@ figcaption { color:var(--muted); font-size:17px; margin-top:6px; }
 .bar b { text-align:right; }
 @media (max-width:600px) { .bar { grid-template-columns:120px 1fr 48px; font-size:15px; } }
 </style></head><body>
-<header><h1>Застава: ночь героев</h1><p>Что сделано за ночь 30 октября — черновик, обновляется по ходу работы</p></header>
-<section><h2>Что изменилось за ночь</h2><ul><li><b>10 героев</b>: перед матчем выбираешь 1 из 3 случайных (боты тоже)</li><li>У героя — свой запас HP, пассивка и/или <b>навык за золото</b> (кнопка в панели, раз за раунд)</li><li>В работе: новые постройки с <b>соседством</b> и новые мобы</li></ul></section>
-<section><h2>Как теперь начинается матч</h2><p class="lead">Три карточки: портрет, HP, пассивка, навык. 30 секунд на выбор.</p><figure><img src="shot_hero_select.png" alt=""><figcaption>Выбор героя</figcaption></figure><figure><img src="shot_prep.png" alt=""><figcaption>Подготовка: портрет героя и кнопка навыка вверху, герои соперников — в фишках</figcaption></figure></section>
-<section><h2>10 героев</h2><div class="grid"><div class="card"><svg xmlns="http://www.w3.org/2000/svg" width="112" height="112" viewBox="0 0 128 128"><circle cx="64" cy="64" r="62" fill="#2a1f18"/><circle cx="64" cy="64" r="58" fill="none" stroke="#c49a52" stroke-width="3" opacity="0.6"/>
+<header><h1>Застава: ночь героев</h1><p>Что сделано за ночь 30 октября 2026 — герои, постройки, мобы</p></header>
+<section><h2>Что изменилось за ночь</h2><ul><li><b>10 героев</b>: перед матчем выбираешь 1 из 3 случайных (боты тоже). У каждого — своё HP, пассивка и/или <b>навык за золото</b></li><li><b>9 новых построек</b>: кузница, самовар, вышка дают бонус <b>соседям</b>; капкан, баня, кот учёный, богатырь, панелька, лавка — каждая со своей механикой</li><li><b>7 новых мобов</b>: летает, лечит, делится, щит, невидимка, рывок, разбойник. Появляются в базовой волне и покупаются в армию</li><li>Баланс подобран по <b>сотням матчей ботов</b>: все герои побеждают в 13–28% матчей</li><li>Тестов было 93 — стало <b>134</b>, все проходят; детерминизм с героями проверен</li></ul></section>
+<section><h2>Как теперь начинается матч</h2><p class="lead">Три карточки: портрет, HP, пассивка, навык с ценой и фазой. 30 секунд на выбор — потом берётся первый.</p><figure><img src="shot_hero_select.png" alt=""><figcaption>Выбор героя (широкий экран)</figcaption></figure><figure><img src="shot_portrait_select.png" alt=""><figcaption>Выбор героя на вертикальном экране</figcaption></figure></section>
+<section><h2>10 героев</h2><p class="lead">Навык — кнопка вверху панели: стоит золото, раз за раунд, после применения дорожает. Одни навыки — в подготовку, другие — в волну.</p><div class="grid"><div class="card"><svg xmlns="http://www.w3.org/2000/svg" width="112" height="112" viewBox="0 0 128 128"><circle cx="64" cy="64" r="62" fill="#2a1f18"/><circle cx="64" cy="64" r="58" fill="none" stroke="#c49a52" stroke-width="3" opacity="0.6"/>
 <path d="M22 108 L30 70 L64 50 L98 70 L106 108 Z" fill="#4a3a52" stroke="#1c1410" stroke-width="4" stroke-linejoin="round"/>
 <path d="M40 50 C40 26 88 26 88 50 C88 74 40 74 40 50 Z" fill="#c9a98a" stroke="#1c1410" stroke-width="4" stroke-linejoin="round"/>
 <path d="M30 56 C30 20 98 20 98 56 C92 40 82 30 64 30 C46 30 36 40 30 56 Z" fill="#6b3f3a" stroke="#1c1410" stroke-width="4" stroke-linejoin="round"/>
@@ -52,7 +52,7 @@ figcaption { color:var(--muted); font-size:17px; margin-top:6px; }
 <path d="M98 30 L104 104" stroke="#1c1410" stroke-width="6" stroke-linecap="round"/><path d="M98 30 L104 104" stroke="#a07a4a" stroke-width="3"/>
 <path d="M96 84 L92 108 L116 108 L110 84 Z" fill="#c49a52" stroke="#1c1410" stroke-width="4" stroke-linejoin="round"/>
 </svg>
-<h3>Домовой</h3><div class="epithet">Хозяин за печкой с веником</div><p><span class="hp">♥ 40 HP</span> · <span class="style">экономика, гибкость</span></p><p>+6 золота на старте. Проданная башня всегда возвращает всё вложенное.</p></div><div class="card"><svg xmlns="http://www.w3.org/2000/svg" width="112" height="112" viewBox="0 0 128 128"><circle cx="64" cy="64" r="62" fill="#2a1f18"/><circle cx="64" cy="64" r="58" fill="none" stroke="#c49a52" stroke-width="3" opacity="0.6"/>
+<h3>Домовой</h3><div class="epithet">Хозяин за печкой с веником</div><p><span class="hp">♥ 40 HP</span> · <span class="style">экономика, гибкость</span></p><p>+10 золота на старте. Проданная башня всегда возвращает всё вложенное.</p></div><div class="card"><svg xmlns="http://www.w3.org/2000/svg" width="112" height="112" viewBox="0 0 128 128"><circle cx="64" cy="64" r="62" fill="#2a1f18"/><circle cx="64" cy="64" r="58" fill="none" stroke="#c49a52" stroke-width="3" opacity="0.6"/>
 <path d="M26 112 C26 84 42 74 64 74 C86 74 102 84 102 112 Z" fill="#efe4cf" stroke="#1c1410" stroke-width="4" stroke-linejoin="round"/>
 <circle cx="64" cy="52" r="30" fill="#efe4cf" stroke="#1c1410" stroke-width="4" stroke-linejoin="round"/>
 <circle cx="64" cy="54" r="21" fill="#2f4a5c" stroke="#1c1410" stroke-width="4" stroke-linejoin="round"/>
@@ -61,7 +61,7 @@ figcaption { color:var(--muted); font-size:17px; margin-top:6px; }
 <rect x="52" y="86" width="24" height="14" rx="3" fill="#b4473a" stroke="#1c1410" stroke-width="4" stroke-linejoin="round"/>
 <path d="M100 40 L112 18 L116 44 Z" fill="#c49a52" stroke="#1c1410" stroke-width="4" stroke-linejoin="round"/><path d="M104 44 L108 54 L112 44" fill="#e8a64a" stroke="#1c1410" stroke-width="2.5"/>
 </svg>
-<h3>Космонавт</h3><div class="epithet">«Поехали!» — ракета на заднем дворе</div><p><span class="hp">♥ 40 HP</span> · <span class="style">темп, уровень магазина</span></p><p>Повышение магазина на 4 золота дешевле (но не меньше 3).</p></div><div class="card"><svg xmlns="http://www.w3.org/2000/svg" width="112" height="112" viewBox="0 0 128 128"><circle cx="64" cy="64" r="62" fill="#2a1f18"/><circle cx="64" cy="64" r="58" fill="none" stroke="#c49a52" stroke-width="3" opacity="0.6"/>
+<h3>Космонавт</h3><div class="epithet">«Поехали!» — ракета на заднем дворе</div><p><span class="hp">♥ 40 HP</span> · <span class="style">темп, уровень магазина</span></p><p>Повышение магазина на 3 золота дешевле (но не меньше 3).</p></div><div class="card"><svg xmlns="http://www.w3.org/2000/svg" width="112" height="112" viewBox="0 0 128 128"><circle cx="64" cy="64" r="62" fill="#2a1f18"/><circle cx="64" cy="64" r="58" fill="none" stroke="#c49a52" stroke-width="3" opacity="0.6"/>
 <path d="M20 112 C20 82 40 70 64 70 C88 70 108 82 108 112 Z" fill="#6a7684" stroke="#1c1410" stroke-width="4" stroke-linejoin="round"/>
 <path d="M30 80 L98 80 M28 92 L100 92" stroke="#1c1410" stroke-width="2.5" opacity="0.5"/>
 <path d="M40 46 C40 30 88 30 88 46 L88 62 C88 78 40 78 40 62 Z" fill="#d9b48f" stroke="#1c1410" stroke-width="4" stroke-linejoin="round"/>
@@ -71,7 +71,7 @@ figcaption { color:var(--muted); font-size:17px; margin-top:6px; }
 <path d="M100 54 L112 108" stroke="#1c1410" stroke-width="8" stroke-linecap="round"/><path d="M100 54 L112 108" stroke="#8b6f4e" stroke-width="4"/>
 <ellipse cx="98" cy="48" rx="11" ry="13" fill="#47362a" stroke="#1c1410" stroke-width="4" stroke-linejoin="round"/><circle cx="92" cy="42" r="2.5" fill="#c49a52"/><circle cx="102" cy="50" r="2.5" fill="#c49a52"/>
 </svg>
-<h3>Илья Муромец</h3><div class="epithet">Богатырь, тридцать лет сидевший на печи</div><p><span class="hp">♥ 50 HP</span> · <span class="style">оборона</span></p><p>Терем крепче: 50 HP.</p><p><b class="skill">Навык «Палица»</b> · 5 зол. · в волну: В волну: все мобы на вашем поле теряют 40% текущего HP.</p></div><div class="card"><svg xmlns="http://www.w3.org/2000/svg" width="112" height="112" viewBox="0 0 128 128"><circle cx="64" cy="64" r="62" fill="#2a1f18"/><circle cx="64" cy="64" r="58" fill="none" stroke="#c49a52" stroke-width="3" opacity="0.6"/>
+<h3>Илья Муромец</h3><div class="epithet">Богатырь, тридцать лет сидевший на печи</div><p><span class="hp">♥ 50 HP</span> · <span class="style">оборона</span></p><p>Терем крепче: 50 HP.</p><p><b class="skill">Навык «Палица»</b> · 4 зол. · в волну: В волну: все мобы на вашем поле теряют 50% текущего HP.</p></div><div class="card"><svg xmlns="http://www.w3.org/2000/svg" width="112" height="112" viewBox="0 0 128 128"><circle cx="64" cy="64" r="62" fill="#2a1f18"/><circle cx="64" cy="64" r="58" fill="none" stroke="#c49a52" stroke-width="3" opacity="0.6"/>
 <path d="M18 112 C18 72 40 56 64 56 C88 56 110 72 110 112 Z" fill="#3f4d36" stroke="#1c1410" stroke-width="4" stroke-linejoin="round"/>
 <path d="M28 92 C40 84 50 96 64 88 C78 96 88 84 100 92" fill="none" stroke="#56664a" stroke-width="5" stroke-linecap="round"/>
 <path d="M40 56 C40 34 88 34 88 56 C88 78 40 78 40 56 Z" fill="#6b5a3e" stroke="#1c1410" stroke-width="4" stroke-linejoin="round"/>
@@ -92,7 +92,7 @@ figcaption { color:var(--muted); font-size:17px; margin-top:6px; }
 <circle cx="50" cy="62" r="4" fill="#e89a8a" opacity="0.7"/><circle cx="78" cy="62" r="4" fill="#e89a8a" opacity="0.7"/>
 <ellipse cx="94" cy="100" rx="14" ry="8" fill="#e8a64a" stroke="#1c1410" stroke-width="4" stroke-linejoin="round"/><path d="M86 98 Q94 94 102 98" fill="none" stroke="#1c1410" stroke-width="2.5"/>
 </svg>
-<h3>Бабушка у подъезда</h3><div class="epithet">Всё видит с лавочки, всех накормит</div><p><span class="hp">♥ 40 HP</span> · <span class="style">оборона, лечение</span></p><p>Чужие армии на вашем поле на 20% медленнее.</p><p><b class="skill">Навык «Пирожки»</b> · 4 зол. · в подготовку: +3 HP терему (не выше стартового).</p></div><div class="card"><svg xmlns="http://www.w3.org/2000/svg" width="112" height="112" viewBox="0 0 128 128"><circle cx="64" cy="64" r="62" fill="#2a1f18"/><circle cx="64" cy="64" r="58" fill="none" stroke="#c49a52" stroke-width="3" opacity="0.6"/>
+<h3>Бабушка у подъезда</h3><div class="epithet">Всё видит с лавочки, всех накормит</div><p><span class="hp">♥ 40 HP</span> · <span class="style">оборона, лечение</span></p><p>Чужие армии на вашем поле на 30% медленнее.</p><p><b class="skill">Навык «Пирожки»</b> · 4 зол. · в подготовку: +4 HP терему (не выше стартового).</p></div><div class="card"><svg xmlns="http://www.w3.org/2000/svg" width="112" height="112" viewBox="0 0 128 128"><circle cx="64" cy="64" r="62" fill="#2a1f18"/><circle cx="64" cy="64" r="58" fill="none" stroke="#c49a52" stroke-width="3" opacity="0.6"/>
 <path d="M22 112 C22 82 40 70 64 70 C88 70 106 82 106 112 Z" fill="#7a3a2e" stroke="#1c1410" stroke-width="4" stroke-linejoin="round"/>
 <path d="M50 74 L64 92 L78 74" fill="none" stroke="#e8a64a" stroke-width="4"/>
 <path d="M40 52 C40 32 88 32 88 52 C88 76 40 76 40 52 Z" fill="#d9b48f" stroke="#1c1410" stroke-width="4" stroke-linejoin="round"/>
@@ -111,7 +111,7 @@ figcaption { color:var(--muted); font-size:17px; margin-top:6px; }
 <circle cx="16" cy="33" r="3" fill="#f2c45a" stroke="#1c1410" stroke-width="1.5"/><circle cx="60" cy="28" r="3" fill="#f2c45a" stroke="#1c1410" stroke-width="1.5"/><circle cx="70" cy="28" r="3" fill="#f2c45a" stroke="#1c1410" stroke-width="1.5"/><circle cx="112" cy="33" r="3" fill="#f2c45a" stroke="#1c1410" stroke-width="1.5"/>
 <path d="M56 40 Q64 52 72 40 L66 50 L64 60 L62 50 Z" fill="#e8a64a" stroke="#1c1410" stroke-width="2"/>
 </svg>
-<h3>Змей Горыныч</h3><div class="epithet">Три головы — три огня</div><p><span class="hp">♥ 40 HP</span> · <span class="style">давление, тайминг</span></p><p>Нет пассивки — всё в навыке.</p><p><b class="skill">Навык «Три головы»</b> · 6 зол. · в волну: В волну: башни на полях, куда идёт ваша армия, 4 секунды не стреляют.</p></div><div class="card"><svg xmlns="http://www.w3.org/2000/svg" width="112" height="112" viewBox="0 0 128 128"><circle cx="64" cy="64" r="62" fill="#2a1f18"/><circle cx="64" cy="64" r="58" fill="none" stroke="#c49a52" stroke-width="3" opacity="0.6"/>
+<h3>Змей Горыныч</h3><div class="epithet">Три головы — три огня</div><p><span class="hp">♥ 40 HP</span> · <span class="style">давление, тайминг</span></p><p>Нет пассивки — всё в навыке.</p><p><b class="skill">Навык «Три головы»</b> · 5 зол. · в волну: В волну: башни на полях, куда идёт ваша армия, 7 секунд не стреляют.</p></div><div class="card"><svg xmlns="http://www.w3.org/2000/svg" width="112" height="112" viewBox="0 0 128 128"><circle cx="64" cy="64" r="62" fill="#2a1f18"/><circle cx="64" cy="64" r="58" fill="none" stroke="#c49a52" stroke-width="3" opacity="0.6"/>
 <path d="M30 112 C30 86 44 76 64 76 C84 76 98 86 98 112 Z" fill="#3a2f45" stroke="#1c1410" stroke-width="4" stroke-linejoin="round"/>
 <path d="M64 78 L64 112" stroke="#c49a52" stroke-width="3"/>
 <path d="M46 50 C46 30 82 30 82 50 C82 70 74 82 64 82 C54 82 46 70 46 50 Z" fill="#c8c0a8" stroke="#1c1410" stroke-width="4" stroke-linejoin="round"/>
@@ -137,4 +137,150 @@ figcaption { color:var(--muted); font-size:17px; margin-top:6px; }
 <circle cx="48" cy="64" r="4" fill="#e85a4a" opacity="0.6"/><circle cx="80" cy="64" r="4" fill="#e85a4a" opacity="0.6"/>
 </svg>
 <h3>Скоморох</h3><div class="epithet">Весельчак с ярмарки, бубенцы на колпаке</div><p><span class="hp">♥ 40 HP</span> · <span class="style">азарт</span></p><p>Нет пассивки — всё в навыке.</p><p><b class="skill">Навык «Ярмарка»</b> · 3 зол. · в подготовку: Колесо: +9 золота, +1 юнит армии навсегда, +1 доход навсегда или «освистали».</p></div></div></section>
+<section><h2>Новые постройки: соседство</h2><p class="lead">Соседи — постройки, касающиеся стороной. Усилитель не стреляет сам, а даёт бонус всем соседям, поэтому его ставят в середину кучи. Выделенная постройка показывает соседей золотыми линиями.</p><div class="grid"><div class="card"><svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 128 128">
+<path d="M20 112 L28 70 L100 70 L108 112 Z" fill="#5a4a40" stroke="#1c1410" stroke-width="4.5" stroke-linejoin="round"/>
+<path d="M36 70 L36 40 L56 40 L56 70" fill="#6a5a50" stroke="#1c1410" stroke-width="4.5" stroke-linejoin="round"/>
+<path d="M48 112 C48 90 80 90 80 112 Z" fill="#e8a64a" stroke="#1c1410" stroke-width="4.5" stroke-linejoin="round"/><path d="M56 112 C58 100 70 100 72 112 Z" fill="#fff0b0"/>
+<path d="M70 52 L104 52 L98 62 L76 62 Z" fill="#6a7684" stroke="#1c1410" stroke-width="4.5" stroke-linejoin="round"/><path d="M84 62 L84 70" stroke="#1c1410" stroke-width="8"/>
+<path d="M86 30 L108 42" stroke="#1c1410" stroke-width="7" stroke-linecap="round"/><rect x="100" y="30" width="14" height="10" rx="2" transform="rotate(30 107 35)" fill="#9aa4ad" stroke="#1c1410" stroke-width="4.5" stroke-linejoin="round"/>
+<circle cx="44" cy="30" r="5" fill="#b9aa90" opacity="0.6"/><circle cx="50" cy="20" r="4" fill="#b9aa90" opacity="0.4"/>
+</svg>
+<h3>Кузница</h3><p>Тир 1 · клетки: <svg class="shape" width="30" height="16"><rect x="1" y="1" width="12" height="12" rx="2"/><rect x="15" y="1" width="12" height="12" rx="2"/></svg></p><p>Не стреляет. Соседи (касаются стороной) бьют на 30% сильнее.</p></div><div class="card"><svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 128 128">
+<ellipse cx="64" cy="112" rx="30" ry="6" fill="#47362a" stroke="#1c1410" stroke-width="4.5" stroke-linejoin="round"/>
+<path d="M50 112 L54 98 L74 98 L78 112" fill="#c49a52" stroke="#1c1410" stroke-width="4.5" stroke-linejoin="round"/>
+<path d="M36 96 C30 60 40 44 64 44 C88 44 98 60 92 96 Z" fill="#d8a84e" stroke="#1c1410" stroke-width="4.5" stroke-linejoin="round"/>
+<path d="M44 66 L84 66 M42 80 L86 80" stroke="#8b5a2e" stroke-width="3"/>
+<path d="M92 72 L108 66 L110 72" fill="none" stroke="#1c1410" stroke-width="5" stroke-linecap="round"/>
+<path d="M50 44 L54 32 L74 32 L78 44" fill="#c49a52" stroke="#1c1410" stroke-width="4.5" stroke-linejoin="round"/><ellipse cx="64" cy="30" rx="10" ry="4" fill="#8b5a2e" stroke="#1c1410" stroke-width="4.5" stroke-linejoin="round"/>
+<path d="M32 70 C18 70 18 54 30 52" fill="none" stroke="#1c1410" stroke-width="5"/>
+<path d="M58 22 C54 14 62 10 58 2 M70 22 C66 14 74 10 70 2" fill="none" stroke="#efe4cf" stroke-width="3" stroke-linecap="round" opacity="0.7"/>
+</svg>
+<h3>Самовар</h3><p>Тир 1 · клетки: <svg class="shape" width="16" height="16"><rect x="1" y="1" width="12" height="12" rx="2"/></svg></p><p>Не стреляет. Соседи стреляют на 25% чаще.</p></div><div class="card"><svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 128 128">
+<path d="M40 118 L50 50 L78 50 L88 118" fill="none" stroke="#1c1410" stroke-width="9"/>
+<path d="M40 118 L50 50 L78 50 L88 118 M46 90 L82 90 M44 104 L84 104 M48 70 L80 70" fill="none" stroke="#8b6f4e" stroke-width="4.5"/>
+<rect x="38" y="36" width="52" height="18" fill="#6b4a32" stroke="#1c1410" stroke-width="4.5" stroke-linejoin="round"/>
+<path d="M32 38 L64 10 L96 38 Z" fill="#7a3a2e" stroke="#1c1410" stroke-width="4.5" stroke-linejoin="round"/>
+<circle cx="64" cy="45" r="5" fill="#f2c45a" stroke="#1c1410" stroke-width="2.5"/>
+</svg>
+<h3>Дозорная вышка</h3><p>Тир 2 · клетки: <svg class="shape" width="16" height="16"><rect x="1" y="1" width="12" height="12" rx="2"/></svg></p><p>Не стреляет. Соседи бьют на 1 клетку дальше.</p></div><div class="card"><svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 128 128">
+<rect x="24" y="64" width="80" height="44" fill="#8b5a3c" stroke="#1c1410" stroke-width="4.5" stroke-linejoin="round"/>
+<path d="M16 66 L28 36 L100 36 L112 66 Z" fill="#b4473a" stroke="#1c1410" stroke-width="4.5" stroke-linejoin="round"/>
+<path d="M40 36 L34 66 M64 36 L64 66 M88 36 L94 66" stroke="#efe4cf" stroke-width="5"/>
+<circle cx="44" cy="80" r="8" fill="#e8a64a" stroke="#1c1410" stroke-width="4.5" stroke-linejoin="round"/><circle cx="64" cy="82" r="8" fill="#c8826a" stroke="#1c1410" stroke-width="4.5" stroke-linejoin="round"/><circle cx="84" cy="80" r="8" fill="#a3c08a" stroke="#1c1410" stroke-width="4.5" stroke-linejoin="round"/>
+<rect x="52" y="94" width="24" height="12" rx="3" fill="#f2c45a" stroke="#1c1410" stroke-width="4.5" stroke-linejoin="round"/>
+</svg>
+<h3>Лавка коробейника</h3><p>Тир 1 · клетки: <svg class="shape" width="30" height="30"><rect x="1" y="1" width="12" height="12" rx="2"/><rect x="1" y="15" width="12" height="12" rx="2"/><rect x="15" y="15" width="12" height="12" rx="2"/></svg></p><p>Не стреляет. +2 к доходу каждый раунд, пока стоит.</p></div><div class="card"><svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 128 128">
+<ellipse cx="64" cy="84" rx="44" ry="18" fill="#3a2f28" stroke="#1c1410" stroke-width="4.5" stroke-linejoin="round"/>
+<path d="M22 82 L32 58 L42 80 L52 54 L64 80 L76 54 L86 80 L96 58 L106 82" fill="none" stroke="#1c1410" stroke-width="9" stroke-linejoin="round"/>
+<path d="M22 82 L32 58 L42 80 L52 54 L64 80 L76 54 L86 80 L96 58 L106 82" fill="none" stroke="#9aa4ad" stroke-width="4.5" stroke-linejoin="round"/>
+<circle cx="64" cy="86" r="9" fill="#6a7684" stroke="#1c1410" stroke-width="4.5" stroke-linejoin="round"/>
+<path d="M64 95 L64 116 L84 118" fill="none" stroke="#1c1410" stroke-width="4"/>
+</svg>
+<h3>Капкан</h3><p>Тир 1 · клетки: <svg class="shape" width="16" height="16"><rect x="1" y="1" width="12" height="12" rx="2"/></svg></p><p>Хватает моба у дороги рядом: 25 урона и держит 1,5 с. Раз в 4 с. Летающих не ловит.</p></div><div class="card"><svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 128 128">
+<path d="M28 116 C24 80 40 64 64 64 C88 64 104 80 100 116 Z" fill="#5a5a66" stroke="#1c1410" stroke-width="4.5" stroke-linejoin="round"/>
+<path d="M100 104 C118 100 118 80 108 74" fill="none" stroke="#1c1410" stroke-width="9" stroke-linecap="round"/><path d="M100 104 C118 100 118 80 108 74" fill="none" stroke="#5a5a66" stroke-width="5" stroke-linecap="round"/>
+<circle cx="64" cy="48" r="26" fill="#6a6a78" stroke="#1c1410" stroke-width="4.5" stroke-linejoin="round"/>
+<path d="M42 34 L40 12 L56 26 M86 34 L88 12 L72 26" fill="#6a6a78" stroke="#1c1410" stroke-width="4.5" stroke-linejoin="round"/>
+<ellipse cx="54" cy="46" rx="6" ry="7" fill="#d8f07a" stroke="#1c1410" stroke-width="2.5"/><ellipse cx="74" cy="46" rx="6" ry="7" fill="#d8f07a" stroke="#1c1410" stroke-width="2.5"/>
+<path d="M54 42 L54 50 M74 42 L74 50" stroke="#1c1410" stroke-width="3"/>
+<circle cx="54" cy="46" r="9" fill="none" stroke="#c49a52" stroke-width="2.5"/><circle cx="74" cy="46" r="9" fill="none" stroke="#c49a52" stroke-width="2.5"/>
+<path d="M60 60 L64 64 L68 60" fill="none" stroke="#1c1410" stroke-width="2.5"/>
+<rect x="44" y="84" width="40" height="24" fill="#efe4cf" stroke="#1c1410" stroke-width="4.5" stroke-linejoin="round"/><path d="M64 84 L64 108 M50 92 L60 92 M68 92 L78 92 M50 100 L60 100" stroke="#8b6f4e" stroke-width="2"/>
+</svg>
+<h3>Кот учёный</h3><p>Тир 2 · клетки: <svg class="shape" width="16" height="16"><rect x="1" y="1" width="12" height="12" rx="2"/></svg></p><p>Сказки сказывает: все мобы в радиусе 1,8 замедлены на 30%. Урона нет.</p></div><div class="card"><svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 128 128">
+<path d="M36 118 L40 84 C40 70 88 70 88 84 L92 118 Z" fill="#6a7684" stroke="#1c1410" stroke-width="4.5" stroke-linejoin="round"/>
+<circle cx="64" cy="54" r="18" fill="#d9b48f" stroke="#1c1410" stroke-width="4.5" stroke-linejoin="round"/>
+<path d="M44 52 C44 28 84 28 84 52 Z" fill="#9aa4ad" stroke="#1c1410" stroke-width="4.5" stroke-linejoin="round"/><path d="M64 14 L64 30" stroke="#1c1410" stroke-width="5" stroke-linecap="round"/>
+<path d="M50 60 C52 80 76 80 78 60" fill="#8a6a4a" stroke="#1c1410" stroke-width="4.5" stroke-linejoin="round"/>
+<circle cx="57" cy="52" r="2.5" fill="#1c1410"/><circle cx="71" cy="52" r="2.5" fill="#1c1410"/>
+<circle cx="32" cy="92" r="18" fill="#b4473a" stroke="#1c1410" stroke-width="4.5" stroke-linejoin="round"/><circle cx="32" cy="92" r="5" fill="#c49a52" stroke="#1c1410" stroke-width="2.5"/>
+<path d="M96 108 L104 36" stroke="#1c1410" stroke-width="7" stroke-linecap="round"/><path d="M96 108 L104 36" stroke="#c8c0a8" stroke-width="3"/>
+<path d="M90 76 L112 80" stroke="#1c1410" stroke-width="6" stroke-linecap="round"/>
+</svg>
+<h3>Богатырская застава</h3><p>Тир 2 · клетки: <svg class="shape" width="16" height="16"><rect x="1" y="1" width="12" height="12" rx="2"/></svg></p><p>Богатырь бьёт моба рядом с собой: 70 урона. Летающих не достаёт.</p></div><div class="card"><svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 128 128">
+<rect x="24" y="58" width="80" height="58" fill="#8b6f4e" stroke="#1c1410" stroke-width="4.5" stroke-linejoin="round"/>
+<path d="M24 72 L104 72 M24 86 L104 86 M24 100 L104 100" stroke="#5a4632" stroke-width="3"/>
+<path d="M14 62 L64 28 L114 62 Z" fill="#5a4632" stroke="#1c1410" stroke-width="4.5" stroke-linejoin="round"/>
+<rect x="52" y="84" width="24" height="32" fill="#2a1f18" stroke="#1c1410" stroke-width="4.5" stroke-linejoin="round"/>
+<rect x="84" y="16" width="12" height="26" fill="#6a5a50" stroke="#1c1410" stroke-width="4.5" stroke-linejoin="round"/>
+<path d="M90 12 C82 4 96 0 88 -8 M40 50 C34 40 46 36 40 26" fill="none" stroke="#efe4cf" stroke-width="4" stroke-linecap="round" opacity="0.75"/>
+<path d="M80 30 C96 28 104 18 112 22" fill="none" stroke="#efe4cf" stroke-width="5" stroke-linecap="round" opacity="0.5"/>
+</svg>
+<h3>Баня</h3><p>Тир 2 · клетки: <svg class="shape" width="16" height="30"><rect x="1" y="1" width="12" height="12" rx="2"/><rect x="1" y="15" width="12" height="12" rx="2"/></svg></p><p>Раз в 1,5 с обдаёт паром всех мобов вокруг: 16 урона и замедление 20%.</p></div><div class="card"><svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 128 128">
+<rect x="26" y="14" width="76" height="104" fill="#8a8a8e" stroke="#1c1410" stroke-width="4.5" stroke-linejoin="round"/>
+<g fill="#f2c45a" stroke="#1c1410" stroke-width="2.5">
+<rect x="34" y="24" width="14" height="12"/><rect x="57" y="24" width="14" height="12" fill="#2f3a44"/><rect x="80" y="24" width="14" height="12"/>
+<rect x="34" y="44" width="14" height="12" fill="#2f3a44"/><rect x="57" y="44" width="14" height="12"/><rect x="80" y="44" width="14" height="12"/>
+<rect x="34" y="64" width="14" height="12"/><rect x="57" y="64" width="14" height="12"/><rect x="80" y="64" width="14" height="12" fill="#2f3a44"/>
+<rect x="34" y="84" width="14" height="12" fill="#2f3a44"/><rect x="80" y="84" width="14" height="12"/></g>
+<rect x="56" y="96" width="16" height="22" fill="#47362a" stroke="#1c1410" stroke-width="3"/>
+<path d="M20 116 L108 116" stroke="#1c1410" stroke-width="5"/>
+</svg>
+<h3>Панелька</h3><p>Тир 2 · клетки: <svg class="shape" width="30" height="30"><rect x="1" y="1" width="12" height="12" rx="2"/><rect x="15" y="1" width="12" height="12" rx="2"/><rect x="1" y="15" width="12" height="12" rx="2"/><rect x="15" y="15" width="12" height="12" rx="2"/></svg></p><p>Стреляет из окон по 3 целям сразу.</p></div></div></section>
+<section><h2>Новые мобы</h2><p class="lead">В базовой волне — с 5-го по 10-й раунд по одному новому виду. В армию — улучшения «Колобок», «Нетопырь», «Знахарка», «Витязь», «Невидимка». Разбойники — навык Соловья.</p><div class="grid"><div class="card"><svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 128 128">
+<circle cx="64" cy="70" r="40" fill="#e8b25a" stroke="#1c1410" stroke-width="4.5" stroke-linejoin="round"/>
+<path d="M36 56 C40 44 50 38 60 36" fill="none" stroke="#f6d48a" stroke-width="5" stroke-linecap="round"/>
+<circle cx="52" cy="66" r="5" fill="#1c1410"/><circle cx="78" cy="66" r="5" fill="#1c1410"/>
+<circle cx="44" cy="80" r="6" fill="#e07a5a" opacity="0.6"/><circle cx="86" cy="80" r="6" fill="#e07a5a" opacity="0.6"/>
+<path d="M54 84 Q64 94 76 84" fill="none" stroke="#1c1410" stroke-width="3.5" stroke-linecap="round"/>
+</svg>
+<h3>Колобок</h3><p>HP 40</p><p>При смерти распадается на 2 колобка поменьше.</p></div><div class="card"><svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 128 128">
+<path d="M64 60 C44 40 22 40 6 54 C18 58 22 66 20 76 C30 68 40 70 46 78 C50 68 56 66 64 70 C72 66 78 68 82 78 C88 70 98 68 108 76 C106 66 110 58 122 54 C106 40 84 40 64 60 Z" fill="#3a3045" stroke="#1c1410" stroke-width="4.5" stroke-linejoin="round"/>
+<ellipse cx="64" cy="66" rx="14" ry="16" fill="#4a3f58" stroke="#1c1410" stroke-width="4.5" stroke-linejoin="round"/>
+<path d="M54 52 L52 40 L60 50 M74 52 L76 40 L68 50" fill="#4a3f58" stroke="#1c1410" stroke-width="3"/>
+<circle cx="58" cy="62" r="3.5" fill="#f25a4a"/><circle cx="70" cy="62" r="3.5" fill="#f25a4a"/>
+<path d="M60 72 L62 76 L64 72 L66 76 L68 72" fill="none" stroke="#efe4cf" stroke-width="2"/>
+</svg>
+<h3>Нетопырь</h3><p>HP 30</p><p>Летает: капкан и богатырская застава его не бьют.</p></div><div class="card"><svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 128 128">
+<path d="M48 114 L52 98 M78 114 L74 98" stroke="#1c1410" stroke-width="7" stroke-linecap="round"/>
+<path d="M30 102 C30 64 44 52 64 52 C84 52 98 64 98 102 Z" fill="#5a6a4a" stroke="#1c1410" stroke-width="4.5" stroke-linejoin="round"/>
+<path d="M38 50 C34 20 94 20 90 50 C90 60 38 60 38 50 Z" fill="#7a5a3e" stroke="#1c1410" stroke-width="4.5" stroke-linejoin="round"/>
+<circle cx="64" cy="48" r="16" fill="#e3c2a4" stroke="#1c1410" stroke-width="4.5" stroke-linejoin="round"/>
+<circle cx="58" cy="46" r="2.6" fill="#1c1410"/><circle cx="70" cy="46" r="2.6" fill="#1c1410"/>
+<path d="M58 56 Q64 60 70 56" fill="none" stroke="#1c1410" stroke-width="2.5"/>
+<path d="M92 92 L106 50" stroke="#1c1410" stroke-width="5" stroke-linecap="round"/>
+<path d="M98 50 C92 36 110 32 106 50 C116 40 122 54 108 58 Z" fill="#8fd06a" stroke="#1c1410" stroke-width="3"/>
+<path d="M58 80 L70 80 M64 74 L64 86" stroke="#8fd06a" stroke-width="4"/>
+</svg>
+<h3>Знахарка</h3><p>HP 45</p><p>Раз в секунду лечит мобов рядом на 6% их HP.</p></div><div class="card"><svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 128 128">
+<path d="M50 116 L52 98 M76 116 L74 98" stroke="#1c1410" stroke-width="7" stroke-linecap="round"/>
+<path d="M38 102 C36 70 46 58 64 58 C82 58 92 70 90 102 Z" fill="#6a7684" stroke="#1c1410" stroke-width="4.5" stroke-linejoin="round"/>
+<circle cx="64" cy="42" r="18" fill="#9aa4ad" stroke="#1c1410" stroke-width="4.5" stroke-linejoin="round"/><path d="M50 44 L78 44" stroke="#1c1410" stroke-width="5"/>
+<path d="M64 24 L64 14" stroke="#1c1410" stroke-width="5" stroke-linecap="round"/>
+<circle cx="40" cy="84" r="28" fill="#b4473a" stroke="#1c1410" stroke-width="4.5" stroke-linejoin="round"/><circle cx="40" cy="84" r="18" fill="none" stroke="#c49a52" stroke-width="4"/>
+<circle cx="40" cy="84" r="6" fill="#c49a52" stroke="#1c1410" stroke-width="3"/>
+</svg>
+<h3>Витязь со щитом</h3><p>HP 60</p><p>Щит: первое попадание по нему не наносит урона.</p></div><div class="card"><svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 128 128">
+<path d="M30 112 C34 96 30 84 36 70 C40 56 52 50 64 50 C76 50 88 56 92 70 C98 84 94 96 98 112 C90 104 84 116 76 106 C70 116 58 116 52 106 C44 116 38 104 30 112 Z" fill="#8fb8c9" opacity="0.85" stroke="#1c1410" stroke-width="4.5" stroke-linejoin="round"/>
+<path d="M36 56 C36 30 92 30 92 56 C80 50 48 50 36 56 Z" fill="#7a3a6a" stroke="#1c1410" stroke-width="4.5" stroke-linejoin="round"/>
+<path d="M60 30 L64 16 L68 30" fill="#7a3a6a" stroke="#1c1410" stroke-width="3"/>
+<ellipse cx="54" cy="72" rx="5" ry="7" fill="#1c1410"/><ellipse cx="74" cy="72" rx="5" ry="7" fill="#1c1410"/>
+<circle cx="55" cy="70" r="1.8" fill="#efe4cf"/><circle cx="75" cy="70" r="1.8" fill="#efe4cf"/>
+</svg>
+<h3>Шапка-невидимка</h3><p>HP 40</p><p>Невидим: башни видят его только ближе 1,3 клетки.</p></div><div class="card"><svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 128 128">
+<path d="M44 114 L56 96 M84 112 L74 94" stroke="#1c1410" stroke-width="7" stroke-linecap="round"/>
+<path d="M38 98 C36 68 48 56 66 56 C84 56 94 68 92 98 Z" fill="#3f6a8a" stroke="#1c1410" stroke-width="4.5" stroke-linejoin="round"/>
+<circle cx="66" cy="40" r="17" fill="#d9b48f" stroke="#1c1410" stroke-width="4.5" stroke-linejoin="round"/>
+<path d="M48 36 C50 18 84 18 86 36 Z" fill="#b4473a" stroke="#1c1410" stroke-width="4.5" stroke-linejoin="round"/>
+<circle cx="72" cy="40" r="2.6" fill="#1c1410"/>
+<rect x="76" y="66" width="24" height="22" rx="4" fill="#8b5a3c" stroke="#1c1410" stroke-width="4.5" stroke-linejoin="round"/><path d="M70 60 L92 70" stroke="#1c1410" stroke-width="3"/>
+<path d="M10 60 L30 60 M6 76 L28 76 M12 92 L30 92" stroke="#efe4cf" stroke-width="4" stroke-linecap="round" opacity="0.6"/>
+</svg>
+<h3>Гонец</h3><p>HP 35</p><p>На последней трети пути бежит вдвое быстрее.</p></div><div class="card"><svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 128 128">
+<path d="M48 114 L52 94 M78 114 L74 94" stroke="#1c1410" stroke-width="8" stroke-linecap="round"/>
+<path d="M36 96 C34 66 46 54 64 54 C82 54 94 66 92 96 Z" fill="#7a3a2e" stroke="#1c1410" stroke-width="4.5" stroke-linejoin="round"/>
+<path d="M44 70 L84 70" stroke="#e8a64a" stroke-width="4"/>
+<circle cx="64" cy="40" r="20" fill="#d9b48f" stroke="#1c1410" stroke-width="4.5"/>
+<path d="M42 36 C44 16 84 16 86 36 Z" fill="#2a1f18" stroke="#1c1410" stroke-width="4"/>
+<path d="M48 40 L80 40" stroke="#1c1410" stroke-width="7" stroke-linecap="round"/>
+<circle cx="56" cy="40" r="2.6" fill="#f2c45a"/><circle cx="72" cy="40" r="2.6" fill="#f2c45a"/>
+<path d="M54 50 Q64 56 74 50" fill="none" stroke="#1c1410" stroke-width="3" stroke-linecap="round"/>
+<path d="M92 76 L108 44" stroke="#1c1410" stroke-width="6" stroke-linecap="round"/><path d="M92 76 L108 44" stroke="#8b6f4e" stroke-width="3"/>
+<circle cx="110" cy="38" r="8" fill="#6a7684" stroke="#1c1410" stroke-width="3.5"/>
+</svg>
+<h3>Разбойник</h3><p>HP 60</p><p>Быстрый; прорвался — хозяину армии +3 золота. Только от навыка Соловья.</p></div></div></section>
+<section><h2>Игра на экране</h2><figure><img src="shot_buildings.png" alt=""><figcaption>Подготовка: самовар, кузница, капкан, панелька рядом с самострелами и жаровнями; тост — навык бота-соперника</figcaption></figure><figure><img src="shot_wave.png" alt=""><figcaption>Волна: слева бой на поле призрака (колобки, нетопыри, витязи), справа — «Палица» Ильи Муромца</figcaption></figure><figure><img src="shot_portrait_prep.png" alt=""><figcaption>Вертикальный экран: портрет героя и кнопка навыка вверху</figcaption></figure></section>
+<section><h2>Баланс: доля побед героев</h2><p class="lead">100 матчей ботов на 5 игроков, герой у бота — случайный из трёх. Цель — каждый 10–30%. Длина матча: медиана 12 раундов (среднее 11.7).</p><div class="bar"><span>Илья Муромец</span><i style="width:84%"></i><b>28%</b></div><div class="bar"><span>Космонавт</span><i style="width:78%"></i><b>26%</b></div><div class="bar"><span>Леший</span><i style="width:72%"></i><b>24%</b></div><div class="bar"><span>Соловей-Разбойник</span><i style="width:63%"></i><b>21%</b></div><div class="bar"><span>Бабушка у подъезда</span><i style="width:57%"></i><b>19%</b></div><div class="bar"><span>Домовой</span><i style="width:54%"></i><b>18%</b></div><div class="bar"><span>Баба-Яга</span><i style="width:54%"></i><b>18%</b></div><div class="bar"><span>Змей Горыныч</span><i style="width:51%"></i><b>17%</b></div><div class="bar"><span>Скоморох</span><i style="width:45%"></i><b>15%</b></div><div class="bar"><span>Кощей Бессмертный</span><i style="width:39%"></i><b>13%</b></div></section>
+<section><h2>Что проверить руками</h2><ul><li>Выбор героя: понятны ли карточки, хватает ли 30 секунд</li><li>Кнопка навыка вверху: видно ли цену и когда её можно нажать (подсказка при наведении)</li><li>Соседство: выделите кузницу или самовар — золотые линии к соседям; бонусы написаны в меню</li><li>Новые мобы: виден ли нетопырь (летает выше), невидимка (полупрозрачная), щит у витязя</li><li>Темп: ранние раунды теперь жёстче (≈5 HP за раунд у ботов) — так ли ощущается вживую</li></ul></section>
+<section><h2>Что предлагаю дальше</h2><ul><li><b>Бонусы школ</b> (2/4/6 построек одной школы) — второй слой решений «что ставить»</li><li><b>Тройка → открытие</b>: слияние до 3-го уровня даёт выбор 1 из 3 построек следующего тира</li><li>Тиры 3–4 — чтобы золоту в конце матча было куда идти</li><li>Подсказки новичку в первых раундах</li><li>Живые матчи автора → правка баланса героев по логам</li></ul></section>
 </body></html>
