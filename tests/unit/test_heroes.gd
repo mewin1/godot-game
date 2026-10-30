@@ -321,3 +321,17 @@ func test_vasilisa_extra_offer_and_frozen_shop_keeps_offers() -> void:
 	assert_eq(player.shop.offers[1], kept, "предложение сохранилось")
 	assert_not_null(player.shop.offers[0], "пустое место заполнилось")
 	assert_false(player.shop.is_frozen)
+
+
+func test_army_first_round_setting_skips_armies_early() -> void:
+	_config.army_first_round = 2
+	var sim: MatchSim = MatchSim.new(_config, 8, 2, 1)
+	sim.start()
+	sim.queue_command(0, ReadyCommand.new())
+	var seen_army: bool = false
+	for i: int in 150:
+		sim.tick()
+		for mob: MobState in sim.players[0].field.mobs:
+			seen_army = seen_army or mob.sender_index >= 0
+	assert_eq(sim.round_number, 1)
+	assert_false(seen_army, "в 1-м раунде только базовая волна")

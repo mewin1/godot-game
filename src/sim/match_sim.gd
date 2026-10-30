@@ -280,6 +280,8 @@ func _start_wave() -> void:
 ## Армии, которые придут на поле игрока (свежие юниты для каждого маршрута).
 func _collect_armies(receiver_index: int) -> Array[MobState]:
 	var armies: Array[MobState] = []
+	if round_number < config.army_first_round:
+		return armies
 	for route: Vector2i in _army_routes:
 		if route.y == receiver_index:
 			armies.append_array(players[route.x].army.build_pack(route.x, round_number))
@@ -297,7 +299,9 @@ func _start_ghost_wave() -> void:
 	ghost_field = FieldState.new(config, source.shop.level)
 	ghost_field.copy_towers_from(source.field)
 	ghost_field.start_wave()
-	var army: Array[MobState] = players[ghost_target].army.build_pack(ghost_target, round_number)
+	var army: Array[MobState] = []
+	if round_number >= config.army_first_round:
+		army = players[ghost_target].army.build_pack(ghost_target, round_number)
 	WaveBuilder.schedule_wave(config, ghost_field, round_number, army)
 
 
