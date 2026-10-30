@@ -6,15 +6,15 @@
 
 [sub_resource type="Resource" id="skill_effect"]
 script = ExtResource("strike")
-percent = 40
+percent = 50
 
 [sub_resource type="Resource" id="skill"]
 script = ExtResource("skill")
 display_name = "Палица"
-description = "В волну: все мобы на вашем поле теряют 40% текущего HP."
+description = "В волну: все мобы на вашем поле теряют 50% текущего HP."
 timing = 1
-cost = 5
-cost_step = 3
+cost = 4
+cost_step = 2
 effect = SubResource("skill_effect")
 
 [resource]

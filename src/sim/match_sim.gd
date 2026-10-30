@@ -381,7 +381,7 @@ func _finish_round() -> void:
 	var alive: Array[PlayerState] = get_alive_players()
 	_pay_siege_rewards()
 	for player: PlayerState in alive:
-		player.gold += player.income
+		player.gold += player.get_total_income()
 	round_finished.emit(round_number)
 	_eliminate_dead(alive)
 	var survivors: Array[PlayerState] = get_alive_players()

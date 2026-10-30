@@ -16,6 +16,22 @@
 [ext_resource type="Resource" path="res://data/visuals/mobs/armored.tres" id="12_r"]
 [ext_resource type="Resource" path="res://data/visuals/mobs/boss.tres" id="13_r"]
 [ext_resource type="Resource" path="res://data/visuals/mobs/robber.tres" id="mob_robber"]
+[ext_resource type="Resource" path="res://data/visuals/towers/forge.tres" id="v_tower_forge"]
+[ext_resource type="Resource" path="res://data/visuals/towers/samovar.tres" id="v_tower_samovar"]
+[ext_resource type="Resource" path="res://data/visuals/towers/trap.tres" id="v_tower_trap"]
+[ext_resource type="Resource" path="res://data/visuals/towers/stall.tres" id="v_tower_stall"]
+[ext_resource type="Resource" path="res://data/visuals/towers/watchtower.tres" id="v_tower_watchtower"]
+[ext_resource type="Resource" path="res://data/visuals/towers/cat.tres" id="v_tower_cat"]
+[ext_resource type="Resource" path="res://data/visuals/towers/bogatyr.tres" id="v_tower_bogatyr"]
+[ext_resource type="Resource" path="res://data/visuals/towers/banya.tres" id="v_tower_banya"]
+[ext_resource type="Resource" path="res://data/visuals/towers/panelka.tres" id="v_tower_panelka"]
+[ext_resource type="Resource" path="res://data/visuals/mobs/kolobok.tres" id="v_mob_kolobok"]
+[ext_resource type="Resource" path="res://data/visuals/mobs/kolobok_small.tres" id="v_mob_kolobok_small"]
+[ext_resource type="Resource" path="res://data/visuals/mobs/bat.tres" id="v_mob_bat"]
+[ext_resource type="Resource" path="res://data/visuals/mobs/healer.tres" id="v_mob_healer"]
+[ext_resource type="Resource" path="res://data/visuals/mobs/knight.tres" id="v_mob_knight"]
+[ext_resource type="Resource" path="res://data/visuals/mobs/stealth.tres" id="v_mob_stealth"]
+[ext_resource type="Resource" path="res://data/visuals/mobs/courier.tres" id="v_mob_courier"]
 [ext_resource type="Texture2D" path="res://assets/field/grass_1.svg" id="14_r"]
 [ext_resource type="Texture2D" path="res://assets/field/grass_2.svg" id="15_r"]
 [ext_resource type="Texture2D" path="res://assets/field/grass_3.svg" id="16_r"]
@@ -40,6 +56,6 @@ star_icon = ExtResource("26_r")
 
 [resource]
 script = ExtResource("1_script")
-towers = Array[ExtResource("2_tower")]([ExtResource("3_r"), ExtResource("4_r"), ExtResource("5_r"), ExtResource("6_r"), ExtResource("7_r"), ExtResource("8_r")])
-mobs = Array[ExtResource("2_mob")]([ExtResource("9_r"), ExtResource("10_r"), ExtResource("11_r"), ExtResource("12_r"), ExtResource("13_r"), ExtResource("mob_robber")])
+towers = Array[ExtResource("2_tower")]([ExtResource("3_r"), ExtResource("4_r"), ExtResource("5_r"), ExtResource("6_r"), ExtResource("7_r"), ExtResource("8_r"), ExtResource("v_tower_forge"), ExtResource("v_tower_samovar"), ExtResource("v_tower_trap"), ExtResource("v_tower_stall"), ExtResource("v_tower_watchtower"), ExtResource("v_tower_cat"), ExtResource("v_tower_bogatyr"), ExtResource("v_tower_banya"), ExtResource("v_tower_panelka")])
+mobs = Array[ExtResource("2_mob")]([ExtResource("9_r"), ExtResource("10_r"), ExtResource("11_r"), ExtResource("12_r"), ExtResource("13_r"), ExtResource("mob_robber"), ExtResource("v_mob_kolobok"), ExtResource("v_mob_kolobok_small"), ExtResource("v_mob_bat"), ExtResource("v_mob_healer"), ExtResource("v_mob_knight"), ExtResource("v_mob_stealth"), ExtResource("v_mob_courier")])
 field = SubResource("field_style")

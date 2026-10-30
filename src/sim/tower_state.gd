@@ -17,6 +17,10 @@ var cooldown_left: int = 0
 var invested_total: int = 0
 ## Часть вложенного в текущую фазу подготовки — возвращается при продаже полностью.
 var invested_this_phase: int = 0
+## Бонусы от соседей-усилителей (считает FieldState, когда башни меняются).
+var bonus_damage_percent: int = 0
+var bonus_fire_rate_percent: int = 0
+var bonus_range_milli: int = 0
 
 
 ## Фигура, повёрнутая rotation раз на 90° и сдвинутая так, чтобы минимум x и y был 0.

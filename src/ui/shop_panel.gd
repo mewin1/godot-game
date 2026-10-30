@@ -240,11 +240,40 @@ func _refresh_tower_box() -> void:
 	_hint_label.visible = tower == null
 	if tower == null:
 		return
-	var damage: int = _sim.config.get_level_damage(tower.data.damage, tower.level)
-	var shots: float = float(_sim.config.ticks_per_second) / tower.data.cooldown_ticks
-	_tower_label.text = "%s, ур. %d\nурон %d · %.1f выстр./с · радиус %.1f" % [
-			tower.data.display_name, tower.level, damage, shots, tower.data.range_milli / 1000.0]
+	_tower_label.text = "%s, ур. %d\n%s" % [tower.data.display_name, tower.level,
+			_tower_details(tower)]
 	_sell_button.text = "Продать +%d" % _player.get_sell_price(tower)
+
+
+## Статы выбранной постройки с бонусами соседей, или что она даёт (усилитель, лавка).
+func _tower_details(tower: TowerState) -> String:
+	var field: FieldState = _player.field
+	var config: GameConfig = _sim.config
+	var data: TowerData = tower.data
+	if not data.attacks:
+		var parts: PackedStringArray = []
+		if data.neighbor_damage_percent > 0:
+			parts.append("соседям +%d%% урона" % config.get_level_damage(data.neighbor_damage_percent,
+					tower.level))
+		if data.neighbor_fire_rate_percent > 0:
+			parts.append("соседям +%d%% скорости стрельбы" % config.get_level_damage(
+					data.neighbor_fire_rate_percent, tower.level))
+		if data.neighbor_range_milli > 0:
+			parts.append("соседям +%.1f радиуса" % (config.get_level_damage(data.neighbor_range_milli,
+					tower.level) / 1000.0))
+		if data.income_per_round > 0:
+			parts.append("+%d дохода за раунд" % config.get_level_damage(data.income_per_round,
+					tower.level))
+		return "%s · соседей: %d" % [", ".join(parts), field.get_neighbors(tower).size()]
+	var shots: float = float(config.ticks_per_second) / field.get_tower_cooldown(tower)
+	var text: String = "урон %d · %.1f выстр./с · радиус %.1f" % [field.get_tower_damage(tower),
+			shots, field.get_tower_range(tower) / 1000.0]
+	if tower.bonus_damage_percent > 0 or tower.bonus_fire_rate_percent > 0 \
+			or tower.bonus_range_milli > 0:
+		text += "\nот соседей: +%d%% урона, +%d%% скорости, +%.1f радиуса" % [
+				tower.bonus_damage_percent, tower.bonus_fire_rate_percent,
+				tower.bonus_range_milli / 1000.0]
+	return text
 
 
 func _refresh_army() -> void:

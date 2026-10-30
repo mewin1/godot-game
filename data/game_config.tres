@@ -41,15 +41,37 @@
 [ext_resource type="Resource" path="res://data/heroes/koschei.tres" id="hero_koschei"]
 [ext_resource type="Resource" path="res://data/heroes/skomorokh.tres" id="hero_skomorokh"]
 [ext_resource type="Script" path="res://src/sim/heroes/hero_data.gd" id="hero_script"]
+[ext_resource type="Resource" path="res://data/towers/forge.tres" id="tower_forge"]
+[ext_resource type="Resource" path="res://data/towers/samovar.tres" id="tower_samovar"]
+[ext_resource type="Resource" path="res://data/towers/trap.tres" id="tower_trap"]
+[ext_resource type="Resource" path="res://data/towers/stall.tres" id="tower_stall"]
+[ext_resource type="Resource" path="res://data/towers/watchtower.tres" id="tower_watchtower"]
+[ext_resource type="Resource" path="res://data/towers/cat.tres" id="tower_cat"]
+[ext_resource type="Resource" path="res://data/towers/bogatyr.tres" id="tower_bogatyr"]
+[ext_resource type="Resource" path="res://data/towers/banya.tres" id="tower_banya"]
+[ext_resource type="Resource" path="res://data/towers/panelka.tres" id="tower_panelka"]
+[ext_resource type="Resource" path="res://data/waves/special_kolobok.tres" id="wave_kolobok"]
+[ext_resource type="Resource" path="res://data/waves/special_bat.tres" id="wave_bat"]
+[ext_resource type="Resource" path="res://data/waves/special_healer.tres" id="wave_healer"]
+[ext_resource type="Resource" path="res://data/waves/special_knight.tres" id="wave_knight"]
+[ext_resource type="Resource" path="res://data/waves/special_stealth.tres" id="wave_stealth"]
+[ext_resource type="Resource" path="res://data/waves/special_courier.tres" id="wave_courier"]
+[ext_resource type="Resource" path="res://data/army/army_kolobok.tres" id="army_kolobok"]
+[ext_resource type="Resource" path="res://data/army/army_bat.tres" id="army_bat"]
+[ext_resource type="Resource" path="res://data/army/army_healer.tres" id="army_healer"]
+[ext_resource type="Resource" path="res://data/army/army_knight.tres" id="army_knight"]
+[ext_resource type="Resource" path="res://data/army/army_stealth.tres" id="army_stealth"]
+[ext_resource type="Script" path="res://src/sim/data/wave_special_data.gd" id="wave_script"]
 
 [resource]
 script = ExtResource("1_script")
 board = ExtResource("2_ext")
-towers = Array[ExtResource("5_ext")]([ExtResource("7_ext"), ExtResource("8_ext"), ExtResource("9_ext"), ExtResource("10_ext"), ExtResource("11_ext"), ExtResource("12_ext")])
+towers = Array[ExtResource("5_ext")]([ExtResource("7_ext"), ExtResource("8_ext"), ExtResource("9_ext"), ExtResource("10_ext"), ExtResource("11_ext"), ExtResource("12_ext"), ExtResource("tower_forge"), ExtResource("tower_samovar"), ExtResource("tower_trap"), ExtResource("tower_stall"), ExtResource("tower_watchtower"), ExtResource("tower_cat"), ExtResource("tower_bogatyr"), ExtResource("tower_banya"), ExtResource("tower_panelka")])
 send_buffs = Array[ExtResource("6_ext")]([ExtResource("13_ext"), ExtResource("14_ext"), ExtResource("15_ext"), ExtResource("16_ext"), ExtResource("17_ext"), ExtResource("18_ext"), ExtResource("19_ext"), ExtResource("20_ext"), ExtResource("21_ext"), ExtResource("22_ext"), ExtResource("23_ext")])
 wave_mob = ExtResource("3_ext")
 army_mob = ExtResource("4_ext")
 army_hp_growth_percent = 16
 breach_multiplier_start_rounds = Array[int]([16, 19])
-army_upgrades = Array[ExtResource("24_ext")]([ExtResource("25_ext"), ExtResource("26_ext"), ExtResource("27_ext"), ExtResource("28_ext"), ExtResource("29_ext"), ExtResource("30_ext")])
+army_upgrades = Array[ExtResource("24_ext")]([ExtResource("25_ext"), ExtResource("26_ext"), ExtResource("27_ext"), ExtResource("28_ext"), ExtResource("29_ext"), ExtResource("30_ext"), ExtResource("army_kolobok"), ExtResource("army_bat"), ExtResource("army_healer"), ExtResource("army_knight"), ExtResource("army_stealth")])
 heroes = Array[ExtResource("hero_script")]([ExtResource("hero_baba_yaga"), ExtResource("hero_domovoy"), ExtResource("hero_cosmonaut"), ExtResource("hero_ilya"), ExtResource("hero_leshy"), ExtResource("hero_babushka"), ExtResource("hero_solovey"), ExtResource("hero_gorynych"), ExtResource("hero_koschei"), ExtResource("hero_skomorokh")])
+wave_specials = Array[ExtResource("wave_script")]([ExtResource("wave_kolobok"), ExtResource("wave_bat"), ExtResource("wave_healer"), ExtResource("wave_knight"), ExtResource("wave_stealth"), ExtResource("wave_courier")])

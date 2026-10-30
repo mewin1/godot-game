@@ -13,3 +13,4 @@ kill_reward = 1
 breach_damage = 1
 color = Color(0.95, 0.35, 0.35, 1)
 view_size = 0.4
+description = "Основной воин армии."

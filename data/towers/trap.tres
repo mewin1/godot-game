@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="TowerData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/sim/data/tower_data.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"trap"
+display_name = "Капкан"
+school = &"mech"
+tier = 1
+shape = Array[Vector2i]([Vector2i(0, 0)])
+damage = 25
+cooldown_ticks = 80
+range_milli = 1150
+tags = Array[StringName]([&"mech"])
+description = "Хватает моба у дороги рядом: 25 урона и держит 1,5 с. Раз в 4 с. Летающих не ловит."
+slow_percent = 100
+slow_ticks = 30
+can_hit_flying = false

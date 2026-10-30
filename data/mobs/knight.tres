@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="MobData" format=3]
+
+[ext_resource type="Script" path="res://src/sim/data/mob_data.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"knight"
+display_name = "Витязь со щитом"
+hp = 60
+speed_milli_per_tick = 45
+armor = 1
+kill_reward = 2
+breach_damage = 1
+description = "Щит: первое попадание по нему не наносит урона."
+shield_hits = 1

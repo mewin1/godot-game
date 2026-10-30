@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="TowerData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/sim/data/tower_data.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"cat"
+display_name = "Кот учёный"
+school = &"folk"
+tier = 2
+shape = Array[Vector2i]([Vector2i(0, 0)])
+damage = 0
+cooldown_ticks = 10
+range_milli = 1800
+tags = Array[StringName]([&"folk"])
+description = "Сказки сказывает: все мобы в радиусе 1,8 замедлены на 30%. Урона нет."
+hits_all_in_range = true
+slow_percent = 30
+slow_ticks = 12
+shop_weight = 5

@@ -103,6 +103,33 @@ def print_styles(matches: list[list[dict]]) -> None:
         print(f"  {label}: место {mean(places):.2f}, побед {wins:.0f}% (игроков {len(places)})")
 
 
+def print_heroes(matches: list[list[dict]]) -> None:
+    """Доля побед, среднее место и раунд выбывания по героям (из match_end)."""
+    places: dict[str, list[int]] = defaultdict(list)
+    skill_uses: dict[str, list[int]] = defaultdict(list)
+    for events in matches:
+        end = next(e for e in events if e["event"] == "match_end")
+        for index, hero in enumerate(end.get("heroes", [])):
+            if hero:
+                places[hero].append(end["places"][index])
+        last: dict[int, dict] = {}
+        for event in events:
+            if event["event"] == "round_end":
+                for player in event["players"]:
+                    last[player["player"]] = player
+        for player in last.values():
+            if player.get("hero"):
+                skill_uses[player["hero"]].append(player.get("skill_uses", 0))
+    if not places:
+        return
+    print("\nГерои → доля побед, среднее место, навык за матч (игроков):")
+    rows = sorted(places.items(), key=lambda item: -sum(1 for p in item[1] if p == 1) / len(item[1]))
+    for hero, values in rows:
+        wins = 100 * sum(1 for p in values if p == 1) / len(values)
+        print(f"  {hero:>10}: побед {wins:4.0f}%, место {mean(values):.2f}, "
+              f"навык {mean(skill_uses[hero]):.1f} ({len(values)})")
+
+
 def main() -> None:
     if len(sys.argv) != 2:
         print(__doc__)
@@ -115,6 +142,7 @@ def main() -> None:
     print_round_curve(matches)
     print_eliminations(matches)
     print_styles(matches)
+    print_heroes(matches)
 
 
 if __name__ == "__main__":

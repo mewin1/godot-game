@@ -39,7 +39,7 @@ func _run_one(index: int) -> void:
 	if _log_dir != "":
 		var path: String = _log_dir.path_join("match_%04d_seed%d.jsonl" % [index, seed_value])
 		logger = MatchLogger.new(sim, path, "bots", {"seed": seed_value, "match_index": index})
-	sim.start()
+	sim.start_with_hero_select()
 	var guard: int = 0
 	while sim.phase != MatchSim.Phase.OVER and guard < MAX_TICKS:
 		sim.tick()

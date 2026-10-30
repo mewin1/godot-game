@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="ArmyUpgradeData" format=3]
+
+[ext_resource type="Script" path="res://src/sim/data/army_upgrade_data.gd" id="1_script"]
+[ext_resource type="Resource" path="res://data/mobs/kolobok.tres" id="2_ext"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"army_kolobok"
+display_name = "Колобок"
+kind = 3
+value = 1
+base_cost = 8
+cost_step = 4
+max_purchases = 0
+min_shop_level = 1
+mob = ExtResource("2_ext")

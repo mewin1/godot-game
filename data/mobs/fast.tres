@@ -13,3 +13,4 @@ kill_reward = 1
 breach_damage = 1
 color = Color(1.0, 0.85, 0.3, 1)
 view_size = 0.32
+description = "Быстрый и хлипкий."

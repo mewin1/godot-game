@@ -6,9 +6,10 @@
 script = ExtResource("1_script")
 id = &"robber"
 display_name = "Разбойник"
-hp = 45
+hp = 60
 speed_milli_per_tick = 80
 armor = 0
 kill_reward = 1
 breach_damage = 1
 breach_gold_to_sender = 3
+description = "Быстрый; прорвался — хозяину армии +3 золота. Только от навыка Соловья."

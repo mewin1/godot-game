@@ -350,7 +350,18 @@ func _draw_towers() -> void:
 		if tower.id == selected_tower_id:
 			for cell: Vector2i in tower.cells():
 				draw_rect(_cell_rect(cell).grow(-1.0), _style.selected_color, false, 3.0)
-			_draw_range(tower.center_milli(), tower.data.range_milli, _style.selected_color)
+			if tower.data.attacks:
+				_draw_range(tower.center_milli(), field.get_tower_range(tower), _style.selected_color)
+			_draw_neighbor_links(tower)
+
+
+## Соседи выбранной постройки: золотые линии от центра к центрам соседей.
+func _draw_neighbor_links(tower: TowerState) -> void:
+	var from: Vector2 = _to_screen(Vector2(tower.center_milli()))
+	for neighbor: TowerState in field.get_neighbors(tower):
+		var to: Vector2 = _to_screen(Vector2(neighbor.center_milli()))
+		draw_line(from, to, Color(_style.selected_color, 0.85), 4.0, true)
+		draw_circle(to, _cell_size * 0.1, _style.selected_color)
 
 
 ## Опалённая башня (навык Змея Горыныча): тёмная дымка и тлеющие искры на клетках.

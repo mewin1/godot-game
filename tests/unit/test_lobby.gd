@@ -123,7 +123,7 @@ func test_leader_gets_bonus_when_siege_held() -> void:
 	_remove_all_waves(sim)
 	var gold_before: int = leader.gold
 	_finish_round_now(sim)
-	assert_eq(leader.gold, gold_before + _config.siege_leader_bonus + leader.income)
+	assert_eq(leader.gold, gold_before + _config.siege_leader_bonus + leader.get_total_income())
 
 
 func test_attackers_paid_for_damage_and_breach_bonus() -> void:
@@ -142,7 +142,7 @@ func test_attackers_paid_for_damage_and_breach_bonus() -> void:
 	# Общая награда армии за урон + награда осады за урон + бонус за прорыв порога.
 	var gold_per_hp: int = _config.army_gold_per_hp + _config.siege_gold_per_hp
 	var expected: int = breach_damage * gold_per_hp + _config.siege_attacker_bonus
-	assert_eq(attacker.gold, gold_before + expected + attacker.income)
+	assert_eq(attacker.gold, gold_before + expected + attacker.get_total_income())
 
 
 ## Баг из живого матча: трое пали в одном раунде, а места раздали по остатку HP —

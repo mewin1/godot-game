@@ -8,16 +8,16 @@
 [sub_resource type="Resource" id="passive_0"]
 script = ExtResource("stat")
 kind = 5
-value = 20
+value = 30
 
 [sub_resource type="Resource" id="skill_effect"]
 script = ExtResource("heal")
-amount = 3
+amount = 4
 
 [sub_resource type="Resource" id="skill"]
 script = ExtResource("skill")
 display_name = "Пирожки"
-description = "+3 HP терему (не выше стартового)."
+description = "+4 HP терему (не выше стартового)."
 timing = 0
 cost = 4
 cost_step = 2
@@ -28,7 +28,7 @@ script = ExtResource("hero")
 id = &"babushka"
 display_name = "Бабушка у подъезда"
 epithet = "Всё видит с лавочки, всех накормит"
-description = "Чужие армии на вашем поле на 20% медленнее."
+description = "Чужие армии на вашем поле на 30% медленнее."
 style = "оборона, лечение"
 hp = 40
 passives = Array[ExtResource("effect")]([SubResource("passive_0")])

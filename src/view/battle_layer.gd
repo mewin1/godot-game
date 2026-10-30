@@ -23,6 +23,11 @@ const SHOT_SOUNDS: Array[StringName] = [&"shot_fire", &"shot_ice", &"shot_mech"]
 const STRIKE_COLOR: Color = Color(1.0, 0.85, 0.5)
 const SILENCE_TEXT_COLOR: Color = Color(1.0, 0.55, 0.3)
 const KNOCKBACK_COLOR: Color = Color(0.55, 0.8, 0.35)
+const HEAL_COLOR: Color = Color(0.56, 0.82, 0.42)
+const SHIELD_COLOR: Color = Color(0.77, 0.6, 0.32)
+## Летающие рисуются выше земли (в долях своего размера), невидимки — полупрозрачными.
+const FLY_LIFT: float = 0.45
+const STEALTH_ALPHA: float = 0.45
 
 var interpolation: float = 0.0
 var is_own_field: bool = false
@@ -72,6 +77,7 @@ func set_field(field: FieldState) -> void:
 		_field.mob_killed.disconnect(_on_field_mob_killed)
 		_field.mob_breached.disconnect(_on_field_mob_breached)
 		_field.effect_played.disconnect(_on_field_effect_played)
+		_field.tower_pulsed.disconnect(_on_field_tower_pulsed)
 	_field = field
 	_projectiles.clear()
 	_impacts.clear()
@@ -81,6 +87,7 @@ func set_field(field: FieldState) -> void:
 	_field.mob_killed.connect(_on_field_mob_killed)
 	_field.mob_breached.connect(_on_field_mob_breached)
 	_field.effect_played.connect(_on_field_effect_played)
+	_field.tower_pulsed.connect(_on_field_tower_pulsed)
 
 
 ## Вспышка частиц в точке экрана (покупка, слияние, продажа — их замечает FieldView).
@@ -145,8 +152,13 @@ func _draw_mob(mob: MobState) -> void:
 	if mob.slow_percent > 0:
 		draw_arc(Vector2.ZERO, sprite_size * 0.42, 0.0, TAU, 24, _style.slow_tint, 3.0, true)
 	var flip: float = -1.0 if _facing_left.get(mob.id, false) else 1.0
+	if mob.data.is_flying:
+		# Летун парит над дорогой: тень на земле, сам выше.
+		bob += sprite_size * FLY_LIFT
 	draw_set_transform(feet - Vector2(0, bob), tilt, Vector2(flip, 1.0))
 	var tint: Color = Color(1, 1, 1, clampf(mob.progress / FADE_IN_MILLI, 0.0, 1.0))
+	if mob.data.reveal_radius_milli > 0:
+		tint.a *= STEALTH_ALPHA
 	if _field.is_enraged:
 		tint = Color(_style.enrage_tint, tint.a)
 	if mob.slow_percent > 0:
@@ -154,6 +166,9 @@ func _draw_mob(mob: MobState) -> void:
 	draw_texture_rect(visual.texture, Rect2(Vector2(-sprite_size * 0.5, -sprite_size),
 			Vector2.ONE * sprite_size), false, tint)
 	draw_set_transform_matrix(Transform2D.IDENTITY)
+	if mob.shield_left > 0:
+		draw_arc(feet - Vector2(0, bob + sprite_size * 0.5), sprite_size * 0.55, -2.4, -0.7, 16,
+				SHIELD_COLOR, 3.0, true)
 	if mob.hp < mob.max_hp:
 		_draw_hp_bar(Vector2(feet.x, feet.y - sprite_size - bob - 4.0), sprite_size * 0.7,
 				float(mob.hp) / mob.max_hp)
@@ -375,10 +390,24 @@ func _on_field_effect_played(effect_id: StringName, mob: MobState) -> void:
 		&"silence":
 			var middle: Vector2 = _origin + Vector2(_field.layout.width * 0.5, 1.0) * _cell_size
 			_add_text(middle, "ОПАЛЕНО!", SILENCE_TEXT_COLOR)
+		&"heal":
+			if mob != null:
+				var spot: Vector2 = _milli_to_screen(Vector2(_field.get_mob_position(mob)))
+				_spawn_puff(spot - Vector2(0, _cell_size * 0.3), HEAL_COLOR)
 		&"knockback":
 			if mob != null:
 				var at: Vector2 = _milli_to_screen(Vector2(_field.get_mob_position(mob)))
 				_spawn_puff(at, KNOCKBACK_COLOR)
+
+
+## Пар бани / сказки кота: кольцо по всему радиусу.
+func _on_field_tower_pulsed(tower: TowerState) -> void:
+	var impact: Impact = Impact.new()
+	impact.position = _milli_to_screen(Vector2(tower.center_milli()))
+	impact.color = _catalog.get_tower(tower.data.id).impact_color
+	impact.is_area = true
+	impact.radius = _field.get_tower_range(tower) / MILLI * _cell_size
+	_impacts.append(impact)
 
 
 ## Снаряд в полёте. Цель — моб; если он умер раньше, снаряд летит в последнюю точку.

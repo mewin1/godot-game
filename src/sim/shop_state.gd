@@ -63,10 +63,17 @@ func add_to_hash(hasher: StateHasher) -> void:
 		hasher.add_string(data.id if data != null else &"-")
 
 
-## Случайная башня из открытых тиров (тир ≤ уровня магазина), все с равным шансом.
+## Случайная башня из открытых тиров (тир ≤ уровня магазина) с учётом веса shop_weight.
 func _random_tower(rng: RandomNumberGenerator) -> TowerData:
-	var pool: Array[TowerData] = []
+	var total: int = 0
 	for data: TowerData in _config.towers:
 		if data.tier <= level:
-			pool.append(data)
-	return pool[rng.randi_range(0, pool.size() - 1)]
+			total += data.shop_weight
+	var pick: int = rng.randi_range(1, total)
+	for data: TowerData in _config.towers:
+		if data.tier > level:
+			continue
+		pick -= data.shop_weight
+		if pick <= 0:
+			return data
+	return _config.towers[0]

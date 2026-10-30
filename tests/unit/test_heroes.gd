@@ -115,7 +115,7 @@ func test_skill_not_enough_gold() -> void:
 func test_domovoy_extra_gold_and_full_refund() -> void:
 	var sim: MatchSim = SimFixtures.make_hero_match(_config, &"domovoy")
 	var player: PlayerState = sim.players[0]
-	assert_eq(player.gold, _config.start_gold + 6)
+	assert_eq(player.gold, _config.start_gold + 10)
 	var tower: TowerState = _buy_first_offer_anywhere(sim, player)
 	player.end_prep()
 	assert_eq(player.get_sell_price(tower), _config.tower_cost, "через раунд — всё равно 100%")
@@ -124,7 +124,7 @@ func test_domovoy_extra_gold_and_full_refund() -> void:
 func test_cosmonaut_shop_upgrade_is_cheaper() -> void:
 	var sim: MatchSim = SimFixtures.make_hero_match(_config, &"cosmonaut")
 	var player: PlayerState = sim.players[0]
-	assert_eq(player.get_shop_upgrade_price(), player.shop.upgrade_cost - 4)
+	assert_eq(player.get_shop_upgrade_price(), player.shop.upgrade_cost - 3)
 	player.gold = 100
 	var gold: int = player.gold
 	var price: int = player.get_shop_upgrade_price()
@@ -144,7 +144,7 @@ func test_ilya_has_more_hp_and_strike_only_in_wave() -> void:
 		hp_before.append(mob.hp)
 	assert_eq(sim.execute_command(0, UseHeroSkillCommand.new()), "")
 	for i: int in player.field.mobs.size():
-		var expected: int = hp_before[i] - hp_before[i] * 40 / 100
+		var expected: int = hp_before[i] - hp_before[i] * 50 / 100
 		assert_eq(player.field.mobs[i].hp, expected)
 
 
@@ -218,7 +218,7 @@ func test_gorynych_silences_opponent_towers() -> void:
 	_skip_to_wave_with_mobs(sim)
 	assert_eq(sim.execute_command(0, UseHeroSkillCommand.new()), "")
 	var target: FieldState = sim.players[sim.opponent_of[0]].field
-	assert_eq(target.silence_ticks_left, 80)
+	assert_eq(target.silence_ticks_left, 140)
 	assert_eq(player.field.silence_ticks_left, 0, "своё поле не трогает")
 
 

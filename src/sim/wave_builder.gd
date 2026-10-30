@@ -10,6 +10,11 @@ static func build_base_wave(config: GameConfig, round_number: int) -> Array[MobS
 	var wave: Array[MobState] = []
 	for i: int in count:
 		wave.append(MobState.create(config.wave_mob, hp_bonus))
+	for special: WaveSpecialData in config.wave_specials:
+		if round_number < special.first_round:
+			continue
+		for i: int in special.count:
+			wave.append(MobState.create(special.mob, hp_bonus))
 	return wave
 
 

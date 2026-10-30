@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="MobData" format=3]
+
+[ext_resource type="Script" path="res://src/sim/data/mob_data.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"bat"
+display_name = "Нетопырь"
+hp = 30
+speed_milli_per_tick = 62
+armor = 0
+kill_reward = 1
+breach_damage = 1
+description = "Летает: капкан и богатырская застава его не бьют."
+is_flying = true

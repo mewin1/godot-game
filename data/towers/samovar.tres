@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="TowerData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/sim/data/tower_data.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"samovar"
+display_name = "Самовар"
+school = &"folk"
+tier = 1
+shape = Array[Vector2i]([Vector2i(0, 0)])
+damage = 0
+cooldown_ticks = 20
+range_milli = 0
+tags = Array[StringName]([&"folk"])
+description = "Не стреляет. Соседи стреляют на 25% чаще."
+attacks = false
+neighbor_fire_rate_percent = 25
+shop_weight = 5

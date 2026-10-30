@@ -10,7 +10,7 @@ func before_each() -> void:
 
 func test_config_loads_with_content() -> void:
 	assert_not_null(_config.board, "площадка")
-	assert_eq(_config.towers.size(), 6, "башен-заглушек")
+	assert_eq(_config.towers.size(), 15, "башен и построек")
 	assert_not_null(_config.wave_mob, "моб волны")
 	assert_true(_config.send_buffs.size() >= 6, "бафы отправки")
 

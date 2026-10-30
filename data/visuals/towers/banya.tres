@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="TowerVisual" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://src/view/visuals/tower_visual.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://assets/towers/banya.svg" id="2_icon"]
+
+[resource]
+script = ExtResource("1_script")
+tower_id = &"banya"
+icon = ExtResource("2_icon")
+icon_scale = 1.2
+plate_color = Color(0.353, 0.275, 0.196, 1)
+plate_edge_color = Color(0.910, 0.651, 0.290, 1)
+projectile = 0
+projectile_color = Color(0.910, 0.651, 0.290, 1)
+projectile_seconds = 0.12
+impact_color = Color(0.910, 0.651, 0.290, 1)

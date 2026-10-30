@@ -6,15 +6,15 @@
 
 [sub_resource type="Resource" id="skill_effect"]
 script = ExtResource("silence")
-ticks = 80
+ticks = 140
 
 [sub_resource type="Resource" id="skill"]
 script = ExtResource("skill")
 display_name = "Три головы"
-description = "В волну: башни на полях, куда идёт ваша армия, 4 секунды не стреляют."
+description = "В волну: башни на полях, куда идёт ваша армия, 7 секунд не стреляют."
 timing = 1
-cost = 6
-cost_step = 3
+cost = 5
+cost_step = 2
 effect = SubResource("skill_effect")
 
 [resource]

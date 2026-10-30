@@ -157,6 +157,11 @@ func sell_tower(tower_id: int) -> String:
 	return ""
 
 
+## Доход за раунд: свой + от построек на поле (лавки).
+func get_total_income() -> int:
+	return income + field.get_round_income()
+
+
 ## Сколько клеток занимают все башни (для логов и анализа).
 func get_cells_used() -> int:
 	var cells: int = 0

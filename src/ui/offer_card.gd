@@ -92,11 +92,16 @@ func _draw() -> void:
 
 
 func _stats_text() -> String:
+	if not data.attacks:
+		return "не стреляет"
 	var shots_per_second: float = float(ticks_per_second) / data.cooldown_ticks
 	return "урон %d · %.1f выстр./с" % [data.damage, shots_per_second]
 
 
 func _effects_text() -> String:
+	if not data.attacks or data.hits_all_in_range or data.targets_per_shot > 1 \
+			or not data.can_hit_flying:
+		return data.description.get_slice(".", 0)
 	var parts: PackedStringArray = []
 	parts.append("радиус %.1f" % (data.range_milli / 1000.0))
 	if data.splash_radius_milli > 0:

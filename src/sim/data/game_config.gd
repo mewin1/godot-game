@@ -10,6 +10,8 @@ extends Resource
 ## Моб базовой волны и обычный юнит армии.
 @export var wave_mob: MobData
 @export var army_mob: MobData
+## Особые мобы базовой волны: с какого раунда и сколько.
+@export var wave_specials: Array[WaveSpecialData] = []
 ## Улучшения армии (вкладка «Армия»), по порядку показа.
 @export var army_upgrades: Array[ArmyUpgradeData] = []
 ## Все герои: перед матчем каждому выпадает hero_offer_count разных на выбор.

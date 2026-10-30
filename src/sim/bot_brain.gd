@@ -6,6 +6,8 @@ extends RefCounted
 ## Повышать магазин, только когда цена упала до этого значения (или раунд уже поздний).
 const CHEAP_UPGRADE_COST: int = 5
 const LATE_ROUND: int = 4
+## Пока стреляющих башен меньше — бот берёт только стрелков (усилители и лавки потом).
+const MIN_SHOOTERS_BEFORE_SUPPORT: int = 3
 ## Стиль бота: какую долю золота в начале подготовки он тратит на армию (остальное — башни).
 var army_share_percent: int = 30
 
@@ -109,15 +111,35 @@ func _pick_affordable_upgrade(player: PlayerState, reserve: int) -> int:
 ## Покупает, пока хватает золота: сначала копии для слияния, потом — на лучшее место.
 func _buy_towers(sim: MatchSim, player: PlayerState) -> void:
 	var bought: bool = true
-	while bought and player.gold >= sim.config.tower_cost:
+	var rerolled: bool = false
+	while player.gold >= sim.config.tower_cost:
 		bought = false
 		for offer_index: int in player.shop.offers.size():
 			var data: TowerData = player.shop.get_offer(offer_index)
-			if data == null:
+			if data == null or not _wants_tower(player, data):
 				continue
 			if _buy_one(sim, player, offer_index, data):
 				bought = true
 				break
+		if bought:
+			continue
+		# Нечего брать — один раз обновить витрину, если стрелков мало и золота хватает.
+		var can_reroll: bool = player.gold >= player.get_reroll_price() + sim.config.tower_cost
+		if rerolled or not can_reroll or _count_shooters(player) >= MIN_SHOOTERS_BEFORE_SUPPORT:
+			return
+		rerolled = _run(sim, player, RerollShopCommand.new())
+
+
+func _wants_tower(player: PlayerState, data: TowerData) -> bool:
+	return data.attacks or _count_shooters(player) >= MIN_SHOOTERS_BEFORE_SUPPORT
+
+
+func _count_shooters(player: PlayerState) -> int:
+	var count: int = 0
+	for tower: TowerState in player.field.towers:
+		if tower.data.attacks:
+			count += 1
+	return count
 
 
 func _buy_one(sim: MatchSim, player: PlayerState, offer_index: int, data: TowerData) -> bool:
@@ -141,11 +163,27 @@ func _find_best_spot(field: FieldState, data: TowerData) -> Vector3i:
 						Vector2i(x, y), turns)
 				if not field.can_place(cells):
 					continue
-				var score: int = field.count_path_cells_in_range(cells, data.range_milli)
+				var score: int = _score_spot(field, data, cells)
 				if score > best_score:
 					best_score = score
 					best = Vector3i(x, y, turns)
 	return best
+
+
+## Оценка места: стрелкам — сколько клеток пути в радиусе; усилителям — сколько стреляющих
+## соседей будет рядом (×10, чтобы ставились в кучу); лавке — любое место (подальше от пути).
+func _score_spot(field: FieldState, data: TowerData, cells: Array[Vector2i]) -> int:
+	if data.attacks:
+		return field.count_path_cells_in_range(cells, data.range_milli)
+	if data.income_per_round > 0:
+		return 1
+	var neighbors: Array[int] = []
+	for cell: Vector2i in cells:
+		for side: Vector2i in FieldState.NEIGHBOR_SIDES:
+			var tower: TowerState = field.get_tower_at(cell + side)
+			if tower != null and tower.data.attacks and not neighbors.has(tower.id):
+				neighbors.append(tower.id)
+	return neighbors.size() * 10
 
 
 func _merge_all_pairs(sim: MatchSim, player: PlayerState) -> void:

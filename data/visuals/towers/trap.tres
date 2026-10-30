@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="TowerVisual" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://src/view/visuals/tower_visual.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://assets/towers/trap.svg" id="2_icon"]
+
+[resource]
+script = ExtResource("1_script")
+tower_id = &"trap"
+icon = ExtResource("2_icon")
+icon_scale = 1.0
+plate_color = Color(0.227, 0.208, 0.188, 1)
+plate_edge_color = Color(0.604, 0.643, 0.678, 1)
+projectile = 2
+projectile_color = Color(0.604, 0.643, 0.678, 1)
+projectile_seconds = 0.12
+impact_color = Color(0.604, 0.643, 0.678, 1)

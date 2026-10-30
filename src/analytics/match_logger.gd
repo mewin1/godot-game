@@ -126,7 +126,9 @@ func _player_snapshot(player: PlayerState) -> Dictionary:
 	var buffs: Array[String] = []
 	for buff: SendBuffData in player.army.buffs:
 		buffs.append(String(buff.id))
-	return {"player": player.index, "alive": player.is_alive, "hp": player.hero_hp,
+	return {"player": player.index, "hero": String(player.hero.id) if player.hero != null else "",
+			"skill_uses": player.skill_uses, "building_income": player.field.get_round_income(),
+			"alive": player.is_alive, "hp": player.hero_hp,
 			"gold": player.gold, "income": player.income, "shop_level": player.shop.level,
 			"towers": towers, "cells_used": player.get_cells_used(),
 			"buildable_cells": player.field.get_buildable_cells().size(),
@@ -192,11 +194,13 @@ func _on_sim_player_eliminated(player: PlayerState) -> void:
 
 func _on_sim_match_finished() -> void:
 	var places: Array[int] = []
+	var heroes: Array[String] = []
 	for player: PlayerState in _sim.players:
 		places.append(player.place)
+		heroes.append(String(player.hero.id) if player.hero != null else "")
 	var winner: PlayerState = _sim.get_winner()
 	_write({"event": "match_end", "round": _sim.round_number, "tick": _sim.tick_count,
-			"places": places, "winner": winner.index if winner != null else -1})
+			"places": places, "heroes": heroes, "winner": winner.index if winner != null else -1})
 	if _file == null and not _is_closed:
 		_open_file()
 	close()

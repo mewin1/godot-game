@@ -100,7 +100,7 @@ func refresh(sim: MatchSim, human_index: int) -> void:
 	_phase_label.text = _phase_text(sim)
 	_hp_label.text = str(maxi(0, me.hero_hp))
 	_gold_label.text = str(me.gold)
-	_income_label.text = "+%d" % me.income
+	_income_label.text = "+%d" % me.get_total_income()
 	_refresh_hero(sim, me)
 	_refresh_chips(sim, human_index)
 	_refresh_siege(sim, human_index)
