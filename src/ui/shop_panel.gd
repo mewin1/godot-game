@@ -385,9 +385,12 @@ func _army_summary(army: ArmyState) -> String:
 	if not army.temporary_mobs.is_empty():
 		parts.append("%s ×%d (на эту волну)" % [army.temporary_mobs[0].display_name,
 				army.temporary_mobs.size()])
+	var rage: String = ""
+	if army.rage_percent > 0:
+		rage = " · злость +%d%% HP (армия не дошла)" % army.rage_percent
 	return ("Армия сама идёт к сопернику каждый раунд. Прокачка — навсегда и +доход.\n"
-			+ "Состав: %s · HP +%d%% · скорость +%d%%") % [
-			", ".join(parts), army.hp_percent, army.speed_percent]
+			+ "Состав: %s · HP +%d%% · скорость +%d%%%s") % [
+			", ".join(parts), army.hp_percent, army.speed_percent, rage]
 
 #endregion
 

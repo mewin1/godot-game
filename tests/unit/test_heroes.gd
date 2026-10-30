@@ -335,3 +335,15 @@ func test_army_first_round_setting_skips_armies_early() -> void:
 			seen_army = seen_army or mob.sender_index >= 0
 	assert_eq(sim.round_number, 1)
 	assert_false(seen_army, "в 1-м раунде только базовая волна")
+
+
+func test_army_rage_grows_without_damage_and_resets_after_breach() -> void:
+	_config.army_rage_percent = 25
+	var army: ArmyState = ArmyState.new(_config)
+	var base_hp: int = army.build_pack(0, 1)[0].max_hp
+	army.update_rage(0)
+	army.update_rage(0)
+	assert_eq(army.rage_percent, 50)
+	assert_eq(army.build_pack(0, 1)[0].max_hp, base_hp * 150 / 100)
+	army.update_rage(3)
+	assert_eq(army.rage_percent, 0)

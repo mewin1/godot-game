@@ -89,3 +89,4 @@ heroes = Array[ExtResource("hero_script")]([ExtResource("hero_baba_yaga"), ExtRe
 wave_specials = Array[ExtResource("wave_script")]([ExtResource("wave_kolobok"), ExtResource("wave_bat"), ExtResource("wave_healer"), ExtResource("wave_knight"), ExtResource("wave_stealth"), ExtResource("wave_courier")])
 school_bonuses = Array[ExtResource("school_script")]([ExtResource("school_fire"), ExtResource("school_ice"), ExtResource("school_mech"), ExtResource("school_folk")])
 army_gold_per_hp = 3
+army_rage_percent = 50

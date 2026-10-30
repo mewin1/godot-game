@@ -13,6 +13,8 @@ var extra_income: int = 0
 var added_mobs: Array[MobData] = []
 ## Юниты только на ближайшую волну (навык героя); убираются в начале следующего раунда.
 var temporary_mobs: Array[MobData] = []
+## «Злость армии» в процентах HP (см. GameConfig.army_rage_percent).
+var rage_percent: int = 0
 ## Сколько раз куплено каждое улучшение (по порядку config.army_upgrades).
 var upgrade_counts: Array[int] = []
 
@@ -80,6 +82,14 @@ func get_total_upgrades() -> int:
 #endregion
 
 
+## Конец раунда: не дошли — злее, прорвались — успокоились.
+func update_rage(damage_dealt: int) -> void:
+	if damage_dealt > 0:
+		rage_percent = 0
+	else:
+		rage_percent += _config.army_rage_percent
+
+
 func get_unit_count() -> int:
 	return _config.army_base_units + extra_units + added_mobs.size()
 
@@ -89,7 +99,7 @@ func get_unit_count() -> int:
 func build_pack(sender_index: int, round_number: int) -> Array[MobState]:
 	var round_percent: int = _config.get_round_hp_percent(round_number,
 			_config.army_hp_growth_percent)
-	var hp_bonus: int = round_percent * (100 + hp_percent) / 100 - 100
+	var hp_bonus: int = round_percent * (100 + hp_percent + rage_percent) / 100 - 100
 	var pack: Array[MobState] = []
 	for i: int in _config.army_base_units + extra_units:
 		pack.append(MobState.create(_config.army_mob, hp_bonus, speed_percent))
@@ -118,7 +128,7 @@ func roll_buff_offers(shop_level: int, rng: RandomNumberGenerator) -> Array[Send
 
 func add_to_hash(hasher: StateHasher) -> void:
 	hasher.add_many([hp_percent, speed_percent, extra_units, cost_discount, extra_income,
-			added_mobs.size(), temporary_mobs.size()])
+			added_mobs.size(), temporary_mobs.size(), rage_percent])
 	hasher.add_many(upgrade_counts)
 
 

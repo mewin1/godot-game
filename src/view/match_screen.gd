@@ -489,6 +489,8 @@ func _on_sim_round_finished(_round_number: int) -> void:
 		lines.append("Ваша армия сняла %d HP у: %s" % [me.army_damage_dealt, target])
 	var lost: int = _hp_at_round_start - me.hero_hp
 	lines.append("Вы потеряли %d HP" % lost if lost > 0 else "Терем устоял без потерь")
+	if me.army.rage_percent > 0:
+		lines.append("Армия не дошла — в следующем раунде злее: +%d%% HP" % me.army.rage_percent)
 	_show_toast("\n".join(lines), SUMMARY_SECONDS)
 
 

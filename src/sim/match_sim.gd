@@ -386,6 +386,9 @@ func _finish_round() -> void:
 	_pay_siege_rewards()
 	for player: PlayerState in alive:
 		player.gold += player.get_total_income()
+		# Против призрака урон не засчитывается — злость не копится и не сбрасывается.
+		if player.index != ghost_target:
+			player.army.update_rage(player.army_damage_dealt)
 	round_finished.emit(round_number)
 	_eliminate_dead(alive)
 	var survivors: Array[PlayerState] = get_alive_players()
