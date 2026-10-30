@@ -7,6 +7,10 @@ var level: int = 1
 var upgrade_cost: int = 0
 ## Предложения витрины; null — место, где башню уже купили.
 var offers: Array[TowerData] = []
+## Мест на витрине сверх обычного (герой).
+var extra_offers: int = 0
+## Витрина заморожена: в следующем раунде не обновится, докупятся только пустые места.
+var is_frozen: bool = false
 
 var _config: GameConfig
 
@@ -17,7 +21,7 @@ func _init(config: GameConfig) -> void:
 
 
 func get_offer_count() -> int:
-	return _config.shop_base_offers + level - 1
+	return _config.shop_base_offers + level - 1 + extra_offers
 
 
 func can_upgrade() -> bool:
@@ -28,6 +32,16 @@ func can_upgrade() -> bool:
 func roll(rng: RandomNumberGenerator) -> void:
 	offers.clear()
 	for i: int in get_offer_count():
+		offers.append(_random_tower(rng))
+
+
+## Начало раунда у замороженной витрины: остальное остаётся, пустые места заполняются.
+func thaw(rng: RandomNumberGenerator) -> void:
+	is_frozen = false
+	for i: int in offers.size():
+		if offers[i] == null:
+			offers[i] = _random_tower(rng)
+	while offers.size() < get_offer_count():
 		offers.append(_random_tower(rng))
 
 
@@ -59,6 +73,7 @@ func on_round_started() -> void:
 func add_to_hash(hasher: StateHasher) -> void:
 	hasher.add(level)
 	hasher.add(upgrade_cost)
+	hasher.add(int(is_frozen))
 	for data: TowerData in offers:
 		hasher.add_string(data.id if data != null else &"-")
 

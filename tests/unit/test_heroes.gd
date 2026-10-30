@@ -10,12 +10,12 @@ func before_each() -> void:
 	_config = SimFixtures.make_config()
 
 
-func test_config_has_ten_heroes_with_unique_ids() -> void:
+func test_config_has_eleven_heroes_with_unique_ids() -> void:
 	var ids: Dictionary[StringName, bool] = {}
 	for hero: HeroData in _config.heroes:
 		ids[hero.id] = true
-	assert_eq(_config.heroes.size(), 10)
-	assert_eq(ids.size(), 10)
+	assert_eq(_config.heroes.size(), 11)
+	assert_eq(ids.size(), 11)
 
 
 func test_hero_select_gives_three_different_offers() -> void:
@@ -307,3 +307,17 @@ func _finish_round(sim: MatchSim) -> void:
 	while sim.round_number == round_number and guard < 10000:
 		sim.tick()
 		guard += 1
+
+
+func test_vasilisa_extra_offer_and_frozen_shop_keeps_offers() -> void:
+	var sim: MatchSim = SimFixtures.make_hero_match(_config, &"vasilisa")
+	var player: PlayerState = sim.players[0]
+	assert_eq(player.shop.offers.size(), _config.shop_base_offers + 1)
+	player.gold = 50
+	var kept: TowerData = player.shop.offers[1]
+	player.shop.remove_offer(0)
+	assert_eq(sim.execute_command(0, UseHeroSkillCommand.new()), "")
+	_finish_round(sim)
+	assert_eq(player.shop.offers[1], kept, "предложение сохранилось")
+	assert_not_null(player.shop.offers[0], "пустое место заполнилось")
+	assert_false(player.shop.is_frozen)

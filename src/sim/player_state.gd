@@ -333,7 +333,10 @@ func start_prep(offer_buffs: bool) -> void:
 	is_ready = false
 	is_skill_used_this_round = false
 	free_rerolls_left = free_rerolls_per_round
-	shop.roll(rng)
+	if shop.is_frozen:
+		shop.thaw(rng)
+	else:
+		shop.roll(rng)
 	if offer_buffs:
 		buff_offers = army.roll_buff_offers(shop.level, rng)
 

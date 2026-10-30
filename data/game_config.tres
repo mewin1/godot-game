@@ -73,6 +73,7 @@
 [ext_resource type="Resource" path="res://data/towers/belfry.tres" id="tower_belfry"]
 [ext_resource type="Resource" path="res://data/towers/perun.tres" id="tower_perun"]
 [ext_resource type="Resource" path="res://data/towers/rocket.tres" id="tower_rocket"]
+[ext_resource type="Resource" path="res://data/heroes/vasilisa.tres" id="hero_vasilisa"]
 
 [resource]
 script = ExtResource("1_script")
@@ -84,7 +85,7 @@ army_mob = ExtResource("4_ext")
 army_hp_growth_percent = 21
 breach_multiplier_start_rounds = Array[int]([14, 17])
 army_upgrades = Array[ExtResource("24_ext")]([ExtResource("25_ext"), ExtResource("26_ext"), ExtResource("27_ext"), ExtResource("28_ext"), ExtResource("29_ext"), ExtResource("30_ext"), ExtResource("army_kolobok"), ExtResource("army_bat"), ExtResource("army_healer"), ExtResource("army_knight"), ExtResource("army_stealth")])
-heroes = Array[ExtResource("hero_script")]([ExtResource("hero_baba_yaga"), ExtResource("hero_domovoy"), ExtResource("hero_cosmonaut"), ExtResource("hero_ilya"), ExtResource("hero_leshy"), ExtResource("hero_babushka"), ExtResource("hero_solovey"), ExtResource("hero_gorynych"), ExtResource("hero_koschei"), ExtResource("hero_skomorokh")])
+heroes = Array[ExtResource("hero_script")]([ExtResource("hero_baba_yaga"), ExtResource("hero_domovoy"), ExtResource("hero_cosmonaut"), ExtResource("hero_ilya"), ExtResource("hero_leshy"), ExtResource("hero_babushka"), ExtResource("hero_solovey"), ExtResource("hero_gorynych"), ExtResource("hero_koschei"), ExtResource("hero_skomorokh"), ExtResource("hero_vasilisa")])
 wave_specials = Array[ExtResource("wave_script")]([ExtResource("wave_kolobok"), ExtResource("wave_bat"), ExtResource("wave_healer"), ExtResource("wave_knight"), ExtResource("wave_stealth"), ExtResource("wave_courier")])
 school_bonuses = Array[ExtResource("school_script")]([ExtResource("school_fire"), ExtResource("school_ice"), ExtResource("school_mech"), ExtResource("school_folk")])
 army_gold_per_hp = 3

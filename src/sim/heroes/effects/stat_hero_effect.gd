@@ -10,6 +10,7 @@ enum Kind {
 	ARMY_SPEED, ## армия +value% скорости
 	ENEMY_ARMY_SLOW, ## чужие армии на своём поле на value% медленнее
 	KNOCKBACK, ## моб на середине пути один раз отброшен на value тысячных клетки назад
+	EXTRA_OFFERS, ## +value мест на витрине
 }
 
 @export var kind: Kind = Kind.START_GOLD
@@ -33,3 +34,5 @@ func on_picked(player: PlayerState) -> void:
 			player.field.enemy_army_slow_percent += value
 		Kind.KNOCKBACK:
 			player.field.knockback_milli += value
+		Kind.EXTRA_OFFERS:
+			player.shop.extra_offers += value

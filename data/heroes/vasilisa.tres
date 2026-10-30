@@ -1,0 +1,35 @@
+[gd_resource type="Resource" script_class="HeroData" format=3]
+
+[ext_resource type="Script" path="res://src/sim/heroes/hero_data.gd" id="hero"]
+[ext_resource type="Script" path="res://src/sim/heroes/hero_effect.gd" id="effect"]
+[ext_resource type="Script" path="res://src/sim/heroes/effects/stat_hero_effect.gd" id="stat"]
+[ext_resource type="Script" path="res://src/sim/heroes/effects/freeze_shop_effect.gd" id="freeze"]
+[ext_resource type="Script" path="res://src/sim/heroes/hero_skill_data.gd" id="skill"]
+
+[sub_resource type="Resource" id="passive_0"]
+script = ExtResource("stat")
+kind = 7
+value = 1
+
+[sub_resource type="Resource" id="skill_effect"]
+script = ExtResource("freeze")
+
+[sub_resource type="Resource" id="skill"]
+script = ExtResource("skill")
+display_name = "Премудрость"
+description = "Витрина не обновится в следующем раунде: копите на нужную постройку."
+timing = 0
+cost = 1
+cost_step = 0
+effect = SubResource("skill_effect")
+
+[resource]
+script = ExtResource("hero")
+id = &"vasilisa"
+display_name = "Василиса Премудрая"
+epithet = "Всё наперёд знает, всё по уму делает"
+description = "На витрине на одно место больше."
+style = "витрина, план"
+hp = 40
+passives = Array[ExtResource("effect")]([SubResource("passive_0")])
+skill = SubResource("skill")
