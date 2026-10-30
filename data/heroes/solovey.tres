@@ -9,17 +9,17 @@
 [sub_resource type="Resource" id="passive_0"]
 script = ExtResource("stat")
 kind = 4
-value = 15
+value = 20
 
 [sub_resource type="Resource" id="skill_effect"]
 script = ExtResource("summon")
 mob = ExtResource("robber")
-count = 3
+count = 4
 
 [sub_resource type="Resource" id="skill"]
 script = ExtResource("skill")
 display_name = "Ватага"
-description = "В эту волну с армией идут 3 разбойника (прорвался — +3 золота)."
+description = "В эту волну с армией идут 4 разбойника (прорвался — +3 золота)."
 timing = 0
 cost = 6
 cost_step = 2
@@ -30,7 +30,7 @@ script = ExtResource("hero")
 id = &"solovey"
 display_name = "Соловей-Разбойник"
 epithet = "Свистит с дуба — с ног сбивает"
-description = "Ваша армия на 15% быстрее."
+description = "Ваша армия на 20% быстрее."
 style = "давление армией"
 hp = 40
 passives = Array[ExtResource("effect")]([SubResource("passive_0")])

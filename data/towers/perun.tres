@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="TowerData" format=3]
+
+[ext_resource type="Script" path="res://src/sim/data/tower_data.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"perun"
+display_name = "Молния Перуна"
+school = &"fire"
+tier = 4
+shape = Array[Vector2i]([Vector2i(0, 0), Vector2i(0, 1)])
+damage = 90
+cooldown_ticks = 30
+range_milli = 3200
+tags = Array[StringName]([&"fire"])
+description = "Молния бьёт 4 цели сразу по 90 урона."
+targets_per_shot = 4

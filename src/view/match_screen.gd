@@ -214,14 +214,17 @@ func _show_tip(text: String) -> void:
 	var width: float = minf(size.x - 32.0, 760.0)
 	# Перенос строк у Label в контейнере работает только при заданной ширине.
 	_tip_label.custom_minimum_size = Vector2(width - 24.0, 0)
-	_tip_panel.reset_size()
-	_tip_panel.position = Vector2((size.x - width) / 2.0, _hud.size.y + 8.0)
 	_tip_time_left = TIP_SECONDS
 
 
+## Размер считается каждый кадр: в первом кадре после смены текста перенос строк ещё не готов.
 func _update_tip() -> void:
 	_tip_time_left = maxf(0.0, _tip_time_left - get_process_delta_time())
 	_tip_panel.modulate.a = clampf(_tip_time_left * 1.5, 0.0, 1.0)
+	if _tip_time_left <= 0.0:
+		return
+	_tip_panel.reset_size()
+	_tip_panel.position = Vector2((size.x - _tip_panel.size.x) / 2.0, _hud.size.y + 8.0)
 
 
 func _build_end_layer() -> void:

@@ -19,7 +19,7 @@ script = ExtResource("skill")
 display_name = "Варево"
 description = "Следующая купленная башня — сразу 2-го уровня."
 timing = 0
-cost = 7
+cost = 10
 cost_step = 0
 effect = SubResource("skill_effect")
 

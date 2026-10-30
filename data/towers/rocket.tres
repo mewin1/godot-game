@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="TowerData" format=3]
+
+[ext_resource type="Script" path="res://src/sim/data/tower_data.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"rocket"
+display_name = "Ракета «Заря»"
+school = &"mech"
+tier = 4
+shape = Array[Vector2i]([Vector2i(0, 0), Vector2i(0, 1), Vector2i(0, 2)])
+damage = 400
+cooldown_ticks = 80
+range_milli = 6000
+tags = Array[StringName]([&"mech"])
+description = "Раз в 4 с: 400 урона через всё поле и 40% — всем рядом."
+splash_radius_milli = 1500
+splash_percent = 40

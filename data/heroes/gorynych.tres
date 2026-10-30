@@ -13,7 +13,7 @@ script = ExtResource("skill")
 display_name = "Три головы"
 description = "В волну: башни на полях, куда идёт ваша армия, 7 секунд не стреляют."
 timing = 1
-cost = 5
+cost = 4
 cost_step = 2
 effect = SubResource("skill_effect")
 

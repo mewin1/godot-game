@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="TowerData" format=3]
+
+[ext_resource type="Script" path="res://src/sim/data/tower_data.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"morozko"
+display_name = "Морозко"
+school = &"ice"
+tier = 3
+shape = Array[Vector2i]([Vector2i(0, 0), Vector2i(1, 0), Vector2i(1, 1)])
+damage = 20
+cooldown_ticks = 20
+range_milli = 2200
+tags = Array[StringName]([&"ice"])
+description = "Дышит стужей: раз в секунду бьёт всех вокруг (20 урона) и замедляет на 50%."
+hits_all_in_range = true
+slow_percent = 50
+slow_ticks = 20

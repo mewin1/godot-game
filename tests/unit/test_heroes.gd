@@ -197,11 +197,11 @@ func test_babushka_heal_is_capped_at_start_hp() -> void:
 func test_solovey_army_faster_and_gang_only_this_round() -> void:
 	var sim: MatchSim = SimFixtures.make_hero_match(_config, &"solovey")
 	var player: PlayerState = sim.players[0]
-	assert_eq(player.army.speed_percent, 15)
+	assert_eq(player.army.speed_percent, 20)
 	player.gold = 50
 	var units: int = player.army.build_pack(0, 1).size()
 	assert_eq(sim.execute_command(0, UseHeroSkillCommand.new()), "")
-	assert_eq(player.army.build_pack(0, 1).size(), units + 3)
+	assert_eq(player.army.build_pack(0, 1).size(), units + 4)
 	_finish_round(sim)
 	assert_eq(player.army.build_pack(0, 2).size(), units, "ватага — на один раунд")
 

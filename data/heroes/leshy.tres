@@ -6,14 +6,14 @@
 [sub_resource type="Resource" id="passive_0"]
 script = ExtResource("stat")
 kind = 6
-value = 2000
+value = 3000
 
 [resource]
 script = ExtResource("hero")
 id = &"leshy"
 display_name = "Леший"
 epithet = "Хозяин леса, водит путников кругами"
-description = "Каждый моб на вашем поле на середине пути один раз отброшен на 2 клетки назад."
+description = "Каждый моб на вашем поле на середине пути один раз отброшен на 3 клетки назад."
 style = "оборона, лабиринт"
 hp = 40
 passives = Array[ExtResource("effect")]([SubResource("passive_0")])
