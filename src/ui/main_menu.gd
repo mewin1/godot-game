@@ -10,6 +10,7 @@ var _sound_bank: SoundBank
 @onready var _menu: VBoxContainer = %Menu
 @onready var _play_button: Button = %PlayButton
 @onready var _how_to_button: Button = %HowToButton
+@onready var _heroes_button: Button = %HeroesButton
 @onready var _quit_button: Button = %QuitButton
 @onready var _sound_button: Button = %SoundButton
 
@@ -20,9 +21,11 @@ func _ready() -> void:
 	add_child(_sound_bank)
 	_play_button.pressed.connect(_on_play_button_pressed)
 	_how_to_button.pressed.connect(_on_how_to_button_pressed)
+	_heroes_button.pressed.connect(_on_heroes_button_pressed)
 	_quit_button.pressed.connect(_on_quit_button_pressed)
 	_sound_button.pressed.connect(_on_sound_button_pressed)
-	for button: Button in [_play_button, _how_to_button, _quit_button, _sound_button]:
+	for button: Button in [_play_button, _how_to_button, _heroes_button, _quit_button,
+			_sound_button]:
 		UiFx.add_press_feedback(button)
 	_update_sound_icon()
 	# Ждём кадр: контейнер должен посчитать размеры, иначе «пружинка» крутится вокруг угла.
@@ -51,6 +54,11 @@ func _on_play_button_pressed() -> void:
 func _on_how_to_button_pressed() -> void:
 	_sound_bank.play(&"click")
 	ScenePaths.go_to(get_tree(), ScenePaths.HOW_TO_PLAY)
+
+
+func _on_heroes_button_pressed() -> void:
+	_sound_bank.play(&"click")
+	ScenePaths.go_to(get_tree(), ScenePaths.HEROES)
 
 
 func _on_quit_button_pressed() -> void:

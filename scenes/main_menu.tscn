@@ -140,6 +140,13 @@ layout_mode = 2
 theme_override_font_sizes/font_size = 24
 text = "Как играть"
 
+[node name="HeroesButton" type="Button" parent="Center/Menu"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(340, 64)
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "Герои"
+
 [node name="QuitButton" type="Button" parent="Center/Menu"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(340, 64)

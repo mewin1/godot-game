@@ -5,6 +5,7 @@ extends RefCounted
 const MAIN_MENU: String = "res://scenes/main_menu.tscn"
 const HOW_TO_PLAY: String = "res://scenes/how_to_play.tscn"
 const MATCH: String = "res://scenes/match.tscn"
+const HEROES: String = "res://scenes/heroes_gallery.tscn"
 
 
 ## Переход на другую сцену с проверкой ошибки.
