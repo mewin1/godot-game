@@ -382,6 +382,9 @@ func _army_summary(army: ArmyState) -> String:
 	var parts: PackedStringArray = []
 	for unit_name: String in counts:
 		parts.append("%s ×%d" % [unit_name, counts[unit_name]])
+	if not army.temporary_mobs.is_empty():
+		parts.append("%s ×%d (на эту волну)" % [army.temporary_mobs[0].display_name,
+				army.temporary_mobs.size()])
 	return ("Армия сама идёт к сопернику каждый раунд. Прокачка — навсегда и +доход.\n"
 			+ "Состав: %s · HP +%d%% · скорость +%d%%") % [
 			", ".join(parts), army.hp_percent, army.speed_percent]
