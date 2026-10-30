@@ -490,7 +490,8 @@ func _heal_mobs() -> void:
 		for mob: MobState in mobs:
 			if mob.is_alive() and mob.hp < mob.max_hp \
 					and _is_in_range(center, get_mob_position(mob), healer.data.heal_radius_milli):
-				mob.hp = mini(mob.max_hp, mob.hp + maxi(1, mob.max_hp * healer.data.heal_percent / 100))
+				var heal: int = maxi(1, mob.max_hp * healer.data.heal_percent / 100)
+				mob.hp = mini(mob.max_hp, mob.hp + heal)
 		effect_played.emit(&"heal", healer)
 
 

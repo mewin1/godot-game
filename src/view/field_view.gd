@@ -354,7 +354,8 @@ func _draw_towers() -> void:
 			for cell: Vector2i in tower.cells():
 				draw_rect(_cell_rect(cell).grow(-1.0), _style.selected_color, false, 3.0)
 			if tower.data.attacks:
-				_draw_range(tower.center_milli(), field.get_tower_range(tower), _style.selected_color)
+				_draw_range(tower.center_milli(), field.get_tower_range(tower),
+						_style.selected_color)
 			_draw_neighbor_links(tower)
 
 
@@ -369,8 +370,8 @@ func _draw_boost_mark(tower: TowerState) -> void:
 		return
 	var corner: Vector2 = _cell_rect(tower.cells()[0]).position + Vector2.ONE * _cell_size * 0.08
 	var mark: float = _cell_size * 0.22
-	var triangle: PackedVector2Array = [corner + Vector2(mark * 0.5, 0), corner + Vector2(mark, mark),
-			corner + Vector2(0, mark)]
+	var triangle: PackedVector2Array = [corner + Vector2(mark * 0.5, 0),
+			corner + Vector2(mark, mark), corner + Vector2(0, mark)]
 	draw_colored_polygon(triangle, _style.selected_color)
 	draw_polyline(triangle + PackedVector2Array([triangle[0]]), Color(0.11, 0.08, 0.06), 1.5)
 

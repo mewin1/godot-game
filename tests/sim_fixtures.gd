@@ -37,7 +37,8 @@ static func find_mob(mob_id: StringName) -> MobData:
 
 
 ## Матч на 2 игрока (человек + бот) сразу в подготовке 1-го раунда, у человека — этот герой.
-static func make_hero_match(config: GameConfig, hero_id: StringName, seed_value: int = 99) -> MatchSim:
+static func make_hero_match(config: GameConfig, hero_id: StringName,
+		seed_value: int = 99) -> MatchSim:
 	var sim: MatchSim = MatchSim.new(config, seed_value, 2, 1)
 	sim.start_with_hero_select()
 	sim.players[0].hero_offers[0] = find_hero(config, hero_id)

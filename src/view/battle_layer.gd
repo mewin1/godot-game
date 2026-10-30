@@ -388,7 +388,8 @@ func _on_field_effect_played(effect_id: StringName, mob: MobState) -> void:
 			_add_text(center, "ПАЛИЦА!", STRIKE_COLOR)
 			sound_requested.emit(&"breach")
 		&"chest":
-			_add_text(_hero_screen_position() + Vector2(0, _cell_size), "СУНДУК РАЗБИТ!", STRIKE_COLOR)
+			var chest_at: Vector2 = _hero_screen_position() + Vector2(0, _cell_size)
+			_add_text(chest_at, "СУНДУК РАЗБИТ!", STRIKE_COLOR)
 			for tower: TowerState in _field.towers:
 				_spawn_puff(_milli_to_screen(Vector2(tower.center_milli())), STRIKE_COLOR)
 			sound_requested.emit(&"merge")

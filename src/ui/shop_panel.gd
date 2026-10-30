@@ -332,14 +332,14 @@ func _tower_details(tower: TowerState) -> String:
 	if not data.attacks:
 		var parts: PackedStringArray = []
 		if data.neighbor_damage_percent > 0:
-			parts.append("соседям +%d%% урона" % config.get_level_damage(data.neighbor_damage_percent,
-					tower.level))
+			parts.append("соседям +%d%% урона" % config.get_level_damage(
+					data.neighbor_damage_percent, tower.level))
 		if data.neighbor_fire_rate_percent > 0:
 			parts.append("соседям +%d%% скорости стрельбы" % config.get_level_damage(
 					data.neighbor_fire_rate_percent, tower.level))
 		if data.neighbor_range_milli > 0:
-			parts.append("соседям +%.1f радиуса" % (config.get_level_damage(data.neighbor_range_milli,
-					tower.level) / 1000.0))
+			parts.append("соседям +%.1f радиуса" % (config.get_level_damage(
+					data.neighbor_range_milli, tower.level) / 1000.0))
 		if data.income_per_round > 0:
 			parts.append("+%d дохода за раунд" % config.get_level_damage(data.income_per_round,
 					tower.level))
