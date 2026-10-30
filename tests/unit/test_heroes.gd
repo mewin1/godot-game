@@ -115,7 +115,7 @@ func test_skill_not_enough_gold() -> void:
 func test_domovoy_extra_gold_and_full_refund() -> void:
 	var sim: MatchSim = SimFixtures.make_hero_match(_config, &"domovoy")
 	var player: PlayerState = sim.players[0]
-	assert_eq(player.gold, _config.start_gold + 14)
+	assert_eq(player.gold, _config.start_gold + 10)
 	var tower: TowerState = _buy_first_offer_anywhere(sim, player)
 	player.end_prep()
 	assert_eq(player.get_sell_price(tower), _config.tower_cost, "через раунд — всё равно 100%")

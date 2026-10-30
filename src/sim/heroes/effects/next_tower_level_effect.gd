@@ -8,6 +8,7 @@ extends HeroEffect
 func activate(_sim: MatchSim, player: PlayerState) -> String:
 	if player.next_tower_bonus_levels > 0:
 		return "Варево уже готово — купите башню"
+	player.field.play_effect(&"hero_skill")
 	player.next_tower_bonus_levels = levels
 	player.hero_message = "Варево готово: следующая башня сразу %d-го уровня" % (1 + levels)
 	return ""

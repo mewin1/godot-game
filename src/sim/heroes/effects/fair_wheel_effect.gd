@@ -18,6 +18,7 @@ func activate(_sim: MatchSim, player: PlayerState) -> String:
 	while roll > weights[outcome]:
 		roll -= weights[outcome]
 		outcome += 1
+	player.field.play_effect(&"hero_skill")
 	match outcome:
 		0:
 			player.gold += gold

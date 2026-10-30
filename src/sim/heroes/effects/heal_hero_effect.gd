@@ -10,6 +10,7 @@ func activate(_sim: MatchSim, player: PlayerState) -> String:
 		return "Терем и так цел"
 	var healed: int = mini(amount, player.hero_max_hp - player.hero_hp)
 	player.hero_hp += healed
+	player.field.play_effect(&"hero_heal")
 	player.hero_message = "Пирожки! Терем +%d HP" % healed
 	return ""
 

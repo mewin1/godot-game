@@ -132,6 +132,10 @@ func _refresh_hero(sim: MatchSim, me: PlayerState) -> void:
 	var cost: int = me.get_skill_cost()
 	_skill_button.text = "%s · %d зол." % [skill.display_name, cost]
 	_skill_button.disabled = reason != "" or me.gold < cost or not me.is_alive
+	# Навык можно нажать — кнопка мягко «дышит», чтобы про неё не забывали.
+	var pulse: float = 0.85 + 0.15 * sin(_time * DANGER_PULSE_SPEED)
+	var brightness: float = pulse if not _skill_button.disabled else 1.0
+	_skill_button.modulate = Color(brightness, brightness, brightness, 1.0)
 	_skill_button.tooltip_text = "%s (%s)%s" % [skill.description, skill.get_timing_text(),
 			"\n" + reason if reason != "" else ""]
 

@@ -19,6 +19,7 @@ func on_hp_lost(sim: MatchSim, player: PlayerState) -> void:
 	for tower: TowerState in player.field.towers:
 		tower.level = mini(tower.level + 1, sim.config.max_tower_level)
 	player.field.mark_towers_changed()
+	player.field.play_effect(&"chest")
 	player.hero_message = "Кощей разбил сундук: башни +1 уровень!"
 	sim.hero_event.emit(player.index, player.hero_message)
 

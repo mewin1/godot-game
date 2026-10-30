@@ -9,7 +9,8 @@ signal mob_breached(mob: MobState)
 ## Башня ударила всех вокруг разом (пар бани, сказки кота) — для кольца на экране.
 signal tower_pulsed(tower: TowerState)
 ## Особое событие на поле для отображения: &"strike" (палица), &"silence" (башни опалены),
-## &"knockback" (леший отбросил моба).
+## &"knockback" (леший отбросил моба), &"heal" (знахарка), &"chest" (сундук Кощея),
+## &"hero_heal" (пирожки), &"hero_skill" (прочие навыки героя хозяина поля).
 signal effect_played(effect_id: StringName, mob: MobState)
 
 const MILLI: int = 1000
@@ -227,6 +228,11 @@ func damage_all_by_percent(percent: int) -> void:
 		if mob.is_alive():
 			mob.hp -= mob.hp * percent / 100
 	effect_played.emit(&"strike", null)
+
+
+## Сообщить отображению о событии героя на этом поле (без влияния на симуляцию).
+func play_effect(effect_id: StringName) -> void:
+	effect_played.emit(effect_id, null)
 
 
 ## Башни не стреляют ticks тиков (если уже молчат дольше — не укорачивает).

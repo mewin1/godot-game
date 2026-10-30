@@ -9,5 +9,6 @@ extends HeroEffect
 func activate(_sim: MatchSim, player: PlayerState) -> String:
 	for i: int in count:
 		player.army.temporary_mobs.append(mob)
+	player.field.play_effect(&"hero_skill")
 	player.hero_message = "Ватага: +%d «%s» в армию на эту волну" % [count, mob.display_name]
 	return ""
