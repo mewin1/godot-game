@@ -6,6 +6,7 @@ extends RefCounted
 static func resolve(incoming: StringName, statuses: Array[StringName],
 		rules: Array[ReactionData]) -> ReactionData:
 	for rule: ReactionData in rules:
-		if rule.incoming == incoming and statuses.has(rule.required):
+		if rule.incoming == incoming and statuses.size() >= rule.minimum_statuses \
+				and (rule.required == &"" or statuses.has(rule.required)):
 			return rule
 	return null

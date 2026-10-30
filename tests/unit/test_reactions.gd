@@ -77,3 +77,71 @@ func test_reaction_death_rewards_once_and_stun_changes_hash() -> void:
 	DivineCombat.hit(_field, tower, _mob, 100)
 	DivineCombat.hit(_field, tower, _mob, 100)
 	assert_eq(_field.pending_kill_gold, _mob.kill_reward)
+
+
+func test_ice_alone_slows_and_charge_coexists_without_reaction() -> void:
+	_mob.charge_ticks_left = 60
+	DivineCombat.hit(_field, _tower("rime"), _mob, 100)
+	assert_eq(_mob.hp, 900)
+	assert_eq(_mob.cold_ticks_left, 60)
+	assert_eq(_mob.current_speed(), _mob.speed * 80 / 100)
+	assert_eq(_mob.status_tags().size(), 2)
+
+
+func test_wet_ice_freezes_then_physical_shatters() -> void:
+	_mob.wet_ticks_left = 60
+	DivineCombat.hit(_field, _tower("rime"), _mob, 100)
+	assert_eq(_mob.wet_ticks_left, 0)
+	assert_eq(_mob.freeze_ticks_left, 30)
+	assert_eq(_mob.current_speed(), 0)
+	DivineCombat.hit(_field, _tower("bolt"), _mob, 100)
+	assert_eq(_mob.hp, 750)
+	assert_eq(_mob.freeze_ticks_left, 0)
+	assert_eq(_mob.stun_ticks_left, 8)
+
+
+func test_melt_consumes_burn_and_cold_without_new_status() -> void:
+	_mob.burn_ticks_left = 60
+	_mob.cold_ticks_left = 60
+	DivineCombat.hit(_field, _tower("rime"), _mob, 100)
+	assert_eq(_mob.hp, 850)
+	assert_eq(_mob.status_tags().size(), 0)
+
+
+func test_physical_bridges_charge_and_cold_but_single_status_has_no_bonus() -> void:
+	_mob.charge_ticks_left = 60
+	var tower: TowerState = _tower("bolt")
+	DivineCombat.hit(_field, tower, _mob, 100)
+	assert_eq(_mob.hp, 900)
+	_mob.cold_ticks_left = 60
+	DivineCombat.hit(_field, tower, _mob, 100)
+	assert_eq(_mob.hp, 760)
+
+
+func test_frozen_refresh_does_not_use_third_slot() -> void:
+	_mob.wet_ticks_left = 60
+	_mob.charge_ticks_left = 60
+	var tower: TowerState = _tower("rime")
+	DivineCombat.hit(_field, tower, _mob, 100)
+	DivineCombat.hit(_field, tower, _mob, 100)
+	assert_eq(_mob.status_tags().size(), 2)
+	assert_gt(_mob.freeze_ticks_left, 0)
+	assert_gt(_mob.charge_ticks_left, 0)
+
+
+func test_reactions_replay_with_same_seed_produces_same_hash() -> void:
+	var other: FieldState = FieldState.new(_config, 3, 81)
+	var target: MobState = MobState.create(_config.army_mob)
+	target.hp = 1000
+	target.max_hp = 1000
+	other.mobs.append(target)
+	for id_value: String in ["water", "rime", "bolt", "spark", "brazier"]:
+		var tower: TowerState = _tower(id_value)
+		var copy: TowerState = other.add_tower(tower.data, tower.anchor, 0)
+		DivineCombat.hit(_field, tower, _mob, 25)
+		DivineCombat.hit(other, copy, target, 25)
+		var first: StateHasher = StateHasher.new()
+		var second: StateHasher = StateHasher.new()
+		_field.add_to_hash(first)
+		other.add_to_hash(second)
+		assert_eq(first.value, second.value)

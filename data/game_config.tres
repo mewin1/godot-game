@@ -102,11 +102,23 @@
 [ext_resource type="Resource" path="res://data/reactions/steam.tres" id="reaction_steam"]
 [ext_resource type="Resource" path="res://data/reactions/roast.tres" id="reaction_roast"]
 
+[ext_resource type="Resource" path="res://data/reactions/melt.tres" id="reaction_melt"]
+[ext_resource type="Resource" path="res://data/reactions/freeze.tres" id="reaction_freeze"]
+[ext_resource type="Resource" path="res://data/reactions/shatter.tres" id="reaction_shatter"]
+[ext_resource type="Resource" path="res://data/reactions/execute.tres" id="reaction_execute"]
+
+[ext_resource type="Resource" path="res://data/towers/rime.tres" id="new_rime"]
+[ext_resource type="Resource" path="res://data/towers/glacier.tres" id="new_glacier"]
+[ext_resource type="Resource" path="res://data/towers/ice_lance.tres" id="new_ice_lance"]
+[ext_resource type="Resource" path="res://data/towers/bolt.tres" id="new_bolt"]
+[ext_resource type="Resource" path="res://data/towers/war_engine.tres" id="new_war_engine"]
+[ext_resource type="Resource" path="res://data/towers/war_rocket.tres" id="new_war_rocket"]
+
 [resource]
 script = ExtResource("1_script")
-reactions = Array[ExtResource("reaction_type")]([ExtResource("reaction_steam"), ExtResource("reaction_roast")])
+reactions = Array[ExtResource("reaction_type")]([ExtResource("reaction_steam"), ExtResource("reaction_roast"), ExtResource("reaction_melt"), ExtResource("reaction_freeze"), ExtResource("reaction_shatter"), ExtResource("reaction_execute")])
 board = ExtResource("2_ext")
-towers = Array[ExtResource("5_ext")]([ExtResource("new_spark"), ExtResource("new_thunder"), ExtResource("new_brazier"), ExtResource("new_furnace"), ExtResource("new_wind"), ExtResource("new_gale"), ExtResource("new_water")])
+towers = Array[ExtResource("5_ext")]([ExtResource("new_spark"), ExtResource("new_thunder"), ExtResource("new_brazier"), ExtResource("new_furnace"), ExtResource("new_wind"), ExtResource("new_gale"), ExtResource("new_water"), ExtResource("new_rime"), ExtResource("new_glacier"), ExtResource("new_ice_lance"), ExtResource("new_bolt"), ExtResource("new_war_engine"), ExtResource("new_war_rocket")])
 send_buffs = Array[ExtResource("6_ext")]([ExtResource("13_ext"), ExtResource("14_ext"), ExtResource("15_ext"), ExtResource("16_ext"), ExtResource("17_ext"), ExtResource("18_ext"), ExtResource("19_ext"), ExtResource("20_ext"), ExtResource("21_ext"), ExtResource("22_ext"), ExtResource("23_ext")])
 wave_mob = ExtResource("3_ext")
 army_mob = ExtResource("4_ext")

@@ -31,6 +31,9 @@ var heal_window_ticks: int = 0
 var heal_window_percent: int = 0
 ## Юнит злой армии (для отображения; HP уже учтено при создании).
 var is_angry: bool = false
+var cold_ticks_left: int = 0
+var cold_slow_percent: int = 0
+var freeze_ticks_left: int = 0
 var stun_ticks_left: int = 0
 var wet_ticks_left: int = 0
 var charges: int = 0
@@ -82,15 +85,21 @@ func apply_slow(percent: int, ticks: int) -> void:
 
 
 func current_speed() -> int:
-	if stun_ticks_left > 0:
+	if stun_ticks_left > 0 or freeze_ticks_left > 0:
 		return 0
-	return speed * (100 - maxi(slow_percent, wind_slow_percent) + wind_boost_percent) / 100
+	var cold: int = cold_slow_percent if cold_ticks_left > 0 else 0
+	return speed * (100 - maxi(maxi(slow_percent, cold), wind_slow_percent) \
+			+ wind_boost_percent) / 100
 
 
 ## Сдвигает моба по пути на один тик.
 func advance() -> void:
 	previous_progress = progress
 	progress += current_speed()
+	if freeze_ticks_left > 0:
+		freeze_ticks_left -= 1
+	if cold_ticks_left > 0:
+		cold_ticks_left -= 1
 	if stun_ticks_left > 0:
 		stun_ticks_left -= 1
 	if slow_ticks_left > 0:
@@ -108,12 +117,20 @@ func status_tags() -> Array[StringName]:
 		result.append(&"burn")
 	if charge_ticks_left > 0:
 		result.append(&"charge")
+	if freeze_ticks_left > 0:
+		result.append(&"frozen")
+	elif cold_ticks_left > 0:
+		result.append(&"cold")
 	return result
 
 
 ## Удаляет статус вместе с накопленной силой.
 func remove_status(tag: StringName) -> void:
 	match tag:
+		&"cold", &"frozen":
+			cold_ticks_left = 0
+			freeze_ticks_left = 0
+			cold_slow_percent = 0
 		&"wet":
 			wet_ticks_left = 0
 		&"burn":

@@ -9,3 +9,5 @@ extends Resource
 @export var damage_percent: int = 100
 @export var stun_ticks: int = 0
 @export var suppress_status: bool = false
+@export var minimum_statuses: int = 0
+@export var freeze_ticks: int = 0

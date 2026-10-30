@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="ReactionData" format=3]
+[ext_resource type="Script" path="res://src/sim/data/reaction_data.gd" id="1"]
+[resource]
+script = ExtResource("1")
+id = &"freeze"
+incoming = &"ice"
+required = &"wet"
+consume = Array[StringName]([&"wet", &"cold"])
+damage_percent = 100
+stun_ticks = 0
+freeze_ticks = 30
+suppress_status = true
+minimum_statuses = 0

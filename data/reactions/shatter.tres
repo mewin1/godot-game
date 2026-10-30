@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="ReactionData" format=3]
+[ext_resource type="Script" path="res://src/sim/data/reaction_data.gd" id="1"]
+[resource]
+script = ExtResource("1")
+id = &"shatter"
+incoming = &"physical"
+required = &"frozen"
+consume = Array[StringName]([&"frozen"])
+damage_percent = 150
+stun_ticks = 8
+freeze_ticks = 0
+suppress_status = false
+minimum_statuses = 0

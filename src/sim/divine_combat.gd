@@ -110,6 +110,8 @@ static func hit(field: FieldState, tower: TowerState, mob: MobState, damage: int
 		for status: StringName in reaction.consume:
 			mob.remove_status(status)
 		mob.stun_ticks_left = maxi(mob.stun_ticks_left, reaction.stun_ticks)
+		if reaction.freeze_ticks > 0 and mob.can_apply_status(&"frozen"):
+			mob.freeze_ticks_left = maxi(mob.freeze_ticks_left, reaction.freeze_ticks)
 		field.effect_played.emit(reaction.id, mob)
 	var was_burning: bool = mob.burn_ticks_left > 0
 	if was_burning:
@@ -133,6 +135,11 @@ static func hit(field: FieldState, tower: TowerState, mob: MobState, damage: int
 		var burn: int = maxi(1, field.get_tower_damage(tower) * percent / 100)
 		mob.burn_damage = maxi(mob.burn_damage, burn)
 		mob.burn_ticks_left = maxi(mob.burn_ticks_left, tower.data.burn_ticks)
+	if tower.data.cold_ticks > 0 and mob.is_alive() \
+			and (reaction == null or not reaction.suppress_status) \
+			and (mob.can_apply_status(&"cold") or mob.freeze_ticks_left > 0):
+		mob.cold_ticks_left = maxi(mob.cold_ticks_left, tower.data.cold_ticks)
+		mob.cold_slow_percent = maxi(mob.cold_slow_percent, tower.data.cold_slow_percent)
 	if tower.data.god == &"perun":
 		if field.config.chain_chance_percent < 0:
 			_charge(field, tower, mob, damage)

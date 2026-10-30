@@ -38,6 +38,12 @@ func refresh(state: IdolState, editable: bool, ticks_per_second: int = 20) -> vo
 ## Одинаковые отображаемые имена в идолах и карточках лавки.
 static func god_name(god: StringName) -> String:
 	match god:
+		&"ice":
+			return "Лёд"
+		&"war":
+			return "Бог войны"
+		&"curse":
+			return "Чернобог"
 		&"perun":
 			return "Перун"
 		&"svarog":

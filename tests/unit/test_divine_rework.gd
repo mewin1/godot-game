@@ -46,8 +46,8 @@ func _mob(at_progress: int = 3000) -> MobState:
 	return mob
 
 
-func test_current_content_has_four_powers_and_seven_towers() -> void:
-	assert_eq(_config.towers.size(), 7)
+func test_current_content_preserves_army_and_three_empty_idols() -> void:
+	assert_eq(_config.towers.size(), 13)
 	assert_eq(_config.army_base_units, 5)
 	assert_true(_config.school_bonuses.is_empty())
 	assert_eq(_player.field.idols.size(), 3)

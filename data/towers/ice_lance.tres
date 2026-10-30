@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="TowerData" format=3]
+[ext_resource type="Script" path="res://src/sim/data/tower_data.gd" id="1"]
+[resource]
+script = ExtResource("1")
+id = &"ice_lance"
+display_name = "Ледяное копьё"
+god = &"ice"
+school = &"ice"
+tags = Array[StringName]([&"ice"])
+tier = 3
+shape = Array[Vector2i]([Vector2i(0, 0), Vector2i(1, 0)])
+damage = 65
+cooldown_ticks = 36
+range_milli = 3200
+description = "Финишер: по горящей цели урон ×1.5, горение и холод поглощаются."
+cold_ticks = 40
+cold_slow_percent = 25

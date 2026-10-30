@@ -358,6 +358,7 @@ func add_to_hash(hasher: StateHasher) -> void:
 		hasher.add_many([mob.id, mob.hp, mob.progress, mob.slow_percent, mob.slow_ticks_left,
 				mob.shield_left, mob.heal_cooldown, mob.heal_window_ticks,
 				mob.heal_window_percent, mob.speed, mob.armor, mob.max_hp,
+				mob.cold_ticks_left, mob.cold_slow_percent, mob.freeze_ticks_left,
 				mob.stun_ticks_left, mob.sender_index, mob.wet_ticks_left, mob.charges, mob.charge_ticks_left, mob.burn_damage,
 				mob.burn_ticks_left, mob.burn_cooldown, mob.wind_slow_percent, mob.wind_boost_percent])
 		hasher.add_string(mob.data.id)
