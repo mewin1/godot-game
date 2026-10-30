@@ -304,3 +304,32 @@ func test_army_breach_gives_gold_to_owner() -> void:
 	victim.field.pending_breaches.append(mob)
 	sim._collect_field_results(victim)
 	assert_eq(owner.gold, gold_before + mob.breach_damage * _config.army_gold_per_hp)
+
+
+## Урон сверх оставшегося HP сохраняет тай-брейк, но не создаёт золото и урон армии.
+func test_breach_rewards_only_for_remaining_hp() -> void:
+	var sim: MatchSim = _make_match()
+	var defender: PlayerState = sim.players[0]
+	var sender: PlayerState = sim.players[1]
+	defender.hero_hp = 2
+	var gold_before: int = sender.gold
+	var data: MobData = _config.army_mob.duplicate() as MobData
+	data.breach_gold_to_sender = 7
+	for i: int in 3:
+		var mob: MobState = MobState.create(data)
+		mob.breach_damage = 3
+		mob.sender_index = 1
+		defender.field.pending_breaches.append(mob)
+	sim._collect_field_results(defender)
+	assert_eq(sender.army_damage_dealt, 2)
+	assert_eq(sender.gold - gold_before, 2 * _config.army_gold_per_hp + 7)
+	assert_eq(defender.hero_hp, -7, "сырой остаток сохранён для тай-брейка")
+	var fell_tick: int = defender.fell_tick
+	var late: MobState = MobState.create(data)
+	late.sender_index = 1
+	defender.field.pending_breaches.append(late)
+	sim.tick_count += 10
+	sim._collect_field_results(defender)
+	assert_eq(sender.army_damage_dealt, 2)
+	assert_eq(sender.gold - gold_before, 2 * _config.army_gold_per_hp + 7)
+	assert_eq(defender.fell_tick, fell_tick)

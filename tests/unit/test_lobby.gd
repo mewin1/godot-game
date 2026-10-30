@@ -273,3 +273,24 @@ func _skip_prep(sim: MatchSim) -> void:
 		if sim.phase != MatchSim.Phase.PREP:
 			return
 		sim.tick()
+
+
+func test_siege_rewards_use_each_attackers_actual_damage() -> void:
+	var sim: MatchSim = _make_siege_round()
+	_disable_bots(sim)
+	_remove_all_waves(sim)
+	var leader: PlayerState = sim.players[sim.siege_leader]
+	var first: PlayerState = sim.players[sim.siege_attackers[0]]
+	var second: PlayerState = sim.players[sim.siege_attackers[1]]
+	leader.hero_hp = 3
+	var first_gold: int = first.gold
+	var second_gold: int = second.gold
+	_add_breaches(sim, leader, 4, first.index)
+	_add_breaches(sim, leader, 10, second.index)
+	sim._collect_field_results(leader)
+	sim._pay_siege_rewards()
+	assert_eq(first.army_damage_dealt, 2)
+	assert_eq(second.army_damage_dealt, 1)
+	var reward_per_hp: int = _config.army_gold_per_hp + _config.siege_gold_per_hp
+	assert_eq(first.gold - first_gold, 2 * reward_per_hp)
+	assert_eq(second.gold - second_gold, reward_per_hp)

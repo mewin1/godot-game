@@ -6,7 +6,7 @@ extends RefCounted
 ## игра) логов не оставляют.
 ## События: match_start, round_start, command, wave_start, round_end, eliminated, match_end.
 
-const LOG_VERSION: int = 3
+const LOG_VERSION: int = 4
 
 var _sim: MatchSim
 var _path: String = ""
@@ -18,8 +18,6 @@ var _is_closed: bool = false
 var _kills: Array[int] = []
 var _kill_gold: Array[int] = []
 var _leaks: Array[int] = []
-## Урон героям соперников от армии игрока за раунд.
-var _hp_at_round_start: Array[int] = []
 
 
 ## source — откуда матч ("live" — человек, "bots" — прогон ботов); extra — любые поля в match_start.
@@ -30,7 +28,6 @@ func _init(sim: MatchSim, file_path: String, source: String, extra: Dictionary =
 		_kills.append(0)
 		_kill_gold.append(0)
 		_leaks.append(0)
-		_hp_at_round_start.append(player.hero_hp)
 		player.field.mob_killed.connect(_on_field_mob_killed.bind(player.index))
 		player.field.mob_breached.connect(_on_field_mob_breached.bind(player.index))
 	sim.round_started.connect(_on_sim_round_started)
@@ -150,7 +147,6 @@ func _on_sim_round_started(round_number: int) -> void:
 		_kills[player.index] = 0
 		_kill_gold[player.index] = 0
 		_leaks[player.index] = 0
-		_hp_at_round_start[player.index] = player.hero_hp
 	_write({"event": "round_start", "round": round_number, "tick": _sim.tick_count,
 			"opponents": _sim.opponent_of, "siege_leader": _sim.siege_leader,
 			"siege_attackers": _sim.siege_attackers, "ghost_target": _sim.ghost_target,
@@ -176,8 +172,8 @@ func _on_sim_round_finished(round_number: int) -> void:
 	var players: Array[Dictionary] = _alive_snapshots()
 	for snapshot: Dictionary in players:
 		var index: int = snapshot["player"]
-		var hp: int = snapshot["hp"]
-		snapshot["hp_lost"] = _hp_at_round_start[index] - hp
+		snapshot["hp_lost"] = _sim.players[index].hp_lost_this_round
+		snapshot["raw_breach_damage"] = _sim.players[index].raw_breach_damage
 		snapshot["kills"] = _kills[index]
 		snapshot["kill_gold"] = _kill_gold[index]
 		snapshot["leaks"] = _leaks[index]

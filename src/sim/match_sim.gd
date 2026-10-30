@@ -261,6 +261,8 @@ func _start_round(number: int) -> void:
 		player.field.calm_down()
 
 		player.army_damage_dealt = 0
+		player.hp_lost_this_round = 0
+		player.raw_breach_damage = 0
 		player.army.temporary_mobs.clear()
 		if number > 1:
 			player.shop.on_round_started()
@@ -401,13 +403,17 @@ func _collect_field_results(player: PlayerState) -> void:
 		var damage: int = mob.breach_damage * multiplier
 		if player.index == siege_leader and siege_attackers.has(mob.sender_index):
 			damage = _reduce_siege_damage(damage)
+		# Отрицательный остаток нужен тай-брейку, но за HP после смерти не платим.
+		var actual_damage: int = mini(maxi(0, player.hero_hp), damage)
 		player.hero_hp -= damage
-		if mob.sender_index >= 0:
+		player.hp_lost_this_round += actual_damage
+		player.raw_breach_damage += damage
+		if mob.sender_index >= 0 and actual_damage > 0:
 			var sender: PlayerState = players[mob.sender_index]
-			sender.gold += damage * config.army_gold_per_hp + mob.data.breach_gold_to_sender
-			sender.army_damage_dealt += damage
+			sender.gold += actual_damage * config.army_gold_per_hp + mob.data.breach_gold_to_sender
+			sender.army_damage_dealt += actual_damage
 		if player.index == siege_leader:
-			_record_siege_damage(mob.sender_index, damage)
+			_record_siege_damage(mob.sender_index, actual_damage)
 	field.clear_pending()
 	if player.hero_hp < hp_before:
 		player.notify_hp_lost(self)

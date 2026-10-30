@@ -50,7 +50,12 @@ def print_round_curve(matches: list[list[dict]]) -> None:
                 continue
             row = by_round[event["round"]]
             for player in event["players"]:
-                row["hp_lost"].append(player["hp_lost"])
+                # Старые логи включали урон после смерти в hp_lost.
+                raw = player.get("raw_breach_damage", player["hp_lost"])
+                actual = (player["hp_lost"] if "raw_breach_damage" in player else
+                          min(player["hp_lost"], max(0, player["hp"] + player["hp_lost"])))
+                row["hp_lost"].append(actual)
+                row["raw_damage"].append(raw)
                 row["lost_any"].append(1.0 if player["hp_lost"] > 0 else 0.0)
                 row["hp"].append(player["hp"])
                 row["income"].append(player["income"])
@@ -62,13 +67,13 @@ def print_round_curve(matches: list[list[dict]]) -> None:
                 row["leaks"].append(player["leaks"])
                 row["army_dmg"].append(player.get("army_damage", 0))
     print("\nПо раундам (среднее на живого игрока):")
-    header = ("раунд", "живых", "-HP", "теряли%", "HP", "золото_в_волну", "доход", "башен",
+    header = ("раунд", "живых", "-HP", "сыр.урон", "теряли%", "HP", "золото_в_волну", "доход", "башен",
               "ур.башен", "клеток", "армия", "магазин", "прорывов", "урон_армии")
     print(" ".join(f"{h:>8}" for h in header))
     for round_number in sorted(by_round):
         row = by_round[round_number]
         alive = len(row["hp"]) / max(1, len(matches))
-        values = (round_number, alive, mean(row["hp_lost"]), 100 * mean(row["lost_any"]),
+        values = (round_number, alive, mean(row["hp_lost"]), mean(row["raw_damage"]), 100 * mean(row["lost_any"]),
                   mean(row["hp"]), mean(row["unspent"]), mean(row["income"]),
                   mean(row["towers"]), mean(row["tower_levels"]), mean(row["cells"]),
                   mean(row["army"]), mean(row["shop"]), mean(row["leaks"]),

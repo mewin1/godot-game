@@ -55,3 +55,35 @@ func test_runner_same_seed_same_result_as_single_thread() -> void:
 	var parallel: Array[Dictionary] = BotMatchRunner.new(_config, 2, "").run(seeds, 2)
 	var single: Array[Dictionary] = BotMatchRunner.new(_config, 2, "").run(seeds, 1)
 	assert_eq(parallel, single, "потоки не влияют на результат")
+
+
+func test_logger_separates_actual_losses_from_overkill() -> void:
+	var path: String = ProjectSettings.globalize_path(TEST_LOG_DIR).path_join("losses.jsonl")
+	var sim: MatchSim = MatchSim.new(_config, 11, 2, 2)
+	var logger: MatchLogger = MatchLogger.new(sim, path, "test")
+	sim.start()
+	sim.players[0].hero_hp = 2
+	var mob: MobState = MobState.create(_config.army_mob)
+	mob.breach_damage = 10
+	mob.sender_index = 1
+	sim.players[0].field.pending_breaches.append(mob)
+	sim._collect_field_results(sim.players[0])
+	assert_eq(sim.players[0].hp_lost_this_round, 2)
+	assert_eq(sim.players[0].raw_breach_damage, 10)
+	logger._on_sim_round_finished(1)
+	logger.close()
+	var found: bool = false
+	# Читаем по событию: служебные события могут добавляться без смены смысла теста.
+	for line: String in FileAccess.get_file_as_string(path).split("\n", false):
+		var event: Dictionary = JSON.parse_string(line)
+		if event["event"] != "round_end":
+			continue
+		found = true
+		var row: Dictionary = event["players"][0]
+		var actual: float = row["hp_lost"]
+		var raw_damage: float = row["raw_breach_damage"]
+		var hp: float = row["hp"]
+		assert_eq(actual, 2.0)
+		assert_eq(raw_damage, 10.0)
+		assert_eq(hp, -8.0)
+	assert_true(found)

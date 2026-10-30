@@ -30,7 +30,8 @@ static func wind_width(field: FieldState, tower: TowerState) -> int:
 
 ## Длина потока с заговором идола, чарами и выбранным пробуждением.
 static func wind_length(field: FieldState, tower: TowerState) -> int:
-	var length: int = tower.data.wind_length_milli
+	var length: int = tower.data.wind_length_milli \
+			+ (tower.level - 1) * tower.data.wind_length_per_level_milli
 	var idol: IdolState = field.get_idol(tower.data.god)
 	if idol != null:
 		length += idol.wind_length_milli
@@ -56,7 +57,8 @@ static func apply_wind(field: FieldState, mob: MobState) -> void:
 				field.get_mob_position(mob)):
 			continue
 		mob.is_in_wind = true
-		var power: int = tower.data.wind_power_percent
+		var power: int = tower.data.wind_power_percent \
+				+ (tower.level - 1) * tower.data.wind_power_per_level
 		var idol: IdolState = field.get_idol(tower.data.god)
 		if idol != null:
 			power += idol.wind_power

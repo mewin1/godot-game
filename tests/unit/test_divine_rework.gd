@@ -431,3 +431,36 @@ func test_visual_interpolation_spans_all_accelerated_substeps() -> void:
 	field.end_visual_step()
 	assert_eq(mob.previous_progress, before)
 	assert_eq(mob.progress, before + 5 * mob.speed)
+
+
+func test_wind_levels_strengthen_control_but_gale_levels_strengthen_shots() -> void:
+	var wind: TowerState = _player.field.add_tower(_tower(&"wind"), Vector2i(2, 4), 2)
+	var mob: MobState = _mob(2000)
+	for level: int in range(1, 4):
+		wind.level = level
+		DivineCombat.apply_wind(_player.field, mob)
+		assert_eq(mob.wind_slow_percent, 30 + 5 * (level - 1))
+		assert_eq(DivineCombat.wind_length(_player.field, wind), 5000 + 1000 * (level - 1))
+	var gale: TowerState = TowerState.new()
+	gale.data = _tower(&"gale")
+	gale.level = 3
+	assert_eq(DivineCombat.wind_length(_player.field, gale), 4000)
+	assert_eq(_player.field.get_tower_damage(gale), 40)
+
+
+func test_upgraded_wind_keeps_control_after_reserve_merge_and_caps_power() -> void:
+	_offer(_tower(&"wind"))
+	assert_eq(_player.buy_to_reserve(0), "")
+	var wind: TowerState = _player.reserve[0]
+	_offer(_tower(&"wind"))
+	assert_eq(_player.buy_tower_into(0, wind.id), "")
+	assert_eq(wind.level, 2)
+	assert_eq(_player.place_from_reserve(wind.id, Vector2i(2, 4), 2), "")
+	var mob: MobState = _mob(2000)
+	DivineCombat.apply_wind(_player.field, mob)
+	assert_eq(mob.wind_slow_percent, 35)
+	var idol: IdolState = _player.field.idols[0]
+	idol.god = &"stribog"
+	idol.wind_power = 100
+	DivineCombat.apply_wind(_player.field, mob)
+	assert_eq(mob.wind_slow_percent, _config.max_wind_slow_percent)
