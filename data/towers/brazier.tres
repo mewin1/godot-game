@@ -15,3 +15,5 @@ cooldown_ticks = 20
 range_milli = 2400
 description = "Поджигает на 3 секунды. Ветер усиливает горение."
 burn_percent = 50
+
+tags = Array[StringName]([&"fire"])

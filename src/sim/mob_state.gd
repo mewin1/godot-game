@@ -31,6 +31,7 @@ var heal_window_ticks: int = 0
 var heal_window_percent: int = 0
 ## Юнит злой армии (для отображения; HP уже учтено при создании).
 var is_angry: bool = false
+var stun_ticks_left: int = 0
 var wet_ticks_left: int = 0
 var charges: int = 0
 var charge_ticks_left: int = 0
@@ -81,6 +82,8 @@ func apply_slow(percent: int, ticks: int) -> void:
 
 
 func current_speed() -> int:
+	if stun_ticks_left > 0:
+		return 0
 	return speed * (100 - maxi(slow_percent, wind_slow_percent) + wind_boost_percent) / 100
 
 
@@ -88,7 +91,41 @@ func current_speed() -> int:
 func advance() -> void:
 	previous_progress = progress
 	progress += current_speed()
+	if stun_ticks_left > 0:
+		stun_ticks_left -= 1
 	if slow_ticks_left > 0:
 		slow_ticks_left -= 1
 		if slow_ticks_left == 0:
 			slow_percent = 0
+
+
+## Активные статусы в стабильном порядке. Ветер не занимает слот.
+func status_tags() -> Array[StringName]:
+	var result: Array[StringName] = []
+	if wet_ticks_left > 0:
+		result.append(&"wet")
+	if burn_ticks_left > 0:
+		result.append(&"burn")
+	if charge_ticks_left > 0:
+		result.append(&"charge")
+	return result
+
+
+## Удаляет статус вместе с накопленной силой.
+func remove_status(tag: StringName) -> void:
+	match tag:
+		&"wet":
+			wet_ticks_left = 0
+		&"burn":
+			burn_ticks_left = 0
+			burn_damage = 0
+			burn_cooldown = 0
+		&"charge":
+			charge_ticks_left = 0
+			charges = 0
+
+
+## Третий статус не вытесняет два действующих; обновление разрешено.
+func can_apply_status(tag: StringName) -> bool:
+	var active: Array[StringName] = status_tags()
+	return active.has(tag) or active.size() < 2

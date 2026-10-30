@@ -98,8 +98,13 @@
 [ext_resource type="Resource" path="res://data/towers/water.tres" id="new_water"]
 [ext_resource type="Resource" path="res://data/rites/water_duration.tres" id="rite_water_duration"]
 
+[ext_resource type="Script" path="res://src/sim/data/reaction_data.gd" id="reaction_type"]
+[ext_resource type="Resource" path="res://data/reactions/steam.tres" id="reaction_steam"]
+[ext_resource type="Resource" path="res://data/reactions/roast.tres" id="reaction_roast"]
+
 [resource]
 script = ExtResource("1_script")
+reactions = Array[ExtResource("reaction_type")]([ExtResource("reaction_steam"), ExtResource("reaction_roast")])
 board = ExtResource("2_ext")
 towers = Array[ExtResource("5_ext")]([ExtResource("new_spark"), ExtResource("new_thunder"), ExtResource("new_brazier"), ExtResource("new_furnace"), ExtResource("new_wind"), ExtResource("new_gale"), ExtResource("new_water")])
 send_buffs = Array[ExtResource("6_ext")]([ExtResource("13_ext"), ExtResource("14_ext"), ExtResource("15_ext"), ExtResource("16_ext"), ExtResource("17_ext"), ExtResource("18_ext"), ExtResource("19_ext"), ExtResource("20_ext"), ExtResource("21_ext"), ExtResource("22_ext"), ExtResource("23_ext")])

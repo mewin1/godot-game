@@ -16,3 +16,5 @@ range_milli = 2700
 description = "Тяжёлый огненный удар: +25% по горящей цели."
 burn_percent = 20
 burning_target_bonus_percent = 25
+
+tags = Array[StringName]([&"fire"])

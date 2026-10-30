@@ -14,3 +14,5 @@ damage = 12
 cooldown_ticks = 12
 range_milli = 2500
 description = "Шанс цепи 20%, по мокрой цели 80%. Дополнительная цель получает 40% удара."
+
+tags = Array[StringName]([&"lightning"])

@@ -19,3 +19,5 @@ wet_ticks = 60
 wet_ticks_per_level = 20
 shop_weight = 5
 description = "Орошает группу: мокрота 3/4/5 с по уровням. Перун запускает цепь с шансом 80% вместо 20%. Сам по себе наносит мало урона."
+
+tags = Array[StringName]([&"water"])

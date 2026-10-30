@@ -99,20 +99,33 @@ static func hit(field: FieldState, tower: TowerState, mob: MobState, damage: int
 	if not mob.is_alive():
 		return
 	var was_shielded: bool = mob.shield_left > 0
+	var reaction: ReactionData = null
+	if not was_shielded:
+		for tag: StringName in tower.data.tags:
+			reaction = ReactionResolver.resolve(tag, mob.status_tags(), field.config.reactions)
+			if reaction != null:
+				break
+	if reaction != null:
+		damage = damage * reaction.damage_percent / 100
+		for status: StringName in reaction.consume:
+			mob.remove_status(status)
+		mob.stun_ticks_left = maxi(mob.stun_ticks_left, reaction.stun_ticks)
+		field.effect_played.emit(reaction.id, mob)
 	var was_burning: bool = mob.burn_ticks_left > 0
 	if was_burning:
 		damage += damage * tower.data.burning_target_bonus_percent / 100
 	field.deal_mob_damage(mob, damage)
 	if was_shielded:
 		return
-	if tower.data.wet_ticks > 0 and mob.is_alive():
+	if tower.data.wet_ticks > 0 and mob.is_alive() and mob.can_apply_status(&"wet"):
 		var duration: int = tower.data.wet_ticks \
 				+ (tower.level - 1) * tower.data.wet_ticks_per_level
 		var water_idol: IdolState = field.get_idol(tower.data.god)
 		if water_idol != null:
 			duration += water_idol.wet_ticks
 		mob.wet_ticks_left = maxi(mob.wet_ticks_left, duration)
-	if tower.data.burn_percent > 0 and mob.is_alive():
+	if tower.data.burn_percent > 0 and mob.is_alive() and mob.can_apply_status(&"burn") \
+			and (reaction == null or not reaction.suppress_status):
 		var percent: int = tower.data.burn_percent
 		var idol: IdolState = field.get_idol(tower.data.god)
 		if idol != null:

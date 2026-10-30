@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="ReactionData" format=3]
+[ext_resource type="Script" path="res://src/sim/data/reaction_data.gd" id="1"]
+[resource]
+script = ExtResource("1")
+id = &"steam"
+incoming = &"fire"
+required = &"wet"
+consume = Array[StringName]([&"wet", &"burn"])
+damage_percent = 125
+stun_ticks = 0
+suppress_status = true

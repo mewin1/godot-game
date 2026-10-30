@@ -5,6 +5,7 @@ extends Resource
 
 @export_group("Контент")
 @export var board: BoardLayout
+@export var reactions: Array[ReactionData] = []
 @export var towers: Array[TowerData] = []
 @export var rites: Array[RiteData] = []
 @export var rite_offer_percent: int = 30
