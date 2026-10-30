@@ -394,7 +394,7 @@ func _check_discover(tower: TowerState) -> void:
 	var max_tier: int = 1
 	for data: TowerData in _config.towers:
 		max_tier = maxi(max_tier, data.tier)
-	var tier: int = mini(shop.level + 1, max_tier)
+	var tier: int = mini(shop.level + _config.discover_tier_offset, max_tier)
 	var pool: Array[TowerData] = []
 	for data: TowerData in _config.towers:
 		if data.tier == tier:
