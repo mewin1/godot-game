@@ -68,7 +68,42 @@ func execute(command: SandboxCommand) -> String:
 			_towers.clear()
 			_mobs.clear()
 			_rebuild()
+		SandboxCommand.Action.MOVE:
+			var tower: TowerState = field.get_tower(command.tower_id)
+			if tower == null or not field.move_tower(tower, command.cell, command.rotation):
+				return "Башня здесь не помещается"
+			_save_tower_layout()
+		SandboxCommand.Action.ROTATE:
+			var tower: TowerState = field.get_tower(command.tower_id)
+			if tower == null:
+				return "Нет такой башни"
+			var rotated: bool = false
+			var offsets: Array[Vector2i] = [Vector2i.ZERO, Vector2i.UP, Vector2i.RIGHT,
+					Vector2i.DOWN, Vector2i.LEFT]
+			for offset: Vector2i in offsets:
+				if field.move_tower(tower, tower.anchor + offset,
+						(tower.rotation + 1) % TowerState.ROTATIONS):
+					rotated = true
+					break
+			if not rotated:
+				return "Для поворота не хватает места"
+			_save_tower_layout()
+		SandboxCommand.Action.REMOVE_MOB:
+			if not _mobs.is_empty():
+				_mobs.remove_at(_mobs.size() - 1)
+			_rebuild()
 	return ""
+
+
+## Число целей в расстановке, включая погибших в текущем запуске.
+func mob_count() -> int:
+	return _mobs.size()
+
+
+func _save_tower_layout() -> void:
+	_towers.clear()
+	for tower: TowerState in field.towers:
+		_towers.append(_copy_tower(tower))
 
 
 ## Цель можно осмотреть по id и после одиночного смертельного удара, до следующего тика.

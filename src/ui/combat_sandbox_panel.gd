@@ -1,38 +1,28 @@
 class_name CombatSandboxPanel
 extends Control
-## Админская песочница: свободная расстановка, настоящие тики и ручные попадания.
+## Простая песочница: семь вкладок, перетаскивание построек, число целей и запуск.
 
 var sandbox: CombatSandbox
-var _view: FieldView
-var _tower: OptionButton
-var _level: SpinBox
-var _rotation: OptionButton
-var _enchant: OptionButton
-var _awaken: OptionButton
-var _mob: OptionButton
-var _mob_types: Array[MobData] = []
-var _hp: SpinBox
-var _stationary: CheckBox
-var _auto: CheckBox
-var _mode: OptionButton
-var _target: OptionButton
-var _inspector: Label
-var _metrics: Label
-var _journal: Label
-var _notice: Label
+var _view: SandboxFieldView
+var _tabs: TabBar
+var _catalog: SandboxCatalog
+var _cards: Array[OfferCard] = []
 var _play: Button
-var _prediction: Label
-var _example: OptionButton
+var _minus: Button
+var _count: Label
+var _summary: Label
+var _notice: Label
 var _running: bool = false
 var _elapsed: float = 0.0
-var _selected_tower: int = 0
-var _selected_mob: int = 0
 
 
 func _ready() -> void:
 	ScreenFit.apply(get_window())
 	sandbox = CombatSandbox.new(load("res://data/game_config.tres") as GameConfig)
 	_build_ui()
+	for index: int in 3:
+		_add_mob()
+	_show_god(0)
 	_refresh()
 
 
@@ -41,92 +31,64 @@ func _build_ui() -> void:
 	add_child(margin)
 	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	for side: String in ["left", "right", "top", "bottom"]:
-		margin.add_theme_constant_override("margin_" + side, 12)
+		margin.add_theme_constant_override("margin_" + side, 16)
+	var main: VBoxContainer = VBoxContainer.new()
+	main.add_theme_constant_override("separation", 10)
+	margin.add_child(main)
+	var header: HBoxContainer = HBoxContainer.new()
+	main.add_child(header)
+	var title: Label = _label(header, "Песочница боя", 28)
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_button(header, "В меню", _back)
+	var actions: HBoxContainer = HBoxContainer.new()
+	main.add_child(actions)
+	_button(actions, "+1 моб", _add_mob)
+	_minus = _button(actions, "−1 моб", _remove_mob)
+	_count = _label(actions, "", 20)
+	_count.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_play = _button(actions, "Запуск ▶", _toggle)
+	_play.custom_minimum_size.x = 220
+	_play.theme_type_variation = &"AccentButton"
+	_label(main, "Постройки", 22)
+	_tabs = TabBar.new()
+	_tabs.add_theme_font_size_override("font_size", 18)
+	_tabs.scrolling_enabled = false
+	for god: StringName in sandbox.config.gods:
+		_tabs.add_tab(IdolSlot.god_name(god))
+	_tabs.tab_changed.connect(_show_god)
+	main.add_child(_tabs)
 	var body: HBoxContainer = HBoxContainer.new()
-	margin.add_child(body)
-	var controls: VBoxContainer = VBoxContainer.new()
-	controls.custom_minimum_size.x = 430
-	body.add_child(controls)
-	_label(controls, "Песочница боя · без золота и драфта", 23)
-	_button(controls, "В меню", _back)
-	_mode = _options(controls, ["ЛКМ: поставить башню", "ЛКМ по дороге: поставить юнита",
-			"ЛКМ: выбрать башню / цель", "ЛКМ: удалить башню"])
-	_tower = OptionButton.new()
-	controls.add_child(_tower)
-	for data: TowerData in sandbox.config.towers:
-		_tower.add_item("%s · %s" % [IdolSlot.god_name(data.god), data.display_name])
-	var row: HBoxContainer = HBoxContainer.new()
-	controls.add_child(row)
-	_label(row, "Уровень", 16)
-	_level = _spin(row, 1, sandbox.config.max_tower_level, 1)
-	_rotation = _options(row, ["↑ 0°", "→ 90°", "↓ 180°", "← 270°"])
-	_enchant = _options(controls, ["Чары: нет", "Чары: сила", "Чары: ритм", "Чары: дальность"])
-	_awaken = _options(controls, ["Пробуждение: нет", "Пробуждение: размах", "Пробуждение: сила"])
-	_label(controls, "Юниты: любые ресурсы из data/mobs", 16)
-	_mob = OptionButton.new()
-	controls.add_child(_mob)
-	var names: PackedStringArray = DirAccess.get_files_at("res://data/mobs")
-	names.sort()
-	for name: String in names:
-		if not name.ends_with(".tres"):
-			continue
-		var data: MobData = load("res://data/mobs/" + name) as MobData
-		if data != null:
-			_mob_types.append(data)
-			_mob.add_item(data.display_name)
-	row = HBoxContainer.new()
-	controls.add_child(row)
-	_label(row, "HP (0 = из ресурса)", 16)
-	_hp = _spin(row, 0, 1000000, 0)
-	_stationary = CheckBox.new()
-	_stationary.text = "Неподвижные цели"
-	_stationary.button_pressed = true
-	controls.add_child(_stationary)
-	_button(controls, "Добавить 5 целей в начале дороги", _pack)
-	_target = OptionButton.new()
-	controls.add_child(_target)
-	_target.item_selected.connect(_choose_target)
-	_button(controls, "Выбранная башня → удар по выбранной цели", _strike)
-	_label(controls, "Ручной удар игнорирует дальность и перезарядку.\n" +
-			"Ветер работает при ходе времени.", 14)
-	_auto = CheckBox.new()
-	_auto.text = "Автострельба (обычные радиусы и темп)"
-	_auto.button_pressed = true
-	controls.add_child(_auto)
-	row = HBoxContainer.new()
-	controls.add_child(row)
-	_play = _button(row, "▶ Пуск", _toggle)
-	_button(row, "+1 тик", _advance.bind(1))
-	_button(row, "+1 сек", _advance.bind(sandbox.config.ticks_per_second))
-	row = HBoxContainer.new()
-	controls.add_child(row)
-	_button(row, "Повторить расстановку", _reset)
-	_button(row, "Очистить всё", _clear)
-	_example = _options(controls, ["Зараза: вода и проклятие в один тик",
-			"Зараза: проклятие раньше воды", "Зараза: вода на секунду раньше"])
-	_button(controls, "Загрузить пример Заразы", _load_example)
-	_notice = _label(controls, "", 15)
-	_notice.custom_minimum_size.y = 48
-	var right: VBoxContainer = VBoxContainer.new()
-	right.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	body.add_child(right)
-	_view = FieldView.new()
-	_view.custom_minimum_size = Vector2(450, 320)
+	body.add_theme_constant_override("separation", 16)
+	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	main.add_child(body)
+	_catalog = SandboxCatalog.new()
+	_catalog.custom_minimum_size.x = 300
+	_catalog.add_theme_constant_override("separation", 12)
+	_catalog.tower_returned.connect(_remove_tower)
+	body.add_child(_catalog)
+	for index: int in 3:
+		var card: OfferCard = OfferCard.new()
+		card.is_free_catalog = true
+		card.mouse_filter = Control.MOUSE_FILTER_PASS
+		card.custom_minimum_size = Vector2(300, 160)
+		_catalog.add_child(card)
+		_cards.append(card)
+	_label(_catalog, "Перетащите постройку на поле.\nПКМ — поворот.\nВерните сюда, чтобы убрать.", 16)
+	_view = SandboxFieldView.new()
+	_view.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_view.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_view.cell_tapped.connect(_on_cell)
-	_view.interpolation = 1.0
+	_view.custom_minimum_size = Vector2(450, 400)
+	_view.can_edit = true
 	_view.show_target_labels = true
-	right.add_child(_view)
-	_inspector = _label(right, "", 16)
-	_inspector.custom_minimum_size.y = 78
-	_prediction = _label(right, "", 15)
-	_prediction.custom_minimum_size.y = 110
-	_metrics = _label(right, "", 16)
-	_metrics.custom_minimum_size.y = 48
-	_journal = _label(right, "", 14)
-	_journal.custom_minimum_size.y = 150
-	_label(right, "Зараза: взрыв → ближайший МОКРЫЙ сосед до 1,5 клетки.\n" +
-			"Смерть носителя до взрыва прерывает перенос. Порядок: вода, затем проклятие.", 15)
+	_view.interpolation = 1.0
+	_view.sandbox_command_requested.connect(_on_field_command)
+	_view.tower_tapped.connect(_select_tower)
+	body.add_child(_view)
+	_summary = _label(main, "", 17)
+	_summary.max_lines_visible = 2
+	_summary.custom_minimum_size.y = 48
+	_notice = _label(main, "", 15)
+	_notice.custom_minimum_size.y = 24
 
 
 func _process(delta: float) -> void:
@@ -134,216 +96,121 @@ func _process(delta: float) -> void:
 		return
 	_elapsed += delta
 	var interval: float = 1.0 / sandbox.config.ticks_per_second
-	var count: int = mini(5, int(_elapsed / interval))
-	if count > 0:
-		_elapsed -= count * interval
-		_step(count)
-
-
-func _on_cell(cell: Vector2i) -> void:
-	_running = false
-	var tower: TowerState = sandbox.field.get_tower_at(cell)
-	if _mode.selected == 2:
-		if tower != null:
-			_selected_tower = tower.id
-		for mob: MobState in sandbox.field.mobs:
-			if sandbox.field.layout.path_cells[mob.progress / FieldState.MILLI] == cell:
-				_selected_mob = mob.id
+	var ticks: int = mini(5, int(_elapsed / interval))
+	if ticks > 0:
+		_elapsed -= ticks * interval
+		var command: SandboxCommand = SandboxCommand.new(SandboxCommand.Action.STEP)
+		command.ticks = ticks
+		sandbox.execute(command)
+		if sandbox.field.is_wave_done():
+			_running = false
 		_refresh()
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_DRAG_BEGIN:
+		_running = false
+		if _play != null:
+			_refresh()
+
+
+func _input(event: InputEvent) -> void:
+	var button: InputEventMouseButton = event as InputEventMouseButton
+	if button == null or not button.pressed or button.button_index != MOUSE_BUTTON_RIGHT:
 		return
-	var command: SandboxCommand
-	match _mode.selected:
-		0:
-			command = SandboxCommand.new(SandboxCommand.Action.TOWER)
-			command.tower = sandbox.config.towers[_tower.selected]
-			command.cell = cell
-			command.level = int(_level.value)
-			command.rotation = _rotation.selected
-			command.enchantment = -1 if _enchant.selected == 0 else (
-					RiteData.Effect.ENCHANT_DAMAGE + _enchant.selected - 1)
-			command.awakening = -1 if _awaken.selected == 0 else (
-					RiteData.Effect.AWAKEN_WIDE + _awaken.selected - 1)
-		1:
-			var index: int = sandbox.field.get_active_path().find(cell)
-			if index < 0:
-				_notice.text = "Юнита ставим на дорогу"
-				return
-			command = _mob_command(index * FieldState.MILLI)
-		3:
-			command = SandboxCommand.new(SandboxCommand.Action.REMOVE)
-			command.tower_id = tower.id if tower != null else 0
-	_send(command)
-	if command.action == SandboxCommand.Action.TOWER and _notice.text == "":
-		_selected_tower = sandbox.field.towers[-1].id
+	if not get_viewport().gui_is_dragging():
+		return
+	var value: Variant = get_viewport().gui_get_drag_data()
+	if value is DragPayload:
+		var payload: DragPayload = value
+		payload.rotate_preview()
+		get_viewport().set_input_as_handled()
+
+
+func _show_god(index: int) -> void:
+	if _cards.is_empty():
+		return
+	var god: StringName = sandbox.config.gods[index]
+	var choices: Array[TowerData] = []
+	for data: TowerData in sandbox.config.towers:
+		if data.god == god:
+			choices.append(data)
+	choices.sort_custom(func(a: TowerData, b: TowerData) -> bool: return a.tier < b.tier)
+	for card_index: int in _cards.size():
+		var card: OfferCard = _cards[card_index]
+		card.show_offer(choices[card_index])
+		card.offer_index = sandbox.config.towers.find(choices[card_index])
+
+
+func _add_mob() -> void:
+	_running = false
+	var command: SandboxCommand = SandboxCommand.new(SandboxCommand.Action.MOB)
+	command.mob = sandbox.config.training_mob
+	command.progress = 3000 + sandbox.mob_count() * 500
+	sandbox.execute(command)
+	sandbox.execute(SandboxCommand.new(SandboxCommand.Action.RESET))
+	_view.selected_tower_id = 0
+	_notice.text = ""
 	_refresh()
 
 
-func _mob_command(progress: int) -> SandboxCommand:
-	var command: SandboxCommand = SandboxCommand.new(SandboxCommand.Action.MOB)
-	command.mob = _mob_types[_mob.selected]
-	command.progress = progress
-	command.hp = int(_hp.value)
-	command.stationary = _stationary.button_pressed
-	return command
-
-
-func _pack() -> void:
+func _remove_mob() -> void:
 	_running = false
-	for index: int in 5:
-		_send(_mob_command(1000 + index * 500))
-
-
-func _strike() -> void:
-	_running = false
-	var command: SandboxCommand = SandboxCommand.new(SandboxCommand.Action.STRIKE)
-	command.tower_id = _selected_tower
-	command.mob_id = _selected_mob
-	_send(command)
-
-
-func _choose_target(index: int) -> void:
-	_selected_mob = _target.get_item_id(index)
+	sandbox.execute(SandboxCommand.new(SandboxCommand.Action.REMOVE_MOB))
+	_view.selected_tower_id = 0
+	_notice.text = ""
 	_refresh()
 
 
 func _toggle() -> void:
-	_running = not _running
-	_elapsed = 0.0
+	if _running:
+		_running = false
+	else:
+		sandbox.execute(SandboxCommand.new(SandboxCommand.Action.RESET))
+		_view.selected_tower_id = 0
+		_elapsed = 0.0
+		_running = true
+	_notice.text = ""
 	_refresh()
 
 
-func _advance(ticks: int) -> void:
+func _on_field_command(command: SandboxCommand) -> void:
 	_running = false
-	_step(ticks)
-
-
-func _step(ticks: int) -> void:
-	var command: SandboxCommand = SandboxCommand.new(SandboxCommand.Action.STEP)
-	command.ticks = ticks
-	command.automatic_fire = _auto.button_pressed
-	_send(command)
-
-
-func _reset() -> void:
-	_running = false
-	_selected_tower = 0
-	_selected_mob = 0
-	_send(SandboxCommand.new(SandboxCommand.Action.RESET))
-
-
-func _clear() -> void:
-	_running = false
-	_selected_tower = 0
-	_selected_mob = 0
-	_send(SandboxCommand.new(SandboxCommand.Action.CLEAR))
-
-
-func _send(command: SandboxCommand) -> void:
 	_notice.text = sandbox.execute(command)
 	_refresh()
 
 
-## Готовый эксперимент: две мокрые мишени и один заразный заряд, автострельба отключена.
-func infection_example(variant: int = 0) -> void:
-	_clear()
-	_auto.button_pressed = false
-	for id: StringName in [&"water", &"hex"]:
-		var command: SandboxCommand = SandboxCommand.new(SandboxCommand.Action.TOWER)
-		command.tower = load("res://data/towers/%s.tres" % id) as TowerData
-		command.cell = Vector2i(2, 5) if id == &"water" else Vector2i(0, 5)
-		_send(command)
-	for index: int in 2:
-		var command: SandboxCommand = SandboxCommand.new(SandboxCommand.Action.MOB)
-		command.mob = sandbox.config.training_mob
-		command.progress = 3000 + index * 500
-		_send(command)
-	if variant == 1:
-		_selected_tower = 2
-		_selected_mob = 1
-		_strike()
-	for id: int in [1, 2]:
-		var command: SandboxCommand = SandboxCommand.new(SandboxCommand.Action.STRIKE)
-		command.tower_id = 1
-		command.mob_id = id
-		_send(command)
-	if variant == 2:
-		_step(sandbox.config.ticks_per_second)
-	_selected_tower = 2
-	_selected_mob = 1
-	if variant != 1:
-		_strike()
-	match variant:
-		0: _notice.text = "Обе цели мокрые. Нажмите +1 сек трижды и осмотрите #2."
-		1: _notice.text = "Проклятие наложено раньше воды. Заразность не появилась."
-		2: _notice.text = "Мокрота на секунду раньше проклятия: без обновления сосед высохнет."
+func _select_tower(id: int) -> void:
+	_view.selected_tower_id = id
+
+
+func _remove_tower(id: int) -> void:
+	_running = false
+	var command: SandboxCommand = SandboxCommand.new(SandboxCommand.Action.REMOVE)
+	command.tower_id = id
+	_notice.text = sandbox.execute(command)
+	_view.selected_tower_id = 0
 	_refresh()
 
 
-func _load_example() -> void:
-	infection_example(_example.selected)
-
-
 func _refresh() -> void:
-	_view.show_field(sandbox.field, sandbox.config, "ЛКМ: " + _mode.get_item_text(_mode.selected))
-	_view.selected_tower_id = _selected_tower
-	_play.text = "Ⅱ Пауза" if _running else "▶ Пуск"
-	_target.clear()
-	if sandbox.find_mob(_selected_mob) == null:
-		_selected_mob = 0
-	for mob: MobState in sandbox.field.mobs:
-		_target.add_item("#%d · %s · HP %d/%d" % [mob.id, mob.data.display_name,
-				maxi(0, mob.hp), mob.max_hp], mob.id)
-		if _selected_mob == 0:
-			_selected_mob = mob.id
-		if mob.id == _selected_mob:
-			_target.select(_target.item_count - 1)
-	var tower: TowerState = sandbox.field.get_tower(_selected_tower)
-	var mob: MobState = sandbox.find_mob(_selected_mob)
-	_view.selected_mob_id = _selected_mob
-	_inspector.text = "Башня: " + ("выберите в режиме осмотра" if tower == null else
-			"#%d %s ур.%d" % [tower.id, tower.data.display_name, tower.level])
-	if mob != null:
-		_inspector.text += "\nЦель #%d · HP %d/%d · броня %d · щит %d\n%s" % [
-				mob.id, maxi(0, mob.hp), mob.max_hp, mob.armor, mob.shield_left, _statuses(mob)]
-	else:
-		_inspector.text += "\nЦель погибла/ушла или ещё не выбрана"
-	_prediction.text = ReactionInspector.hit_hint(sandbox.field, tower, mob)
-	var curse: String = ReactionInspector.curse_hint(sandbox.field, mob)
-	if curse != "":
-		_prediction.text += "\n" + curse
+	_view.show_field(sandbox.field, sandbox.config, "Поле боя")
+	_count.text = "Мобов: %d" % sandbox.mob_count()
+	_minus.disabled = sandbox.mob_count() == 0
+	_play.text = "Стоп Ⅱ" if _running else "Запуск ▶"
 	var damage: int = 0
-	for value: int in sandbox.field.battle_report.damage_by_kind.values():
-		damage += value
-	_metrics.text = "Тик %d · урон %d · убито %d\n%s" % [sandbox.field.wave_tick,
-			damage, sandbox.field.battle_report.killed,
+	for amount: int in sandbox.field.battle_report.damage_by_kind.values():
+		damage += amount
+	_summary.text = "Урон: %d · Убито: %d · Переносов проклятия: %d\n%s" % [damage,
+			sandbox.field.battle_report.killed, sandbox.field.battle_report.curse_transfers,
 			ReactionGuide.battle_report(sandbox.config, sandbox.field.reaction_counts)]
-	_journal.text = "СОБЫТИЯ · последние 6\n" + "\n".join(sandbox.journal.slice(
-			maxi(0, sandbox.journal.size() - 6)))
-
-
-func _statuses(mob: MobState) -> String:
-	var parts: PackedStringArray = []
-	for pair: Array in [["мокрота", mob.wet_ticks_left], ["горение", mob.burn_ticks_left],
-			["заряд", mob.charge_ticks_left], ["холод", mob.cold_ticks_left],
-			["заморозка", mob.freeze_ticks_left], ["стан", mob.stun_ticks_left]]:
-		var ticks: int = pair[1]
-		if ticks > 0:
-			parts.append("%s %.2fс" % [pair[0], float(ticks) / sandbox.config.ticks_per_second])
-	if mob.burn_ticks_left > 0:
-		parts.append("огонь %d/с" % mob.burn_damage)
-	if mob.curse_ticks_left > 0:
-		parts.append("Проклятие %d через %.2fс · заразное: %s" % [mob.curse_damage,
-				float(mob.curse_ticks_left) / sandbox.config.ticks_per_second,
-				"да" if mob.is_contagious else "нет"])
-	return "Без статусов" if parts.is_empty() else " · ".join(parts)
 
 
 func _button(parent: Node, title: String, callback: Callable) -> Button:
 	var button: Button = Button.new()
 	button.text = title
-	button.custom_minimum_size.y = 32
-	button.add_theme_font_size_override("font_size", 15)
-	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	button.custom_minimum_size = Vector2(130, 44)
+	button.add_theme_font_size_override("font_size", 18)
 	button.pressed.connect(callback)
 	parent.add_child(button)
 	return button
@@ -352,30 +219,10 @@ func _button(parent: Node, title: String, callback: Callable) -> Button:
 func _label(parent: Node, title: String, font_size: int) -> Label:
 	var label: Label = Label.new()
 	label.text = title
-	label.add_theme_font_size_override("font_size", font_size)
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	if parent is HBoxContainer:
-		label.custom_minimum_size.x = 160
+	label.add_theme_font_size_override("font_size", font_size)
 	parent.add_child(label)
 	return label
-
-
-func _options(parent: Node, titles: Array[String]) -> OptionButton:
-	var options: OptionButton = OptionButton.new()
-	options.add_theme_font_size_override("font_size", 16)
-	for title: String in titles:
-		options.add_item(title)
-	parent.add_child(options)
-	return options
-
-
-func _spin(parent: Node, minimum: int, maximum: int, initial: int) -> SpinBox:
-	var spin: SpinBox = SpinBox.new()
-	spin.min_value = minimum
-	spin.max_value = maximum
-	spin.value = initial
-	parent.add_child(spin)
-	return spin
 
 
 func _back() -> void:

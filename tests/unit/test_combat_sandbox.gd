@@ -78,3 +78,38 @@ func test_invalid_placement_does_not_add_tower_and_clear_removes_blueprints() ->
 	_sandbox.execute(SandboxCommand.new(SandboxCommand.Action.RESET))
 	assert_true(_sandbox.field.towers.is_empty())
 	assert_true(_sandbox.field.mobs.is_empty())
+
+
+func test_move_and_rotate_survive_restart_without_changing_tower_count() -> void:
+	var add: SandboxCommand = SandboxCommand.new(SandboxCommand.Action.TOWER)
+	add.tower = load("res://data/towers/hex.tres") as TowerData
+	add.cell = Vector2i(2, 5)
+	assert_eq(_sandbox.execute(add), "")
+	var move: SandboxCommand = SandboxCommand.new(SandboxCommand.Action.MOVE)
+	move.tower_id = _sandbox.field.towers[0].id
+	move.cell = Vector2i(2, 4)
+	move.rotation = 1
+	assert_eq(_sandbox.execute(move), "")
+	var rotate: SandboxCommand = SandboxCommand.new(SandboxCommand.Action.ROTATE)
+	rotate.tower_id = move.tower_id
+	assert_eq(_sandbox.execute(rotate), "")
+	_sandbox.execute(SandboxCommand.new(SandboxCommand.Action.RESET))
+	assert_eq(_sandbox.field.towers.size(), 1)
+	assert_eq(_sandbox.field.towers[0].anchor, Vector2i(2, 4))
+	assert_eq(_sandbox.field.towers[0].rotation, 2)
+
+
+func test_remove_mob_updates_restart_setup_and_stops_at_zero() -> void:
+	var add: SandboxCommand = SandboxCommand.new(SandboxCommand.Action.MOB)
+	add.mob = _sandbox.config.training_mob
+	_sandbox.execute(add)
+	_sandbox.execute(add)
+	assert_eq(_sandbox.mob_count(), 2)
+	_sandbox.execute(SandboxCommand.new(SandboxCommand.Action.REMOVE_MOB))
+	assert_eq(_sandbox.mob_count(), 1)
+	assert_eq(_sandbox.field.mobs.size(), 1)
+	_sandbox.execute(SandboxCommand.new(SandboxCommand.Action.REMOVE_MOB))
+	_sandbox.execute(SandboxCommand.new(SandboxCommand.Action.REMOVE_MOB))
+	_sandbox.execute(SandboxCommand.new(SandboxCommand.Action.RESET))
+	assert_eq(_sandbox.mob_count(), 0)
+	assert_true(_sandbox.field.mobs.is_empty())

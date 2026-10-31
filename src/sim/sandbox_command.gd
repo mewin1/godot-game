@@ -2,7 +2,7 @@ class_name SandboxCommand
 extends RefCounted
 ## Ввод отдельной песочницы. Команды не поступают в настоящий матч.
 
-enum Action { TOWER, MOB, REMOVE, STRIKE, STEP, RESET, CLEAR }
+enum Action { TOWER, MOB, REMOVE, STRIKE, STEP, RESET, CLEAR, MOVE, ROTATE, REMOVE_MOB }
 
 var action: Action
 var tower: TowerData

@@ -21,6 +21,7 @@ var is_active: bool = true
 var ticks_per_second: int = 20
 var tower_cost: int = 6
 var is_gift: bool = false
+var is_free_catalog: bool = false
 var rite_player: PlayerState
 
 var _press_position: Vector2 = Vector2.ZERO
@@ -164,6 +165,8 @@ func _draw() -> void:
 	var caption: String = ""
 	if not is_reserve_slot:
 		caption = "Подарок" if is_gift else "%d зол. · %s" % [tower_cost, IdolSlot.god_name(data.god)]
+		if is_free_catalog:
+			caption = "Перетащите на поле"
 	elif stored_tower != null and stored_tower.enchantment >= 0:
 		caption = "Чары"
 	draw_string(font, Vector2(6, size.y - 6), caption, HORIZONTAL_ALIGNMENT_LEFT,
