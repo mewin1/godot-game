@@ -27,6 +27,8 @@ var path_length: int = 0
 var towers: Array[TowerState] = []
 var mobs: Array[MobState] = []
 var wave_tick: int = 0
+## Только наблюдение: счётчики не участвуют в исходе боя и не входят в хэш.
+var reaction_counts: Dictionary[StringName, int] = {}
 var idols: Array[IdolState] = []
 ## Время волны вышло: мобы бегут быстрее (см. GameConfig.wave_enrage_speed_percent).
 var is_enraged: bool = false
@@ -248,6 +250,7 @@ func roll_chance(percent: int) -> bool:
 
 
 func start_wave() -> void:
+	reaction_counts.clear()
 	wave_tick = 0
 	is_enraged = false
 	silence_ticks_left = 0
@@ -769,3 +772,9 @@ func begin_visual_step() -> void:
 func end_visual_step() -> void:
 	for mob: MobState in mobs:
 		mob.previous_progress = mob.visual_start_progress
+
+
+## Регистрирует настоящее срабатывание для отчёта и отображения.
+func trigger_reaction(reaction_id: StringName, mob: MobState) -> void:
+	reaction_counts[reaction_id] = reaction_counts.get(reaction_id, 0) + 1
+	effect_played.emit(reaction_id, mob)

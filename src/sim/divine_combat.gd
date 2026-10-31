@@ -122,10 +122,11 @@ static func hit(field: FieldState, tower: TowerState, mob: MobState, damage: int
 			mob.freeze_ticks_left = maxi(mob.freeze_ticks_left, reaction.freeze_ticks)
 		if reaction.makes_contagious:
 			mob.is_contagious = true
+		var has_reacted: bool = true
 		if reaction.curse_extra_ticks > 0:
-			CurseCombat.conserve(mob, reaction)
-		if reaction.chain_chance_bonus == 0:
-			field.effect_played.emit(reaction.id, mob)
+			has_reacted = CurseCombat.conserve(mob, reaction)
+		if has_reacted and reaction.chain_chance_bonus == 0:
+			field.trigger_reaction(reaction.id, mob)
 	var was_burning: bool = mob.burn_ticks_left > 0
 	if was_burning:
 		damage += damage * tower.data.burning_target_bonus_percent / 100
@@ -207,7 +208,7 @@ static func _chain(field: FieldState, tower: TowerState, mob: MobState, damage: 
 		if next_target == null:
 			return
 		if visited.size() == 1:
-			field.effect_played.emit(&"chain", mob)
+			field.trigger_reaction(&"chain", mob)
 		visited.append(next_target)
 		field.lightning_fired.emit(field.get_mob_position(previous),
 				field.get_mob_position(next_target))

@@ -27,7 +27,7 @@ static func apply(field: FieldState, mob: MobState) -> void:
 		target.wind_reaction_cooldown = maxi(target.wind_reaction_cooldown, rule.interval_ticks)
 	if mob.freeze_ticks_left <= 0 and mob.stun_ticks_left <= 0:
 		mob.progress = mini(field.get_path_end_progress(), mob.progress + rule.push_milli)
-	field.effect_played.emit(rule.id, mob)
+	field.trigger_reaction(rule.id, mob)
 
 
 static func _spread(source: MobState, target: MobState, status: StringName,

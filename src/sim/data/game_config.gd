@@ -190,3 +190,14 @@ func get_round_hp_percent(round_number: int, growth_percent: int) -> int:
 func get_level_damage(base_damage: int, tower_level: int) -> int:
 	var index: int = clampi(tower_level, 1, level_damage_percent.size()) - 1
 	return base_damage * level_damage_percent[index] / 100
+
+
+## Общий профиль перемотки для матча и безопасной пробы защиты.
+func get_battle_speed_at(real_tick: int) -> int:
+	if not synchronized_battle:
+		return 1
+	var speed_index: int = 0
+	for threshold: int in battle_speed_thresholds:
+		if real_tick > threshold:
+			speed_index += 1
+	return battle_speeds[speed_index]

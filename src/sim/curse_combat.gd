@@ -13,12 +13,13 @@ static func apply(tower: TowerState, mob: MobState, damage: int, extra_ticks: in
 
 
 ## Лёд один раз продлевает задержку и усиливает накопленный взрыв.
-static func conserve(mob: MobState, rule: ReactionData) -> void:
+static func conserve(mob: MobState, rule: ReactionData) -> bool:
 	if mob.is_conserved or mob.curse_ticks_left <= 0:
-		return
+		return false
 	mob.is_conserved = true
 	mob.curse_ticks_left += rule.curse_extra_ticks
 	mob.curse_damage = mob.curse_damage * rule.curse_damage_percent / 100
+	return true
 
 
 ## Взрыв перескакивает на ближайшего мокрого в радиусе; равенство решает id.

@@ -141,9 +141,12 @@ def print_pressure(matches: list[list[dict]]) -> None:
     shop_four, awakened = set(), set()
     player_keys = set()
     first_shop_four, durations, siege_losses = [], [], []
+    manual_matches = 0
     for match_index, events in enumerate(matches):
         start = next(e for e in events if e["event"] == "match_start")
         config = start.get("config", {})
+        is_manual = start.get("manual_preparation", False)
+        manual_matches += bool(is_manual)
         tps = config.get("ticks_per_second", 20)
         waves, clean = {}, defaultdict(int)
         siege_leader = -1
@@ -176,7 +179,8 @@ def print_pressure(matches: list[list[dict]]) -> None:
                         abrupt += before.get("hp", 0) * 2 >= maximum
                         after_clean += clean[index] >= 3
                     clean[index] = clean[index] + 1 if player["hp_lost"] == 0 else 0
-        durations.append(seconds / 60)
+        if not is_manual:
+            durations.append(seconds / 60)
     count = max(1, len(player_keys))
     print("\nДавление и развитие (боты, не оценка удовольствия):")
     print(f"  смертей {deaths}, из >= половины HP {abrupt}, после >=3 чистых волн {after_clean}")
@@ -184,8 +188,31 @@ def print_pressure(matches: list[list[dict]]) -> None:
           f"первый доступ в среднем р{mean(first_shop_four):.1f}; "
           f"пробуждение: {100 * len(awakened) / count:.1f}%")
     print(f"  потери лидера осады в среднем: {mean(siege_losses):.1f} HP")
-    print(f"  полная подготовка + обычный просмотр боя: {mean(durations):.1f} мин "
-          "(без ручной готовности, пауз, выбора героя и кнопки ×2)")
+    if durations:
+        print(f"  полная подготовка + обычный просмотр боя: {mean(durations):.1f} мин "
+              "(без ручной готовности, пауз, выбора героя и кнопки ×2)")
+    if manual_matches:
+        print(f"  подготовка без таймера: {manual_matches} матчей; темп задаёт человек, "
+              "боты не измеряют время чтения")
+
+
+def print_reactions(matches: list[list[dict]]) -> None:
+    """Только настоящие счётчики v6; отсутствие поля старого лога не выдаётся за ноль."""
+    totals: dict[str, int] = defaultdict(int)
+    observed = 0
+    for events in matches:
+        for event in events:
+            if event["event"] != "round_end":
+                continue
+            for player in event["players"]:
+                if "reactions" not in player:
+                    continue
+                observed += 1
+                for reaction, count in player["reactions"].items():
+                    totals[reaction] += count
+    if observed:
+        print("\nСрабатывания реакций: " + (", ".join(
+            f"{key}: {value}" for key, value in sorted(totals.items())) or "нет"))
 
 
 def main() -> None:
@@ -202,6 +229,7 @@ def main() -> None:
     print_styles(matches)
     print_heroes(matches)
     print_pressure(matches)
+    print_reactions(matches)
 
 
 if __name__ == "__main__":

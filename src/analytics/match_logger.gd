@@ -6,8 +6,9 @@ extends RefCounted
 ## игра) логов не оставляют.
 ## События: match_start, round_start, command, wave_start, round_end, eliminated, match_end.
 
-const LOG_VERSION: int = 5
+const LOG_VERSION: int = 6
 
+var _started_msec: int = Time.get_ticks_msec()
 var _sim: MatchSim
 var _path: String = ""
 var _file: FileAccess
@@ -55,6 +56,7 @@ func close() -> void:
 func _write(event: Dictionary) -> void:
 	if _is_closed:
 		return
+	event["elapsed_msec"] = Time.get_ticks_msec() - _started_msec
 	var line: String = JSON.stringify(event)
 	if _file != null:
 		_file.store_line(line)
@@ -87,7 +89,7 @@ func _write_match_start(source: String, extra: Dictionary) -> void:
 				"bot_army_share": _sim.get_bot_army_share(player.index)})
 	var event: Dictionary = {"event": "match_start", "version": LOG_VERSION, "source": source,
 			"players": players, "config": _config_numbers(),
-			"active_gods": _sim.active_gods,
+			"active_gods": _sim.active_gods, "manual_preparation": _sim.config.prep_requires_ready,
 			"config_path": _sim.config.resource_path, "bot_version": BotBrain.VERSION}
 	event.merge(extra)
 	_write(event)
@@ -180,6 +182,7 @@ func _on_sim_round_finished(round_number: int) -> void:
 		snapshot["kill_gold"] = _kill_gold[index]
 		snapshot["leaks"] = _leaks[index]
 		snapshot["army_damage"] = _sim.players[index].army_damage_dealt
+		snapshot["reactions"] = _sim.players[index].field.reaction_counts.duplicate()
 	_write({"event": "round_end", "round": round_number, "tick": _sim.tick_count,
 			"wave_ticks": _sim.phase_tick, "players": players})
 	if _is_closed or (_file == null and not _open_file()):

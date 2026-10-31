@@ -17,9 +17,15 @@ var _discover_box: VBoxContainer
 var _buff_buttons: Array[Button] = []
 var _discover_buttons: Array[Button] = []
 var _ready: Button
+var _trial_button: Button
 var _reroll: Button
 var _upgrade: Button
 var _reaction_help: Label
+var _strategy_summary: Label
+var _recipe_hint: String = ""
+var _last_reaction_report: String = ""
+var _first_recipe: String = ""
+var _has_trial_report: bool = false
 
 
 func _init() -> void:
@@ -32,11 +38,18 @@ func _init() -> void:
 	_upgrade = _button("Магазин", _on_upgrade)
 	actions.add_child(_reroll)
 	actions.add_child(_upgrade)
+	_trial_button = _button("Проба", _on_trial)
+	_trial_button.tooltip_text = "Бесплатно испытать текущую защиту без потери HP и золота. Активные навыки не учитываются."
+	actions.add_child(_trial_button)
 	_reaction_help = _label("Реакции ⓘ", 15)
 	_reaction_help.autowrap_mode = TextServer.AUTOWRAP_OFF
 	_reaction_help.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_reaction_help.mouse_filter = Control.MOUSE_FILTER_STOP
 	actions.add_child(_reaction_help)
+	_strategy_summary = _label("", 14)
+	_strategy_summary.mouse_filter = Control.MOUSE_FILTER_STOP
+	_strategy_summary.max_lines_visible = 2
+	box.add_child(_strategy_summary)
 	_offer_grid = GridContainer.new()
 	_offer_grid.columns = 3
 	_offer_grid.add_theme_constant_override("h_separation", 5)
@@ -68,7 +81,13 @@ func _init() -> void:
 func setup(sim: MatchSim, player: PlayerState) -> void:
 	_sim = sim
 	_player = player
-	_reaction_help.tooltip_text = ReactionGuide.text(sim.config)
+	_recipe_hint = ReactionGuide.draft_text(sim.config, sim.active_gods)
+	_reaction_help.text = "Сочетания ⓘ"
+	_reaction_help.tooltip_text = _recipe_hint
+	var recipes: PackedStringArray = ReactionGuide.draft_recipes(sim.config, sim.active_gods)
+	_first_recipe = recipes[0] if not recipes.is_empty() else "Соберите пару богов"
+	_strategy_summary.text = _first_recipe
+	_strategy_summary.tooltip_text = _recipe_hint
 	for i: int in sim.config.army_upgrades.size():
 		var button: Button = _button("", _on_army.bind(i))
 		_army_grid.add_child(button)
@@ -79,6 +98,20 @@ func setup(sim: MatchSim, player: PlayerState) -> void:
 func refresh(selected_tower: TowerState) -> void:
 	if _player == null:
 		return
+	_trial_button.disabled = _sim.phase != MatchSim.Phase.PREP
+	var report: String = ReactionGuide.battle_report(_sim.config, _player.field.reaction_counts)
+	if _sim.phase == MatchSim.Phase.WAVE:
+		_has_trial_report = false
+	if report != _last_reaction_report:
+		_last_reaction_report = report
+		var total_count: int = 0
+		for count: int in _player.field.reaction_counts.values():
+			total_count += count
+		_reaction_help.text = "Комбо · %d" % total_count
+		if not _has_trial_report:
+			_strategy_summary.text = _first_recipe + "\nБой: " + report
+		_reaction_help.tooltip_text = _recipe_hint + "\n\nЭТОТ БОЙ: " + report
+		_strategy_summary.tooltip_text = _reaction_help.tooltip_text
 	_offer_grid.columns = 4 if _player.shop.offers.size() > 6 else 3
 	while _cards.size() < _player.shop.offers.size():
 		var card: OfferCard = OfferCard.new()
@@ -268,3 +301,16 @@ func _on_buff(index: int) -> void:
 
 func _on_discover(index: int) -> void:
 	command_requested.emit(ChooseDiscoverCommand.new(index))
+
+
+func _on_trial() -> void:
+	if _sim == null or _sim.phase != MatchSim.Phase.PREP:
+		return
+	_has_trial_report = true
+	var trial: DefenseTrial = DefenseTrial.run(_sim, _player.index)
+	_strategy_summary.text = "Проба: %d убито · %d прорвалось · %d отступило\n%s" % [
+			trial.killed, trial.breached, trial.retreated,
+			ReactionGuide.battle_report(_sim.config, trial.reactions)]
+	_strategy_summary.tooltip_text = _recipe_hint + "\n\nПОСЛЕДНЯЯ ПРОБА: " + \
+			ReactionGuide.battle_report(_sim.config, trial.reactions) + \
+			"\nБез активных навыков. После перестановки повторите пробу."

@@ -598,8 +598,4 @@ func _pair(first: int, second: int) -> void:
 func get_battle_speed() -> int:
 	if phase != Phase.WAVE or not config.synchronized_battle:
 		return 1
-	var speed_index: int = 0
-	for threshold: int in config.battle_speed_thresholds:
-		if phase_tick > threshold:
-			speed_index += 1
-	return config.battle_speeds[speed_index]
+	return config.get_battle_speed_at(phase_tick)

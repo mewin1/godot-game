@@ -163,6 +163,12 @@ func _run() -> void:
 	sim.tick()
 	assert(player.reserve.size() == before_count - 1, "Сброс из резерва на лавку продаёт")
 
+	var before_trial: int = sim.state_hash()
+	shop._on_trial()
+	assert(sim.state_hash() == before_trial, "Проба не меняет настоящий матч")
+	assert(shop._strategy_summary.text.begins_with("Проба:"))
+	_check_layout(scene)
+
 	# Даже при завершённых своём и встречном полях камера не прыгает на третьего игрока.
 	player.is_ready = true
 	sim.tick()
