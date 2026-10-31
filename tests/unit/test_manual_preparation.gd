@@ -21,3 +21,19 @@ func test_bot_only_match_does_not_wait_for_human_button() -> void:
 	sim.start()
 	sim.tick()
 	assert_eq(sim.phase, MatchSim.Phase.WAVE)
+
+
+
+func test_manual_game_does_not_auto_pick_hero_while_player_reads() -> void:
+	var config: GameConfig = load("res://data/game_config.tres") as GameConfig
+	var sim: MatchSim = MatchSim.new(config, 521, 2, 1)
+	sim.start_with_hero_select()
+	for i: int in config.hero_select_ticks + 1:
+		sim.tick()
+	assert_eq(sim.phase, MatchSim.Phase.HERO_SELECT)
+	assert_null(sim.players[0].hero)
+	assert_eq(sim.choose_hero(0, 0), "")
+	sim.tick()
+	assert_eq(sim.phase, MatchSim.Phase.PREP)
+	sim.tick()
+	assert_eq(sim.phase, MatchSim.Phase.PREP)

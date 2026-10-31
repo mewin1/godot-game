@@ -162,3 +162,13 @@ func remove_status(tag: StringName) -> void:
 func can_apply_status(tag: StringName) -> bool:
 	var active: Array[StringName] = status_tags()
 	return active.has(tag) or active.size() < 2
+
+
+## Накопленный взрыв и оставшиеся обычные тики огня; без ещё не полученных бонусов ветра.
+func get_stored_damage(ticks_per_second: int) -> int:
+	var amount: int = curse_damage if curse_ticks_left > 0 else 0
+	var first_burn_tick: int = maxi(1, burn_cooldown)
+	if burn_ticks_left >= first_burn_tick:
+		var pulses: int = 1 + (burn_ticks_left - first_burn_tick) / ticks_per_second
+		amount += burn_damage * pulses
+	return amount

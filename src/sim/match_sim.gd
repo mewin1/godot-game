@@ -219,10 +219,11 @@ func _apply_queued_commands() -> void:
 			command_failed.emit(queued.player_index, error)
 
 
-## Выбор героя: ждём людей; кто не успел — получает первого предложенного.
+## В ручном режиме герой ждёт осознанного выбора; в старых правилах есть таймаут.
 func _tick_hero_select() -> void:
 	phase_tick += 1
-	var is_timeout: bool = phase_tick >= config.hero_select_ticks
+	var is_timeout: bool = not config.prep_requires_ready \
+			and phase_tick >= config.hero_select_ticks
 	for player: PlayerState in players:
 		if player.hero == null and not is_timeout:
 			return

@@ -26,6 +26,8 @@ var _recipe_hint: String = ""
 var _last_reaction_report: String = ""
 var _first_recipe: String = ""
 var _has_trial_report: bool = false
+var _owned_gods_key: String = "?"
+var _last_trial_board_hash: int = 0
 
 
 func _init() -> void:
@@ -98,6 +100,10 @@ func setup(sim: MatchSim, player: PlayerState) -> void:
 func refresh(selected_tower: TowerState) -> void:
 	if _player == null:
 		return
+	_refresh_owned_recipe()
+	if _has_trial_report and _last_trial_board_hash != _board_hash():
+		_has_trial_report = false
+		_last_reaction_report = ""
 	_trial_button.disabled = _sim.phase != MatchSim.Phase.PREP
 	var report: String = ReactionGuide.battle_report(_sim.config, _player.field.reaction_counts)
 	if _sim.phase == MatchSim.Phase.WAVE:
@@ -307,6 +313,7 @@ func _on_trial() -> void:
 	if _sim == null or _sim.phase != MatchSim.Phase.PREP:
 		return
 	_has_trial_report = true
+	_last_trial_board_hash = _board_hash()
 	var trial: DefenseTrial = DefenseTrial.run(_sim, _player.index)
 	_strategy_summary.text = "Проба: %d убито · %d прорвалось · %d отступило\n%s" % [
 			trial.killed, trial.breached, trial.retreated,
@@ -314,3 +321,34 @@ func _on_trial() -> void:
 	_strategy_summary.tooltip_text = _recipe_hint + "\n\nПОСЛЕДНЯЯ ПРОБА: " + \
 			ReactionGuide.battle_report(_sim.config, trial.reactions) + \
 			"\nБез активных навыков. После перестановки повторите пробу."
+
+
+func _refresh_owned_recipe() -> void:
+	var owned: Array[StringName] = []
+	var names: PackedStringArray = []
+	for god: StringName in _sim.active_gods:
+		for tower: TowerState in _player.field.towers:
+			if tower.data.god == god:
+				owned.append(god)
+				names.append(String(god))
+				break
+	var key: String = "|".join(names)
+	if key == _owned_gods_key:
+		return
+	_owned_gods_key = key
+	var recipes: PackedStringArray = ReactionGuide.draft_recipes(_sim.config, owned)
+	if not recipes.is_empty():
+		_first_recipe = "На поле: " + recipes[0]
+	else:
+		var plans: PackedStringArray = ReactionGuide.draft_recipes(_sim.config, _sim.active_gods)
+		_first_recipe = "План: " + (plans[0] if not plans.is_empty() else "прямой урон")
+	_last_reaction_report = ""
+
+
+func _board_hash() -> int:
+	var hasher: StateHasher = StateHasher.new()
+	for tower: TowerState in _player.field.towers:
+		tower.add_to_hash(hasher)
+	for idol: IdolState in _player.field.idols:
+		idol.add_to_hash(hasher)
+	return hasher.value

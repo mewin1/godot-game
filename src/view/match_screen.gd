@@ -303,7 +303,8 @@ func _refresh_hero_select(me: PlayerState) -> void:
 	_opponent_view.visible = false
 	_hud.refresh(_sim, HUMAN_INDEX)
 	var ticks_left: float = float(_sim.get_phase_ticks_left())
-	_hero_select.set_seconds_left(ceili(ticks_left / _sim.config.ticks_per_second))
+	_hero_select.set_seconds_left(-1 if _sim.config.prep_requires_ready else
+			ceili(ticks_left / _sim.config.ticks_per_second))
 	_update_toast()
 
 

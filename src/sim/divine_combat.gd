@@ -114,7 +114,9 @@ static func hit(field: FieldState, tower: TowerState, mob: MobState, damage: int
 			if reaction != null:
 				break
 	if reaction != null:
-		damage = damage * reaction.damage_percent / 100
+		var stored: int = mob.get_stored_damage(field.config.ticks_per_second)
+		damage = damage * reaction.damage_percent / 100 \
+				+ stored * reaction.stored_damage_percent / 100
 		for status: StringName in reaction.consume:
 			mob.remove_status(status)
 		mob.stun_ticks_left = maxi(mob.stun_ticks_left, reaction.stun_ticks)

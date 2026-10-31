@@ -78,6 +78,8 @@ func show_offers(offers: Array[HeroData], gods: Array[StringName] = []) -> void:
 func set_seconds_left(seconds: int) -> void:
 	if _is_chosen:
 		_timer_label.text = "Ждём остальных…"
+	elif seconds < 0:
+		_timer_label.text = "Выбирайте спокойно · без таймера"
 	else:
 		_timer_label.text = "Осталось %d с — потом возьмём первого" % seconds
 

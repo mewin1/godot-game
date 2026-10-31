@@ -67,7 +67,7 @@ func test_physical_finisher_consumes_both_marks() -> void:
 	mob.curse_ticks_left = 60
 	mob.curse_damage = 20
 	DivineCombat.hit(_field, _tower("bolt"), mob, 100)
-	assert_eq(mob.hp, 860)
+	assert_eq(mob.hp, 840)
 	assert_eq(mob.status_tags().size(), 0)
 	assert_eq(mob.curse_damage, 0)
 
