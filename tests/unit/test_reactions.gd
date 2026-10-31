@@ -316,3 +316,29 @@ func test_steam_controls_movement_without_adding_a_third_elemental_status() -> v
 	for i: int in 20:
 		_mob.advance()
 	assert_eq(_mob.current_speed(), original_speed)
+
+
+func test_cold_and_frozen_share_existing_slot_with_second_status() -> void:
+	_mob.freeze_ticks_left = 30
+	_mob.charge_ticks_left = 60
+	assert_true(_mob.can_apply_status(&"cold"), "Холод обновляет тот же слот заморозки")
+	assert_false(_mob.can_apply_status(&"burn"), "Настоящий третий статус запрещён")
+	_mob.freeze_ticks_left = 0
+	_mob.cold_ticks_left = 30
+	assert_true(_mob.can_apply_status(&"frozen"), "Заморозка заменяет слот холода")
+
+
+func test_wind_refreshes_cold_on_frozen_charged_neighbor_without_third_slot() -> void:
+	_mob.cold_ticks_left = 60
+	_mob.cold_slow_percent = 35
+	_mob.is_in_wind = true
+	_mob.progress = 3000
+	var target: MobState = MobState.create(_config.army_mob)
+	target.progress = 3500
+	target.freeze_ticks_left = 30
+	target.charge_ticks_left = 60
+	_field.mobs.append(target)
+	WindReactions.apply(_field, _mob)
+	assert_gt(target.cold_ticks_left, 0)
+	assert_eq(target.cold_slow_percent, 35)
+	assert_eq(target.status_tags().size(), 2)

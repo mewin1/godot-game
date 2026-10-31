@@ -161,6 +161,9 @@ func remove_status(tag: StringName) -> void:
 ## Третий статус не вытесняет два действующих; обновление разрешено.
 func can_apply_status(tag: StringName) -> bool:
 	var active: Array[StringName] = status_tags()
+	if tag == &"cold" or tag == &"frozen":
+		if active.has(&"cold") or active.has(&"frozen"):
+			return true
 	return active.has(tag) or active.size() < 2
 
 
