@@ -213,6 +213,7 @@ func _build_end_layer() -> void:
 	_end_panel = END_PANEL_SCENE.instantiate() as MatchEndPanel
 	_end_panel.again_pressed.connect(_on_end_panel_again_pressed)
 	_end_panel.menu_pressed.connect(_on_end_panel_menu_pressed)
+	_end_panel.report_pressed.connect(_shop_panel.open_battle_report)
 	center.add_child(_end_panel)
 
 #endregion
@@ -235,6 +236,7 @@ func _start_match() -> void:
 	_hud.set_player_count(player_count)
 	_sim.start_with_hero_select()
 	_shop_panel.setup(_sim, _human())
+	_my_view.editing_player = _human()
 	if _sim.phase == MatchSim.Phase.HERO_SELECT:
 		_hero_select.visible = true
 		_hero_select.show_offers(_human().hero_offers, _sim.active_gods)
@@ -485,10 +487,11 @@ func _on_sim_command_failed(player_index: int, reason: String) -> void:
 
 
 ## Сводка после волны: сколько сняла ваша армия и сколько потеряли вы.
-func _on_sim_round_finished(_round_number: int) -> void:
+func _on_sim_round_finished(round_number: int) -> void:
 	var me: PlayerState = _human()
 	if not me.is_alive:
 		return
+	_shop_panel.show_battle_report(me.field.battle_report, round_number, me.army_damage_dealt)
 	var lines: PackedStringArray = []
 	var target: String = _round_target_name()
 	if target == "":

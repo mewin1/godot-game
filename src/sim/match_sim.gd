@@ -438,6 +438,7 @@ func _apply_breach(player: PlayerState, mob: MobState) -> void:
 	var actual_damage: int = mini(maxi(0, player.hero_hp), damage)
 	player.hero_hp -= damage
 	player.hp_lost_this_round += actual_damage
+	player.field.battle_report.record_hp_loss(mob, actual_damage)
 	player.field.breach_resolved.emit(mob, actual_damage)
 	if mob.sender_index >= 0 and actual_damage > 0:
 		var sender: PlayerState = players[mob.sender_index]

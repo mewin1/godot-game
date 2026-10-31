@@ -93,6 +93,41 @@ func _run() -> void:
 	reserve_card._drop_data(Vector2.ZERO, enchant)
 	sim.tick()
 	assert(player.reserve[0].enchantment == RiteData.Effect.ENCHANT_DAMAGE)
+	assert(not reserve_card._can_drop_data(Vector2.ZERO, enchant),
+			"Повторные чары должны отклоняться до отпускания мыши")
+	var awaken: DragPayload = DragPayload.for_rite(2,
+			load("res://data/rites/awaken_focus.tres") as RiteData)
+	assert(not reserve_card._can_drop_data(Vector2.ZERO, awaken))
+	var saved_level: int = player.reserve[0].level
+	player.reserve[0].level = 3
+	assert(reserve_card._can_drop_data(Vector2.ZERO, awaken))
+	player.reserve[0].level = saved_level
+	var own_view: FieldView = scene._my_view
+	var brain: BotBrain = BotBrain.new(0)
+	var spot: Vector3i = brain.find_best_spot(player.field, sim.config.towers[0])
+	var field_tower: TowerState = player.field.add_tower(sim.config.towers[0],
+			Vector2i(spot.x, spot.y), spot.z)
+	var at_tower: Vector2 = own_view._cell_rect(field_tower.anchor).get_center()
+	assert(own_view._can_drop_data(at_tower, enchant))
+	field_tower.enchantment = RiteData.Effect.ENCHANT_DAMAGE
+	assert(not own_view._can_drop_data(at_tower, enchant))
+	assert(not own_view._can_drop_data(at_tower, awaken))
+	field_tower.level = 3
+	assert(own_view._can_drop_data(at_tower, awaken))
+	field_tower.awakening = RiteData.Effect.AWAKEN_FOCUS
+	assert(not own_view._can_drop_data(at_tower, awaken))
+	scene._selected_tower_id = field_tower.id
+	for resolution: Vector2i in [Vector2i(1280, 720), Vector2i(1920, 1080)]:
+		root.size = resolution
+		for frame: int in 4:
+			await process_frame
+		_check_layout(scene)
+		assert(shop._selection.text.contains("Чары:"))
+		assert(shop._ready.get_global_rect().end.y <= scene._inventory.get_global_rect().position.y,
+				"Кнопки лавки не перекрывают резерв")
+		assert(shop._selection.text.contains("Пробуждение:"))
+		assert(scene.get_global_rect().grow(2).encloses(shop._selection.get_global_rect()))
+	root.size = Vector2i(1600, 900)
 	var gift: DragPayload = DragPayload.for_gift(0, player.gift_towers[0], 0)
 	assert(reserve_card._can_drop_data(Vector2.ZERO, gift))
 	reserve_card._drop_data(Vector2.ZERO, gift)
@@ -168,6 +203,32 @@ func _run() -> void:
 	assert(sim.state_hash() == before_trial, "Проба не меняет настоящий матч")
 	assert(shop._strategy_summary.text.begins_with("Проба:"))
 	_check_layout(scene)
+	var report: FieldBattleReport = FieldBattleReport.new()
+	for index: int in 8:
+		report.tower_names[index + 1] = "Грозовая решётка #%d (ур.3)" % (index + 1)
+		report.record_damage(index + 1, &"hit", 100 + index)
+		report.record_mark(index + 1)
+		var mob: MobData = sim.config.army_mob.duplicate() as MobData
+		mob.id = StringName("test_%d" % index)
+		mob.display_name = "Бронированный боец"
+		var leaked: MobState = MobState.create(mob)
+		report.record_breach(leaked)
+		report.record_hp_loss(leaked, 1)
+	shop.show_battle_report(report, 5, 3)
+	shop.open_battle_report()
+	await process_frame
+	await process_frame
+	assert(shop._battle_details.visible)
+	assert(Rect2i(Vector2i.ZERO, root.size).encloses(Rect2i(
+			shop._battle_details.position, shop._battle_details.size)), "Разбор помещается в окно")
+	assert(shop._battle_details.dialog_text.contains("Бронированный боец"))
+	assert(shop._battle_details.dialog_text.contains("−8 HP"))
+	shop._battle_details.hide()
+	shop._on_trial()
+	field_tower.rotation = (field_tower.rotation + 1) % 4
+	shop.refresh(field_tower)
+	assert(shop._battle_summary.text.begins_with("Итог:"), "Устаревшая проба убрана")
+	assert(shop._battle_details.dialog_text.contains("Раунд 5"))
 
 	# Даже при завершённых своём и встречном полях камера не прыгает на третьего игрока.
 	player.is_ready = true

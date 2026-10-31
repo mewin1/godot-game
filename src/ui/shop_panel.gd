@@ -28,11 +28,15 @@ var _first_recipe: String = ""
 var _has_trial_report: bool = false
 var _owned_gods_key: String = "?"
 var _last_trial_board_hash: int = 0
+var _battle_summary: Button
+var _battle_details: AcceptDialog
+var _last_battle_details: String = ""
+var _last_battle_summary: String = ""
 
 
 func _init() -> void:
 	var box: VBoxContainer = VBoxContainer.new()
-	box.add_theme_constant_override("separation", 6)
+	box.add_theme_constant_override("separation", 4)
 	add_child(box)
 	var actions: HBoxContainer = HBoxContainer.new()
 	box.add_child(actions)
@@ -52,6 +56,14 @@ func _init() -> void:
 	_strategy_summary.mouse_filter = Control.MOUSE_FILTER_STOP
 	_strategy_summary.max_lines_visible = 2
 	box.add_child(_strategy_summary)
+	_battle_summary = _button("Итог боя появится после первой волны", open_battle_report)
+	_battle_summary.disabled = true
+	_battle_summary.add_theme_font_size_override("font_size", 14)
+	_battle_details = AcceptDialog.new()
+	_battle_details.title = "Разбор последнего боя"
+	_battle_details.ok_button_text = "Понятно"
+	_battle_details.get_label().add_theme_font_size_override("font_size", 14)
+	add_child(_battle_details)
 	_offer_grid = GridContainer.new()
 	_offer_grid.columns = 3
 	_offer_grid.add_theme_constant_override("h_separation", 5)
@@ -76,7 +88,10 @@ func _init() -> void:
 	box.add_child(_label("ПКМ — поворот · на лавку — продажа", 14))
 	_ready = _button("Готов ▶", _on_ready)
 	_ready.theme_type_variation = &"AccentButton"
-	box.add_child(_ready)
+	var footer: HBoxContainer = HBoxContainer.new()
+	footer.add_child(_battle_summary)
+	footer.add_child(_ready)
+	box.add_child(footer)
 
 
 ## Настраивает каталог армии один раз при начале матча.
@@ -92,6 +107,8 @@ func setup(sim: MatchSim, player: PlayerState) -> void:
 	_strategy_summary.tooltip_text = _recipe_hint
 	for i: int in sim.config.army_upgrades.size():
 		var button: Button = _button("", _on_army.bind(i))
+		button.custom_minimum_size.y = 32
+		button.add_theme_font_size_override("font_size", 13)
 		_army_grid.add_child(button)
 		_army_buttons.append(button)
 
@@ -104,9 +121,12 @@ func refresh(selected_tower: TowerState) -> void:
 	if _has_trial_report and _last_trial_board_hash != _board_hash():
 		_has_trial_report = false
 		_last_reaction_report = ""
+		_restore_battle_report()
 	_trial_button.disabled = _sim.phase != MatchSim.Phase.PREP
 	var report: String = ReactionGuide.battle_report(_sim.config, _player.field.reaction_counts)
 	if _sim.phase == MatchSim.Phase.WAVE:
+		if _has_trial_report:
+			_restore_battle_report()
 		_has_trial_report = false
 	if report != _last_reaction_report:
 		_last_reaction_report = report
@@ -131,6 +151,7 @@ func refresh(selected_tower: TowerState) -> void:
 		if not card.visible:
 			continue
 		card.tower_cost = _sim.config.tower_cost
+		card.custom_minimum_size.y = 88
 		var rite: RiteData = _player.shop.get_rite(i)
 		card.is_active = _player.gold >= (rite.cost if rite != null else _sim.config.tower_cost)
 		card.show_offer(_player.shop.get_offer(i))
@@ -144,23 +165,25 @@ func refresh(selected_tower: TowerState) -> void:
 			_player.shop.level + 1, upgrade_price] if _player.shop.can_upgrade() else "Магазин 4"
 	_upgrade.disabled = not _player.shop.can_upgrade() or _player.gold < upgrade_price
 	_upgrade.tooltip_text = _upgrade_context()
-	_army_title.text = "Армия: %d бойцов · доход %d" % [
+	_army_title.text = "Армия: %d бойцов · доход %d · цена (+доход)" % [
 			_player.army.get_unit_count(), _player.get_total_income()]
 	for i: int in _army_buttons.size():
 		var army: ArmyState = _player.army
 		var cost: int = army.get_upgrade_cost(i)
 		var locked: String = army.check_upgrade_available(i, _player.shop.level)
-		_army_buttons[i].text = "%s\n%d · +%d доход" % [
+		_army_buttons[i].text = "%s · %d (+%d)" % [
 				army.get_upgrade(i).display_name, cost, army.get_upgrade_income(i)]
 		_army_buttons[i].disabled = locked != "" or _player.gold < cost
 		var mob: MobData = army.get_upgrade(i).mob
 		var detail: String = mob.description if mob != null else "Постоянное усиление армии и дохода"
-		_army_buttons[i].tooltip_text = locked if locked != "" else detail
+		_army_buttons[i].tooltip_text = locked if locked != "" else detail + \
+				"\nЦена %d зол. · доход +%d" % [cost, army.get_upgrade_income(i)]
 	_refresh_choices()
 	_selection.visible = selected_tower != null
 	if selected_tower != null:
-		_selection.text = "%s · ур.%d · продажа %d" % [selected_tower.data.display_name,
-				selected_tower.level, _player.get_sell_price(selected_tower)]
+		_selection.text = "%s · ур.%d · %s\n%s" % [selected_tower.data.display_name,
+				selected_tower.level, TowerUpgradeGuide.slots(_sim.config, selected_tower),
+				TowerUpgradeGuide.next_step(_sim.config, _player, selected_tower)]
 		_selection.tooltip_text = _tower_details(selected_tower)
 	_ready.disabled = _player.is_ready
 	_ready.text = "Ждём остальных…" if _player.is_ready else "Готов ▶"
@@ -170,6 +193,9 @@ func _tower_details(tower: TowerState) -> String:
 	var field: FieldState = _player.field
 	var lines: PackedStringArray = [tower.data.description,
 			"Золотые клетки дороги — совместная зона реакций. Порядок попаданий проверяйте Пробой."]
+	lines.append(TowerUpgradeGuide.slots(_sim.config, tower))
+	lines.append(TowerUpgradeGuide.next_step(_sim.config, _player, tower))
+	lines.append("Продажа: %d зол." % _player.get_sell_price(tower))
 	if _player.reserve.has(tower):
 		return "\n".join(lines) + "\nВ резерве постройка не участвует в обороне."
 	if tower.data.attacks:
@@ -181,7 +207,7 @@ func _tower_details(tower: TowerState) -> String:
 		lines.append("Длина потока сейчас: %.1f клетки" % (DivineCombat.wind_length(field, tower)
 				/ 1000.0))
 	if tower.level == _sim.config.max_tower_level and tower.awakening < 0:
-		lines.append("Дальше: чары и пробуждение в магазине 4.")
+		lines.append("Чары и пробуждение сохраняются при переносе и слиянии.")
 	return "\n".join(lines)
 
 
@@ -322,6 +348,32 @@ func _on_trial() -> void:
 	_strategy_summary.tooltip_text = _recipe_hint + "\n\nПОСЛЕДНЯЯ ПРОБА: " + \
 			ReactionGuide.battle_report(_sim.config, trial.reactions) + \
 			"\nБез активных навыков. После перестановки повторите пробу."
+	_battle_details.dialog_text = "ПРОБА · без активных навыков и расчёта потерь терема\n" + \
+			BattleReportText.details(trial.battle_report, false)
+	_battle_summary.text = "Разбор пробы: убито %d · прошли %d ⓘ" % [trial.killed, trial.breached]
+	_battle_summary.disabled = false
+	_battle_summary.tooltip_text = _battle_details.dialog_text
+
+
+## Снимок сохраняется при перестановках и до конца следующего боя.
+func show_battle_report(report: FieldBattleReport, round_number: int, army_damage: int) -> void:
+	_last_battle_summary = BattleReportText.summary(report)
+	_last_battle_details = "Раунд %d · Ваша армия сняла %d HP\n" % [
+			round_number, army_damage] + BattleReportText.details(report)
+	_restore_battle_report()
+
+
+func _restore_battle_report() -> void:
+	_battle_summary.text = _last_battle_summary if _last_battle_summary != "" \
+			else "Итог боя появится после первой волны"
+	_battle_details.dialog_text = _last_battle_details
+	_battle_summary.disabled = _last_battle_summary == ""
+	_battle_summary.tooltip_text = _last_battle_details
+
+
+## Разбор доступен и из экрана выбывания.
+func open_battle_report() -> void:
+	_battle_details.popup_centered()
 
 
 func _refresh_owned_recipe() -> void:

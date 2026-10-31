@@ -6,7 +6,7 @@ extends RefCounted
 ## игра) логов не оставляют.
 ## События: match_start, round_start, command, wave_start, round_end, eliminated, match_end.
 
-const LOG_VERSION: int = 7
+const LOG_VERSION: int = 8
 
 var _started_msec: int = Time.get_ticks_msec()
 var _sim: MatchSim
@@ -183,6 +183,7 @@ func _on_sim_round_finished(round_number: int) -> void:
 		snapshot["leaks"] = _leaks[index]
 		snapshot["army_damage"] = _sim.players[index].army_damage_dealt
 		snapshot["reactions"] = _sim.players[index].field.reaction_counts.duplicate()
+		snapshot["battle_report"] = _sim.players[index].field.battle_report.snapshot()
 	_write({"event": "round_end", "round": round_number, "tick": _sim.tick_count,
 			"wave_ticks": _sim.phase_tick, "players": players})
 	if _is_closed or (_file == null and not _open_file()):

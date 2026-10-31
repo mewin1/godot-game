@@ -34,7 +34,7 @@ static func tick(field: FieldState, mob: MobState) -> void:
 	var next_target: MobState = _find_wet(field, mob) if mob.is_contagious else null
 	mob.remove_status(&"curse")
 	field.effect_played.emit(&"curse_burst", mob)
-	field.deal_mob_damage(mob, damage)
+	field.deal_mob_damage(mob, damage, 0, &"curse")
 	if next_target != null:
 		next_target.remove_status(&"wet")
 		next_target.curse_damage = maxi(next_target.curse_damage, damage)

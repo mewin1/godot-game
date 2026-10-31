@@ -7,6 +7,7 @@ var breached: int = 0
 var retreated: int = 0
 var total: int = 0
 var reactions: Dictionary[StringName, int] = {}
+var battle_report: FieldBattleReport
 
 
 ## Текущие башни/пассивки против известной армии и базовой волны; без активных навыков.
@@ -22,6 +23,8 @@ static func run(sim: MatchSim, player_index: int) -> DefenseTrial:
 	WaveBuilder.schedule_wave(sim.config, field, sim.round_number, incoming)
 	_run_battle(sim.config, field)
 	result.retreated = field.count_remaining_mobs()
+	field.battle_report.retreated = result.retreated
+	result.battle_report = field.battle_report
 	result.total = result.killed + result.breached + result.retreated
 	result.reactions = field.reaction_counts.duplicate()
 	return result

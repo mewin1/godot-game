@@ -52,10 +52,15 @@ func refresh(player: PlayerState, editable: bool) -> void:
 		var card: OfferCard = _cards[i]
 		card.visible = i < capacity
 		card.is_active = editable
+		card.rite_player = player
 		card.stored_tower = player.reserve[i] if i < player.reserve.size() else null
 		card.show_offer(card.stored_tower.data if card.stored_tower != null else null)
 		if card.stored_tower != null:
 			card.rotation_turns = card.stored_tower.rotation
+			card.tooltip_text += "\n" + TowerUpgradeGuide.slots(player.field.config,
+					card.stored_tower)
+			card.tooltip_text += "\n" + TowerUpgradeGuide.next_step(player.field.config,
+					player, card.stored_tower)
 	_gift.visible = not player.gift_towers.is_empty()
 	_gift.is_active = editable
 	if _gift.visible:

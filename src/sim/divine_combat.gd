@@ -57,6 +57,8 @@ static func apply_wind(field: FieldState, mob: MobState) -> void:
 				field.get_mob_position(mob)):
 			continue
 		mob.is_in_wind = true
+		if mob.is_alive():
+			field.battle_report.record_wind(tower.id)
 		var power: int = tower.data.wind_power_percent \
 				+ (tower.level - 1) * tower.data.wind_power_per_level
 		var idol: IdolState = field.get_idol(tower.data.god)
@@ -96,7 +98,7 @@ static func tick_effects(field: FieldState, mob: MobState) -> void:
 		var damage: int = mob.burn_damage
 		if mob.is_in_wind:
 			damage += damage * field.config.wind_fire_bonus_percent / 100
-		field.deal_mob_damage(mob, damage)
+		field.deal_mob_damage(mob, damage, 0, &"burn")
 
 
 ## Обычный удар может поджечь и вызвать ограниченную цепь, без рекурсивных срабатываний.
@@ -134,7 +136,7 @@ static func hit(field: FieldState, tower: TowerState, mob: MobState, damage: int
 	var was_burning: bool = mob.burn_ticks_left > 0
 	if was_burning:
 		damage += damage * tower.data.burning_target_bonus_percent / 100
-	field.deal_mob_damage(mob, damage)
+	field.deal_mob_damage(mob, damage, tower.id, &"hit")
 	if was_shielded:
 		return
 	if tower.data.wet_ticks > 0 and mob.is_alive() and mob.can_apply_status(&"wet"):
@@ -144,6 +146,7 @@ static func hit(field: FieldState, tower: TowerState, mob: MobState, damage: int
 		if water_idol != null:
 			duration += water_idol.wet_ticks
 		mob.wet_ticks_left = maxi(mob.wet_ticks_left, duration)
+		field.battle_report.record_mark(tower.id)
 	if tower.data.burn_percent > 0 and mob.is_alive() and mob.can_apply_status(&"burn") \
 			and (reaction == null or not reaction.suppress_status):
 		var percent: int = tower.data.burn_percent
@@ -153,15 +156,20 @@ static func hit(field: FieldState, tower: TowerState, mob: MobState, damage: int
 		var burn: int = maxi(1, field.get_tower_damage(tower) * percent / 100)
 		mob.burn_damage = maxi(mob.burn_damage, burn)
 		mob.burn_ticks_left = maxi(mob.burn_ticks_left, tower.data.burn_ticks + status_bonus)
+		field.battle_report.record_mark(tower.id)
 	if tower.data.cold_ticks > 0 and mob.is_alive() \
 			and (reaction == null or not reaction.suppress_status) \
 			and (mob.can_apply_status(&"cold") or mob.freeze_ticks_left > 0):
 		mob.cold_ticks_left = maxi(mob.cold_ticks_left, tower.data.cold_ticks + status_bonus)
 		mob.cold_slow_percent = maxi(mob.cold_slow_percent, tower.data.cold_slow_percent)
+		field.battle_report.record_mark(tower.id)
 	if tower.data.curse_ticks > 0:
+		if mob.is_alive() and mob.can_apply_status(&"curse"):
+			field.battle_report.record_mark(tower.id)
 		CurseCombat.apply(tower, mob, field.get_tower_damage(tower), status_bonus)
 	if tower.data.charge_ticks > 0 and mob.is_alive() and mob.can_apply_status(&"charge"):
 		mob.charge_ticks_left = maxi(mob.charge_ticks_left, tower.data.charge_ticks + status_bonus)
+		field.battle_report.record_mark(tower.id)
 	if tower.data.tags.has(&"lightning") or tower.data.god == &"perun":
 		if field.config.chain_chance_percent < 0:
 			_charge(field, tower, mob, damage)
@@ -218,7 +226,8 @@ static func _chain(field: FieldState, tower: TowerState, mob: MobState, damage: 
 		visited.append(next_target)
 		field.lightning_fired.emit(field.get_mob_position(previous),
 				field.get_mob_position(next_target))
-		field.deal_mob_damage(next_target, maxi(1, damage * field.config.chain_percent / 100))
+		field.deal_mob_damage(next_target, maxi(1, damage * field.config.chain_percent / 100),
+				tower.id, &"chain")
 		previous = next_target
 
 

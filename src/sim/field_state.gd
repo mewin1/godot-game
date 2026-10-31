@@ -29,6 +29,7 @@ var mobs: Array[MobState] = []
 var wave_tick: int = 0
 ## Только наблюдение: счётчики не участвуют в исходе боя и не входят в хэш.
 var reaction_counts: Dictionary[StringName, int] = {}
+var battle_report: FieldBattleReport = FieldBattleReport.new()
 var idols: Array[IdolState] = []
 ## Время волны вышло: мобы бегут быстрее (см. GameConfig.wave_enrage_speed_percent).
 var is_enraged: bool = false
@@ -251,6 +252,9 @@ func roll_chance(percent: int) -> bool:
 
 func start_wave() -> void:
 	reaction_counts.clear()
+	battle_report = FieldBattleReport.new()
+	for tower: TowerState in towers:
+		battle_report.register_tower(tower)
 	wave_tick = 0
 	is_enraged = false
 	silence_ticks_left = 0
@@ -334,6 +338,7 @@ func breach_all_remaining() -> void:
 
 ## По общему пределу оставшиеся отступают без урона и без награды.
 func retreat_remaining() -> void:
+	battle_report.retreated += count_remaining_mobs()
 	mobs.clear()
 	_spawn_queue.clear()
 	_split_queue.clear()
@@ -439,6 +444,7 @@ func _move_mobs() -> void:
 
 func _breach(mob: MobState) -> void:
 	mob.is_breached = true
+	battle_report.record_breach(mob)
 	pending_breaches.append(mob)
 	mob_breached.emit(mob)
 
@@ -536,12 +542,17 @@ func _hit(mob: MobState, damage: int, data: TowerData, tower: TowerState = null)
 	if tower != null and tower.data.god != &"":
 		DivineCombat.hit(self, tower, mob, damage)
 	else:
-		deal_mob_damage(mob, damage)
+		deal_mob_damage(mob, damage, tower.id if tower != null else 0, &"hit")
 
 
 ## Единственное место награды за смерть, в том числе от горения и цепи.
-func deal_mob_damage(mob: MobState, damage: int) -> void:
-	if mob.take_damage(damage):
+func deal_mob_damage(mob: MobState, damage: int, tower_id: int = 0,
+		kind: StringName = &"other") -> void:
+	var before: int = maxi(0, mob.hp)
+	var was_killed: bool = mob.take_damage(damage)
+	battle_report.record_damage(tower_id, kind, before - maxi(0, mob.hp))
+	if was_killed:
+		battle_report.killed += 1
 		pending_kill_gold += mob.kill_reward
 		mob_killed.emit(mob)
 		_queue_split(mob)

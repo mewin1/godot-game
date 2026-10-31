@@ -34,6 +34,17 @@ func test_logger_writes_all_event_types() -> void:
 		var event: Dictionary = parsed
 		var event_name: String = event["event"]
 		events[event_name] = events.get(event_name, 0) + 1
+		if event_name == "round_end":
+			var players: Array = event["players"]
+			for value: Variant in players:
+				var player: Dictionary = value
+				var report: Dictionary = player["battle_report"]
+				var kills: int = report["killed"]
+				var expected_kills: int = player["kills"]
+				var hp_lost: int = report["hp_lost"]
+				var expected_loss: int = player["hp_lost"]
+				assert_eq(kills, expected_kills)
+				assert_eq(hp_lost, expected_loss)
 	for expected: String in ["match_start", "round_start", "command", "wave_start",
 			"round_end", "eliminated", "match_end"]:
 		assert_true(events.has(expected), "есть событие %s" % expected)

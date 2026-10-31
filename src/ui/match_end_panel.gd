@@ -5,6 +5,7 @@ extends PanelContainer
 
 signal again_pressed()
 signal menu_pressed()
+signal report_pressed()
 
 const COLOR_HUMAN: Color = Color(0.95, 0.75, 0.42)
 const COLOR_HEADER: Color = Color(0.73, 0.67, 0.56)
@@ -13,11 +14,13 @@ const COLOR_HEADER: Color = Color(0.73, 0.67, 0.56)
 @onready var _table: GridContainer = %Table
 @onready var _again_button: Button = %AgainButton
 @onready var _menu_button: Button = %MenuButton
+@onready var _report_button: Button = %ReportButton
 
 
 func _ready() -> void:
 	_again_button.pressed.connect(func() -> void: again_pressed.emit())
 	_menu_button.pressed.connect(func() -> void: menu_pressed.emit())
+	_report_button.pressed.connect(func() -> void: report_pressed.emit())
 	UiFx.add_press_feedback(_again_button)
 	UiFx.add_press_feedback(_menu_button)
 

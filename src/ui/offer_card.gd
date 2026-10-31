@@ -21,6 +21,7 @@ var is_active: bool = true
 var ticks_per_second: int = 20
 var tower_cost: int = 6
 var is_gift: bool = false
+var rite_player: PlayerState
 
 var _press_position: Vector2 = Vector2.ZERO
 var _rite_label: Label
@@ -96,7 +97,9 @@ func _get_drag_data(_at_position: Vector2) -> Variant:
 		label.text = rite.display_name
 		label.add_theme_font_size_override("font_size", 20)
 		set_drag_preview(label)
-		return DragPayload.for_rite(offer_index, rite)
+		var rite_payload: DragPayload = DragPayload.for_rite(offer_index, rite)
+		rite_payload.rite_feedback = label
+		return rite_payload
 	if data == null:
 		return null
 	var payload: DragPayload
@@ -119,7 +122,10 @@ func _can_drop_data(_at_position: Vector2, value: Variant) -> bool:
 		return false
 	var payload: DragPayload = value
 	if payload.kind == DragPayload.Kind.RITE:
-		return stored_tower != null and payload.rite.target == RiteData.Target.TOWER
+		var reason: String = TowerUpgradeGuide.rejection(rite_player, payload.rite,
+				stored_tower.id if stored_tower != null else 0)
+		payload.show_rite_feedback(reason)
+		return reason == ""
 	if stored_tower == null:
 		return payload.kind != DragPayload.Kind.RESERVE
 	return (payload.tower_id != stored_tower.id and payload.data == stored_tower.data
@@ -164,3 +170,23 @@ func _draw() -> void:
 			size.x - 12, 13, TEXT_COLOR)
 	if not is_active:
 		draw_rect(rect, Color(0, 0, 0, 0.35))
+	_draw_rite_target()
+
+
+func _process(_delta: float) -> void:
+	if is_reserve_slot:
+		queue_redraw()
+
+
+func _draw_rite_target() -> void:
+	if not is_reserve_slot or not is_active or stored_tower == null:
+		return
+	var value: Variant = get_viewport().gui_get_drag_data()
+	if not (value is DragPayload):
+		return
+	var payload: DragPayload = value
+	if payload.kind != DragPayload.Kind.RITE:
+		return
+	var reason: String = TowerUpgradeGuide.rejection(rite_player, payload.rite, stored_tower.id)
+	var color: Color = Color(0.55, 0.8, 0.4) if reason == "" else Color(0.7, 0.3, 0.25)
+	draw_rect(Rect2(Vector2.ZERO, size).grow(-3), color, false, 3)

@@ -13,6 +13,14 @@ var rotation: int = 0
 var level: int = 1
 var offer_index: int = -1
 var tower_id: int = 0
+var rite_feedback: Label
+
+
+## Подпись у курсора остаётся видимой во время переноса.
+func show_rite_feedback(reason: String) -> void:
+	if is_instance_valid(rite_feedback):
+		rite_feedback.text = rite.display_name + "\n" + (
+				"Можно применить" if reason == "" else reason)
 
 
 static func for_offer(index: int, tower_data: TowerData, turns: int) -> DragPayload:

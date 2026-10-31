@@ -40,6 +40,7 @@ var title: String = ""
 var hero_hp: int = 0
 ## Можно ли сейчас менять поле (своё поле в фазе подготовки).
 var can_edit: bool = false
+var editing_player: PlayerState
 var _combo_cache_key: int = -1
 var _combo_cells: Array[Vector2i] = []
 var selected_tower_id: int = 0
@@ -90,7 +91,11 @@ func _init() -> void:
 func _process(delta: float) -> void:
 	delta *= playback_speed
 	if _hover != null and get_viewport().gui_is_dragging():
-		_update_hover(_hover, get_local_mouse_position())
+		if Rect2(Vector2.ZERO, size).has_point(get_local_mouse_position()):
+			_update_hover(_hover, get_local_mouse_position())
+		else:
+			_hover = null
+			_hover_merge_target = null
 	for tower_id: int in _fire_pulses.keys():
 		_fire_pulses[tower_id] -= delta
 		if _fire_pulses[tower_id] <= 0.0:
@@ -194,8 +199,10 @@ func _update_hover(payload: DragPayload, at_position: Vector2) -> void:
 	var cell: Vector2i = _cell_at(at_position)
 	if payload.kind == DragPayload.Kind.RITE:
 		_hover_merge_target = field.get_tower_at(cell)
-		_hover_valid = (payload.rite.target == RiteData.Target.TOWER
-				and _hover_merge_target != null)
+		var reason: String = TowerUpgradeGuide.rejection(editing_player, payload.rite,
+				_hover_merge_target.id if _hover_merge_target != null else 0)
+		_hover_valid = reason == ""
+		payload.show_rite_feedback(reason)
 		return
 	_hover_merge_target = _find_merge_target(payload, cell)
 	if _hover_merge_target != null:
@@ -258,6 +265,7 @@ func _draw() -> void:
 	_draw_knockback_mark()
 	_draw_wind()
 	_draw_towers()
+	_draw_rite_targets()
 	_draw_hover()
 	_draw_hero()
 
@@ -445,7 +453,8 @@ func _draw_hover() -> void:
 	if _hover.kind == DragPayload.Kind.RITE:
 		if _hover_merge_target != null:
 			for cell: Vector2i in _hover_merge_target.cells():
-				draw_rect(_cell_rect(cell).grow(-2), Color(0.4, 0.75, 1, 0.4))
+				var tint: Color = _style.valid_color if _hover_valid else _style.invalid_color
+				draw_rect(_cell_rect(cell).grow(-2), Color(tint, 0.4))
 		return
 	if _hover_merge_target != null:
 		for cell: Vector2i in _hover_merge_target.cells():
@@ -623,3 +632,19 @@ func _draw_combo_coverage() -> void:
 		var rect: Rect2 = _cell_rect(cell).grow(-_cell_size * 0.18)
 		draw_rect(rect, Color(1.0, 0.78, 0.25, 0.28))
 		draw_rect(rect, Color(1.0, 0.78, 0.25, 0.8), false, 2.0)
+
+
+func _draw_rite_targets() -> void:
+	if not can_edit or editing_player == null:
+		return
+	var value: Variant = get_viewport().gui_get_drag_data()
+	if not (value is DragPayload):
+		return
+	var payload: DragPayload = value
+	if payload.kind != DragPayload.Kind.RITE or payload.rite.target != RiteData.Target.TOWER:
+		return
+	for tower: TowerState in field.towers:
+		var reason: String = TowerUpgradeGuide.rejection(editing_player, payload.rite, tower.id)
+		var tint: Color = _style.valid_color if reason == "" else _style.invalid_color
+		for cell: Vector2i in tower.cells():
+			draw_rect(_cell_rect(cell).grow(-2), tint, false, 3)

@@ -33,6 +33,12 @@ theme_override_constants/h_separation = 28
 theme_override_constants/v_separation = 6
 columns = 3
 
+[node name="ReportButton" type="Button" parent="Box"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 44)
+layout_mode = 2
+text = "Разбор последнего боя"
+
 [node name="Buttons" type="HBoxContainer" parent="Box"]
 layout_mode = 2
 theme_override_constants/separation = 12
