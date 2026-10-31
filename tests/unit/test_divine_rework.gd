@@ -412,6 +412,9 @@ func test_rounds_never_expand_unupgraded_field() -> void:
 	var original_space: int = sim.players[0].field.get_buildable_cells().size()
 	var guard: int = 0
 	while sim.round_number < 5 and guard < 2000:
+		if sim.phase == MatchSim.Phase.PREP:
+			for player: PlayerState in sim.players:
+				assert_eq(sim.execute_command(player.index, ReadyCommand.new()), "")
 		sim.tick()
 		guard += 1
 	assert_eq(sim.round_number, 5)

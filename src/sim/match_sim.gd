@@ -156,6 +156,8 @@ func tick() -> void:
 func get_phase_ticks_left() -> int:
 	var total: int = config.wave_max_ticks
 	if phase == Phase.PREP:
+		if config.prep_requires_ready:
+			return 0
 		total = get_prep_ticks()
 	elif phase == Phase.HERO_SELECT:
 		total = config.hero_select_ticks
@@ -254,7 +256,8 @@ func get_prep_ticks() -> int:
 
 func _tick_prep() -> void:
 	phase_tick += 1
-	if phase_tick >= get_prep_ticks() or _are_all_humans_ready():
+	var has_timed_out: bool = not config.prep_requires_ready and phase_tick >= get_prep_ticks()
+	if has_timed_out or _are_all_humans_ready():
 		_start_wave()
 
 

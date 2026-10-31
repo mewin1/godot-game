@@ -3,7 +3,7 @@ extends Resource
 ## Как выглядит вид башни: картинка, цвета плит под фигурой и снаряд.
 ## Связан с TowerData по id — данные симуляции о графике ничего не знают.
 
-enum Projectile { FIREBALL, SHARD, BOLT }
+enum Projectile { FIREBALL, SHARD, BOLT, LIGHTNING, CURSE }
 
 @export var tower_id: StringName = &""
 @export var icon: Texture2D

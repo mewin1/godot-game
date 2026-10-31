@@ -9,6 +9,6 @@ tower_id = &"thunder"
 icon = ExtResource("2")
 plate_color = Color(0.25, 0.52, 0.7, 1)
 plate_edge_color = Color(0.25, 0.52, 0.7, 1)
-projectile = 1
+projectile = 3
 projectile_color = Color(0.25, 0.52, 0.7, 1)
 impact_color = Color(0.25, 0.52, 0.7, 1)

@@ -169,6 +169,8 @@ func _refresh_hero(sim: MatchSim, me: PlayerState) -> void:
 func _phase_text(sim: MatchSim) -> String:
 	match sim.phase:
 		MatchSim.Phase.PREP:
+			if sim.config.prep_requires_ready:
+				return "Подготовка · без таймера"
 			var ticks_left: float = float(sim.get_phase_ticks_left())
 			var seconds: int = ceili(ticks_left / sim.config.ticks_per_second)
 			return "Подготовка · %d с" % seconds

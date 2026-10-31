@@ -19,7 +19,8 @@ const BREACH_TEXT_COLOR: Color = Color(1.0, 0.45, 0.35)
 ## Моб проявляется из ворот на первых долях клетки пути (в тысячных).
 const FADE_IN_MILLI: float = 400.0
 const HP_TEXT_COLOR: Color = Color(0.94, 0.89, 0.81)
-const SHOT_SOUNDS: Array[StringName] = [&"shot_fire", &"shot_ice", &"shot_mech"]
+const SHOT_SOUNDS: Array[StringName] = [
+	&"shot_fire", &"shot_ice", &"shot_mech", &"shot_mech", &"shot_ice"]
 const STRIKE_COLOR: Color = Color(1.0, 0.85, 0.5)
 const SILENCE_TEXT_COLOR: Color = Color(1.0, 0.55, 0.3)
 const KNOCKBACK_COLOR: Color = Color(0.55, 0.8, 0.35)
@@ -256,6 +257,16 @@ func _draw_projectile(projectile: Projectile) -> void:
 					point - direction * length * 0.6, point - side]
 			draw_colored_polygon(shard, color)
 			draw_polyline(shard + PackedVector2Array([shard[0]]), Color(0.2, 0.35, 0.45), 1.5)
+		TowerVisual.Projectile.LIGHTNING:
+			var tail: Vector2 = point - direction * _cell_size * 0.55
+			var zigzag: PackedVector2Array = [tail,
+					tail.lerp(point, 0.35) + direction.orthogonal() * _cell_size * 0.12,
+					tail.lerp(point, 0.65) - direction.orthogonal() * _cell_size * 0.12, point]
+			draw_polyline(zigzag, Color(1, 0.92, 0.4), 3.0, true)
+		TowerVisual.Projectile.CURSE:
+			draw_circle(point, _cell_size * 0.16, Color(color, 0.3))
+			draw_arc(point, _cell_size * 0.13, _time * 5, _time * 5 + TAU * 0.8,
+					12, color, 3.0, true)
 		TowerVisual.Projectile.BOLT:
 			var tail: Vector2 = point - direction * _cell_size * 0.4
 			draw_line(tail, point, Color(0.15, 0.1, 0.07), 4.0)

@@ -52,6 +52,8 @@ extends Resource
 
 @export_group("Время (в тиках)")
 @export var ticks_per_second: int = 20
+## Для живого тестирования: подготовка заканчивается только готовностью людей.
+@export var prep_requires_ready: bool = false
 @export var prep_ticks: int = 800
 ## После стольких тиков волны мобы впадают в ярость (бегут быстрее)...
 @export var wave_max_ticks: int = 1200

@@ -1,7 +1,7 @@
 [gd_resource type="Resource" script_class="TowerVisual" format=3]
 
 [ext_resource type="Script" path="res://src/view/visuals/tower_visual.gd" id="1"]
-[ext_resource type="Texture2D" path="res://assets/towers/stribog.svg" id="2"]
+[ext_resource type="Texture2D" path="res://assets/towers/wind_mark.svg" id="2"]
 
 [resource]
 script = ExtResource("1")
