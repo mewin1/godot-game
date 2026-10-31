@@ -7,6 +7,7 @@ extends Control
 signal command_requested(command: SimCommand)
 ## Нажатие (без перетаскивания) на клетку: id башни или 0, если там пусто.
 signal tower_tapped(tower_id: int)
+signal cell_tapped(cell: Vector2i)
 ## Боевой слой просит сыграть звук (звуком управляет экран матча).
 signal sound_requested(sound_id: StringName)
 
@@ -134,6 +135,7 @@ func _gui_input(event: InputEvent) -> void:
 		elif button.position.distance_to(_press_position) <= TAP_SLOP:
 			var tower: TowerState = field.get_tower_at(_cell_at(button.position))
 			tower_tapped.emit(tower.id if tower != null else 0)
+			cell_tapped.emit(_cell_at(button.position))
 
 
 ## Подключает поле. Повторный вызов с другим полем переключает отображение.

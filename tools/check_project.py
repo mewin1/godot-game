@@ -58,6 +58,7 @@ def main() -> int:
         ("gut", ["-s", "res://addons/gut/gut_cmdln.gd", "-gexit"]),
         ("smoke", ["-s", "res://tools/rework_smoke.gd"]),
         ("lessons", ["-s", "res://tools/reaction_lab_smoke.gd"]),
+        ("sandbox", ["-s", "res://tools/combat_sandbox_smoke.gd"]),
         ("launch", ["--quit-after", "2"]),
     ]
     for name, arguments in stages:

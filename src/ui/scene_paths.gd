@@ -6,6 +6,7 @@ const MAIN_MENU: String = "res://scenes/main_menu.tscn"
 const HOW_TO_PLAY: String = "res://scenes/how_to_play.tscn"
 const MATCH: String = "res://scenes/match.tscn"
 const REACTION_LAB: String = "res://scenes/reaction_lab.tscn"
+const COMBAT_SANDBOX: String = "res://scenes/combat_sandbox.tscn"
 const HEROES: String = "res://scenes/heroes_gallery.tscn"
 
 

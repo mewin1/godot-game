@@ -6,6 +6,7 @@ extends RefCounted
 signal lightning_fired(from_milli: Vector2i, to_milli: Vector2i)
 signal tower_fired(tower: TowerState, mob: MobState)
 signal mob_killed(mob: MobState)
+signal damage_recorded(mob: MobState, actual: int, tower_id: int, kind: StringName)
 signal mob_breached(mob: MobState)
 ## Матч уже применил осаду, общий предел и остаток HP: для точной подписи потерь.
 signal breach_resolved(mob: MobState, actual_damage: int)
@@ -311,11 +312,12 @@ func calm_down() -> void:
 	is_enraged = false
 
 
-func tick() -> void:
+func tick(automatic_fire: bool = true) -> void:
 	_spawn_due_mobs()
 	_move_mobs()
 	_heal_mobs()
-	_fire_towers()
+	if automatic_fire:
+		_fire_towers()
 	_add_split_mobs()
 	_remove_finished_mobs()
 	wave_tick += 1
@@ -551,6 +553,8 @@ func deal_mob_damage(mob: MobState, damage: int, tower_id: int = 0,
 	var before: int = maxi(0, mob.hp)
 	var was_killed: bool = mob.take_damage(damage)
 	battle_report.record_damage(tower_id, kind, before - maxi(0, mob.hp))
+	if before > maxi(0, mob.hp):
+		damage_recorded.emit(mob, before - maxi(0, mob.hp), tower_id, kind)
 	if was_killed:
 		battle_report.killed += 1
 		pending_kill_gold += mob.kill_reward

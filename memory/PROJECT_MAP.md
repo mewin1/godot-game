@@ -10,6 +10,7 @@
 |---|---|---|
 | Улучшения/цели заговоров | `src/ui/tower_upgrade_guide.gd`, `field_view.gd`, `offer_card.gd` | `tools/rework_smoke.gd` |
 | Разбор боя | `src/sim/field_battle_report.gd`, `field_state.gd`, `src/ui/battle_report_text.gd` | `test_battle_report`, `test_analytics`, smoke |
+| Песочница боя | `src/sim/combat_sandbox.gd`, `sandbox_command.gd`, `src/ui/combat_sandbox_panel.gd` | `test_combat_sandbox`, `tools/combat_sandbox_smoke.gd` |
 | Учебный стенд | `src/sim/reaction_lesson.gd`, `data/lessons/`, `src/ui/reaction_lab.gd` | `test_reaction_lesson`, `tools/reaction_lab_smoke.gd` |
 | Проба защиты | `src/sim/defense_trial.gd`, `src/ui/shop_panel.gd` | `test_defense_trial`, smoke |
 | Общая зона реакций | `src/sim/combat_coverage.gd`, `src/view/field_view.gd` | `test_combat_coverage` |

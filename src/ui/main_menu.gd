@@ -12,6 +12,7 @@ var _sound_bank: SoundBank
 @onready var _how_to_button: Button = %HowToButton
 @onready var _heroes_button: Button = %HeroesButton
 @onready var _lab_button: Button = %ReactionLabButton
+@onready var _sandbox_button: Button = %SandboxButton
 @onready var _quit_button: Button = %QuitButton
 @onready var _sound_button: Button = %SoundButton
 
@@ -24,6 +25,7 @@ func _ready() -> void:
 	_how_to_button.pressed.connect(_on_how_to_button_pressed)
 	_heroes_button.pressed.connect(_on_heroes_button_pressed)
 	_lab_button.pressed.connect(_on_lab_pressed)
+	_sandbox_button.pressed.connect(_on_sandbox_pressed)
 	_quit_button.pressed.connect(_on_quit_button_pressed)
 	_sound_button.pressed.connect(_on_sound_button_pressed)
 	for button: Button in [_play_button, _how_to_button, _heroes_button, _lab_button, _quit_button,
@@ -75,3 +77,7 @@ func _on_sound_button_pressed() -> void:
 
 func _on_lab_pressed() -> void:
 	ScenePaths.go_to(get_tree(), ScenePaths.REACTION_LAB)
+
+
+func _on_sandbox_pressed() -> void:
+	ScenePaths.go_to(get_tree(), ScenePaths.COMBAT_SANDBOX)

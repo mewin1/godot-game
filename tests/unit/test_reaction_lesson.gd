@@ -2,6 +2,15 @@ extends GutTest
 ## Все учебные примеры используют настоящие ресурсы, попадания и резолвер.
 
 
+func test_infection_lesson_demonstrates_transfer_not_just_reaction_name() -> void:
+	var config: GameConfig = load("res://data/game_config.tres") as GameConfig
+	for lesson: ReactionLessonData in config.lessons:
+		if lesson.id == &"infection":
+			var field: FieldState = ReactionLesson.build(config, lesson, 3)
+			assert_gt(field.mobs[1].curse_ticks_left, 0)
+			assert_true(field.mobs[1].is_contagious)
+
+
 func test_all_lessons_reproduce_their_reaction_and_are_repeatable() -> void:
 	var config: GameConfig = load("res://data/game_config.tres") as GameConfig
 	assert_eq(config.lessons.size(), 12)

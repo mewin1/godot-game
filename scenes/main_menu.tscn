@@ -154,6 +154,13 @@ layout_mode = 2
 theme_override_font_sizes/font_size = 24
 text = "Стенд реакций"
 
+[node name="SandboxButton" type="Button" parent="Center/Menu"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(340, 54)
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "Песочница боя"
+
 [node name="QuitButton" type="Button" parent="Center/Menu"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(340, 64)
