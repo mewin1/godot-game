@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="ReactionLessonData" format=3]
+[ext_resource type="Script" path="res://src/sim/data/reaction_lesson_data.gd" id="1"]
+[ext_resource type="Script" path="res://src/sim/data/tower_data.gd" id="tower_type"]
+[ext_resource type="Resource" path="res://data/towers/spark.tres" id="source_0"]
+[ext_resource type="Resource" path="res://data/towers/hex.tres" id="source_1"]
+[ext_resource type="Resource" path="res://data/towers/bolt.tres" id="finisher"]
+[resource]
+script = ExtResource("1")
+id = &"execute"
+title = "Добивание"
+explanation = "Две независимые метки → физика. ×1.4 и перенос накопленного взрыва в удар; метки поглощаются."
+sources = Array[ExtResource("tower_type")]([ExtResource("source_0"), ExtResource("source_1")])
+finisher = ExtResource("finisher")
+reaction_id = &"execute"
+wait_ticks = 20

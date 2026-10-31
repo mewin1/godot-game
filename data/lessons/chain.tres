@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="ReactionLessonData" format=3]
+[ext_resource type="Script" path="res://src/sim/data/reaction_lesson_data.gd" id="1"]
+[ext_resource type="Script" path="res://src/sim/data/tower_data.gd" id="tower_type"]
+[ext_resource type="Resource" path="res://data/towers/dew.tres" id="source_0"]
+[ext_resource type="Resource" path="res://data/towers/spark.tres" id="finisher"]
+[resource]
+script = ExtResource("1")
+id = &"chain"
+title = "Цепь"
+explanation = "Мокрая цель → молния. Шанс цепи 80% вместо 20%, удар сильнее. Здесь показан удачный бросок."
+sources = Array[ExtResource("tower_type")]([ExtResource("source_0")])
+finisher = ExtResource("finisher")
+reaction_id = &"chain"
+wait_ticks = 20
+seed_value = 2

@@ -6,6 +6,8 @@ extends Resource
 @export_group("Контент")
 @export var gods: Array[StringName] = []
 @export var draft_count: int = 0
+@export var lessons: Array[ReactionLessonData] = []
+@export var training_mob: MobData
 @export var board: BoardLayout
 @export var reactions: Array[ReactionData] = []
 @export var towers: Array[TowerData] = []

@@ -11,6 +11,7 @@ var _sound_bank: SoundBank
 @onready var _play_button: Button = %PlayButton
 @onready var _how_to_button: Button = %HowToButton
 @onready var _heroes_button: Button = %HeroesButton
+@onready var _lab_button: Button = %ReactionLabButton
 @onready var _quit_button: Button = %QuitButton
 @onready var _sound_button: Button = %SoundButton
 
@@ -22,9 +23,10 @@ func _ready() -> void:
 	_play_button.pressed.connect(_on_play_button_pressed)
 	_how_to_button.pressed.connect(_on_how_to_button_pressed)
 	_heroes_button.pressed.connect(_on_heroes_button_pressed)
+	_lab_button.pressed.connect(_on_lab_pressed)
 	_quit_button.pressed.connect(_on_quit_button_pressed)
 	_sound_button.pressed.connect(_on_sound_button_pressed)
-	for button: Button in [_play_button, _how_to_button, _heroes_button, _quit_button,
+	for button: Button in [_play_button, _how_to_button, _heroes_button, _lab_button, _quit_button,
 			_sound_button]:
 		UiFx.add_press_feedback(button)
 	_update_sound_icon()
@@ -69,3 +71,7 @@ func _on_sound_button_pressed() -> void:
 	SoundBank.set_muted(not SoundBank.is_muted())
 	_update_sound_icon()
 	_sound_bank.play(&"click")
+
+
+func _on_lab_pressed() -> void:
+	ScenePaths.go_to(get_tree(), ScenePaths.REACTION_LAB)

@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="MobData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/sim/data/mob_data.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"training_dummy"
+display_name = "Учебная мишень"
+hp = 2000
+speed_milli_per_tick = 0
+armor = 0
+kill_reward = 0
+breach_damage = 0
+color = Color(0.6, 0.75, 0.55, 1)
+view_size = 0.4
+description = "Учебная мишень для пошагового стенда, не участвует в матчах."

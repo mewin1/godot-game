@@ -37,7 +37,7 @@ def run_stage(name: str, arguments: list[str], environment: dict[str, str]) -> b
     passed = result.returncode == 0 and not errors
     if name == "gut":
         passed = passed and "All tests passed!" in output and "Ignoring script" not in output
-    if name == "smoke":
+    if name in ("smoke", "lessons"):
         passed = passed and "SMOKE:" in output
     print(f"{name}: {'OK' if passed else 'ОШИБКА'} — {log_path.relative_to(ROOT)}", flush=True)
     if name == "gut":
@@ -57,6 +57,7 @@ def main() -> int:
         ("import", ["--editor", "--quit"]),
         ("gut", ["-s", "res://addons/gut/gut_cmdln.gd", "-gexit"]),
         ("smoke", ["-s", "res://tools/rework_smoke.gd"]),
+        ("lessons", ["-s", "res://tools/reaction_lab_smoke.gd"]),
         ("launch", ["--quit-after", "2"]),
     ]
     for name, arguments in stages:

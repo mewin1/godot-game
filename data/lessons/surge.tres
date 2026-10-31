@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="ReactionLessonData" format=3]
+[ext_resource type="Script" path="res://src/sim/data/reaction_lesson_data.gd" id="1"]
+[ext_resource type="Script" path="res://src/sim/data/tower_data.gd" id="tower_type"]
+[ext_resource type="Resource" path="res://data/towers/dew.tres" id="source_0"]
+[ext_resource type="Resource" path="res://data/towers/wind.tres" id="finisher"]
+[resource]
+script = ExtResource("1")
+id = &"surge"
+title = "Разгон"
+explanation = "Мокрота в потоке: толчок вперёд и разнос мокроты. Попутный ветер ускоряет!"
+sources = Array[ExtResource("tower_type")]([ExtResource("source_0")])
+finisher = ExtResource("finisher")
+reaction_id = &"surge"
+wait_ticks = 20
