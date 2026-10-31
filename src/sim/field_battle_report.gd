@@ -5,6 +5,7 @@ extends RefCounted
 var killed: int = 0
 var retreated: int = 0
 var hp_lost: int = 0
+var curse_transfers: int = 0
 var damage_by_tower: Dictionary[int, int] = {}
 var marks_by_tower: Dictionary[int, int] = {}
 var wind_ticks_by_tower: Dictionary[int, int] = {}
@@ -54,6 +55,7 @@ func record_hp_loss(mob: MobState, actual: int) -> void:
 ## Копия для логов, без ссылок на изменяемые боевые объекты.
 func snapshot() -> Dictionary:
 	return {"killed": killed, "retreated": retreated, "hp_lost": hp_lost,
+			"curse_transfers": curse_transfers,
 			"damage_by_tower": damage_by_tower.duplicate(),
 			"marks_by_tower": marks_by_tower.duplicate(),
 			"wind_ticks_by_tower": wind_ticks_by_tower.duplicate(),

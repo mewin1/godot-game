@@ -31,7 +31,7 @@ static func tick(field: FieldState, mob: MobState) -> void:
 		return
 	var damage: int = mob.curse_damage
 	var delay: int = mob.curse_delay
-	var next_target: MobState = _find_wet(field, mob) if mob.is_contagious else null
+	var next_target: MobState = find_wet_neighbor(field, mob) if mob.is_contagious else null
 	mob.remove_status(&"curse")
 	field.effect_played.emit(&"curse_burst", mob)
 	field.deal_mob_damage(mob, damage, 0, &"curse")
@@ -42,10 +42,13 @@ static func tick(field: FieldState, mob: MobState) -> void:
 			next_target.curse_ticks_left = delay
 			next_target.curse_delay = delay
 		next_target.is_contagious = true
+		field.battle_report.curse_transfers += 1
+		field.curse_transferred.emit(mob, next_target)
 		field.effect_played.emit(&"infection", next_target)
 
 
-static func _find_wet(field: FieldState, origin: MobState) -> MobState:
+## Общий запрос для настоящего переноса и предварительного осмотра в песочнице.
+static func find_wet_neighbor(field: FieldState, origin: MobState) -> MobState:
 	var best: MobState = null
 	var radius: int = field.config.curse_spread_radius_milli
 	var best_distance: int = radius * radius + 1

@@ -56,14 +56,16 @@ func test_manual_hits_and_time_without_auto_fire_transfer_curse_to_wet_neighbor(
 	hit.mob_id = 1
 	assert_eq(_sandbox.execute(hit), "")
 	assert_true(_sandbox.find_mob(1).is_contagious)
+	assert_eq(_sandbox.field.battle_report.curse_transfers, 0)
 	var step: SandboxCommand = SandboxCommand.new(SandboxCommand.Action.STEP)
 	step.ticks = 60
 	step.automatic_fire = false
 	_sandbox.execute(step)
 	assert_gt(_sandbox.find_mob(2).curse_ticks_left, 0)
 	assert_true(_sandbox.find_mob(2).is_contagious)
+	assert_eq(_sandbox.field.battle_report.curse_transfers, 1)
 	assert_lt(_sandbox.find_mob(1).hp, _sandbox.find_mob(1).max_hp)
-	assert_true("\n".join(_sandbox.journal).contains("перенос"))
+	assert_true("\n".join(_sandbox.journal).contains("Перенос проклятия #1 → #2"))
 
 
 func test_invalid_placement_does_not_add_tower_and_clear_removes_blueprints() -> void:

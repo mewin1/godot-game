@@ -78,6 +78,7 @@ func test_report_reset_does_not_change_hash_or_mutate_previous_wave_snapshot() -
 	var before: StateHasher = StateHasher.new()
 	_field.add_to_hash(before)
 	_field.battle_report = FieldBattleReport.new()
+	_field.battle_report.curse_transfers = 9
 	var after: StateHasher = StateHasher.new()
 	_field.add_to_hash(after)
 	assert_eq(before.value, after.value)

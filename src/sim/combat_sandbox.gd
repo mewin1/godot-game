@@ -84,6 +84,7 @@ func _rebuild() -> void:
 	journal.clear()
 	field.damage_recorded.connect(_on_damage)
 	field.effect_played.connect(_on_effect)
+	field.curse_transferred.connect(_on_curse_transferred)
 	for saved: TowerState in _towers:
 		var tower: TowerState = field.add_tower(saved.data, saved.anchor, saved.rotation)
 		tower.level = saved.level
@@ -139,8 +140,13 @@ func _on_effect(effect: StringName, mob: MobState) -> void:
 	if effect == &"curse_burst":
 		title = "Взрыв проклятия"
 	if effect == &"infection":
-		title = "Зараза / перенос проклятия"
+		return
 	_note("#%d · %s" % [mob.id, title])
+
+
+func _on_curse_transferred(source: MobState, target: MobState) -> void:
+	_note("Перенос проклятия #%d → #%d · сила %d" % [
+			source.id, target.id, target.curse_damage])
 
 
 func _note(message: String) -> void:

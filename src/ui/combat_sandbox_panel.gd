@@ -21,6 +21,8 @@ var _metrics: Label
 var _journal: Label
 var _notice: Label
 var _play: Button
+var _prediction: Label
+var _example: OptionButton
 var _running: bool = false
 var _elapsed: float = 0.0
 var _selected_tower: int = 0
@@ -100,24 +102,29 @@ func _build_ui() -> void:
 	controls.add_child(row)
 	_button(row, "Повторить расстановку", _reset)
 	_button(row, "Очистить всё", _clear)
-	_button(controls, "Пример: Вода → Проклятие", infection_example)
+	_example = _options(controls, ["Зараза: вода и проклятие в один тик",
+			"Зараза: проклятие раньше воды", "Зараза: вода на секунду раньше"])
+	_button(controls, "Загрузить пример Заразы", _load_example)
 	_notice = _label(controls, "", 15)
 	_notice.custom_minimum_size.y = 48
 	var right: VBoxContainer = VBoxContainer.new()
 	right.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	body.add_child(right)
 	_view = FieldView.new()
-	_view.custom_minimum_size = Vector2(450, 350)
+	_view.custom_minimum_size = Vector2(450, 320)
 	_view.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_view.cell_tapped.connect(_on_cell)
 	_view.interpolation = 1.0
+	_view.show_target_labels = true
 	right.add_child(_view)
 	_inspector = _label(right, "", 16)
 	_inspector.custom_minimum_size.y = 78
+	_prediction = _label(right, "", 15)
+	_prediction.custom_minimum_size.y = 110
 	_metrics = _label(right, "", 16)
 	_metrics.custom_minimum_size.y = 48
 	_journal = _label(right, "", 14)
-	_journal.custom_minimum_size.y = 210
+	_journal.custom_minimum_size.y = 150
 	_label(right, "Зараза: взрыв → ближайший МОКРЫЙ сосед до 1,5 клетки.\n" +
 			"Смерть носителя до взрыва прерывает перенос. Порядок: вода, затем проклятие.", 15)
 
@@ -237,7 +244,7 @@ func _send(command: SandboxCommand) -> void:
 
 
 ## Готовый эксперимент: две мокрые мишени и один заразный заряд, автострельба отключена.
-func infection_example() -> void:
+func infection_example(variant: int = 0) -> void:
 	_clear()
 	_auto.button_pressed = false
 	for id: StringName in [&"water", &"hex"]:
@@ -250,16 +257,30 @@ func infection_example() -> void:
 		command.mob = sandbox.config.training_mob
 		command.progress = 3000 + index * 500
 		_send(command)
+	if variant == 1:
+		_selected_tower = 2
+		_selected_mob = 1
+		_strike()
 	for id: int in [1, 2]:
 		var command: SandboxCommand = SandboxCommand.new(SandboxCommand.Action.STRIKE)
 		command.tower_id = 1
 		command.mob_id = id
 		_send(command)
+	if variant == 2:
+		_step(sandbox.config.ticks_per_second)
 	_selected_tower = 2
 	_selected_mob = 1
-	_strike()
-	_notice.text = "Обе цели мокрые. Проклятие на #1. Нажмите +1 сек трижды и осмотрите #2."
+	if variant != 1:
+		_strike()
+	match variant:
+		0: _notice.text = "Обе цели мокрые. Нажмите +1 сек трижды и осмотрите #2."
+		1: _notice.text = "Проклятие наложено раньше воды. Заразность не появилась."
+		2: _notice.text = "Мокрота на секунду раньше проклятия: без обновления сосед высохнет."
 	_refresh()
+
+
+func _load_example() -> void:
+	infection_example(_example.selected)
 
 
 func _refresh() -> void:
@@ -278,6 +299,7 @@ func _refresh() -> void:
 			_target.select(_target.item_count - 1)
 	var tower: TowerState = sandbox.field.get_tower(_selected_tower)
 	var mob: MobState = sandbox.find_mob(_selected_mob)
+	_view.selected_mob_id = _selected_mob
 	_inspector.text = "Башня: " + ("выберите в режиме осмотра" if tower == null else
 			"#%d %s ур.%d" % [tower.id, tower.data.display_name, tower.level])
 	if mob != null:
@@ -285,13 +307,18 @@ func _refresh() -> void:
 				mob.id, maxi(0, mob.hp), mob.max_hp, mob.armor, mob.shield_left, _statuses(mob)]
 	else:
 		_inspector.text += "\nЦель погибла/ушла или ещё не выбрана"
+	_prediction.text = ReactionInspector.hit_hint(sandbox.field, tower, mob)
+	var curse: String = ReactionInspector.curse_hint(sandbox.field, mob)
+	if curse != "":
+		_prediction.text += "\n" + curse
 	var damage: int = 0
 	for value: int in sandbox.field.battle_report.damage_by_kind.values():
 		damage += value
 	_metrics.text = "Тик %d · урон %d · убито %d\n%s" % [sandbox.field.wave_tick,
 			damage, sandbox.field.battle_report.killed,
 			ReactionGuide.battle_report(sandbox.config, sandbox.field.reaction_counts)]
-	_journal.text = "СОБЫТИЯ · последние 10\n" + "\n".join(sandbox.journal)
+	_journal.text = "СОБЫТИЯ · последние 6\n" + "\n".join(sandbox.journal.slice(
+			maxi(0, sandbox.journal.size() - 6)))
 
 
 func _statuses(mob: MobState) -> String:

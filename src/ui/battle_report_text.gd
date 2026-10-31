@@ -44,6 +44,7 @@ static func details(report: FieldBattleReport, include_hp_loss: bool = true) -> 
 			report.damage_by_kind.get(&"burn", 0), report.damage_by_kind.get(&"curse", 0),
 			report.damage_by_kind.get(&"other", 0)])
 	lines.append("\nПОДДЕРЖКА · наложения и обновления меток")
+	lines.append("Зараза: %d фактических переносов проклятия" % report.curse_transfers)
 	var supporters: Array[int] = _ranked(report.marks_by_tower)
 	for id: int in supporters.slice(0, DETAIL_LIMIT):
 		lines.append("%s: %d" % [report.tower_names.get(id, "Башня #%d" % id),

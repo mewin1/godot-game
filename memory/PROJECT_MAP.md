@@ -10,6 +10,7 @@
 |---|---|---|
 | Улучшения/цели заговоров | `src/ui/tower_upgrade_guide.gd`, `field_view.gd`, `offer_card.gd` | `tools/rework_smoke.gd` |
 | Разбор боя | `src/sim/field_battle_report.gd`, `field_state.gd`, `src/ui/battle_report_text.gd` | `test_battle_report`, `test_analytics`, smoke |
+| Осмотр реакций / перенос | `src/ui/reaction_inspector.gd`, `src/sim/curse_combat.gd`, `battle_layer.gd` | `test_reaction_inspector`, sandbox smoke |
 | Песочница боя | `src/sim/combat_sandbox.gd`, `sandbox_command.gd`, `src/ui/combat_sandbox_panel.gd` | `test_combat_sandbox`, `tools/combat_sandbox_smoke.gd` |
 | Учебный стенд | `src/sim/reaction_lesson.gd`, `data/lessons/`, `src/ui/reaction_lab.gd` | `test_reaction_lesson`, `tools/reaction_lab_smoke.gd` |
 | Проба защиты | `src/sim/defense_trial.gd`, `src/ui/shop_panel.gd` | `test_defense_trial`, smoke |
@@ -98,3 +99,11 @@ python3 -I tools/analyze_logs.py logs/bots/<папка>
 - Общая перемотка выполняет настоящие тики: ускорять только спрайты нельзя.
 - Живые логи могут не иметь `match_end`; полный анализатор такие матчи пропускает.
 - Часть документов и активов описывает предыдущие сборки; сначала проверить текущий каталог.
+
+## Контрольные опыты реакций
+
+`tools/reaction_audit.gd` — 144парных боя с одной реакцией/без неё;
+`tools/infection_timing_probe.gd` — 30контролей сроков и смерти;
+`tools/preparation_target_probe.gd` — 27пар текущего/экспериментального прицеливания.
+Запуск Godot с XDG внутри проекта как выше; результаты .godot/*.json не коммитить.
+Параметры и существенные результаты сохранены в docs/24_reaction_audit.md.

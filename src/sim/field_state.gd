@@ -7,6 +7,7 @@ signal lightning_fired(from_milli: Vector2i, to_milli: Vector2i)
 signal tower_fired(tower: TowerState, mob: MobState)
 signal mob_killed(mob: MobState)
 signal damage_recorded(mob: MobState, actual: int, tower_id: int, kind: StringName)
+signal curse_transferred(source: MobState, target: MobState)
 signal mob_breached(mob: MobState)
 ## Матч уже применил осаду, общий предел и остаток HP: для точной подписи потерь.
 signal breach_resolved(mob: MobState, actual_damage: int)

@@ -15,9 +15,22 @@ func _run() -> void:
 	scene.infection_example()
 	assert(scene.sandbox.field.towers.size() == 2)
 	assert(scene.sandbox.field.mobs.size() == 2)
+	assert(scene._prediction.text.contains("#2"), "Осмотр показывает мокрого соседа")
 	scene._advance(60)
 	assert(scene.sandbox.find_mob(2).is_contagious)
 	assert(scene.sandbox.find_mob(2).curse_ticks_left > 0)
+	assert(scene.sandbox.field.battle_report.curse_transfers == 1)
+	assert(not scene._view._battle._lightning.is_empty(), "Видна связь переноса")
+	scene.infection_example(1)
+	assert(not scene.sandbox.find_mob(1).is_contagious)
+	assert(scene._prediction.text.contains("не заразно"))
+	scene._advance(60)
+	assert(scene.sandbox.field.battle_report.curse_transfers == 0)
+	scene.infection_example(2)
+	assert(scene._prediction.text.contains("закончится раньше"))
+	scene._advance(60)
+	assert(scene.sandbox.field.battle_report.curse_transfers == 0)
+	scene.infection_example(2)
 	for resolution: Vector2i in [Vector2i(1280, 720), Vector2i(1920, 1080)]:
 		root.size = resolution
 		for index: int in 4:

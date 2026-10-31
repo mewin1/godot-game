@@ -45,6 +45,14 @@ var editing_player: PlayerState
 var _combo_cache_key: int = -1
 var _combo_cells: Array[Vector2i] = []
 var selected_tower_id: int = 0
+var show_target_labels: bool = false:
+	set(value):
+		show_target_labels = value
+		_battle.show_target_labels = value
+var selected_mob_id: int = 0:
+	set(value):
+		selected_mob_id = value
+		_battle.selected_mob_id = value
 var playback_speed: int = 1:
 	set(value):
 		playback_speed = value

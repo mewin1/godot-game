@@ -41,6 +41,8 @@ var hero_plate_center: Vector2 = Vector2.ZERO
 static var _puff_texture: Texture2D
 
 var _field: FieldState
+var show_target_labels: bool = false
+var selected_mob_id: int = 0
 var _style: FieldStyle
 var _catalog: VisualCatalog
 var _origin: Vector2 = Vector2.ZERO
@@ -74,7 +76,7 @@ func _process(delta: float) -> void:
 		return text.age < FLOAT_TEXT_SECONDS)
 	_lightning = _lightning.filter(func(arc: LightningArc) -> bool:
 		arc.age += delta
-		return arc.age < 0.18)
+		return arc.age < arc.lifetime)
 	queue_redraw()
 
 
@@ -82,6 +84,7 @@ func _process(delta: float) -> void:
 func set_field(field: FieldState) -> void:
 	if _field != null:
 		_field.lightning_fired.disconnect(_on_lightning_fired)
+		_field.curse_transferred.disconnect(_on_curse_transferred)
 		_field.tower_fired.disconnect(_on_field_tower_fired)
 		_field.mob_killed.disconnect(_on_field_mob_killed)
 		_field.breach_resolved.disconnect(_on_breach_resolved)
@@ -95,6 +98,7 @@ func set_field(field: FieldState) -> void:
 	_facing_left.clear()
 	_lightning.clear()
 	_field.lightning_fired.connect(_on_lightning_fired)
+	_field.curse_transferred.connect(_on_curse_transferred)
 	_field.tower_fired.connect(_on_field_tower_fired)
 	_field.mob_killed.connect(_on_field_mob_killed)
 	_field.breach_resolved.connect(_on_breach_resolved)
@@ -123,7 +127,12 @@ func _draw() -> void:
 		var start: Vector2 = _milli_to_screen(Vector2(arc.from_milli))
 		var end: Vector2 = _milli_to_screen(Vector2(arc.to_milli))
 		var middle: Vector2 = (start + end) * 0.5 + Vector2(5, -7)
-		draw_polyline(PackedVector2Array([start, middle, end]), Color(0.55, 0.85, 1), 3, true)
+		draw_polyline(PackedVector2Array([start, middle, end]), arc.color, 3, true)
+		if arc.is_transfer:
+			var direction: Vector2 = (end - middle).normalized()
+			var side: Vector2 = direction.orthogonal() * 5
+			draw_colored_polygon(PackedVector2Array([end, end - direction * 12 + side,
+					end - direction * 12 - side]), arc.color)
 	for projectile: Projectile in _projectiles:
 		_draw_projectile(projectile)
 	for impact: Impact in _impacts:
@@ -207,6 +216,15 @@ func _draw_mob(mob: MobState) -> void:
 	if mob.hp < mob.max_hp:
 		_draw_hp_bar(Vector2(feet.x, feet.y - sprite_size - bob - 4.0), sprite_size * 0.7,
 				float(mob.hp) / mob.max_hp)
+	if show_target_labels:
+		if mob.id == selected_mob_id:
+			draw_arc(feet, sprite_size * 0.45, 0, TAU, 20, Color(1, 0.85, 0.4), 3, true)
+		var font: Font = get_theme_default_font()
+		var at: Vector2 = feet - Vector2(sprite_size * 0.5, sprite_size + 12)
+		var caption: String = "#%d · %d" % [mob.id, maxi(0, mob.hp)]
+		draw_string_outline(font, at, caption, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, 3,
+				Color(0.08, 0.05, 0.1))
+		draw_string(font, at, caption, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color.WHITE)
 
 
 func _draw_hero_hp(center: Vector2) -> void:
@@ -506,6 +524,19 @@ class LightningArc:
 	var from_milli: Vector2i
 	var to_milli: Vector2i
 	var age: float = 0.0
+	var lifetime: float = 0.18
+	var color: Color = Color(0.55, 0.85, 1)
+	var is_transfer: bool = false
+
+
+func _on_curse_transferred(source: MobState, target: MobState) -> void:
+	var arc: LightningArc = LightningArc.new()
+	arc.from_milli = _field.get_mob_position(source)
+	arc.to_milli = _field.get_mob_position(target)
+	arc.color = Color(0.85, 0.4, 0.95)
+	arc.lifetime = 0.6
+	arc.is_transfer = true
+	_lightning.append(arc)
 
 
 func _show_reaction(effect_id: StringName, mob: MobState) -> bool:
