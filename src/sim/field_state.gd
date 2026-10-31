@@ -485,11 +485,15 @@ func _find_targets(tower: TowerState, center: Vector2i, range_milli: int) -> Arr
 	var targets: Array[MobState] = []
 	for i: int in get_tower_targets(tower):
 		var best: MobState = null
+		var best_priority: int = -1
 		for mob: MobState in mobs:
 			if targets.has(mob) or not _can_target(tower, center, range_milli, mob):
 				continue
-			if best == null or mob.progress > best.progress:
+			var priority: int = _target_priority(tower, mob)
+			if best == null or priority > best_priority \
+					or (priority == best_priority and mob.progress > best.progress):
 				best = mob
+				best_priority = priority
 		if best == null:
 			break
 		targets.append(best)
@@ -778,3 +782,23 @@ func end_visual_step() -> void:
 func trigger_reaction(reaction_id: StringName, mob: MobState) -> void:
 	reaction_counts[reaction_id] = reaction_counts.get(reaction_id, 0) + 1
 	effect_played.emit(reaction_id, mob)
+
+
+## Остаток боя, включая ещё не появившихся и потомков погибших мобов.
+func count_remaining_mobs() -> int:
+	return count_alive_mobs() + _spawn_queue.size() + _split_queue.size()
+
+
+func _target_priority(tower: TowerState, mob: MobState) -> int:
+	if tower.data.target_priority == TowerData.TargetPriority.FRONT or mob.shield_left > 0:
+		return 0
+	if tower.data.burning_target_bonus_percent > 0 and mob.burn_ticks_left > 0:
+		return 1
+	var statuses: Array[StringName] = mob.status_tags()
+	for tag: StringName in tower.data.tags:
+		var rule: ReactionData = ReactionResolver.resolve(tag, statuses, _config.reactions)
+		if rule != null:
+			if rule.curse_extra_ticks > 0 and mob.is_conserved:
+				continue
+			return 1
+	return 0

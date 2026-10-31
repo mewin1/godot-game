@@ -10,4 +10,6 @@ damage_percent = 125
 stun_ticks = 0
 suppress_status = true
 display_name = "Пар"
-explanation = "Мокрота → Огонь: урон ×1.25, снимает мокроту и горение."
+explanation = "Мокрота → Огонь: ×1.25, замедление 30% на 1 с; снимает мокроту и горение."
+slow_percent = 30
+slow_ticks = 20

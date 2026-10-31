@@ -120,6 +120,8 @@ static func hit(field: FieldState, tower: TowerState, mob: MobState, damage: int
 		for status: StringName in reaction.consume:
 			mob.remove_status(status)
 		mob.stun_ticks_left = maxi(mob.stun_ticks_left, reaction.stun_ticks)
+		if reaction.slow_percent > 0:
+			mob.apply_slow(reaction.slow_percent, reaction.slow_ticks)
 		if reaction.freeze_ticks > 0 and mob.can_apply_status(&"frozen"):
 			mob.freeze_ticks_left = maxi(mob.freeze_ticks_left, reaction.freeze_ticks)
 		if reaction.makes_contagious:

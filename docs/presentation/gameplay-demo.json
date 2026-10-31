@@ -1,0 +1,1821 @@
+{
+	"lessons": [
+		{
+			"explanation": "Мокрота → огонь. Урон ×1.25 и замедление на 1 с. Мокрота и горение поглощаются; нового поджога нет.",
+			"id": "steam",
+			"steps": [
+				{
+					"reactions": {},
+					"targets": [
+						{
+							"burn": 0,
+							"burn_damage": 0,
+							"charge": 0,
+							"cold": 0,
+							"curse": 0,
+							"curse_damage": 0,
+							"frozen": 0,
+							"hp": 2000,
+							"max_hp": 2000,
+							"slow": 0,
+							"slow_ticks": 0,
+							"stun": 0,
+							"wet": 0
+						},
+						{
+							"burn": 0,
+							"burn_damage": 0,
+							"charge": 0,
+							"cold": 0,
+							"curse": 0,
+							"curse_damage": 0,
+							"frozen": 0,
+							"hp": 2000,
+							"max_hp": 2000,
+							"slow": 0,
+							"slow_ticks": 0,
+							"stun": 0,
+							"wet": 0
+						}
+					]
+				},
+				{
+					"reactions": {},
+					"targets": [
+						{
+							"burn": 0,
+							"burn_damage": 0,
+							"charge": 0,
+							"cold": 0,
+							"curse": 0,
+							"curse_damage": 0,
+							"frozen": 0,
+							"hp": 2000,
+							"max_hp": 2000,
+							"slow": 0,
+							"slow_ticks": 0,
+							"stun": 0,
+							"wet": 40
+						},
+						{
+							"burn": 0,
+							"burn_damage": 0,
+							"charge": 0,
+							"cold": 0,
+							"curse": 0,
+							"curse_damage": 0,
+							"frozen": 0,
+							"hp": 2000,
+							"max_hp": 2000,
+							"slow": 0,
+							"slow_ticks": 0,
+							"stun": 0,
+							"wet": 0
+						}
+					]
+				},
+				{
+					"reactions": {
+						"steam": 1
+					},
+					"targets": [
+						{
+							"burn": 0,
+							"burn_damage": 0,
+							"charge": 0,
+							"cold": 0,
+							"curse": 0,
+							"curse_damage": 0,
+							"frozen": 0,
+							"hp": 1990,
+							"max_hp": 2000,
+							"slow": 30,
+							"slow_ticks": 20,
+							"stun": 0,
+							"wet": 0
+						},
+						{
+							"burn": 0,
+							"burn_damage": 0,
+							"charge": 0,
+							"cold": 0,
+							"curse": 0,
+							"curse_damage": 0,
+							"frozen": 0,
+							"hp": 2000,
+							"max_hp": 2000,
+							"slow": 0,
+							"slow_ticks": 0,
+							"stun": 0,
+							"wet": 0
+						}
+					]
+				},
+				{
+					"reactions": {
+						"steam": 1
+					},
+					"targets": [
+						{
+							"burn": 0,
+							"burn_damage": 0,
+							"charge": 0,
+							"cold": 0,
+							"curse": 0,
+							"curse_damage": 0,
+							"frozen": 0,
+							"hp": 1990,
+							"max_hp": 2000,
+							"slow": 0,
+							"slow_ticks": 0,
+							"stun": 0,
+							"wet": 0
+						},
+						{
+							"burn": 0,
+							"burn_damage": 0,
+							"charge": 0,
+							"cold": 0,
+							"curse": 0,
+							"curse_damage": 0,
+							"frozen": 0,
+							"hp": 2000,
+							"max_hp": 2000,
+							"slow": 0,
+							"slow_ticks": 0,
+							"stun": 0,
+							"wet": 0
+						}
+					]
+				}
+			],
+			"title": "Пар"
+		},
+		{
+			"explanation": "Горение → молния. Разовый усиленный удар и микростан, горение поглощается.",
+			"id": "roast",
+			"steps": [
+				{
+					"reactions": {},
+					"targets": [
+						{
+							"burn": 0,
+							"burn_damage": 0,
+							"charge": 0,
+							"cold": 0,
+							"curse": 0,
+							"curse_damage": 0,
+							"frozen": 0,
+							"hp": 2000,
+							"max_hp": 2000,
+							"slow": 0,
+							"slow_ticks": 0,
+							"stun": 0,
+							"wet": 0
+						},
+						{
+							"burn": 0,
+							"burn_damage": 0,
+							"charge": 0,
+							"cold": 0,
+							"curse": 0,
+							"curse_damage": 0,
+							"frozen": 0,
+							"hp": 2000,
+							"max_hp": 2000,
+							"slow": 0,
+							"slow_ticks": 0,
+							"stun": 0,
+							"wet": 0
+						}
+					]
+				},
+				{
+					"reactions": {},
+					"targets": [
+						{
+							"burn": 60,
+							"burn_damage": 4,
+							"charge": 0,
+							"cold": 0,
+							"curse": 0,
+							"curse_damage": 0,
+							"frozen": 0,
+							"hp": 1992,
+							"max_hp": 2000,
+							"slow": 0,
+							"slow_ticks": 0,
+							"stun": 0,
+							"wet": 0
+						},
+						{
+							"burn": 0,
+							"burn_damage": 0,
+							"charge": 0,
+							"cold": 0,
+							"curse": 0,
+							"curse_damage": 0,
+							"frozen": 0,
+							"hp": 2000,
+							"max_hp": 2000,
+							"slow": 0,
+							"slow_ticks": 0,
+							"stun": 0,
+							"wet": 0
+						}
+					]
+				},
+				{
+					"reactions": {
+						"roast": 1
+					},
+					"targets": [
+						{
+							"burn": 0,
+							"burn_damage": 0,
+							"charge": 60,
+							"cold": 0,
+							"curse": 0,
+							"curse_damage": 0,
+							"frozen": 0,
+							"hp": 1977,
+							"max_hp": 2000,
+							"slow": 0,
+							"slow_ticks": 0,
+							"stun": 4,
+							"wet": 0
+						},
+						{
+							"burn": 0,
+							"burn_damage": 0,
+							"charge": 0,
+							"cold": 0,
+							"curse": 0,
+							"curse_damage": 0,
+							"frozen": 0,
+							"hp": 2000,
+							"max_hp": 2000,
+							"slow": 0,
+							"slow_ticks": 0,
+							"stun": 0,
+							"wet": 0
+						}
+					]
+				},
+				{
+					"reactions": {
+						"roast": 1
+					},
+					"targets": [
+						{
+							"burn": 0,
+							"burn_damage": 0,
+							"charge": 40,
+							"cold": 0,
+							"curse": 0,
+							"curse_damage": 0,
+							"frozen": 0,
+							"hp": 1977,
+							"max_hp": 2000,
+							"slow": 0,
+							"slow_ticks": 0,
+							"stun": 0,
+							"wet": 0
+						},
+						{
+							"burn": 0,
+							"burn_damage": 0,
+							"charge": 0,
+							"cold": 0,
+							"curse": 0,
+							"curse_damage": 0,
+							"frozen": 0,
+							"hp": 2000,
+							"max_hp": 2000,
+							"slow": 0,
+							"slow_ticks": 0,
+							"stun": 0,
+							"wet": 0
+						}
+					]
+				}
+			],
+			"title": "Прожарка"
+		},
+		{
+			"explanation": "Горение → лёд. Сильный удар ×1.5, огонь и холод снимаются.",
+			"id": "melt",
+			"steps": [
+				{
+					"reactions": {},
+					"targets": [
+						{
+							"burn": 0,
+							"burn_damage": 0,
+							"charge": 0,
+							"cold": 0,
+							"curse": 0,
+							"curse_damage": 0,
+							"frozen": 0,
+							"hp": 2000,
+							"max_hp": 2000,
+							"slow": 0,
+							"slow_ticks": 0,
+							"stun": 0,
+							"wet": 0
+						},
+						{
+							"burn": 0,
+							"burn_damage": 0,
+							"charge": 0,
+							"cold": 0,
+							"curse": 0,
+							"curse_damage": 0,
+							"frozen": 0,
+							"hp": 2000,
+							"max_hp": 2000,
+							"slow": 0,
+							"slow_ticks": 0,
+							"stun": 0,
+							"wet": 0
+						}
+					]
+				},
+				{
+					"reactions": {},
+					"targets": [
+						{
+							"burn": 60,
+							"burn_damage": 4,
+							"charge": 0,
+							"cold": 0,
+							"curse": 0,
+							"curse_damage": 0,
+							"frozen": 0,
+							"hp": 1992,
+							"max_hp": 2000,
+							"slow": 0,
+							"slow_ticks": 0,
+							"stun": 0,
+							"wet": 0
+						},
+						{
+							"burn": 0,
+							"burn_damage": 0,
+							"charge": 0,
+							"cold": 0,
+							"curse": 0,
+							"curse_damage": 0,
+							"frozen": 0,
+							"hp": 2000,
+							"max_hp": 2000,
+							"slow": 0,
+							"slow_ticks": 0,
+							"stun": 0,
+							"wet": 0
+						}
+					]
+				},
+				{
+					"reactions": {
+						"melt": 1
+					},
+					"targets": [
+						{
+							"burn": 0,
+							"burn_damage": 0,
+							"charge": 0,
+							"cold": 0,
+							"curse": 0,
+							"curse_damage": 0,
+							"frozen": 0,
+							"hp": 1980,
+							"max_hp": 2000,
+							"slow": 0,
+							"slow_ticks": 0,
+							"stun": 0,
+							"wet": 0
+						},
+						{
+							"burn": 0,
+							"burn_damage": 0,
+							"charge": 0,
+							"cold": 0,
+							"curse": 0,
+							"curse_damage": 0,
+							"frozen": 0,
+							"hp": 2000,
+							"max_hp": 2000,
+							"slow": 0,
+							"slow_ticks": 0,
+							"stun": 0,
+							"wet": 0
+						}
+					]
+				},
+				{
+					"reactions": {
+						"melt": 1
+					},
+					"targets": [
+						{
+							"burn": 0,
+							"burn_damage": 0,
+							"charge": 0,
+							"cold": 0,
+							"curse": 0,
+							"curse_damage": 0,
+							"frozen": 0,
+							"hp": 1980,
+							"max_hp": 2000,
+							"slow": 0,
+							"slow_ticks": 0,
+							"stun": 0,
+							"wet": 0
+						},
+						{
+							"burn": 0,
+							"burn_damage": 0,
+							"charge": 0,
+							"cold": 0,
+							"curse": 0,
+							"curse_damage": 0,
+							"frozen": 0,
+							"hp": 2000,
+							"max_hp": 2000,
+							"slow": 0,
+							"slow_ticks": 0,
+							"stun": 0,
+							"wet": 0
+						}
+					]
+				}
+			],
+			"title": "Таяние"
+		},
+		{
+			"explanation": "Мокрота → лёд. Мишень замирает на 1.5 секунды; это один слот статуса.",
+			"id": "freeze",
+			"steps": [
+				{
+					"reactions": {},
+					"targets": [
+						{
+							"burn": 0,
+							"burn_damage": 0,
+							"charge": 0,
+							"cold": 0,
+							"curse": 0,
+							"curse_damage": 0,
+							"frozen": 0,
+							"hp": 2000,
+							"max_hp": 2000,
+							"slow": 0,
+							"slow_ticks": 0,
+							"stun": 0,
+							"wet": 0
+						},
+						{
+							"burn": 0,
+							"burn_damage": 0,
+							"charge": 0,
+							"cold": 0,
+							"curse": 0,
+							"curse_damage": 0,
+							"frozen": 0,
+							"hp": 2000,
+							"max_hp": 2000,
+							"slow": 0,
+							"slow_ticks": 0,
+							"stun": 0,
+							"wet": 0
+						}
+					]
+				},
+				{
+					"reactions": {},
+					"targets": [
+						{
+							"burn": 0,
+							"burn_damage": 0,
+							"charge": 0,
+							"cold": 0,
+							"curse": 0,
+							"curse_damage": 0,
+							"frozen": 0,
+							"hp": 2000,
+							"max_hp": 2000,
+							"slow": 0,
+							"slow_ticks": 0,
+							"stun": 0,
+							"wet": 40
+						},
+						{
+							"burn": 0,
+							"burn_damage": 0,
+							"charge": 0,
+							"cold": 0,
+							"curse": 0,
+							"curse_damage": 0,
+							"frozen": 0,
+							"hp": 2000,
+							"max_hp": 2000,
+							"slow": 0,
+							"slow_ticks": 0,
+							"stun": 0,
+							"wet": 0
+						}
+					]
+				},
+				{
+					"reactions": {
+						"freeze": 1
+					},
+					"targets": [
+						{
+							"burn": 0,
+							"burn_damage": 0,
+							"charge": 0,
+							"cold": 0,
+							"curse": 0,
+							"curse_damage": 0,
+							"frozen": 30,
+							"hp": 1992,
+							"max_hp": 2000,
+							"slow": 0,
+							"slow_ticks": 0,
+							"stun": 0,
+							"wet": 0
+						},
+						{
+							"burn": 0,
+							"burn_damage": 0,
+							"charge": 0,
+							"cold": 0,
+							"curse": 0,
+							"curse_damage": 0,
+							"frozen": 0,
+							"hp": 2000,
+							"max_hp": 2000,
+							"slow": 0,
+							"slow_ticks": 0,
+							"stun": 0,
+							"wet": 0
+						}
+					]
+				},
+				{
+					"reactions": {
+						"freeze": 1
+					},
+					"targets": [
+						{
+							"burn": 0,
+							"burn_damage": 0,
+							"charge": 0,
+							"cold": 0,
+							"curse": 0,
+							"curse_damage": 0,
+							"frozen": 0,
+							"hp": 1992,
+							"max_hp": 2000,
+							"slow": 0,
+							"slow_ticks": 0,
+							"stun": 0,
+							"wet": 0
+						},
+						{
+							"burn": 0,
+							"burn_damage": 0,
+							"charge": 0,
+							"cold": 0,
+							"curse": 0,
+							"curse_damage": 0,
+							"frozen": 0,
+							"hp": 2000,
+							"max_hp": 2000,
+							"slow": 0,
+							"slow_ticks": 0,
+							"stun": 0,
+							"wet": 0
+						}
+					]
+				}
+			],
+			"title": "Заморозка"
+		},
+		{
+			"explanation": "Мокрая цель → молния. Шанс цепи 80% вместо 20%, удар сильнее. Здесь показан удачный бросок.",
+			"id": "chain",
+			"steps": [
+				{
+					"reactions": {},
+					"targets": [
+						{
+							"burn": 0,
+							"burn_damage": 0,
+							"charge": 0,
+							"cold": 0,
+							"curse": 0,
+							"curse_damage": 0,
+							"frozen": 0,
+							"hp": 2000,
+							"max_hp": 2000,
+							"slow": 0,
+							"slow_ticks": 0,
+							"stun": 0,
+							"wet": 0
+						},
+						{
+							"burn": 0,
+							"burn_damage": 0,
+							"charge": 0,
+							"cold": 0,
+							"curse": 0,
+							"curse_damage": 0,
+							"frozen": 0,
+							"hp": 2000,
+							"max_hp": 2000,
+							"slow": 0,
+							"slow_ticks": 0,
+							"stun": 0,
+							"wet": 0
+						}
+					]
+				},
+				{
+					"reactions": {},
+					"targets": [
+						{
+							"burn": 0,
+							"burn_damage": 0,
+							"charge": 0,
+							"cold": 0,
+							"curse": 0,
+							"curse_damage": 0,
+							"frozen": 0,
+							"hp": 2000,
+							"max_hp": 2000,
+							"slow": 0,
+							"slow_ticks": 0,
+							"stun": 0,
+							"wet": 40
+						},
+						{
+							"burn": 0,
+							"burn_damage": 0,
+							"charge": 0,
+							"cold": 0,
+							"curse": 0,
+							"curse_damage": 0,
+							"frozen": 0,
+							"hp": 2000,
+							"max_hp": 2000,
+							"slow": 0,
+							"slow_ticks": 0,
+							"stun": 0,
+							"wet": 0
+						}
+					]
+				},
+				{
+					"reactions": {
+						"chain": 1
+					},
+					"targets": [
+						{
+							"burn": 0,
+							"burn_damage": 0,
+							"charge": 60,
+							"cold": 0,
+							"curse": 0,
+							"curse_damage": 0,
+							"frozen": 0,
+							"hp": 1987,
+							"max_hp": 2000,
+							"slow": 0,
+							"slow_ticks": 0,
+							"stun": 0,
+							"wet": 40
+						},
+						{
+							"burn": 0,
+							"burn_damage": 0,
+							"charge": 0,
+							"cold": 0,
+							"curse": 0,
+							"curse_damage": 0,
+							"frozen": 0,
+							"hp": 1995,
+							"max_hp": 2000,
+							"slow": 0,
+							"slow_ticks": 0,
+							"stun": 0,
+							"wet": 0
+						}
+					]
+				},
+				{
+					"reactions": {
+						"chain": 1
+					},
+					"targets": [
+						{
+							"burn": 0,
+							"burn_damage": 0,
+							"charge": 40,
+							"cold": 0,
+							"curse": 0,
+							"curse_damage": 0,
+							"frozen": 0,
+							"hp": 1987,
+							"max_hp": 2000,
+							"slow": 0,
+							"slow_ticks": 0,
+							"stun": 0,
+							"wet": 20
+						},
+						{
+							"burn": 0,
+							"burn_damage": 0,
+							"charge": 0,
+							"cold": 0,
+							"curse": 0,
+							"curse_damage": 0,
+							"frozen": 0,
+							"hp": 1995,
+							"max_hp": 2000,
+							"slow": 0,
+							"slow_ticks": 0,
+							"stun": 0,
+							"wet": 0
+						}
+					]
+				}
+			],
+			"title": "Цепь"
+		},
+		{
+			"explanation": "Мокрота → проклятие. После взрыва метка перескочит на мокрого соседа.",
+			"id": "infection",
+			"steps": [
+				{
+					"reactions": {},
+					"targets": [
+						{
+							"burn": 0,
+							"burn_damage": 0,
+							"charge": 0,
+							"cold": 0,
+							"curse": 0,
+							"curse_damage": 0,
+							"frozen": 0,
+							"hp": 2000,
+							"max_hp": 2000,
+							"slow": 0,
+							"slow_ticks": 0,
+							"stun": 0,
+							"wet": 0
+						},
+						{
+							"burn": 0,
+							"burn_damage": 0,
+							"charge": 0,
+							"cold": 0,
+							"curse": 0,
+							"curse_damage": 0,
+							"frozen": 0,
+							"hp": 2000,
+							"max_hp": 2000,
+							"slow": 0,
+							"slow_ticks": 0,
+							"stun": 0,
+							"wet": 0
+						}
+					]
+				},
+				{
+					"reactions": {},
+					"targets": [
+						{
+							"burn": 0,
+							"burn_damage": 0,
+							"charge": 0,
+							"cold": 0,
+							"curse": 0,
+							"curse_damage": 0,
+							"frozen": 0,
+							"hp": 2000,
+							"max_hp": 2000,
+							"slow": 0,
+							"slow_ticks": 0,
+							"stun": 0,
+							"wet": 60
+						},
+						{
+							"burn": 0,
+							"burn_damage": 0,
+							"charge": 0,
+							"cold": 0,
+							"curse": 0,
+							"curse_damage": 0,
+							"frozen": 0,
+							"hp": 2000,
+							"max_hp": 2000,
+							"slow": 0,
+							"slow_ticks": 0,
+							"stun": 0,
+							"wet": 60
+						}
+					]
+				},
+				{
+					"reactions": {
+						"infection": 1
+					},
+					"targets": [
+						{
+							"burn": 0,
+							"burn_damage": 0,
+							"charge": 0,
+							"cold": 0,
+							"curse": 60,
+							"curse_damage": 8,
+							"frozen": 0,
+							"hp": 1996,
+							"max_hp": 2000,
+							"slow": 0,
+							"slow_ticks": 0,
+							"stun": 0,
+							"wet": 0
+						},
+						{
+							"burn": 0,
+							"burn_damage": 0,
+							"charge": 0,
+							"cold": 0,
+							"curse": 0,
+							"curse_damage": 0,
+							"frozen": 0,
+							"hp": 2000,
+							"max_hp": 2000,
+							"slow": 0,
+							"slow_ticks": 0,
+							"stun": 0,
+							"wet": 60
+						}
+					]
+				},
+				{
+					"reactions": {
+						"infection": 1
+					},
+					"targets": [
+						{
+							"burn": 0,
+							"burn_damage": 0,
+							"charge": 0,
+							"cold": 0,
+							"curse": 0,
+							"curse_damage": 0,
+							"frozen": 0,
+							"hp": 1988,
+							"max_hp": 2000,
+							"slow": 0,
+							"slow_ticks": 0,
+							"stun": 0,
+							"wet": 0
+						},
+						{
+							"burn": 0,
+							"burn_damage": 0,
+							"charge": 0,
+							"cold": 0,
+							"curse": 59,
+							"curse_damage": 8,
+							"frozen": 0,
+							"hp": 2000,
+							"max_hp": 2000,
+							"slow": 0,
+							"slow_ticks": 0,
+							"stun": 0,
+							"wet": 0
+						}
+					]
+				}
+			],
+			"title": "Зараза"
+		},
+		{
+			"explanation": "Проклятие → лёд. Взрыв отложен ещё на секунду, его сила ×1.5. Усиление однократное.",
+			"id": "conservation",
+			"steps": [
+				{
+					"reactions": {},
+					"targets": [
+						{
+							"burn": 0,
+							"burn_damage": 0,
+							"charge": 0,
+							"cold": 0,
+							"curse": 0,
+							"curse_damage": 0,
+							"frozen": 0,
+							"hp": 2000,
+							"max_hp": 2000,
+							"slow": 0,
+							"slow_ticks": 0,
+							"stun": 0,
+							"wet": 0
+						},
+						{
+							"burn": 0,
+							"burn_damage": 0,
+							"charge": 0,
+							"cold": 0,
+							"curse": 0,
+							"curse_damage": 0,
+							"frozen": 0,
+							"hp": 2000,
+							"max_hp": 2000,
+							"slow": 0,
+							"slow_ticks": 0,
+							"stun": 0,
+							"wet": 0
+						}
+					]
+				},
+				{
+					"reactions": {},
+					"targets": [
+						{
+							"burn": 0,
+							"burn_damage": 0,
+							"charge": 0,
+							"cold": 0,
+							"curse": 60,
+							"curse_damage": 8,
+							"frozen": 0,
+							"hp": 1996,
+							"max_hp": 2000,
+							"slow": 0,
+							"slow_ticks": 0,
+							"stun": 0,
+							"wet": 0
+						},
+						{
+							"burn": 0,
+							"burn_damage": 0,
+							"charge": 0,
+							"cold": 0,
+							"curse": 0,
+							"curse_damage": 0,
+							"frozen": 0,
+							"hp": 2000,
+							"max_hp": 2000,
+							"slow": 0,
+							"slow_ticks": 0,
+							"stun": 0,
+							"wet": 0
+						}
+					]
+				},
+				{
+					"reactions": {
+						"conservation": 1
+					},
+					"targets": [
+						{
+							"burn": 0,
+							"burn_damage": 0,
+							"charge": 0,
+							"cold": 60,
+							"curse": 80,
+							"curse_damage": 12,
+							"frozen": 0,
+							"hp": 1988,
+							"max_hp": 2000,
+							"slow": 0,
+							"slow_ticks": 0,
+							"stun": 0,
+							"wet": 0
+						},
+						{
+							"burn": 0,
+							"burn_damage": 0,
+							"charge": 0,
+							"cold": 0,
+							"curse": 0,
+							"curse_damage": 0,
+							"frozen": 0,
+							"hp": 2000,
+							"max_hp": 2000,
+							"slow": 0,
+							"slow_ticks": 0,
+							"stun": 0,
+							"wet": 0
+						}
+					]
+				},
+				{
+					"reactions": {
+						"conservation": 1
+					},
+					"targets": [
+						{
+							"burn": 0,
+							"burn_damage": 0,
+							"charge": 0,
+							"cold": 0,
+							"curse": 0,
+							"curse_damage": 0,
+							"frozen": 0,
+							"hp": 1976,
+							"max_hp": 2000,
+							"slow": 0,
+							"slow_ticks": 0,
+							"stun": 0,
+							"wet": 0
+						},
+						{
+							"burn": 0,
+							"burn_damage": 0,
+							"charge": 0,
+							"cold": 0,
+							"curse": 0,
+							"curse_damage": 0,
+							"frozen": 0,
+							"hp": 2000,
+							"max_hp": 2000,
+							"slow": 0,
+							"slow_ticks": 0,
+							"stun": 0,
+							"wet": 0
+						}
+					]
+				}
+			],
+			"title": "Консервация"
+		},
+		{
+			"explanation": "Сначала мокрота и заморозка, потом физика: ×1.5 и оглушение. Лёд разбивается.",
+			"id": "shatter",
+			"steps": [
+				{
+					"reactions": {},
+					"targets": [
+						{
+							"burn": 0,
+							"burn_damage": 0,
+							"charge": 0,
+							"cold": 0,
+							"curse": 0,
+							"curse_damage": 0,
+							"frozen": 0,
+							"hp": 2000,
+							"max_hp": 2000,
+							"slow": 0,
+							"slow_ticks": 0,
+							"stun": 0,
+							"wet": 0
+						},
+						{
+							"burn": 0,
+							"burn_damage": 0,
+							"charge": 0,
+							"cold": 0,
+							"curse": 0,
+							"curse_damage": 0,
+							"frozen": 0,
+							"hp": 2000,
+							"max_hp": 2000,
+							"slow": 0,
+							"slow_ticks": 0,
+							"stun": 0,
+							"wet": 0
+						}
+					]
+				},
+				{
+					"reactions": {
+						"freeze": 1
+					},
+					"targets": [
+						{
+							"burn": 0,
+							"burn_damage": 0,
+							"charge": 0,
+							"cold": 0,
+							"curse": 0,
+							"curse_damage": 0,
+							"frozen": 30,
+							"hp": 1992,
+							"max_hp": 2000,
+							"slow": 0,
+							"slow_ticks": 0,
+							"stun": 0,
+							"wet": 0
+						},
+						{
+							"burn": 0,
+							"burn_damage": 0,
+							"charge": 0,
+							"cold": 0,
+							"curse": 0,
+							"curse_damage": 0,
+							"frozen": 0,
+							"hp": 2000,
+							"max_hp": 2000,
+							"slow": 0,
+							"slow_ticks": 0,
+							"stun": 0,
+							"wet": 0
+						}
+					]
+				},
+				{
+					"reactions": {
+						"freeze": 1,
+						"shatter": 1
+					},
+					"targets": [
+						{
+							"burn": 0,
+							"burn_damage": 0,
+							"charge": 0,
+							"cold": 0,
+							"curse": 0,
+							"curse_damage": 0,
+							"frozen": 0,
+							"hp": 1965,
+							"max_hp": 2000,
+							"slow": 0,
+							"slow_ticks": 0,
+							"stun": 8,
+							"wet": 0
+						},
+						{
+							"burn": 0,
+							"burn_damage": 0,
+							"charge": 0,
+							"cold": 0,
+							"curse": 0,
+							"curse_damage": 0,
+							"frozen": 0,
+							"hp": 2000,
+							"max_hp": 2000,
+							"slow": 0,
+							"slow_ticks": 0,
+							"stun": 0,
+							"wet": 0
+						}
+					]
+				},
+				{
+					"reactions": {
+						"freeze": 1,
+						"shatter": 1
+					},
+					"targets": [
+						{
+							"burn": 0,
+							"burn_damage": 0,
+							"charge": 0,
+							"cold": 0,
+							"curse": 0,
+							"curse_damage": 0,
+							"frozen": 0,
+							"hp": 1965,
+							"max_hp": 2000,
+							"slow": 0,
+							"slow_ticks": 0,
+							"stun": 0,
+							"wet": 0
+						},
+						{
+							"burn": 0,
+							"burn_damage": 0,
+							"charge": 0,
+							"cold": 0,
+							"curse": 0,
+							"curse_damage": 0,
+							"frozen": 0,
+							"hp": 2000,
+							"max_hp": 2000,
+							"slow": 0,
+							"slow_ticks": 0,
+							"stun": 0,
+							"wet": 0
+						}
+					]
+				}
+			],
+			"title": "Раскол"
+		},
+		{
+			"explanation": "Две независимые метки → физика. ×1.4 и перенос накопленного взрыва в удар; метки поглощаются.",
+			"id": "execute",
+			"steps": [
+				{
+					"reactions": {},
+					"targets": [
+						{
+							"burn": 0,
+							"burn_damage": 0,
+							"charge": 0,
+							"cold": 0,
+							"curse": 0,
+							"curse_damage": 0,
+							"frozen": 0,
+							"hp": 2000,
+							"max_hp": 2000,
+							"slow": 0,
+							"slow_ticks": 0,
+							"stun": 0,
+							"wet": 0
+						},
+						{
+							"burn": 0,
+							"burn_damage": 0,
+							"charge": 0,
+							"cold": 0,
+							"curse": 0,
+							"curse_damage": 0,
+							"frozen": 0,
+							"hp": 2000,
+							"max_hp": 2000,
+							"slow": 0,
+							"slow_ticks": 0,
+							"stun": 0,
+							"wet": 0
+						}
+					]
+				},
+				{
+					"reactions": {},
+					"targets": [
+						{
+							"burn": 0,
+							"burn_damage": 0,
+							"charge": 60,
+							"cold": 0,
+							"curse": 60,
+							"curse_damage": 8,
+							"frozen": 0,
+							"hp": 1984,
+							"max_hp": 2000,
+							"slow": 0,
+							"slow_ticks": 0,
+							"stun": 0,
+							"wet": 0
+						},
+						{
+							"burn": 0,
+							"burn_damage": 0,
+							"charge": 0,
+							"cold": 0,
+							"curse": 0,
+							"curse_damage": 0,
+							"frozen": 0,
+							"hp": 2000,
+							"max_hp": 2000,
+							"slow": 0,
+							"slow_ticks": 0,
+							"stun": 0,
+							"wet": 0
+						}
+					]
+				},
+				{
+					"reactions": {
+						"execute": 1
+					},
+					"targets": [
+						{
+							"burn": 0,
+							"burn_damage": 0,
+							"charge": 0,
+							"cold": 0,
+							"curse": 0,
+							"curse_damage": 0,
+							"frozen": 0,
+							"hp": 1951,
+							"max_hp": 2000,
+							"slow": 0,
+							"slow_ticks": 0,
+							"stun": 0,
+							"wet": 0
+						},
+						{
+							"burn": 0,
+							"burn_damage": 0,
+							"charge": 0,
+							"cold": 0,
+							"curse": 0,
+							"curse_damage": 0,
+							"frozen": 0,
+							"hp": 2000,
+							"max_hp": 2000,
+							"slow": 0,
+							"slow_ticks": 0,
+							"stun": 0,
+							"wet": 0
+						}
+					]
+				},
+				{
+					"reactions": {
+						"execute": 1
+					},
+					"targets": [
+						{
+							"burn": 0,
+							"burn_damage": 0,
+							"charge": 0,
+							"cold": 0,
+							"curse": 0,
+							"curse_damage": 0,
+							"frozen": 0,
+							"hp": 1951,
+							"max_hp": 2000,
+							"slow": 0,
+							"slow_ticks": 0,
+							"stun": 0,
+							"wet": 0
+						},
+						{
+							"burn": 0,
+							"burn_damage": 0,
+							"charge": 0,
+							"cold": 0,
+							"curse": 0,
+							"curse_damage": 0,
+							"frozen": 0,
+							"hp": 2000,
+							"max_hp": 2000,
+							"slow": 0,
+							"slow_ticks": 0,
+							"stun": 0,
+							"wet": 0
+						}
+					]
+				}
+			],
+			"title": "Добивание"
+		},
+		{
+			"explanation": "Мокрота в потоке: толчок вперёд и разнос мокроты. Попутный ветер ускоряет!",
+			"id": "surge",
+			"steps": [
+				{
+					"reactions": {},
+					"targets": [
+						{
+							"burn": 0,
+							"burn_damage": 0,
+							"charge": 0,
+							"cold": 0,
+							"curse": 0,
+							"curse_damage": 0,
+							"frozen": 0,
+							"hp": 2000,
+							"max_hp": 2000,
+							"slow": 0,
+							"slow_ticks": 0,
+							"stun": 0,
+							"wet": 0
+						},
+						{
+							"burn": 0,
+							"burn_damage": 0,
+							"charge": 0,
+							"cold": 0,
+							"curse": 0,
+							"curse_damage": 0,
+							"frozen": 0,
+							"hp": 2000,
+							"max_hp": 2000,
+							"slow": 0,
+							"slow_ticks": 0,
+							"stun": 0,
+							"wet": 0
+						}
+					]
+				},
+				{
+					"reactions": {},
+					"targets": [
+						{
+							"burn": 0,
+							"burn_damage": 0,
+							"charge": 0,
+							"cold": 0,
+							"curse": 0,
+							"curse_damage": 0,
+							"frozen": 0,
+							"hp": 2000,
+							"max_hp": 2000,
+							"slow": 0,
+							"slow_ticks": 0,
+							"stun": 0,
+							"wet": 40
+						},
+						{
+							"burn": 0,
+							"burn_damage": 0,
+							"charge": 0,
+							"cold": 0,
+							"curse": 0,
+							"curse_damage": 0,
+							"frozen": 0,
+							"hp": 2000,
+							"max_hp": 2000,
+							"slow": 0,
+							"slow_ticks": 0,
+							"stun": 0,
+							"wet": 0
+						}
+					]
+				},
+				{
+					"reactions": {
+						"surge": 1
+					},
+					"targets": [
+						{
+							"burn": 0,
+							"burn_damage": 0,
+							"charge": 0,
+							"cold": 0,
+							"curse": 0,
+							"curse_damage": 0,
+							"frozen": 0,
+							"hp": 2000,
+							"max_hp": 2000,
+							"slow": 0,
+							"slow_ticks": 0,
+							"stun": 0,
+							"wet": 40
+						},
+						{
+							"burn": 0,
+							"burn_damage": 0,
+							"charge": 0,
+							"cold": 0,
+							"curse": 0,
+							"curse_damage": 0,
+							"frozen": 0,
+							"hp": 2000,
+							"max_hp": 2000,
+							"slow": 0,
+							"slow_ticks": 0,
+							"stun": 0,
+							"wet": 30
+						}
+					]
+				},
+				{
+					"reactions": {
+						"surge": 1
+					},
+					"targets": [
+						{
+							"burn": 0,
+							"burn_damage": 0,
+							"charge": 0,
+							"cold": 0,
+							"curse": 0,
+							"curse_damage": 0,
+							"frozen": 0,
+							"hp": 2000,
+							"max_hp": 2000,
+							"slow": 0,
+							"slow_ticks": 0,
+							"stun": 0,
+							"wet": 20
+						},
+						{
+							"burn": 0,
+							"burn_damage": 0,
+							"charge": 0,
+							"cold": 0,
+							"curse": 0,
+							"curse_damage": 0,
+							"frozen": 0,
+							"hp": 2000,
+							"max_hp": 2000,
+							"slow": 0,
+							"slow_ticks": 0,
+							"stun": 0,
+							"wet": 10
+						}
+					]
+				}
+			],
+			"title": "Разгон"
+		},
+		{
+			"explanation": "Горение в потоке: разнос огня, периодический урон под ветром сильнее на 25%.",
+			"id": "wildfire",
+			"steps": [
+				{
+					"reactions": {},
+					"targets": [
+						{
+							"burn": 0,
+							"burn_damage": 0,
+							"charge": 0,
+							"cold": 0,
+							"curse": 0,
+							"curse_damage": 0,
+							"frozen": 0,
+							"hp": 2000,
+							"max_hp": 2000,
+							"slow": 0,
+							"slow_ticks": 0,
+							"stun": 0,
+							"wet": 0
+						},
+						{
+							"burn": 0,
+							"burn_damage": 0,
+							"charge": 0,
+							"cold": 0,
+							"curse": 0,
+							"curse_damage": 0,
+							"frozen": 0,
+							"hp": 2000,
+							"max_hp": 2000,
+							"slow": 0,
+							"slow_ticks": 0,
+							"stun": 0,
+							"wet": 0
+						}
+					]
+				},
+				{
+					"reactions": {},
+					"targets": [
+						{
+							"burn": 60,
+							"burn_damage": 4,
+							"charge": 0,
+							"cold": 0,
+							"curse": 0,
+							"curse_damage": 0,
+							"frozen": 0,
+							"hp": 1992,
+							"max_hp": 2000,
+							"slow": 0,
+							"slow_ticks": 0,
+							"stun": 0,
+							"wet": 0
+						},
+						{
+							"burn": 0,
+							"burn_damage": 0,
+							"charge": 0,
+							"cold": 0,
+							"curse": 0,
+							"curse_damage": 0,
+							"frozen": 0,
+							"hp": 2000,
+							"max_hp": 2000,
+							"slow": 0,
+							"slow_ticks": 0,
+							"stun": 0,
+							"wet": 0
+						}
+					]
+				},
+				{
+					"reactions": {
+						"wildfire": 1
+					},
+					"targets": [
+						{
+							"burn": 60,
+							"burn_damage": 4,
+							"charge": 0,
+							"cold": 0,
+							"curse": 0,
+							"curse_damage": 0,
+							"frozen": 0,
+							"hp": 1992,
+							"max_hp": 2000,
+							"slow": 0,
+							"slow_ticks": 0,
+							"stun": 0,
+							"wet": 0
+						},
+						{
+							"burn": 30,
+							"burn_damage": 4,
+							"charge": 0,
+							"cold": 0,
+							"curse": 0,
+							"curse_damage": 0,
+							"frozen": 0,
+							"hp": 2000,
+							"max_hp": 2000,
+							"slow": 0,
+							"slow_ticks": 0,
+							"stun": 0,
+							"wet": 0
+						}
+					]
+				},
+				{
+					"reactions": {
+						"wildfire": 2
+					},
+					"targets": [
+						{
+							"burn": 20,
+							"burn_damage": 4,
+							"charge": 0,
+							"cold": 0,
+							"curse": 0,
+							"curse_damage": 0,
+							"frozen": 0,
+							"hp": 1982,
+							"max_hp": 2000,
+							"slow": 0,
+							"slow_ticks": 0,
+							"stun": 0,
+							"wet": 0
+						},
+						{
+							"burn": 10,
+							"burn_damage": 4,
+							"charge": 0,
+							"cold": 0,
+							"curse": 0,
+							"curse_damage": 0,
+							"frozen": 0,
+							"hp": 1990,
+							"max_hp": 2000,
+							"slow": 0,
+							"slow_ticks": 0,
+							"stun": 0,
+							"wet": 0
+						}
+					]
+				}
+			],
+			"title": "Пылающий ветер"
+		},
+		{
+			"explanation": "Холод в потоке: холод переходит на соседей и замедляет их.",
+			"id": "blizzard",
+			"steps": [
+				{
+					"reactions": {},
+					"targets": [
+						{
+							"burn": 0,
+							"burn_damage": 0,
+							"charge": 0,
+							"cold": 0,
+							"curse": 0,
+							"curse_damage": 0,
+							"frozen": 0,
+							"hp": 2000,
+							"max_hp": 2000,
+							"slow": 0,
+							"slow_ticks": 0,
+							"stun": 0,
+							"wet": 0
+						},
+						{
+							"burn": 0,
+							"burn_damage": 0,
+							"charge": 0,
+							"cold": 0,
+							"curse": 0,
+							"curse_damage": 0,
+							"frozen": 0,
+							"hp": 2000,
+							"max_hp": 2000,
+							"slow": 0,
+							"slow_ticks": 0,
+							"stun": 0,
+							"wet": 0
+						}
+					]
+				},
+				{
+					"reactions": {},
+					"targets": [
+						{
+							"burn": 0,
+							"burn_damage": 0,
+							"charge": 0,
+							"cold": 60,
+							"curse": 0,
+							"curse_damage": 0,
+							"frozen": 0,
+							"hp": 1992,
+							"max_hp": 2000,
+							"slow": 0,
+							"slow_ticks": 0,
+							"stun": 0,
+							"wet": 0
+						},
+						{
+							"burn": 0,
+							"burn_damage": 0,
+							"charge": 0,
+							"cold": 0,
+							"curse": 0,
+							"curse_damage": 0,
+							"frozen": 0,
+							"hp": 2000,
+							"max_hp": 2000,
+							"slow": 0,
+							"slow_ticks": 0,
+							"stun": 0,
+							"wet": 0
+						}
+					]
+				},
+				{
+					"reactions": {
+						"blizzard": 1
+					},
+					"targets": [
+						{
+							"burn": 0,
+							"burn_damage": 0,
+							"charge": 0,
+							"cold": 60,
+							"curse": 0,
+							"curse_damage": 0,
+							"frozen": 0,
+							"hp": 1992,
+							"max_hp": 2000,
+							"slow": 0,
+							"slow_ticks": 0,
+							"stun": 0,
+							"wet": 0
+						},
+						{
+							"burn": 0,
+							"burn_damage": 0,
+							"charge": 0,
+							"cold": 30,
+							"curse": 0,
+							"curse_damage": 0,
+							"frozen": 0,
+							"hp": 2000,
+							"max_hp": 2000,
+							"slow": 0,
+							"slow_ticks": 0,
+							"stun": 0,
+							"wet": 0
+						}
+					]
+				},
+				{
+					"reactions": {
+						"blizzard": 1
+					},
+					"targets": [
+						{
+							"burn": 0,
+							"burn_damage": 0,
+							"charge": 0,
+							"cold": 40,
+							"curse": 0,
+							"curse_damage": 0,
+							"frozen": 0,
+							"hp": 1992,
+							"max_hp": 2000,
+							"slow": 0,
+							"slow_ticks": 0,
+							"stun": 0,
+							"wet": 0
+						},
+						{
+							"burn": 0,
+							"burn_damage": 0,
+							"charge": 0,
+							"cold": 10,
+							"curse": 0,
+							"curse_damage": 0,
+							"frozen": 0,
+							"hp": 2000,
+							"max_hp": 2000,
+							"slow": 0,
+							"slow_ticks": 0,
+							"stun": 0,
+							"wet": 0
+						}
+					]
+				}
+			],
+			"title": "Стужа"
+		}
+	],
+	"source": "Godot ReactionLesson"
+}

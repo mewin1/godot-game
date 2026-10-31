@@ -7,7 +7,7 @@
 script = ExtResource("1")
 id = &"steam"
 title = "Пар"
-explanation = "Мокрота → огонь. Урон ×1.25, мокрота и горение поглощаются; нового поджога нет."
+explanation = "Мокрота → огонь. Урон ×1.25 и замедление на 1 с. Мокрота и горение поглощаются; нового поджога нет."
 sources = Array[ExtResource("tower_type")]([ExtResource("source_0")])
 finisher = ExtResource("finisher")
 reaction_id = &"steam"

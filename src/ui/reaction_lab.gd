@@ -122,6 +122,8 @@ func _mob_report(mob: MobState) -> String:
 	if mob.curse_ticks_left > 0:
 		parts.append("проклятие %d урона через %.1f с" % [mob.curse_damage,
 				float(mob.curse_ticks_left) / _config.ticks_per_second])
+	if mob.slow_ticks_left > 0:
+		parts.append("замедление −%d%%" % mob.slow_percent)
 	if mob.stun_ticks_left > 0:
 		parts.append("оглушение")
 	return "Мишень %d · HP %d/%d · %s" % [mob.id, mob.hp, mob.max_hp,

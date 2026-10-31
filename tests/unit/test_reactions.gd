@@ -304,3 +304,15 @@ func test_curse_and_wind_future_state_change_hash() -> void:
 	var after: StateHasher = StateHasher.new()
 	_field.add_to_hash(after)
 	assert_ne(before.value, after.value)
+
+
+func test_steam_controls_movement_without_adding_a_third_elemental_status() -> void:
+	_mob.wet_ticks_left = 60
+	var original_speed: int = _mob.speed
+	DivineCombat.hit(_field, _tower("brazier"), _mob, 100)
+	assert_eq(_mob.current_speed(), original_speed * 70 / 100)
+	assert_eq(_mob.status_tags().size(), 0)
+	assert_eq(_mob.stun_ticks_left, 0)
+	for i: int in 20:
+		_mob.advance()
+	assert_eq(_mob.current_speed(), original_speed)

@@ -13,7 +13,8 @@ shape = Array[Vector2i]([Vector2i(0, 0), Vector2i(0, 1)])
 damage = 46
 cooldown_ticks = 32
 range_milli = 3000
-description = "Тяжёлый разряд: шанс цепи 20%, по мокрой цели 80%. Сильный удар даёт сильную цепь."
+description = "Приоритет: цель для реакции. Тяжёлый разряд: шанс цепи 20%, по мокрой цели 80%. Сильный удар даёт сильную цепь."
 
 tags = Array[StringName]([&"lightning"])
 charge_ticks = 60
+target_priority = 1

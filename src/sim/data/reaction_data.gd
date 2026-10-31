@@ -24,3 +24,5 @@ extends Resource
 @export var spread_slow_percent: int = 0
 ## Доля накопленного урона поглощаемых статусов, превращаемая в урон финишера.
 @export var stored_damage_percent: int = 0
+@export var slow_percent: int = 0
+@export var slow_ticks: int = 0

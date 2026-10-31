@@ -12,5 +12,6 @@ shape = Array[Vector2i]([Vector2i(0, 0), Vector2i(1, 0)])
 damage = 28
 cooldown_ticks = 26
 range_milli = 2800
-description = "Усилитель: физический залп по двум целям. Раскалывает замороженных."
+description = "Приоритет: цель для реакции. Усилитель: физический залп по двум целям. Раскалывает замороженных."
 targets_per_shot = 2
+target_priority = 1

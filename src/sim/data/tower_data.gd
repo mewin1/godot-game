@@ -3,6 +3,9 @@ extends Resource
 ## Описание вида башни: фигура, школа, тир и боевые статы. Конкретные башни — в data/towers/*.tres.
 ## Расстояния — в тысячных долях клетки (1000 = одна клетка), время — в тиках симуляции.
 
+enum TargetPriority { FRONT, REACTION }
+
+@export var target_priority: TargetPriority = TargetPriority.FRONT
 @export var id: StringName = &""
 @export var display_name: String = ""
 ## Школа башни: &"fire", &"ice", &"mech".
