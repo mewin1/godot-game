@@ -790,7 +790,11 @@ func count_remaining_mobs() -> int:
 
 
 func _target_priority(tower: TowerState, mob: MobState) -> int:
-	if tower.data.target_priority == TowerData.TargetPriority.FRONT or mob.shield_left > 0:
+	if tower.data.target_priority == TowerData.TargetPriority.FRONT:
+		return 0
+	if mob.progress >= get_path_end_progress() - _config.reaction_target_emergency_milli:
+		return 2
+	if mob.shield_left > 0:
 		return 0
 	if tower.data.burning_target_bonus_percent > 0 and mob.burn_ticks_left > 0:
 		return 1

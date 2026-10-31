@@ -200,3 +200,5 @@ prep_requires_ready = true
 
 training_mob = ExtResource("training_mob")
 lessons = Array[ExtResource("lesson_type")]([ExtResource("lesson_steam"), ExtResource("lesson_roast"), ExtResource("lesson_melt"), ExtResource("lesson_freeze"), ExtResource("lesson_chain"), ExtResource("lesson_infection"), ExtResource("lesson_conservation"), ExtResource("lesson_shatter"), ExtResource("lesson_execute"), ExtResource("lesson_surge"), ExtResource("lesson_wildfire"), ExtResource("lesson_blizzard")])
+
+reaction_target_emergency_milli = 1000

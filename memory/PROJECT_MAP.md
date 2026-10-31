@@ -8,6 +8,10 @@
 
 | Запрос | Основные файлы | Проверка |
 |---|---|---|
+| Учебный стенд | `src/sim/reaction_lesson.gd`, `data/lessons/`, `src/ui/reaction_lab.gd` | `test_reaction_lesson`, `tools/reaction_lab_smoke.gd` |
+| Проба защиты | `src/sim/defense_trial.gd`, `src/ui/shop_panel.gd` | `test_defense_trial`, smoke |
+| Общая зона реакций | `src/sim/combat_coverage.gd`, `src/view/field_view.gd` | `test_combat_coverage` |
+| HTML-демонстрация | `tools/export_gameplay_demo.gd`, `tools/build_gameplay_demo.py` | 48переходов JS, локальный HTML |
 | Фазы, пары, призрак, осада, смерть и награды | `src/sim/match_sim.gd` | `test_match`, `test_lobby`, `test_divine_rework` |
 | Движение, цели, выстрелы, лечение, убийства | `src/sim/field_state.gd`, `mob_state.gd` | `test_field_state`, `test_buildings_mobs` |
 | Ветер, горение, мокрота и вероятностная цепь | `src/sim/divine_combat.gd`, `field_state.gd` | `test_divine_rework`, `test_water_lightning` |

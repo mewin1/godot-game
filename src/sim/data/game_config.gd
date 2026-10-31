@@ -92,6 +92,8 @@ extends Resource
 @export var buff_offer_count: int = 3
 
 @export_group("Башни")
+## Реактивный финишер сначала спасает последнюю клетку от прорыва.
+@export var reaction_target_emergency_milli: int = 1000
 @export var max_tower_level: int = 3
 ## «Тройка → открытие»: постройка дошла до максимального уровня — выбор 1 из стольких в подарок.
 @export var discover_offer_count: int = 3
