@@ -164,7 +164,8 @@ static func hit(field: FieldState, tower: TowerState, mob: MobState, damage: int
 		if field.config.chain_chance_percent < 0:
 			_charge(field, tower, mob, damage)
 		elif field.roll_chance(chain_roll_chance):
-			_chain(field, tower, mob, damage)
+			_chain(field, tower, mob, damage,
+					reaction != null and reaction.chain_chance_bonus > 0)
 
 
 ## Шанс запуска определяется основной целью; мокрые дополнительные цели не бросают снова.
@@ -196,7 +197,8 @@ static func _charge(field: FieldState, tower: TowerState, mob: MobState, damage:
 		_chain(field, tower, mob, damage)
 
 
-static func _chain(field: FieldState, tower: TowerState, mob: MobState, damage: int) -> void:
+static func _chain(field: FieldState, tower: TowerState, mob: MobState, damage: int,
+		is_reaction: bool = false) -> void:
 	var transitions: int = 1
 	var idol: IdolState = field.get_idol(&"perun")
 	if idol != null:
@@ -209,7 +211,7 @@ static func _chain(field: FieldState, tower: TowerState, mob: MobState, damage: 
 		var next_target: MobState = _nearest_target(field, previous, visited)
 		if next_target == null:
 			return
-		if visited.size() == 1:
+		if visited.size() == 1 and is_reaction:
 			field.trigger_reaction(&"chain", mob)
 		visited.append(next_target)
 		field.lightning_fired.emit(field.get_mob_position(previous),

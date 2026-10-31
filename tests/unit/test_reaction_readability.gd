@@ -52,3 +52,25 @@ func test_water_ice_war_explains_shatter_instead_of_spending_nonexistent_second_
 	var hint: String = ReactionGuide.draft_text(_config, gods)
 	assert_true(hint.contains("Вода → Лёд → Бог войны: Раскол"))
 	assert_false(hint.contains("Вода + Лёд → Бог войны: Добивание"))
+
+
+func test_dry_perun_chain_is_basic_attack_but_wet_chain_counts_as_reaction() -> void:
+	var config: GameConfig = _config.duplicate() as GameConfig
+	config.chain_chance_percent = 100
+	var field: FieldState = FieldState.new(config, 3, 51)
+	var tower: TowerState = field.add_tower(
+			load("res://data/towers/spark.tres") as TowerData, Vector2i(2, 4), 0)
+	var first: MobState = MobState.create(config.wave_mob)
+	first.hp = 1000
+	field.mobs.append(first)
+	var second: MobState = MobState.create(config.wave_mob)
+	second.hp = 1000
+	field.mobs.append(second)
+	DivineCombat.hit(field, tower, first, 10)
+	var dry_count: int = field.reaction_counts.get(&"chain", 0)
+	assert_eq(dry_count, 0)
+	assert_lt(second.hp, 1000, "обычная цепь по-прежнему наносит урон")
+	first.wet_ticks_left = 60
+	DivineCombat.hit(field, tower, first, 10)
+	var wet_count: int = field.reaction_counts.get(&"chain", 0)
+	assert_eq(wet_count, 1)

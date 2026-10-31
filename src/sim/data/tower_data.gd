@@ -67,3 +67,19 @@ func is_support() -> bool:
 			or neighbor_range_milli > 0
 ## Цвет квадратиков в прототипе. Симуляция его не использует.
 @export var color: Color = Color.WHITE
+
+
+## Какие метки может оставлять постройка; используется справкой и геометрией сочетаний.
+func get_status_tags() -> Array[StringName]:
+	var result: Array[StringName] = []
+	if wet_ticks > 0:
+		result.append(&"wet")
+	if burn_percent > 0:
+		result.append(&"burn")
+	if charge_ticks > 0:
+		result.append(&"charge")
+	if cold_ticks > 0:
+		result.append(&"cold")
+	if curse_ticks > 0:
+		result.append(&"curse")
+	return result

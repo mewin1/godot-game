@@ -40,6 +40,8 @@ var title: String = ""
 var hero_hp: int = 0
 ## Можно ли сейчас менять поле (своё поле в фазе подготовки).
 var can_edit: bool = false
+var _combo_cache_key: int = -1
+var _combo_cells: Array[Vector2i] = []
 var selected_tower_id: int = 0
 var playback_speed: int = 1:
 	set(value):
@@ -250,6 +252,7 @@ func _draw() -> void:
 	_draw_title()
 	_draw_board()
 	_draw_road()
+	_draw_combo_coverage()
 	_draw_decor()
 	_draw_spawn()
 	_draw_knockback_mark()
@@ -599,3 +602,24 @@ func _draw_wind_tower(tower: TowerState, show_area: bool) -> void:
 		var alignment: int = movement.x * direction.x + movement.y * direction.y
 		var tint: Color = Color(0.85, 0.3, 0.2, 0.35) if alignment > 0 				else Color(0.3, 0.85, 0.65, 0.3)
 		draw_rect(_cell_rect(path[i]).grow(-2), tint)
+
+
+func _draw_combo_coverage() -> void:
+	var selected: TowerState = field.get_tower(selected_tower_id)
+	if selected == null:
+		return
+	var hasher: StateHasher = StateHasher.new()
+	hasher.add(selected_tower_id)
+	hasher.add(field.path_length)
+	for tower: TowerState in field.towers:
+		hasher.add_many([tower.id, tower.anchor.x, tower.anchor.y, tower.rotation,
+				tower.level, tower.enchantment, tower.awakening])
+	for idol: IdolState in field.idols:
+		idol.add_to_hash(hasher)
+	if hasher.value != _combo_cache_key:
+		_combo_cache_key = hasher.value
+		_combo_cells = CombatCoverage.reaction_cells(field, selected)
+	for cell: Vector2i in _combo_cells:
+		var rect: Rect2 = _cell_rect(cell).grow(-_cell_size * 0.18)
+		draw_rect(rect, Color(1.0, 0.78, 0.25, 0.28))
+		draw_rect(rect, Color(1.0, 0.78, 0.25, 0.8), false, 2.0)

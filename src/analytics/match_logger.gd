@@ -6,7 +6,7 @@ extends RefCounted
 ## игра) логов не оставляют.
 ## События: match_start, round_start, command, wave_start, round_end, eliminated, match_end.
 
-const LOG_VERSION: int = 6
+const LOG_VERSION: int = 7
 
 var _started_msec: int = Time.get_ticks_msec()
 var _sim: MatchSim

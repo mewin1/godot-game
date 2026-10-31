@@ -68,18 +68,10 @@ static func _append_bridges(result: PackedStringArray, config: GameConfig,
 static func _god_statuses(config: GameConfig, god: StringName) -> Array[StringName]:
 	var result: Array[StringName] = []
 	for tower: TowerData in config.towers:
-		if tower.god != god:
-			continue
-		if tower.wet_ticks > 0 and not result.has(&"wet"):
-			result.append(&"wet")
-		if tower.burn_percent > 0 and not result.has(&"burn"):
-			result.append(&"burn")
-		if tower.charge_ticks > 0 and not result.has(&"charge"):
-			result.append(&"charge")
-		if tower.cold_ticks > 0 and not result.has(&"cold"):
-			result.append(&"cold")
-		if tower.curse_ticks > 0 and not result.has(&"curse"):
-			result.append(&"curse")
+		if tower.god == god:
+			for status: StringName in tower.get_status_tags():
+				if not result.has(status):
+					result.append(status)
 	return result
 
 

@@ -168,7 +168,8 @@ func refresh(selected_tower: TowerState) -> void:
 
 func _tower_details(tower: TowerState) -> String:
 	var field: FieldState = _player.field
-	var lines: PackedStringArray = [tower.data.description]
+	var lines: PackedStringArray = [tower.data.description,
+			"Золотые клетки дороги — совместная зона реакций. Порядок попаданий проверяйте Пробой."]
 	if _player.reserve.has(tower):
 		return "\n".join(lines) + "\nВ резерве постройка не участвует в обороне."
 	if tower.data.attacks:
