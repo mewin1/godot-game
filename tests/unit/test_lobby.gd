@@ -158,6 +158,25 @@ func test_breached_wave_gives_no_clean_income() -> void:
 	assert_eq(player.gold, gold_before + player.get_total_income())
 
 
+## Чистая волна растит серию побед, прорыв переводит её в серию поражений.
+func test_streak_builds_on_clean_and_flips_on_leak() -> void:
+	_config.streak_gold = 1
+	var sim: MatchSim = MatchSim.new(_config, SEED, 2, 0)
+	sim.start()
+	_disable_bots(sim)
+	var player: PlayerState = sim.players[0]
+	_remove_all_waves(sim)
+	_finish_round_now(sim)
+	assert_eq(player.streak, 1, "чистая волна — победа")
+	_finish_round_now(sim)
+	assert_eq(player.streak, 2, "серия побед растёт")
+	_remove_all_waves(sim)
+	_add_breaches(sim, player, 1, -1)
+	sim._collect_field_results(player)
+	_finish_round_now(sim)
+	assert_eq(player.streak, -1, "прорыв переводит в серию поражений")
+
+
 func test_attackers_paid_for_damage_and_breach_bonus() -> void:
 	var sim: MatchSim = _make_siege_round()
 	_disable_bots(sim)

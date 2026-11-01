@@ -468,7 +468,12 @@ func _finish_round() -> void:
 		player.gold += player.get_total_income()
 		player.gold += config.get_interest(player.gold)
 		if player.index != ghost_target:
-			# Против призрака урон не засчитывается — злость не копится и не сбрасывается.
+			# Против призрака урон не засчитывается — серия и злость не считаются.
+			if player.hp_lost_this_round == 0:
+				player.streak = player.streak + 1 if player.streak > 0 else 1
+			else:
+				player.streak = player.streak - 1 if player.streak < 0 else -1
+			player.gold += config.get_streak_bonus(player.streak)
 			if config.clean_wave_income > 0 and player.hp_lost_this_round == 0:
 				player.gold += config.clean_wave_income
 			player.army.update_rage(player.army_damage_dealt)

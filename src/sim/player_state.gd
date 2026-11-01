@@ -40,6 +40,8 @@ var gift_towers: Array[TowerData] = []
 var reserve: Array[TowerState] = []
 var gold: int = 0
 var income: int = 0
+## Серия подряд чистых (плюс) или прорванных (минус) волн.
+var streak: int = 0
 var is_alive: bool = true
 ## Итоговое место (1–5); 0 — пока в игре.
 var place: int = 0
@@ -378,7 +380,7 @@ func end_prep() -> void:
 
 
 func add_to_hash(hasher: StateHasher) -> void:
-	hasher.add_many([index, hero_hp, gold, income, int(is_alive), place, fell_tick,
+	hasher.add_many([index, hero_hp, gold, income, streak, int(is_alive), place, fell_tick,
 			army_damage_dealt, hp_lost_this_round, raw_breach_damage, limited_breach_damage,
 			buff_offers.size(), skill_uses, int(is_skill_used_this_round),
 			int(is_hero_triggered), free_rerolls_left, next_tower_bonus_levels,

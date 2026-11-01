@@ -46,6 +46,22 @@ func test_interest_disabled_when_step_zero() -> void:
 	assert_eq(_config.get_interest(100), 0)
 
 
+func test_streak_bonus_scales_and_caps() -> void:
+	_config.streak_gold = 1
+	_config.streak_cap = 3
+	assert_eq(_config.get_streak_bonus(0), 0)
+	assert_eq(_config.get_streak_bonus(1), 1)
+	assert_eq(_config.get_streak_bonus(3), 3)
+	assert_eq(_config.get_streak_bonus(5), 3)
+	assert_eq(_config.get_streak_bonus(-2), 2, "серия поражений тоже даёт бонус")
+	assert_eq(_config.get_streak_bonus(-5), 3)
+
+
+func test_streak_disabled_when_gold_zero() -> void:
+	_config.streak_gold = 0
+	assert_eq(_config.get_streak_bonus(5), 0)
+
+
 func test_shop_shows_three_offers_on_level_one() -> void:
 	assert_eq(_player.shop.offers.size(), 3)
 

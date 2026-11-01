@@ -78,6 +78,10 @@ extends Resource
 ## Копить = не качать армию и оборону — вечный выбор «сейчас или потом». 0 — выключено.
 @export var interest_step: int = 0
 @export var interest_cap: int = 3
+## «Серия»: подряд чистые волны (победа) или прорывы (поражение) растят бонус до
+## streak_cap уровней по streak_gold золота. Азарт серий и подушка отстающему. 0 — выключено.
+@export var streak_gold: int = 0
+@export var streak_cap: int = 3
 ## Волна отбита без единого прорыва — хозяин получает этот бонус золота (0 — выключено).
 ## Даёт обороне собственный источник экономики, симметричный доходу от армии.
 @export var clean_wave_income: int = 0
@@ -206,6 +210,13 @@ func get_interest(gold: int) -> int:
 	if interest_step <= 0:
 		return 0
 	return mini(gold / interest_step, interest_cap)
+
+
+## Бонус серии: уровень = минимум(|streak|, cap), знак не важен — бонус за серию в обе стороны.
+func get_streak_bonus(streak: int) -> int:
+	if streak_gold <= 0:
+		return 0
+	return mini(absi(streak), streak_cap) * streak_gold
 
 
 func get_level_damage(base_damage: int, tower_level: int) -> int:
