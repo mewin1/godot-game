@@ -262,6 +262,16 @@ func test_water_zero_damage_and_lightning_charge_are_active_content() -> void:
 	assert_gt(_mob.charge_ticks_left, 0)
 
 
+## Вода (поддержка) усиливает соседнюю башню урона; сама — нет.
+func test_water_buffs_adjacent_tower_damage() -> void:
+	var support: TowerState = _tower("water")
+	var shooter: TowerState = _field.add_tower(
+			load("res://data/towers/spark.tres") as TowerData, Vector2i(4, 4), 0)
+	_field.refresh_bonuses()
+	assert_eq(shooter.bonus_damage_percent, 10, "вода усиливает соседнюю башню")
+	assert_eq(support.bonus_damage_percent, 0, "поддержка сама не усиливается")
+
+
 func test_wildfire_spreads_burn_only_while_source_is_under_wind() -> void:
 	_mob.progress = 3000
 	_mob.burn_ticks_left = 60
