@@ -44,6 +44,8 @@ var siege_attackers: Array[int] = []
 var ghost_target: int = -1
 var ghost_source: int = -1
 var ghost_field: FieldState
+## Игрок без дуэли в раунд осады (нечётный остаток после пар): полный доход, без чужой армии.
+var resting_player: int = -1
 
 ## Маршруты армий в этом раунде: x — чья армия, y — на чьё поле идёт.
 var _army_routes: Array[Vector2i] = []
@@ -204,7 +206,7 @@ func state_hash() -> int:
 		hasher.add_many([attacker, _siege_damage_by_attacker.get(attacker, 0)])
 	for player: PlayerState in players:
 		player.add_to_hash(hasher)
-	hasher.add_many([ghost_target, ghost_source])
+	hasher.add_many([ghost_target, ghost_source, resting_player])
 	if ghost_field != null:
 		ghost_field.add_to_hash(hasher)
 	return hasher.value
@@ -467,8 +469,8 @@ func _finish_round() -> void:
 	for player: PlayerState in alive:
 		player.gold += player.get_total_income()
 		player.gold += config.get_interest(player.gold)
-		if player.index != ghost_target:
-			# Против призрака урон не засчитывается — серия и злость не считаются.
+		if player.index != ghost_target and player.index != resting_player:
+			# Против призрака и в отдыхе урон не засчитывается — серия и злость не считаются.
 			if player.hp_lost_this_round == 0:
 				player.streak = player.streak + 1 if player.streak > 0 else 1
 			else:
@@ -529,6 +531,7 @@ func _plan_pairs() -> void:
 	_army_routes.clear()
 	ghost_target = -1
 	ghost_source = -1
+	resting_player = -1
 	siege_leader = -1
 	siege_attackers.clear()
 	_siege_damage_by_attacker.clear()
@@ -543,7 +546,10 @@ func _plan_pairs() -> void:
 	for i: int in range(0, pool.size() - 1, 2):
 		_pair(pool[i].index, pool[i + 1].index)
 	if pool.size() % 2 == 1:
-		_plan_ghost(pool[pool.size() - 1].index)
+		if is_siege_round(round_number):
+			resting_player = pool[pool.size() - 1].index
+		else:
+			_plan_ghost(pool[pool.size() - 1].index)
 
 
 ## Призрак для игрока без пары — копия случайного другого живого игрока.

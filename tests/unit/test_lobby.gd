@@ -98,6 +98,18 @@ func test_siege_picks_leader_and_two_weakest() -> void:
 	assert_eq(sim.opponent_of[0], 3, "остальные — обычная дуэль")
 
 
+## Осада с шестью игроками: лидер + двое слабых, из оставшихся троих — дуэль и один отдыхает.
+func test_siege_with_six_players_rests_one() -> void:
+	var sim: MatchSim = MatchSim.new(_config, SEED, 6, 0)
+	sim.start()
+	sim.round_number = 4
+	_finish_round_now(sim)
+	assert_eq(sim.round_number, 5)
+	assert_eq(sim.siege_attackers.size(), 2)
+	assert_true(sim.resting_player >= 0, "шестой игрок отдыхает в осаде")
+	assert_eq(sim.opponent_of[sim.resting_player], MatchSim.GHOST, "у отдыхающего нет противника")
+
+
 func test_leader_army_goes_to_both_attackers() -> void:
 	var sim: MatchSim = _make_siege_round()
 	var leader: int = sim.siege_leader

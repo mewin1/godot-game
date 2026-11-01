@@ -22,7 +22,7 @@ const COLOR_TOAST: Color = Color(1.0, 0.8, 0.45)
 const COLOR_SIEGE: Color = Color(1.0, 0.45, 0.35)
 const SPEEDS: Array[int] = [1, 2]
 ## Игроков в лобби: вы + боты.
-@export var player_count: int = 5
+@export var player_count: int = 6
 ## Писать лог матча для анализа баланса.
 @export var is_logging_enabled: bool = true
 
