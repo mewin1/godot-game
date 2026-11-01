@@ -193,7 +193,10 @@ func refresh(sim: MatchSim, human_index: int) -> void:
 	var me: PlayerState = sim.players[human_index]
 	_round_label.text = "Раунд %d" % sim.round_number
 	_phase_label.text = _phase_text(sim)
-	_hp_label.text = str(maxi(0, me.hero_hp))
+	if sim.team_count > 0:
+		_hp_label.text = str(maxi(0, sim.team_hp[sim.team_of[human_index]]))
+	else:
+		_hp_label.text = str(maxi(0, me.hero_hp))
 	_gold_label.text = str(me.gold)
 	_income_label.text = "+%d" % me.get_total_income()
 	_refresh_hero(sim, me)
@@ -290,6 +293,9 @@ func _refresh_chips(sim: MatchSim, human_index: int) -> void:
 		var chip: PanelContainer = _chips[player.index]
 		var label: Label = _chip_labels[player.index]
 		var display_name: String = "Вы" if player.index == human_index else player.display_name
+		if sim.team_count > 0 and player.index != human_index \
+				and sim.team_of[player.index] == sim.team_of[human_index]:
+			display_name = "★ " + display_name
 		label.add_theme_color_override("font_color", DuskTheme.TEXT if _prep_header.visible
 				else _player_colors.get_player_color(player.index))
 		_chip_portraits[player.index].texture = HeroPortraits.get_portrait(player.hero)
@@ -304,7 +310,9 @@ func _refresh_chips(sim: MatchSim, human_index: int) -> void:
 		if player.index == ghost_index:
 			mark = " ◇" if _prep_header.visible else " (призрак)"
 			chip.tooltip_text += "\nПризрак этого игрока"
-		label.text = "%s ♥%d%s" % [display_name, maxi(0, player.hero_hp), mark]
+		var hp_value: int = sim.team_hp[sim.team_of[player.index]] if sim.team_count > 0 \
+				else player.hero_hp
+		label.text = "%s ♥%d%s" % [display_name, maxi(0, hp_value), mark]
 		chip.modulate = Color.WHITE
 		var is_rival: bool = player.index == opponent_index or player.index == ghost_index \
 				or (sim.siege_leader == human_index and sim.siege_attackers.has(player.index))

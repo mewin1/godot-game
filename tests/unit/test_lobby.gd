@@ -110,6 +110,64 @@ func test_siege_with_six_players_rests_one() -> void:
 	assert_eq(sim.opponent_of[sim.resting_player], MatchSim.GHOST, "у отдыхающего нет противника")
 
 
+## 3v3: две команды по 3, взаимный матчинг 1v1 по позиции, общая крепость 90.
+func test_3v3_pairs_members_across_teams() -> void:
+	var sim: MatchSim = MatchSim.new(_config, SEED, 6, 0, 2)
+	sim.start()
+	assert_eq(sim.team_count, 2)
+	assert_eq(sim.team_hp, [90, 90])
+	assert_eq(sim.opponent_of[0], 3)
+	assert_eq(sim.opponent_of[3], 0)
+	assert_eq(sim.opponent_of[1], 4)
+	assert_eq(sim.opponent_of[2], 5)
+
+
+## 2v2v2: три команды по 2, цикл A→B→C→A.
+func test_2v2v2_cycles_teams() -> void:
+	var sim: MatchSim = MatchSim.new(_config, SEED, 6, 0, 3)
+	sim.start()
+	assert_eq(sim.team_count, 3)
+	assert_eq(sim.team_hp, [60, 60, 60])
+	assert_eq(sim.opponent_of[0], 4)
+	assert_eq(sim.opponent_of[1], 5)
+	assert_eq(sim.opponent_of[2], 0)
+	assert_eq(sim.opponent_of[3], 1)
+	assert_eq(sim.opponent_of[4], 2)
+	assert_eq(sim.opponent_of[5], 3)
+
+
+## В командах прорыв бьёт по общей крепости, личное HP не трогается.
+func test_team_breach_damages_shared_fortress() -> void:
+	var sim: MatchSim = MatchSim.new(_config, SEED, 6, 0, 2)
+	sim.start()
+	_disable_bots(sim)
+	var player: PlayerState = sim.players[0]
+	var team: int = sim.team_of[0]
+	var personal_hp: int = player.hero_hp
+	var fortress_before: int = sim.team_hp[team]
+	_remove_all_waves(sim)
+	_add_breaches(sim, player, 1, -1)
+	sim._collect_field_results(player)
+	assert_lt(sim.team_hp[team], fortress_before, "прорыв бьёт по общей крепости")
+	assert_eq(player.hero_hp, personal_hp, "личное HP в командах не меняется")
+
+
+## Командный матч завершается и детерминирован.
+func test_team_match_completes_and_is_deterministic() -> void:
+	assert_eq(_team_hash(SEED, 2), _team_hash(SEED, 2))
+
+
+func _team_hash(seed_value: int, teams: int) -> int:
+	var sim: MatchSim = MatchSim.new(_config, seed_value, 6, 0, teams)
+	sim.start()
+	var guard: int = 0
+	while sim.phase != MatchSim.Phase.OVER and guard < MAX_TICKS:
+		sim.tick()
+		guard += 1
+	assert_eq(sim.phase, MatchSim.Phase.OVER, "командный матч завершился")
+	return sim.state_hash()
+
+
 func test_leader_army_goes_to_both_attackers() -> void:
 	var sim: MatchSim = _make_siege_round()
 	var leader: int = sim.siege_leader

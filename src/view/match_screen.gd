@@ -25,6 +25,8 @@ const SPEEDS: Array[int] = [1, 2]
 @export var player_count: int = 6
 ## Писать лог матча для анализа баланса.
 @export var is_logging_enabled: bool = true
+## Режим, выбранный в меню: 0 — соло, 2 — 3v3, 3 — 2v2v2.
+static var requested_teams: int = 0
 
 var _sim: MatchSim
 var _logger: MatchLogger
@@ -256,7 +258,7 @@ func _start_match() -> void:
 	var config: GameConfig = load(CONFIG_PATH) as GameConfig
 	# Сид матча выбирает отображение: внутри симуляции случайность только от этого сида.
 	var match_seed: int = randi()
-	_sim = MatchSim.new(config, match_seed, player_count, 1)
+	_sim = MatchSim.new(config, match_seed, player_count, 1, requested_teams)
 	if is_logging_enabled:
 		_logger = _create_logger(match_seed)
 	_sim.command_failed.connect(_on_sim_command_failed)

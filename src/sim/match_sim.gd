@@ -57,22 +57,37 @@ var _siege_damage_remainder: int = 0
 var _queue: Array[QueuedCommand] = []
 var _bots: Array[BotBrain] = []
 var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
+## Командный режим: 0 — соло, 2 — 3v3, 3 — 2v2v2.
+var team_count: int = 0
+var team_of: Array[int] = []
+var team_hp: Array[int] = []
+var team_eliminated: Array[bool] = []
+var team_fell_tick: Array[int] = []
 
 
 ## player_count игроков, первые human_count — люди, остальные — боты.
+## teams > 0 — командный режим (2 — 3v3, 3 — 2v2v2): у каждого своё поле, общая крепость.
 func _init(game_config: GameConfig, match_seed: int, player_count: int = 2,
-		human_count: int = 1) -> void:
+		human_count: int = 1, teams: int = 0) -> void:
 	config = game_config
 	_rng.seed = match_seed
 	active_gods = PantheonDraft.draw(config, _rng)
+	team_count = teams
+	var team_size: int = player_count / teams if teams > 0 else 0
 	for i: int in player_count:
 		var player: PlayerState = PlayerState.new(config, i, _rng.randi())
 		player.shop.active_gods = active_gods.duplicate()
 		player.is_bot = i >= human_count
 		player.display_name = "Вы" if not player.is_bot else "Бот %d" % i
 		players.append(player)
+		team_of.append(i / team_size if teams > 0 else -1)
 		var army_share: int = _rng.randi_range(BOT_MIN_ARMY_SHARE, BOT_MAX_ARMY_SHARE)
 		_bots.append(BotBrain.new(army_share) if player.is_bot else null)
+	if teams > 0:
+		for team: int in teams:
+			team_hp.append(team_size * config.team_hp_per_member)
+			team_eliminated.append(false)
+			team_fell_tick.append(-1)
 
 
 ## Запускает первый раунд сразу, без героев (тесты старых правил).
@@ -188,10 +203,33 @@ func get_bot_army_share(player_index: int) -> int:
 	return brain.army_share_percent if brain != null else -1
 
 
-## Раунд осады: каждый siege_every_rounds-й, пока живых хватает.
+## Раунд осады: каждый siege_every_rounds-й, пока живых хватает. В командах осады нет.
 func is_siege_round(number: int) -> bool:
+	if _is_team_mode():
+		return false
 	var enough_players: bool = get_alive_players().size() >= config.siege_min_players
 	return number % config.siege_every_rounds == 0 and enough_players
+
+
+func _is_team_mode() -> bool:
+	return team_count > 0
+
+
+## Индексы живых игроков команды (в командах команда выбывает целиком).
+func _team_members(team: int) -> Array[int]:
+	var result: Array[int] = []
+	for player: PlayerState in players:
+		if team_of[player.index] == team and player.is_alive:
+			result.append(player.index)
+	return result
+
+
+func _alive_team_count() -> int:
+	var count: int = 0
+	for team: int in team_count:
+		if not team_eliminated[team] and team_hp[team] > 0:
+			count += 1
+	return count
 
 
 func state_hash() -> int:
@@ -207,6 +245,10 @@ func state_hash() -> int:
 	for player: PlayerState in players:
 		player.add_to_hash(hasher)
 	hasher.add_many([ghost_target, ghost_source, resting_player])
+	hasher.add_many(team_hp)
+	hasher.add_many(team_fell_tick)
+	for team: int in team_count:
+		hasher.add(int(team_eliminated[team]))
 	if ghost_field != null:
 		ghost_field.add_to_hash(hasher)
 	return hasher.value
@@ -417,13 +459,15 @@ func _tick_ghost_field(timed_out: bool) -> bool:
 func _collect_field_results(player: PlayerState) -> void:
 	var field: FieldState = player.field
 	player.gold += field.pending_kill_gold
-	var hp_before: int = player.hero_hp
+	var team: int = team_of[player.index] if _is_team_mode() else -1
+	var hp_before: int = team_hp[team] if _is_team_mode() else player.hero_hp
 	for mob: MobState in field.pending_breaches:
 		_apply_breach(player, mob)
 	field.clear_pending()
-	if player.hero_hp < hp_before:
+	var hp_after: int = team_hp[team] if _is_team_mode() else player.hero_hp
+	if hp_after < hp_before:
 		player.notify_hp_lost(self)
-	if player.hero_hp <= 0 and player.fell_tick < 0:
+	if not _is_team_mode() and player.hero_hp <= 0 and player.fell_tick < 0:
 		player.fell_tick = player.field.wave_tick if config.synchronized_battle else tick_count
 
 
@@ -437,8 +481,16 @@ func _apply_breach(player: PlayerState, mob: MobState) -> void:
 		damage = mini(damage, maxi(0, limit - player.limited_breach_damage))
 	player.limited_breach_damage += damage
 	# Отрицательный остаток нужен тай-брейку, но за HP после смерти не платим.
-	var actual_damage: int = mini(maxi(0, player.hero_hp), damage)
-	player.hero_hp -= damage
+	var actual_damage: int
+	if _is_team_mode():
+		var team: int = team_of[player.index]
+		actual_damage = mini(maxi(0, team_hp[team]), damage)
+		team_hp[team] -= damage
+		if team_hp[team] <= 0 and team_fell_tick[team] < 0:
+			team_fell_tick[team] = player.field.wave_tick if config.synchronized_battle else tick_count
+	else:
+		actual_damage = mini(maxi(0, player.hero_hp), damage)
+		player.hero_hp -= damage
 	player.hp_lost_this_round += actual_damage
 	player.field.battle_report.record_hp_loss(mob, actual_damage)
 	player.field.breach_resolved.emit(mob, actual_damage)
@@ -480,11 +532,17 @@ func _finish_round() -> void:
 				player.gold += config.clean_wave_income
 			player.army.update_rage(player.army_damage_dealt)
 	round_finished.emit(round_number)
-	_eliminate_dead(alive)
-	var survivors: Array[PlayerState] = get_alive_players()
-	if survivors.size() <= 1:
-		_finish_match(survivors)
-		return
+	if _is_team_mode():
+		_eliminate_dead_teams()
+		if _alive_team_count() <= 1:
+			_finish_team_match()
+			return
+	else:
+		_eliminate_dead(alive)
+		var survivors: Array[PlayerState] = get_alive_players()
+		if survivors.size() <= 1:
+			_finish_match(survivors)
+			return
 	_start_round(round_number + 1)
 
 
@@ -524,6 +582,80 @@ func _finish_match(survivors: Array[PlayerState]) -> void:
 	match_finished.emit()
 
 
+## Командные пары: 2 живые команды — взаимный матчинг 1v1 по позиции;
+## 3 команды (2v2v2) — цикл A→B→C→A.
+func _plan_team_pairs() -> void:
+	var alive_teams: Array[int] = []
+	for team: int in team_count:
+		if team_hp[team] > 0:
+			alive_teams.append(team)
+	if alive_teams.size() == 2:
+		var first: Array[int] = _team_members(alive_teams[0])
+		var second: Array[int] = _team_members(alive_teams[1])
+		for i: int in first.size():
+			_pair(first[i], second[i])
+		return
+	if alive_teams.size() >= 3:
+		for k: int in alive_teams.size():
+			var team: int = alive_teams[k]
+			var next_team: int = alive_teams[(k + 1) % alive_teams.size()]
+			var prev_team: int = alive_teams[(k + alive_teams.size() - 1) % alive_teams.size()]
+			var members: Array[int] = _team_members(team)
+			var targets: Array[int] = _team_members(next_team)
+			var attackers: Array[int] = _team_members(prev_team)
+			for i: int in members.size():
+				_army_routes.append(Vector2i(members[i], targets[i]))
+				opponent_of[members[i]] = attackers[i]
+
+
+## Команды с крепостью ≤ 0 выбывают целиком; место = число команд на момент падения.
+func _eliminate_dead_teams() -> void:
+	var dying: Array[int] = []
+	for team: int in team_count:
+		if not team_eliminated[team] and team_hp[team] <= 0:
+			dying.append(team)
+	if dying.is_empty():
+		return
+	dying.sort_custom(_is_worse_team)
+	var next_place: int = _alive_team_count() + dying.size()
+	for team: int in dying:
+		team_eliminated[team] = true
+		for player: PlayerState in players:
+			if team_of[player.index] == team and player.is_alive:
+				player.is_alive = false
+				player.place = next_place
+				player_eliminated.emit(player)
+		next_place -= 1
+
+
+## «Хуже → лучше»: пала раньше — хуже; при равенстве — больший номер команды.
+func _is_worse_team(a: int, b: int) -> bool:
+	if team_fell_tick[a] != team_fell_tick[b]:
+		return team_fell_tick[a] < team_fell_tick[b]
+	return a > b
+
+
+func _finish_team_match() -> void:
+	var winner: int = -1
+	for team: int in team_count:
+		if not team_eliminated[team]:
+			winner = team
+			break
+	if winner < 0:
+		# Все пали в одном раунде: победила павшая позже всех.
+		var best_tick: int = -1
+		for team: int in team_count:
+			if team_fell_tick[team] > best_tick:
+				best_tick = team_fell_tick[team]
+				winner = team
+	for player: PlayerState in players:
+		if team_of[player.index] == winner:
+			player.place = 1
+	phase = Phase.OVER
+	phase_changed.emit(phase)
+	match_finished.emit()
+
+
 ## Пары соперников на раунд: в раунд осады сначала лидер и двое слабых,
 ## остальные — случайными парами; лишний игрок воюет с призраком.
 func _plan_pairs() -> void:
@@ -539,6 +671,9 @@ func _plan_pairs() -> void:
 	_siege_damage_remainder = 0
 	for i: int in players.size():
 		opponent_of.append(GHOST)
+	if _is_team_mode():
+		_plan_team_pairs()
+		return
 	var pool: Array[PlayerState] = get_alive_players()
 	if is_siege_round(round_number):
 		_plan_siege(pool)

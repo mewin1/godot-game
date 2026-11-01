@@ -3,7 +3,7 @@ extends SceneTree
 ## Запуск:
 ##   godot --headless --path . -s res://tools/balance_sim.gd -- --matches=100 --players=5
 ## Параметры: --matches=N, --players=N, --threads=N (по умолчанию — все ядра),
-##   --seed=N (первый сид), --config=res://... (вариант конфига), --no-log.
+##   --seed=N (первый сид), --config=res://... (вариант конфига), --teams=N (2 — 3v3, 3 — 2v2v2), --no-log.
 ## Логи: logs/bots/<дата_время>/match_*.jsonl и summary.json с итогами.
 
 const CONFIG_PATH: String = "res://data/game_config.tres"
@@ -16,6 +16,7 @@ func _initialize() -> void:
 	var player_count: int = _arg_int(args, "players", 5)
 	var thread_count: int = _arg_int(args, "threads", OS.get_processor_count())
 	var first_seed: int = _arg_int(args, "seed", 1)
+	var teams: int = _arg_int(args, "teams", 0)
 	var config_path: String = args.get("config", CONFIG_PATH)
 	if not config_path.begins_with("res://"):
 		push_error("Конфиг должен находиться внутри проекта: res://...")
@@ -33,7 +34,7 @@ func _initialize() -> void:
 	for i: int in match_count:
 		seeds.append(first_seed + i)
 	var started_ms: int = Time.get_ticks_msec()
-	var results: Array[Dictionary] = BotMatchRunner.new(config, player_count, run_dir).run(
+	var results: Array[Dictionary] = BotMatchRunner.new(config, player_count, run_dir, teams).run(
 			seeds, thread_count)
 	var seconds: float = (Time.get_ticks_msec() - started_ms) / 1000.0
 	_report(results, seconds, thread_count, run_dir)

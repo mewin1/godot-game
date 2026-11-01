@@ -74,6 +74,8 @@ extends Resource
 @export_group("Экономика")
 @export var start_gold: int = 20
 @export var base_income: int = 10
+## Крепость команды: HP на участника (в командных режимах). 2v2v2 → ×2, 3v3 → ×3.
+@export var team_hp_per_member: int = 30
 ## «Азарт»: +1 золота за каждые interest_step накопленного в конце раунда, максимум interest_cap.
 ## Копить = не качать армию и оборону — вечный выбор «сейчас или потом». 0 — выключено.
 @export var interest_step: int = 0

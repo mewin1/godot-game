@@ -36,6 +36,16 @@ func _ready() -> void:
 	settings_button.pressed.connect(_on_settings_pressed)
 	_menu.add_child(settings_button)
 	UiFx.add_press_feedback(settings_button)
+	var team3_button: Button = Button.new()
+	team3_button.text = "3 на 3"
+	team3_button.pressed.connect(_on_team3_pressed)
+	_menu.add_child(team3_button)
+	UiFx.add_press_feedback(team3_button)
+	var team2_button: Button = Button.new()
+	team2_button.text = "2 на 2 на 2"
+	team2_button.pressed.connect(_on_team2_pressed)
+	_menu.add_child(team2_button)
+	UiFx.add_press_feedback(team2_button)
 	for button: Button in [_play_button, _how_to_button, _heroes_button, _lab_button, _quit_button,
 			_sound_button]:
 		UiFx.add_press_feedback(button)
@@ -66,6 +76,7 @@ func _notification(what: int) -> void:
 
 func _on_play_button_pressed() -> void:
 	_sound_bank.play(&"click")
+	MatchScreen.requested_teams = 0
 	ScenePaths.go_to(get_tree(), ScenePaths.MATCH)
 
 
@@ -92,6 +103,18 @@ func _on_sound_button_pressed() -> void:
 func _on_settings_pressed() -> void:
 	_sound_bank.play(&"click")
 	ScenePaths.go_to(get_tree(), ScenePaths.SETTINGS)
+
+
+func _on_team3_pressed() -> void:
+	_sound_bank.play(&"click")
+	MatchScreen.requested_teams = 2
+	ScenePaths.go_to(get_tree(), ScenePaths.MATCH)
+
+
+func _on_team2_pressed() -> void:
+	_sound_bank.play(&"click")
+	MatchScreen.requested_teams = 3
+	ScenePaths.go_to(get_tree(), ScenePaths.MATCH)
 
 
 func _on_lab_pressed() -> void:

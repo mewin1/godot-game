@@ -9,6 +9,7 @@ const MAX_TICKS: int = 2_000_000
 
 var _config: GameConfig
 var _player_count: int
+var _teams: int = 0
 var _log_dir: String
 var _seeds: Array[int] = []
 var _results: Array[Dictionary] = []
@@ -16,9 +17,10 @@ var _mutex: Mutex = Mutex.new()
 
 
 ## log_dir — папка для логов ("" — без логов).
-func _init(config: GameConfig, player_count: int, log_dir: String) -> void:
+func _init(config: GameConfig, player_count: int, log_dir: String, teams: int = 0) -> void:
 	_config = config
 	_player_count = player_count
+	_teams = teams
 	_log_dir = log_dir
 
 
@@ -34,7 +36,7 @@ func run(seeds: Array[int], thread_count: int) -> Array[Dictionary]:
 
 func _run_one(index: int) -> void:
 	var seed_value: int = _seeds[index]
-	var sim: MatchSim = MatchSim.new(_config, seed_value, _player_count, 0)
+	var sim: MatchSim = MatchSim.new(_config, seed_value, _player_count, 0, _teams)
 	var logger: MatchLogger = null
 	if _log_dir != "":
 		var path: String = _log_dir.path_join("match_%04d_seed%d.jsonl" % [index, seed_value])
