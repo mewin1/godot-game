@@ -13,7 +13,7 @@ income = 1
 [sub_resource type="Resource" id="skill"]
 script = ExtResource("skill")
 display_name = "Ярмарка"
-description = "Колесо: +10 золота, +1 юнит армии навсегда, +1 доход навсегда или «освистали»."
+description = "Колесо: +10 золота, +1 юнит армии навсегда, +1 доход навсегда или утешительные +2."
 timing = 0
 cost = 3
 cost_step = 1

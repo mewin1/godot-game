@@ -8,7 +8,7 @@
 [sub_resource type="Resource" id="passive_0"]
 script = ExtResource("stat")
 kind = 1
-value = 1
+value = 2
 
 [sub_resource type="Resource" id="skill_effect"]
 script = ExtResource("brew")
@@ -28,7 +28,7 @@ script = ExtResource("hero")
 id = &"baba_yaga"
 display_name = "Баба-Яга"
 epithet = "Избушка на курьих ножках и котёл с варевом"
-description = "Первое обновление витрины в каждом раунде бесплатно."
+description = "Первые два обновления витрины в каждом раунде бесплатно."
 style = "магазин, слияния"
 hp = 40
 passives = Array[ExtResource("effect")]([SubResource("passive_0")])

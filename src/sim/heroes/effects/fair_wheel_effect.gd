@@ -30,5 +30,6 @@ func activate(_sim: MatchSim, player: PlayerState) -> String:
 			player.income += income
 			player.hero_message = "Ярмарка: +%d к доходу навсегда!" % income
 		_:
-			player.hero_message = "Ярмарка: освистали… ничего"
+			player.gold += 2
+			player.hero_message = "Ярмарка: освистали… утешительные +2 золота"
 	return ""

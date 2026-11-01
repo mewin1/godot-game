@@ -8,14 +8,14 @@
 [sub_resource type="Resource" id="passive_0"]
 script = ExtResource("stat")
 kind = 3
-value = 3
+value = 6
 
 [resource]
 script = ExtResource("hero")
 id = &"cosmonaut"
 display_name = "Космонавт"
 epithet = "«Поехали!» — ракета на заднем дворе"
-description = "Повышение магазина на 3 золота дешевле (но не меньше 3)."
+description = "Повышение магазина на 6 золота дешевле (но не меньше 3)."
 style = "темп, уровень магазина"
 hp = 40
 passives = Array[ExtResource("effect")]([SubResource("passive_0")])

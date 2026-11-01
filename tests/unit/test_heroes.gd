@@ -68,14 +68,16 @@ func test_tower_commands_rejected_during_hero_select() -> void:
 	assert_eq(sim.execute_command(0, RerollShopCommand.new()), "Сначала выберите героя")
 
 
-func test_baba_yaga_first_reroll_each_round_is_free() -> void:
+func test_baba_yaga_two_free_rerolls_each_round() -> void:
 	var sim: MatchSim = SimFixtures.make_hero_match(_config, &"baba_yaga")
 	var player: PlayerState = sim.players[0]
 	var gold: int = player.gold
 	assert_eq(sim.execute_command(0, RerollShopCommand.new()), "")
 	assert_eq(player.gold, gold, "первый бесплатно")
 	assert_eq(sim.execute_command(0, RerollShopCommand.new()), "")
-	assert_eq(player.gold, gold - _config.reroll_cost, "второй платный")
+	assert_eq(player.gold, gold, "второй бесплатно")
+	assert_eq(sim.execute_command(0, RerollShopCommand.new()), "")
+	assert_eq(player.gold, gold - _config.reroll_cost, "третий платный")
 
 
 func test_baba_yaga_brew_makes_next_tower_level_two() -> void:
@@ -124,7 +126,7 @@ func test_domovoy_extra_gold_and_full_refund() -> void:
 func test_cosmonaut_shop_upgrade_is_cheaper() -> void:
 	var sim: MatchSim = SimFixtures.make_hero_match(_config, &"cosmonaut")
 	var player: PlayerState = sim.players[0]
-	assert_eq(player.get_shop_upgrade_price(), player.shop.upgrade_cost - 3)
+	assert_eq(player.get_shop_upgrade_price(), player.shop.upgrade_cost - 6)
 	player.gold = 100
 	var gold: int = player.gold
 	var price: int = player.get_shop_upgrade_price()
@@ -197,11 +199,11 @@ func test_babushka_heal_is_capped_at_start_hp() -> void:
 func test_solovey_army_faster_and_gang_only_this_round() -> void:
 	var sim: MatchSim = SimFixtures.make_hero_match(_config, &"solovey")
 	var player: PlayerState = sim.players[0]
-	assert_eq(player.army.speed_percent, 20)
+	assert_eq(player.army.speed_percent, 30)
 	player.gold = 50
 	var units: int = player.army.build_pack(0, 1).size()
 	assert_eq(sim.execute_command(0, UseHeroSkillCommand.new()), "")
-	assert_eq(player.army.build_pack(0, 1).size(), units + 4)
+	assert_eq(player.army.build_pack(0, 1).size(), units + 6)
 	_finish_round(sim)
 	assert_eq(player.army.build_pack(0, 2).size(), units, "ватага — на один раунд")
 
@@ -364,7 +366,7 @@ func test_gang_before_army_first_round_does_not_charge_or_consume_skill() -> voi
 	_finish_round(sim)
 	assert_eq(sim.round_number, 2)
 	assert_eq(sim.execute_command(0, UseHeroSkillCommand.new()), "")
-	assert_eq(player.army.temporary_mobs.size(), 4)
+	assert_eq(player.army.temporary_mobs.size(), 6)
 
 
 func test_bot_skips_gang_without_processing_command_before_army_start() -> void:
