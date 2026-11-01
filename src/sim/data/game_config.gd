@@ -74,6 +74,9 @@ extends Resource
 @export_group("Экономика")
 @export var start_gold: int = 20
 @export var base_income: int = 10
+## Волна отбита без единого прорыва — хозяин получает этот бонус золота (0 — выключено).
+## Даёт обороне собственный источник экономики, симметричный доходу от армии.
+@export var clean_wave_income: int = 0
 @export var tower_cost: int = 6
 @export var reroll_cost: int = 2
 ## Продажа не в ту фазу, где куплено: вложенное / sell_divisor (округление вниз).

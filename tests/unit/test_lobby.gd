@@ -129,6 +129,35 @@ func test_leader_gets_bonus_when_siege_held() -> void:
 	assert_eq(leader.gold, gold_before + _config.siege_leader_bonus + leader.get_total_income())
 
 
+## Оборона без единого прорыва получает бонус clean_wave_income — источник экономики
+## для защитной стратегии, симметричный доходу от армии.
+func test_clean_wave_pays_clean_wave_income() -> void:
+	_config.clean_wave_income = 5
+	var sim: MatchSim = MatchSim.new(_config, SEED, 2, 0)
+	sim.start()
+	_disable_bots(sim)
+	var player: PlayerState = sim.players[0]
+	_remove_all_waves(sim)
+	var gold_before: int = player.gold
+	_finish_round_now(sim)
+	assert_eq(player.gold, gold_before + _config.clean_wave_income + player.get_total_income())
+
+
+## Волна с прорывом бонуса за чистую защиту не даёт.
+func test_breached_wave_gives_no_clean_income() -> void:
+	_config.clean_wave_income = 5
+	var sim: MatchSim = MatchSim.new(_config, SEED, 2, 0)
+	sim.start()
+	_disable_bots(sim)
+	var player: PlayerState = sim.players[0]
+	_remove_all_waves(sim)
+	_add_breaches(sim, player, 1, -1)
+	sim._collect_field_results(player)
+	var gold_before: int = player.gold
+	_finish_round_now(sim)
+	assert_eq(player.gold, gold_before + player.get_total_income())
+
+
 func test_attackers_paid_for_damage_and_breach_bonus() -> void:
 	var sim: MatchSim = _make_siege_round()
 	_disable_bots(sim)
