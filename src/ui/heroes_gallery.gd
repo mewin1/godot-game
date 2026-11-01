@@ -18,9 +18,10 @@ var _grids: Array[GridContainer] = []
 
 func _ready() -> void:
 	ScreenFit.apply(get_window())
-	theme = load("res://data/ui/ui_theme.tres") as Theme
+	theme = DuskTheme.create()
+	texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	var background: ColorRect = ColorRect.new()
-	background.color = Color(0.08, 0.063, 0.05)
+	background.color = DuskTheme.INK
 	add_child(background)
 	background.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	var margin: MarginContainer = MarginContainer.new()

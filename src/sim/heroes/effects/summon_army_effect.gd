@@ -6,6 +6,12 @@ extends HeroEffect
 @export var count: int = 3
 
 
+func check_activation(sim: MatchSim, _player: PlayerState) -> String:
+	if sim.round_number < sim.config.army_first_round:
+		return "Армия выходит с раунда %d" % sim.config.army_first_round
+	return ""
+
+
 func activate(_sim: MatchSim, player: PlayerState) -> String:
 	for i: int in count:
 		player.army.temporary_mobs.append(mob)

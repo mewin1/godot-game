@@ -316,9 +316,17 @@ func check_skill_available(phase: MatchSim.Phase) -> String:
 	return ""
 
 
+## Общие и особые условия навыка для команды, HUD и бота; без учёта цены.
+func check_skill_activation(sim: MatchSim) -> String:
+	var error: String = check_skill_available(sim.phase)
+	if error != "":
+		return error
+	return hero.skill.effect.check_activation(sim, self)
+
+
 ## Нажать навык: проверки, действие, оплата. "" — получилось.
 func use_hero_skill(sim: MatchSim) -> String:
-	var error: String = check_skill_available(sim.phase)
+	var error: String = check_skill_activation(sim)
 	if error != "":
 		return error
 	var cost: int = get_skill_cost()

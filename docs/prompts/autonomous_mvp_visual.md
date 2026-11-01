@@ -12,7 +12,7 @@
 своя простая графика, анимации, эффекты, меню. Без сети (только матч против ботов).
 
 ## 0. Сначала прочитай
-AGENTS.md, **DEVELOPMENT.md целиком (обязательно)**, decisions.md, open_questions.md, glossary.md,
+AGENTS.md, DEVELOPMENT.md (блок «Всегда» + нужные разделы), decisions.md, open_questions.md, glossary.md,
 docs/00_pitch.md, docs/01_core_mechanics.md, docs/02_economy.md, docs/prototype_notes.md и свою память
 (особенно «Автономные сессии» и «Ловушки проверки в Godot»). Посмотри код в src/ и сделай скриншот
 текущей игры, чтобы понять стартовую точку.

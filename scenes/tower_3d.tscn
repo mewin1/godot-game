@@ -1,0 +1,46 @@
+[gd_scene load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://src/view/tower_3d.gd" id="1_script"]
+
+[sub_resource type="CylinderMesh" id="1_base"]
+top_radius = 0.34
+bottom_radius = 0.39
+height = 0.32
+
+[sub_resource type="CylinderMesh" id="2_body"]
+top_radius = 0.22
+bottom_radius = 0.27
+height = 0.68
+
+[sub_resource type="CylinderMesh" id="3_crown"]
+top_radius = 0.28
+bottom_radius = 0.23
+height = 0.16
+
+[sub_resource type="SphereMesh" id="4_gem"]
+radius = 0.16
+height = 0.32
+
+[node name="Tower3D" type="Node3D"]
+script = ExtResource("1_script")
+
+[node name="Base" type="MeshInstance3D" parent="."]
+position = Vector3(0, 0.16, 0)
+mesh = SubResource("1_base")
+
+[node name="Body" type="MeshInstance3D" parent="."]
+position = Vector3(0, 0.65, 0)
+mesh = SubResource("2_body")
+
+[node name="Crown" type="MeshInstance3D" parent="."]
+position = Vector3(0, 1.06, 0)
+mesh = SubResource("3_crown")
+
+[node name="Gem" type="MeshInstance3D" parent="."]
+position = Vector3(0, 1.27, 0)
+mesh = SubResource("4_gem")
+
+[node name="Glow" type="OmniLight3D" parent="."]
+position = Vector3(0, 1.2, 0)
+light_energy = 0.45
+omni_range = 1.8

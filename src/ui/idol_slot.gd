@@ -74,16 +74,25 @@ func _drop_data(_at_position: Vector2, value: Variant) -> void:
 
 func _draw() -> void:
 	var rect: Rect2 = Rect2(Vector2.ZERO, size).grow(-2)
-	draw_rect(rect, Color(0.15, 0.12, 0.1))
-	draw_rect(rect, Color(0.65, 0.53, 0.33), false, 2)
+	draw_style_box(DuskTheme.panel(DuskTheme.INK, DuskTheme.GOLD.darkened(0.4), 0), rect)
 	if idol == null:
 		return
 	var font: Font = get_theme_default_font()
-	draw_string(font, Vector2(12, 25), god_name(idol.god), HORIZONTAL_ALIGNMENT_LEFT,
-			size.x - 24, 20, Color(0.94, 0.8, 0.5))
-	var count: int = 0
-	for value: int in idol.purchases.values():
-		count += value
-	var text: String = "Перетащите заговор" if idol.god == &"" else "Заговоров: %d" % count
-	draw_string(font, Vector2(12, 49), text, HORIZONTAL_ALIGNMENT_LEFT,
-			size.x - 24, 15, Color(0.8, 0.8, 0.75))
+	var color: Color = Color(0.42, 0.52, 0.62) if idol.god == &"" else \
+			Color(0.87, 0.68, 0.34)
+	var icon_size: float = minf(54, size.y - 18)
+	var icon: Texture2D = GodSymbols.get_icon(idol.god)
+	var center: Vector2 = Vector2(size.x * 0.5, icon_size * 0.5 + 1)
+	draw_texture_rect(preload("res://data/visuals/soft_light.tres"),
+			Rect2(center - Vector2.ONE * icon_size * 0.65, Vector2.ONE * icon_size * 1.3),
+			false, Color(0.52, 0.66, 0.78, 0.16))
+	draw_arc(center, icon_size * 0.46, PI * 0.12, PI * 0.88, 24,
+			Color(0.71, 0.60, 0.39, 0.4), 1, true)
+	draw_texture_rect(icon, Rect2(Vector2((size.x - icon_size) * 0.5, 1),
+			Vector2.ONE * icon_size), false)
+	if idol.god != &"":
+		draw_string(font, Vector2(8, size.y - 7), god_name(idol.god),
+				HORIZONTAL_ALIGNMENT_CENTER, size.x - 16, 13, color)
+	else:
+		draw_string(font, Vector2(8, size.y - 7), "Идол %d" % (slot_index + 1),
+				HORIZONTAL_ALIGNMENT_CENTER, size.x - 16, 12, color)

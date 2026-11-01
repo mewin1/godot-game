@@ -19,6 +19,9 @@ var _sound_bank: SoundBank
 
 func _ready() -> void:
 	ScreenFit.apply(get_window())
+	theme = DuskTheme.create()
+	var background: TextureRect = $Background
+	background.texture = CourtyardPainter.ENVIRONMENT
 	_sound_bank = SoundBank.new()
 	add_child(_sound_bank)
 	_play_button.pressed.connect(_on_play_button_pressed)
@@ -32,6 +35,12 @@ func _ready() -> void:
 			_sound_button]:
 		UiFx.add_press_feedback(button)
 	_update_sound_icon()
+	var visual_button: Button = Button.new()
+	visual_button.text = "Проба графики 2.5D"
+	visual_button.position = Vector2(24, 24)
+	visual_button.size = Vector2(270, 52)
+	visual_button.pressed.connect(_on_visual_slice_pressed)
+	add_child(visual_button)
 	# Ждём кадр: контейнер должен посчитать размеры, иначе «пружинка» крутится вокруг угла.
 	await get_tree().process_frame
 	var delay: float = 0.0
@@ -81,3 +90,7 @@ func _on_lab_pressed() -> void:
 
 func _on_sandbox_pressed() -> void:
 	ScenePaths.go_to(get_tree(), ScenePaths.COMBAT_SANDBOX)
+
+
+func _on_visual_slice_pressed() -> void:
+	ScenePaths.go_to(get_tree(), ScenePaths.VISUAL_SLICE)

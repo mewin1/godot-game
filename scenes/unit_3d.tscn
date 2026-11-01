@@ -1,0 +1,30 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://src/view/unit_3d.gd" id="1_unit"]
+
+[sub_resource type="CylinderMesh" id="1_body"]
+top_radius = 0.14
+bottom_radius = 0.18
+height = 0.4
+
+[sub_resource type="SphereMesh" id="2_head"]
+radius = 0.15
+height = 0.3
+
+[sub_resource type="BoxMesh" id="3_legs"]
+size = Vector3(0.2, 0.28, 0.16)
+
+[node name="Unit3D" type="Node3D"]
+script = ExtResource("1_unit")
+
+[node name="Body" type="MeshInstance3D" parent="."]
+position = Vector3(0, 0.52, 0)
+mesh = SubResource("1_body")
+
+[node name="Head" type="MeshInstance3D" parent="."]
+position = Vector3(0, 0.86, 0)
+mesh = SubResource("2_head")
+
+[node name="Legs" type="MeshInstance3D" parent="."]
+position = Vector3(0, 0.19, 0)
+mesh = SubResource("3_legs")

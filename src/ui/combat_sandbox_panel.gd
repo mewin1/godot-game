@@ -18,6 +18,8 @@ var _elapsed: float = 0.0
 
 func _ready() -> void:
 	ScreenFit.apply(get_window())
+	theme = DuskTheme.create()
+	texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	sandbox = CombatSandbox.new(load("res://data/game_config.tres") as GameConfig)
 	_build_ui()
 	for index: int in 3:

@@ -15,6 +15,11 @@ func on_hp_lost(_sim: MatchSim, _player: PlayerState) -> void:
 	pass
 
 
+## Особые условия эффекта; общие фаза/цена проверяются игроком. Не меняет состояние.
+func check_activation(_sim: MatchSim, _player: PlayerState) -> String:
+	return ""
+
+
 ## Действие навыка. Возвращает "" при успехе (тогда золото списывается) или причину отказа.
 ## Текст для игрока — в player.hero_message.
 func activate(_sim: MatchSim, _player: PlayerState) -> String:

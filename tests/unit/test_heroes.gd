@@ -347,3 +347,34 @@ func test_army_rage_grows_without_damage_and_resets_after_breach() -> void:
 	assert_eq(army.build_pack(0, 1)[0].max_hp, base_hp * 150 / 100)
 	army.update_rage(3)
 	assert_eq(army.rage_percent, 0)
+
+
+func test_gang_before_army_first_round_does_not_charge_or_consume_skill() -> void:
+	_config.army_first_round = 2
+	var sim: MatchSim = SimFixtures.make_hero_match(_config, &"solovey")
+	var player: PlayerState = sim.players[0]
+	player.gold = 50
+	var before: int = player.gold
+	assert_eq(player.check_skill_activation(sim), "Армия выходит с раунда 2")
+	assert_ne(sim.execute_command(0, UseHeroSkillCommand.new()), "")
+	assert_eq(player.gold, before)
+	assert_eq(player.skill_uses, 0)
+	assert_false(player.is_skill_used_this_round)
+	assert_true(player.army.temporary_mobs.is_empty())
+	_finish_round(sim)
+	assert_eq(sim.round_number, 2)
+	assert_eq(sim.execute_command(0, UseHeroSkillCommand.new()), "")
+	assert_eq(player.army.temporary_mobs.size(), 4)
+
+
+func test_bot_skips_gang_without_processing_command_before_army_start() -> void:
+	_config.army_first_round = 2
+	var sim: MatchSim = SimFixtures.make_hero_match(_config, &"solovey")
+	var player: PlayerState = sim.players[0]
+	player.gold = 50
+	var brain: BotBrain = BotBrain.new(50)
+	watch_signals(sim)
+	brain._maybe_use_skill(sim, player, HeroSkillData.Timing.PREP)
+	assert_signal_not_emitted(sim, "command_processed")
+	assert_eq(player.gold, 50)
+	assert_true(player.army.temporary_mobs.is_empty())

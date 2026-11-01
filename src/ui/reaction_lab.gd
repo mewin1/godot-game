@@ -16,6 +16,8 @@ var _step_buttons: Array[Button] = []
 
 func _ready() -> void:
 	ScreenFit.apply(get_window())
+	theme = DuskTheme.create()
+	texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	_config = load("res://data/game_config.tres") as GameConfig
 	_build_ui()
 	_show_current()

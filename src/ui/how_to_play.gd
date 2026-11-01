@@ -7,6 +7,8 @@ extends Control
 
 func _ready() -> void:
 	ScreenFit.apply(get_window())
+	theme = DuskTheme.create()
+	texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	_back_button.pressed.connect(_on_back_button_pressed)
 	UiFx.add_press_feedback(_back_button)
 	await get_tree().process_frame

@@ -6,9 +6,9 @@ signal clicked(index: int)
 signal item_dropped(payload: DragPayload, target_id: int)
 signal rotation_requested(tower_id: int)
 
-const CARD_SIZE: Vector2 = Vector2(175, 104)
+const CARD_SIZE: Vector2 = Vector2(110, 112)
 const TAP_SLOP: float = 10.0
-const CARD_COLOR: Color = Color(0.17, 0.13, 0.1)
+const CARD_COLOR: Color = Color(0.085, 0.12, 0.17)
 const TEXT_COLOR: Color = Color(0.94, 0.87, 0.74)
 
 var offer_index: int = 0
@@ -25,16 +25,30 @@ var is_free_catalog: bool = false
 var rite_player: PlayerState
 
 var _press_position: Vector2 = Vector2.ZERO
+var _tower_label: Label
+var _normal_style: StyleBoxFlat
+var _hover_style: StyleBoxFlat
 var _rite_label: Label
 
 
 func _init() -> void:
 	custom_minimum_size = CARD_SIZE
+	mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	mouse_entered.connect(queue_redraw)
+	mouse_exited.connect(queue_redraw)
+	_normal_style = DuskTheme.panel(CARD_COLOR, Color("5e5546"), 0)
+	_hover_style = DuskTheme.panel(Color("152635"), DuskTheme.GOLD, 0)
+	_tower_label = Label.new()
+	_tower_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_tower_label.add_theme_font_size_override("font_size", 12)
+	_tower_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_tower_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	add_child(_tower_label)
 	size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_rite_label = Label.new()
 	_rite_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_rite_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_rite_label.add_theme_font_size_override("font_size", 14)
+	_rite_label.add_theme_font_size_override("font_size", 12)
 	_rite_label.max_lines_visible = 4
 	_rite_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	add_child(_rite_label)
@@ -42,8 +56,14 @@ func _init() -> void:
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_RESIZED and _rite_label != null:
-		_rite_label.position = Vector2(8, 4)
-		_rite_label.size = Vector2(size.x - 16, size.y - 28)
+		_layout_caption()
+
+
+func _layout_caption() -> void:
+	_rite_label.position = Vector2(7, size.y - 56)
+	_rite_label.size = Vector2(size.x - 14, 39)
+	_tower_label.position = Vector2(4, size.y - 38)
+	_tower_label.size = Vector2(size.x - 8, 18)
 
 
 func _gui_input(event: InputEvent) -> void:
@@ -70,6 +90,8 @@ func show_offer(tower_data: TowerData) -> void:
 	if data != tower_data:
 		rotation_turns = 0
 	data = tower_data
+	_tower_label.text = data.display_name if data != null else ""
+	_tower_label.visible = data != null and not is_reserve_slot and not is_gift
 	rite = null
 	_rite_label.visible = false
 	tooltip_text = data.description if data != null else ""
@@ -80,9 +102,9 @@ func show_offer(tower_data: TowerData) -> void:
 func show_rite(rite_data: RiteData, context: String = "") -> void:
 	rite = rite_data
 	data = null
+	_tower_label.visible = false
 	_rite_label.visible = true
-	var detail: String = context if context != "" else rite.description.get_slice(". ", 0)
-	_rite_label.text = "%s\n%s" % [rite.display_name, detail]
+	_rite_label.text = rite.display_name
 	tooltip_text = "%s\n%s · %d зол." % [rite.description,
 			"На идол" if rite.target == RiteData.Target.IDOL else "На башню", rite.cost]
 	if context != "":
@@ -140,37 +162,47 @@ func _drop_data(_at_position: Vector2, value: Variant) -> void:
 
 func _draw() -> void:
 	var rect: Rect2 = Rect2(Vector2.ZERO, size)
-	draw_rect(rect.grow(-1), CARD_COLOR)
+	var is_hovered: bool = rect.has_point(get_local_mouse_position())
+	draw_style_box(_hover_style if is_hovered and is_active else _normal_style, rect.grow(-2))
 	var font: Font = get_theme_default_font()
 	if rite != null:
-		draw_rect(rect.grow(-2), Color(0.45, 0.65, 0.85), false, 2)
-		draw_string(font, Vector2(8, size.y - 8), "%s · %d" % [
-				"На идол" if rite.target == RiteData.Target.IDOL else "На башню", rite.cost],
+		var symbol: Texture2D = GodSymbols.get_icon(rite.god)
+		var icon_side: float = minf(size.y - 60, 44)
+		draw_texture_rect(symbol, Rect2(Vector2((size.x - icon_side) * 0.5, 5),
+				Vector2.ONE * icon_side), false)
+		draw_string(font, Vector2(8, size.y - 8), "◈ %d" % rite.cost,
 				HORIZONTAL_ALIGNMENT_LEFT, size.x - 16, 15, TEXT_COLOR)
 		return
 	if data == null:
 		draw_rect(rect.grow(-2), Color(0.35, 0.29, 0.22), false, 1)
 		return
 	var visual: TowerVisual = VisualCatalog.get_default().get_tower(data.id)
-	draw_rect(rect.grow(-2), visual.plate_edge_color, false, 2)
-	var font_size: int = 13 if is_reserve_slot else 17
-	draw_string(font, Vector2(5, 20), data.display_name, HORIZONTAL_ALIGNMENT_LEFT,
-			size.x - 10, font_size, TEXT_COLOR)
+	draw_line(Vector2(10, 2), Vector2(size.x - 10, 2), visual.plate_edge_color, 2, true)
+	if visual.icon != null:
+		var available: Vector2 = Vector2(size.x - 12,
+				size.y - (22 if is_reserve_slot or is_gift else 40))
+		var dimensions: Vector2 = Vector2(visual.icon.get_size())
+		dimensions *= minf(available.x / dimensions.x, available.y / dimensions.y)
+		var position: Vector2 = Vector2((size.x - dimensions.x) * 0.5, 3)
+		draw_texture_rect(visual.icon, Rect2(position, dimensions), false)
 	var bounds: Vector2 = Vector2(ShapePreview.get_shape_size(data, rotation_turns))
-	var available: Vector2 = Vector2(size.x - 12, maxf(12, size.y - 58))
-	var cell: float = minf(36, minf(available.x / bounds.x, available.y / bounds.y))
-	var origin: Vector2 = Vector2((size.x - bounds.x * cell) / 2, 31)
-	ShapePreview.draw_shape(self, data, rotation_turns,
-			stored_tower.level if stored_tower != null else 1, origin, cell)
+	var cell: float = minf(7.0, (size.x * 0.25) / maxf(bounds.x, bounds.y))
+	var cells: Array[Vector2i] = TowerState.rotated_shape(data.shape, rotation_turns)
+	draw_rect(Rect2(Vector2(4, 4), bounds * cell + Vector2.ONE * 4),
+			Color(0.02, 0.04, 0.06, 0.8))
+	TowerPainter.draw_plates(self, cells, Vector2(6, 6), cell, visual, 1)
+	if stored_tower != null:
+		TowerPainter.draw_stars(self, stored_tower.level,
+				Vector2(size.x * 0.5, size.y - 10), 28)
 	var caption: String = ""
 	if not is_reserve_slot:
-		caption = "Подарок" if is_gift else "%d зол. · %s" % [tower_cost, IdolSlot.god_name(data.god)]
+		caption = "Подарок" if is_gift else "◉ %d" % tower_cost
 		if is_free_catalog:
 			caption = "Перетащите на поле"
 	elif stored_tower != null and stored_tower.enchantment >= 0:
 		caption = "Чары"
 	draw_string(font, Vector2(6, size.y - 6), caption, HORIZONTAL_ALIGNMENT_LEFT,
-			size.x - 12, 13, TEXT_COLOR)
+			size.x - 12, 16, TEXT_COLOR)
 	if not is_active:
 		draw_rect(rect, Color(0, 0, 0, 0.35))
 	_draw_rite_target()

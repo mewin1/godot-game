@@ -50,7 +50,7 @@ func _maybe_use_skill(sim: MatchSim, player: PlayerState, timing: HeroSkillData.
 	var skill: HeroSkillData = player.hero.skill
 	if skill.timing != timing and skill.timing != HeroSkillData.Timing.ANY:
 		return
-	if player.check_skill_available(sim.phase) != "" or player.gold < player.get_skill_cost():
+	if player.check_skill_activation(sim) != "" or player.gold < player.get_skill_cost():
 		return
 	if skill.effect.bot_wants_to_use(sim, player):
 		_execute(sim, player, UseHeroSkillCommand.new())

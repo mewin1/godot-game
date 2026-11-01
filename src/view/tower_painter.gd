@@ -4,6 +4,8 @@ extends RefCounted
 ## сетки) и картинку поверх, в центре фигуры. Уровень — звёздочки и цвет обводки.
 
 const MILLI: float = 1000.0
+const FIRE_PULSE_SECONDS: float = 0.18
+const POP_SECONDS: float = 0.35
 const LEVEL_EDGE_COLORS: Array[Color] = [
 	Color(0, 0, 0, 0), Color(0.78, 0.8, 0.82), Color(0.95, 0.75, 0.3)]
 const OUTLINE_COLOR: Color = Color(0.11, 0.08, 0.06)
@@ -59,8 +61,60 @@ static func draw_plates(canvas: CanvasItem, cells: Array[Vector2i], top_left: Ve
 static func draw_icon(canvas: CanvasItem, visual: TowerVisual, center: Vector2, cell_size: float,
 		pulse: float) -> void:
 	var icon_size: float = cell_size * visual.icon_scale * (1.0 + 0.12 * pulse)
-	var position: Vector2 = center - Vector2(icon_size * 0.5, icon_size * (0.5 + ICON_LIFT))
-	canvas.draw_texture_rect(visual.icon, Rect2(position, Vector2.ONE * icon_size), false)
+	var dimensions: Vector2 = Vector2(visual.icon.get_size())
+	dimensions *= icon_size / maxf(dimensions.x, dimensions.y)
+	var position: Vector2 = center - dimensions * Vector2(0.5, 0.5 + ICON_LIFT)
+	canvas.draw_texture_rect(visual.icon, Rect2(position, dimensions), false)
+
+
+## Отдельная объёмная картинка над опорной точкой; фигуру рисует FieldView под бойцами.
+static func draw_world_tower(canvas: CanvasItem, tower: TowerState, foot: Vector2,
+		cell_size: float, pulse: float, pop: float, planted: bool = false) -> void:
+	var visual: TowerVisual = VisualCatalog.get_default().get_tower(tower.data.id)
+	var dimensions: Vector2 = world_dimensions(tower, cell_size, pulse, pop)
+	if planted:
+		foot.y += cell_size * 0.23
+		draw_planted_icon(canvas, visual.icon, foot, dimensions, visual.plate_edge_color)
+		var stars: Vector2 = foot + Vector2(0, dimensions.y * 0.11 + cell_size * 0.06)
+		draw_stars(canvas, tower.level, stars, cell_size * 0.46)
+		return
+	canvas.draw_set_transform(foot + Vector2(cell_size * 0.12, 0), 0, Vector2(1, 0.28))
+	canvas.draw_circle(Vector2.ZERO, cell_size * 0.46, Color(0, 0, 0, 0.38), true, -1, true)
+	if tower.level >= GLOW_LEVEL:
+		canvas.draw_circle(Vector2.ZERO, cell_size * 0.6, GLOW_COLOR, true, -1, true)
+	canvas.draw_set_transform_matrix(Transform2D.IDENTITY)
+	canvas.draw_texture_rect(visual.icon,
+			Rect2(foot - dimensions * Vector2(0.5, 0.93), dimensions), false)
+	draw_stars(canvas, tower.level, foot + Vector2(0, cell_size * 0.16), cell_size * 0.7)
+
+
+## Размер общий для постройки и её живого огня, включая отдачу и появление.
+static func world_dimensions(tower: TowerState, cell_size: float,
+		pulse: float, pop: float) -> Vector2:
+	var visual: TowerVisual = VisualCatalog.get_default().get_tower(tower.data.id)
+	var scale_factor: float = 1.0 + 0.07 * pulse + 0.12 * sin(pop * PI)
+	var height: float = cell_size * (1.15 + 0.22 * (tower.data.tier - 1)
+			+ 0.12 * (tower.level - 1)) * scale_factor
+	var dimensions: Vector2 = Vector2(visual.icon.get_size())
+	return dimensions * height / dimensions.y
+
+
+## Одна опора для основания, контактной и падающей тени. Свет приходит слева сверху.
+static func draw_planted_icon(canvas: CanvasItem, icon: Texture2D, foot: Vector2,
+		dimensions: Vector2, hue: Color, base_center: float = 0.89) -> void:
+	# Anchor the centre of the ground-facing plinth, not its lowest painted pixel.
+	var base: Rect2 = Rect2(-dimensions * Vector2(0.5, base_center), dimensions)
+	var light: Texture2D = preload("res://data/visuals/soft_light.tres")
+	var glow: Vector2 = Vector2(dimensions.x * 1.1, dimensions.y * 0.62)
+	canvas.draw_texture_rect(light, Rect2(foot - glow * 0.5, glow), false, Color(hue, 0.25))
+	canvas.draw_set_transform_matrix(Transform2D(Vector2(0.97, 0), Vector2(-0.35, -0.25), foot))
+	canvas.draw_texture_rect(icon, base, false, Color(0.04, 0.055, 0.08, 0.34))
+	canvas.draw_set_transform_matrix(Transform2D.IDENTITY)
+	var contact: Vector2 = Vector2(dimensions.x * 0.94, dimensions.y * 0.31)
+	canvas.draw_texture_rect(light, Rect2(foot - contact * Vector2(0.48, 0.58), contact),
+			false, Color(0.02, 0.035, 0.05, 0.88))
+	canvas.draw_texture_rect(icon, Rect2(foot + base.position, dimensions), false,
+			Color("e4e9ee"))
 
 
 ## Звёздочки уровня в ряд с центром в point.

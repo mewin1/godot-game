@@ -9,8 +9,10 @@ var _player: PlayerState
 var _offer_grid: GridContainer
 var _cards: Array[OfferCard] = []
 var _army_grid: GridContainer
-var _army_buttons: Array[Button] = []
+var _army_buttons: Array[ArmyOfferButton] = []
+var _level_title: Label
 var _army_title: Label
+var _selection_panel: PanelContainer
 var _selection: Label
 var _buff_box: VBoxContainer
 var _discover_box: VBoxContainer
@@ -35,29 +37,48 @@ var _last_battle_summary: String = ""
 
 
 func _init() -> void:
+	var panel_style: StyleBoxFlat = StyleBoxFlat.new()
+	panel_style.bg_color = Color(0.035, 0.063, 0.083, 0.94)
+	panel_style.border_color = Color(0.42, 0.35, 0.25)
+	panel_style.set_border_width_all(1)
+	panel_style.set_corner_radius_all(4)
+	panel_style.set_content_margin_all(11)
+	add_theme_stylebox_override("panel", panel_style)
 	var box: VBoxContainer = VBoxContainer.new()
-	box.add_theme_constant_override("separation", 4)
+	box.add_theme_constant_override("separation", 3)
 	add_child(box)
-	var actions: HBoxContainer = HBoxContainer.new()
-	box.add_child(actions)
+	var heading: HBoxContainer = HBoxContainer.new()
+	box.add_child(heading)
+	_level_title = _heading(23)
+	_level_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	heading.add_child(_level_title)
 	_reroll = _button("Обновить", _on_reroll)
-	_upgrade = _button("Магазин", _on_upgrade)
-	actions.add_child(_reroll)
-	actions.add_child(_upgrade)
+	_upgrade = _button("Развитие", _on_upgrade)
+	heading.add_child(_reroll)
+	_reroll.size_flags_horizontal = Control.SIZE_SHRINK_END
+	_reroll.autowrap_mode = TextServer.AUTOWRAP_OFF
+	heading.add_child(_upgrade)
+	_upgrade.size_flags_horizontal = Control.SIZE_SHRINK_END
+	_upgrade.autowrap_mode = TextServer.AUTOWRAP_OFF
 	_trial_button = _button("Проба", _on_trial)
-	_trial_button.tooltip_text = "Бесплатно испытать текущую защиту без потери HP и золота. Активные навыки не учитываются."
-	actions.add_child(_trial_button)
+	_trial_button.tooltip_text = ("Бесплатно испытать текущую защиту без потери HP и золота. "
+			+ "Активные навыки не учитываются.")
+
 	_reaction_help = _label("Реакции ⓘ", 15)
 	_reaction_help.autowrap_mode = TextServer.AUTOWRAP_OFF
 	_reaction_help.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_reaction_help.mouse_filter = Control.MOUSE_FILTER_STOP
-	actions.add_child(_reaction_help)
+
 	_strategy_summary = _label("", 14)
+	_strategy_summary.visible = false
 	_strategy_summary.mouse_filter = Control.MOUSE_FILTER_STOP
 	_strategy_summary.max_lines_visible = 2
 	box.add_child(_strategy_summary)
 	_battle_summary = _button("Итог боя появится после первой волны", open_battle_report)
 	_battle_summary.disabled = true
+	_battle_summary.visible = false
+	_battle_summary.clip_text = true
+	_battle_summary.autowrap_mode = TextServer.AUTOWRAP_OFF
 	_battle_summary.add_theme_font_size_override("font_size", 14)
 	_battle_details = AcceptDialog.new()
 	_battle_details.title = "Разбор последнего боя"
@@ -69,14 +90,14 @@ func _init() -> void:
 	_offer_grid.add_theme_constant_override("h_separation", 5)
 	_offer_grid.add_theme_constant_override("v_separation", 5)
 	box.add_child(_offer_grid)
-	_army_title = _label("Армия", 17)
+	_army_title = _heading(18)
 	box.add_child(_army_title)
 	_army_grid = GridContainer.new()
 	_army_grid.columns = 3
 	_army_grid.add_theme_constant_override("h_separation", 5)
 	_army_grid.add_theme_constant_override("v_separation", 5)
 	box.add_child(_army_grid)
-	var choices: HBoxContainer = HBoxContainer.new()
+	var choices: VBoxContainer = VBoxContainer.new()
 	box.add_child(choices)
 	_buff_box = _choice_row(choices, "Баф армии", _buff_buttons, _on_buff)
 	_discover_box = _choice_row(choices, "Подарок", _discover_buttons, _on_discover)
@@ -84,14 +105,38 @@ func _init() -> void:
 	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	box.add_child(spacer)
 	_selection = _label("", 15)
-	box.add_child(_selection)
-	box.add_child(_label("ПКМ — поворот · на лавку — продажа", 14))
+	_selection.max_lines_visible = 5
+	_selection.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+
+	var help_row: HBoxContainer = HBoxContainer.new()
+	box.add_child(help_row)
+	var hint: Label = _label("ПКМ · поворот     На лавку · продать", 13)
+	hint.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	help_row.add_child(hint)
+	help_row.add_child(_reaction_help)
 	_ready = _button("Готов ▶", _on_ready)
 	_ready.theme_type_variation = &"AccentButton"
 	var footer: HBoxContainer = HBoxContainer.new()
+	footer.add_child(_trial_button)
 	footer.add_child(_battle_summary)
 	footer.add_child(_ready)
 	box.add_child(footer)
+
+
+## Подробности выбранной фигуры читаются под двором, не сдвигая товары и резерв.
+func mount_selection(field_view: Control) -> void:
+	_selection_panel = PanelContainer.new()
+	_selection_panel.visible = false
+	_selection_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_selection_panel.add_theme_stylebox_override("panel", DuskTheme.panel(
+			Color("0d1822ee"), Color("78684b"), 8))
+	field_view.add_child(_selection_panel)
+	_selection_panel.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
+	_selection_panel.offset_left = 20
+	_selection_panel.offset_right = -20
+	_selection_panel.offset_top = -63
+	_selection_panel.offset_bottom = -6
+	_selection_panel.add_child(_selection)
 
 
 ## Настраивает каталог армии один раз при начале матча.
@@ -106,9 +151,9 @@ func setup(sim: MatchSim, player: PlayerState) -> void:
 	_strategy_summary.text = _first_recipe
 	_strategy_summary.tooltip_text = _recipe_hint
 	for i: int in sim.config.army_upgrades.size():
-		var button: Button = _button("", _on_army.bind(i))
-		button.custom_minimum_size.y = 32
-		button.add_theme_font_size_override("font_size", 13)
+		var button: ArmyOfferButton = ArmyOfferButton.new()
+		button.setup(sim.config.army_upgrades[i])
+		button.pressed.connect(_on_army.bind(i))
 		_army_grid.add_child(button)
 		_army_buttons.append(button)
 
@@ -140,7 +185,7 @@ func refresh(selected_tower: TowerState) -> void:
 		_strategy_summary.tooltip_text = _reaction_help.tooltip_text
 	_offer_grid.columns = 4 if _player.shop.offers.size() > 6 else 3
 	while _cards.size() < _player.shop.offers.size():
-		var card: OfferCard = OfferCard.new()
+		var card: OfferCard = MarketOffer.new()
 		card.offer_index = _cards.size()
 		card.clicked.connect(_on_offer)
 		_offer_grid.add_child(card)
@@ -151,7 +196,11 @@ func refresh(selected_tower: TowerState) -> void:
 		if not card.visible:
 			continue
 		card.tower_cost = _sim.config.tower_cost
-		card.custom_minimum_size.y = 88
+		var has_choices: bool = not _player.buff_offers.is_empty() \
+				or not _player.discover_offers.is_empty()
+		card.custom_minimum_size.x = 94
+		card.custom_minimum_size.y = (112 if has_choices else 134) \
+				if _player.shop.offers.size() > 3 else 216
 		var rite: RiteData = _player.shop.get_rite(i)
 		card.is_active = _player.gold >= (rite.cost if rite != null else _sim.config.tower_cost)
 		card.show_offer(_player.shop.get_offer(i))
@@ -161,25 +210,25 @@ func refresh(selected_tower: TowerState) -> void:
 	_reroll.text = "Обновить · %d" % reroll_price
 	_reroll.disabled = _player.gold < reroll_price
 	var upgrade_price: int = _player.get_shop_upgrade_price()
-	_upgrade.text = "Магазин %d → %d · %d" % [_player.shop.level,
-			_player.shop.level + 1, upgrade_price] if _player.shop.can_upgrade() else "Магазин 4"
+	_level_title.text = "Развитие %s" % ["I", "II", "III", "IV"][_player.shop.level - 1]
+	_upgrade.text = "Повысить · %d" % upgrade_price if _player.shop.can_upgrade() else "Максимум"
 	_upgrade.disabled = not _player.shop.can_upgrade() or _player.gold < upgrade_price
 	_upgrade.tooltip_text = _upgrade_context()
-	_army_title.text = "Армия: %d бойцов · доход %d · цена (+доход)" % [
-			_player.army.get_unit_count(), _player.get_total_income()]
+	_army_title.text = "Армия   ·   %d бойцов" % _player.army.get_unit_count()
 	for i: int in _army_buttons.size():
 		var army: ArmyState = _player.army
 		var cost: int = army.get_upgrade_cost(i)
 		var locked: String = army.check_upgrade_available(i, _player.shop.level)
-		_army_buttons[i].text = "%s · %d (+%d)" % [
-				army.get_upgrade(i).display_name, cost, army.get_upgrade_income(i)]
 		_army_buttons[i].disabled = locked != "" or _player.gold < cost
+		var compact: bool = _player.shop.offers.size() > 3 or selected_tower != null
+		_army_buttons[i].show_price(cost, compact)
 		var mob: MobData = army.get_upgrade(i).mob
 		var detail: String = mob.description if mob != null else "Постоянное усиление армии и дохода"
-		_army_buttons[i].tooltip_text = locked if locked != "" else detail + \
+		_army_buttons[i].tooltip_text = locked if locked != "" else \
+				army.get_upgrade(i).display_name + "\n" + detail + \
 				"\nЦена %d зол. · доход +%d" % [cost, army.get_upgrade_income(i)]
 	_refresh_choices()
-	_selection.visible = selected_tower != null
+	_selection_panel.visible = selected_tower != null
 	if selected_tower != null:
 		_selection.text = "%s · ур.%d · %s\n%s" % [selected_tower.data.display_name,
 				selected_tower.level, TowerUpgradeGuide.slots(_sim.config, selected_tower),
@@ -250,9 +299,11 @@ func _refresh_choices() -> void:
 		_buff_buttons[i].visible = i < _player.buff_offers.size()
 		if _buff_buttons[i].visible:
 			_buff_buttons[i].text = _player.buff_offers[i].display_name
+			_buff_buttons[i].tooltip_text = _player.buff_offers[i].display_name
 		_discover_buttons[i].visible = i < _player.discover_offers.size()
 		if _discover_buttons[i].visible:
 			_discover_buttons[i].text = _player.discover_offers[i].display_name
+			_discover_buttons[i].tooltip_text = _player.discover_offers[i].description
 
 
 func _can_drop_data(_at_position: Vector2, value: Variant) -> bool:
@@ -273,13 +324,20 @@ func _drop_data(_at_position: Vector2, value: Variant) -> void:
 func _button(text: String, callback: Callable) -> Button:
 	var button: Button = Button.new()
 	button.text = text
-	button.custom_minimum_size = Vector2(0, 40)
+	button.custom_minimum_size = Vector2(0, 30)
 	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	button.add_theme_font_size_override("font_size", 15)
 	button.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	button.focus_mode = Control.FOCUS_NONE
 	button.pressed.connect(callback)
 	return button
+
+
+func _heading(font_size: int) -> Label:
+	var label: Label = _label("", font_size)
+	label.add_theme_font_override("font", preload("res://data/visuals/prep_heading.tres"))
+	label.add_theme_color_override("font_color", Color("ecd9b4"))
+	return label
 
 
 func _label(text: String, font_size: int) -> Label:
@@ -295,12 +353,18 @@ func _choice_row(parent: Container, title: String, buttons: Array[Button],
 	var box: VBoxContainer = VBoxContainer.new()
 	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	parent.add_child(box)
-	box.add_child(_label(title, 14))
+
 	var row: HBoxContainer = HBoxContainer.new()
 	box.add_child(row)
+	var legend: Label = _label(title, 13)
+	legend.custom_minimum_size.x = 59
+	row.add_child(legend)
 	for i: int in 3:
 		var button: Button = _button("", callback.bind(i))
-		button.add_theme_font_size_override("font_size", 13)
+		button.add_theme_font_size_override("font_size", 12)
+		button.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		button.clip_text = true
+		button.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 		row.add_child(button)
 		buttons.append(button)
 	return box
@@ -352,6 +416,7 @@ func _on_trial() -> void:
 			BattleReportText.details(trial.battle_report, false)
 	_battle_summary.text = "Разбор пробы: убито %d · прошли %d ⓘ" % [trial.killed, trial.breached]
 	_battle_summary.disabled = false
+	_battle_summary.visible = true
 	_battle_summary.tooltip_text = _battle_details.dialog_text
 
 
@@ -367,6 +432,7 @@ func _restore_battle_report() -> void:
 	_battle_summary.text = _last_battle_summary if _last_battle_summary != "" \
 			else "Итог боя появится после первой волны"
 	_battle_details.dialog_text = _last_battle_details
+	_battle_summary.visible = _last_battle_summary != ""
 	_battle_summary.disabled = _last_battle_summary == ""
 	_battle_summary.tooltip_text = _last_battle_details
 

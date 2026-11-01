@@ -1,7 +1,10 @@
 # Карта проекта для быстрых изменений
 
-Начать с `AGENTS.md`, `memory/CURRENT.md`; перед любым кодом — целиком `DEVELOPMENT.md`.
-Правила и контент: `docs/CURRENT_RULES.md`. Индекс документов: `docs/README.md`.
+Порядок чтения — `AGENTS.md`; при работе над игрой начни с `memory/CURRENT.md`.
+Эту карту читай по нужному поведению; перед написанием, правкой или ревью кода —
+в `DEVELOPMENT.md` блок «Всегда» и нужные разделы по «Оглавлению». Правила и контент —
+нужные разделы `docs/CURRENT_RULES.md`;
+остальные документы находи через `docs/README.md` по необходимости.
 Это навигация, не замена чтения конкретной реализации перед её изменением.
 
 ## Где менять конкретное поведение
@@ -35,6 +38,8 @@
 | Лавка/армия, карты, идолы, резерв | `src/ui/shop_panel.gd`, `offer_card.gd`, `idol_slot.gd`, `inventory_bar.gd` | smoke, ручной запуск |
 | Перетаскивание, подсветка и ПКМ на поле | `src/view/drag_payload.gd`, `field_view.gd` | smoke, ручной запуск |
 | Бой, эффекты, звук, внешний вид | `src/view/battle_layer.gd`, `tower_painter.gd`, `sound_bank.gd`, `visuals/` | запуск; не менять sim ради картинки |
+| Каменный двор 2.5D, материал клеток, проекция | `src/view/courtyard_painter.gd`, `field_view.gd`, `assets/dusk/` | smoke + графический `tools/capture_match.gd` |
+| Тема, символы сил и портреты 2.5D | `src/ui/dusk_theme.gd`, `src/view/visuals/god_symbols.gd`, `hero_portraits.gd`, `data/visuals/sprites/`, `portraits/` | графический запуск; описание `docs/25_dusk_2_5d.md` |
 | Верхняя панель, справочник, обучение | `src/ui/match_hud.gd`, `heroes_gallery.gd`, `scenes/how_to_play.tscn` | запуск, smoke |
 | Предпросмотр угрозы | `src/ui/army_preview.gd`, `MatchSim.build_incoming_armies()` | `test_match`, smoke |
 | Логи и статистика | `src/analytics/match_logger.gd`, `bot_match_runner.gd`, `tools/analyze_logs.py` | `test_analytics`, сравнение логов |
@@ -54,6 +59,8 @@
   Добавить визуальный ресурс и описание контрмер. Базовые особые волны сейчас отключены.
 - **Герой:** `HeroData` → `data/heroes/` → активный список `config.heroes`.
   Для новой особенности сначала проверить существующие `HeroEffect` и `HeroSkillData`.
+  Особые условия навыка — `HeroEffect.check_activation()`: команда, HUD и бот читают
+  общую `PlayerState.check_skill_activation()`, правила не копируются в UI.
   Проверить портрет/справочник и способность бота использовать навык.
 - **Заговор:** `RiteData` → `data/rites/` → активный список `config.rites`.
   Идол усиливается через `IdolState`; чары и пробуждение — через `PlayerState`.

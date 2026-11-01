@@ -100,32 +100,36 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="Menu" type="VBoxContainer" parent="Center"]
+[node name="Frame" type="PanelContainer" parent="Center"]
+layout_mode = 2
+theme_type_variation = &"HudPanel"
+
+[node name="Menu" type="VBoxContainer" parent="Center/Frame"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_constants/separation = 16
 
-[node name="Title" type="Label" parent="Center/Menu"]
+[node name="Title" type="Label" parent="Center/Frame/Menu"]
 layout_mode = 2
 theme_type_variation = &"TitleLabel"
 text = "Застава"
 horizontal_alignment = 1
 
-[node name="Subtitle" type="Label" parent="Center/Menu"]
+[node name="Subtitle" type="Label" parent="Center/Frame/Menu"]
 layout_mode = 2
 theme_type_variation = &"DimLabel"
 theme_override_font_sizes/font_size = 18
 text = "башни, армия и пятеро у одного костра"
 horizontal_alignment = 1
 
-[node name="Ornament" type="TextureRect" parent="Center/Menu"]
+[node name="Ornament" type="TextureRect" parent="Center/Frame/Menu"]
 custom_minimum_size = Vector2(0, 16)
 layout_mode = 2
 texture = ExtResource("5_ornament")
 expand_mode = 1
 stretch_mode = 1
 
-[node name="PlayButton" type="Button" parent="Center/Menu"]
+[node name="PlayButton" type="Button" parent="Center/Frame/Menu"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(340, 76)
 layout_mode = 2
@@ -133,35 +137,35 @@ theme_type_variation = &"AccentButton"
 theme_override_font_sizes/font_size = 30
 text = "Играть"
 
-[node name="HowToButton" type="Button" parent="Center/Menu"]
+[node name="HowToButton" type="Button" parent="Center/Frame/Menu"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(340, 64)
 layout_mode = 2
 theme_override_font_sizes/font_size = 24
 text = "Как играть"
 
-[node name="HeroesButton" type="Button" parent="Center/Menu"]
+[node name="HeroesButton" type="Button" parent="Center/Frame/Menu"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(340, 64)
 layout_mode = 2
 theme_override_font_sizes/font_size = 24
 text = "Справочник"
 
-[node name="ReactionLabButton" type="Button" parent="Center/Menu"]
+[node name="ReactionLabButton" type="Button" parent="Center/Frame/Menu"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(340, 54)
 layout_mode = 2
 theme_override_font_sizes/font_size = 24
 text = "Стенд реакций"
 
-[node name="SandboxButton" type="Button" parent="Center/Menu"]
+[node name="SandboxButton" type="Button" parent="Center/Frame/Menu"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(340, 54)
 layout_mode = 2
 theme_override_font_sizes/font_size = 24
 text = "Песочница боя"
 
-[node name="QuitButton" type="Button" parent="Center/Menu"]
+[node name="QuitButton" type="Button" parent="Center/Frame/Menu"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(340, 64)
 layout_mode = 2

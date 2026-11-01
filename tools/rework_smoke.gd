@@ -58,14 +58,20 @@ func _run() -> void:
 	for i: int in 5:
 		await process_frame
 	_check_layout(scene)
+	_check_field_mapping(scene._my_view)
+	await _check_reserve_pages(scene, player)
 	for resolution: Vector2i in [Vector2i(1280, 720), Vector2i(1920, 1080)]:
 		root.size = resolution
 		for i: int in 4:
 			await process_frame
 		_check_layout(scene)
+		_check_field_mapping(scene._my_view)
+		await _check_reserve_pages(scene, player)
 	root.size = Vector2i(1600, 900)
 	for i: int in 3:
 		await process_frame
+	assert(scene._my_view.size.x > scene._shop_panel.size.x,
+			"Поле должно занимать больше ширины, чем лавка")
 	var idol: IdolSlot = null
 	var offer: OfferCard = null
 	var reserve_card: OfferCard = null
@@ -103,6 +109,7 @@ func _run() -> void:
 	assert(reserve_card._can_drop_data(Vector2.ZERO, awaken))
 	player.reserve[0].level = saved_level
 	var own_view: FieldView = scene._my_view
+	_check_field_mapping(own_view)
 	var brain: BotBrain = BotBrain.new(0)
 	var spot: Vector3i = brain.find_best_spot(player.field, sim.config.towers[0])
 	var field_tower: TowerState = player.field.add_tower(sim.config.towers[0],
@@ -258,14 +265,69 @@ func _run() -> void:
 			assert((child as FieldView).field == original_opponent,
 					"После боя должно оставаться выбранное поле без автоматической вспышки")
 
-	print("SMOKE: seven offers, full reserve, choices, idol/tower drag, gift merge, RMB and sale OK")
+	print("SMOKE: all cells, reserve pages, seven offers, choices, "
+			+ "idol/tower drag, gift merge, RMB and sale OK")
 	scene.queue_free()
 	await process_frame
 	await create_timer(0.1).timeout
 	quit()
 
 
+func _check_field_mapping(view: FieldView) -> void:
+	for y: int in view.field.layout.height:
+		for x: int in view.field.layout.width:
+			var grid_cell: Vector2i = Vector2i(x, y)
+			var screen_point: Vector2 = view._cell_rect(grid_cell).get_center()
+			assert(view._cell_at(screen_point) == grid_cell,
+					"Обратное преобразование клетки %s при окне %s" % [grid_cell, root.size])
+
+
+func _check_reserve_pages(scene: MatchScreen, player: PlayerState) -> void:
+	var inventory: InventoryBar = scene._inventory
+	var capacity: int = player.get_reserve_capacity()
+	assert(player.reserve.size() == capacity, "Проверка страниц требует полного резерва")
+	var last_page: int = (capacity - 1) / 4
+	assert(inventory._page == 0)
+	for page: int in range(last_page + 1):
+		_check_reserve_page(inventory, player, page, last_page)
+		_check_layout(scene)
+		if page < last_page:
+			inventory._next.pressed.emit()
+			await process_frame
+			await process_frame
+	for page: int in range(last_page - 1, -1, -1):
+		inventory._previous.pressed.emit()
+		await process_frame
+		await process_frame
+		_check_reserve_page(inventory, player, page, last_page)
+		_check_layout(scene)
+	assert(inventory._page == 0, "После просмотра всех страниц резерв возвращается к началу")
+
+
+func _check_reserve_page(inventory: InventoryBar, player: PlayerState,
+		page: int, last_page: int) -> void:
+	assert(inventory._page == page, "Кнопка перелистывает ровно одну страницу")
+	assert(inventory._previous.disabled == (page == 0))
+	assert(inventory._next.disabled == (page == last_page))
+	for index: int in inventory._cards.size():
+		var card: OfferCard = inventory._cards[index]
+		var is_expected: bool = index < player.get_reserve_capacity() and index / 4 == page
+		assert(card.visible == is_expected, "Показаны только слоты текущей страницы")
+		if is_expected:
+			assert(card.is_visible_in_tree() and card.is_active)
+			assert(card.offer_index == index)
+			assert(card.stored_tower == player.reserve[index],
+					"Слот страницы сохраняет настоящий предмет резерва")
+	assert(inventory._gift.is_visible_in_tree(), "Подарок доступен на каждой странице")
+
+
 func _check_layout(scene: Control) -> void:
+	var match_scene: MatchScreen = scene as MatchScreen
+	if match_scene != null and match_scene._inventory.is_visible_in_tree():
+		var inventory_rect: Rect2 = match_scene._inventory.get_global_rect()
+		assert(scene.get_global_rect().encloses(inventory_rect),
+				"Весь контейнер резерва внутри сцены: %s, сцена %s" % [
+				inventory_rect, scene.get_global_rect()])
 	var bounds: Rect2 = scene.get_global_rect().grow(2)
 	for child: Node in scene.find_children("*", "Control", true, false):
 		var control: Control = child as Control

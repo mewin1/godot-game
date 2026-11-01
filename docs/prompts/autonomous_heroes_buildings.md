@@ -41,7 +41,7 @@
 - Попроси держать компьютер включённым: инструмент keep-awake (`mcp__ccd_host__request_keep_awake`),
   режим `session_idle`.
 - Проверь лимит (`get_usage`) и время (`date`), запиши их себе.
-- Прочитай: `AGENTS.md`, **`DEVELOPMENT.md` целиком (обязательно перед кодом)**, `decisions.md`,
+- Прочитай: `AGENTS.md`, `DEVELOPMENT.md` (блок «Всегда» + нужные разделы перед кодом), `decisions.md`,
   `open_questions.md`, `glossary.md`, `docs/00_pitch.md`, `docs/01_core_mechanics.md`,
   `docs/02_economy.md`, `docs/03_heroes.md`, `docs/06_visual_style.md`, `docs/08_direction_notes.md`,
   `docs/prototype_notes.md` и свою память (особенно «Автономные сессии» и «Ловушки проверки в Godot»).

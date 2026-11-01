@@ -1,0 +1,20 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://src/view/arena_tile_3d.gd" id="1_script"]
+
+[sub_resource type="BoxMesh" id="1_slab"]
+size = Vector3(0.965, 0.16, 0.965)
+
+[sub_resource type="BoxMesh" id="2_inset"]
+size = Vector3(0.84, 0.018, 0.84)
+
+[node name="ArenaTile3D" type="Node3D"]
+script = ExtResource("1_script")
+
+[node name="Slab" type="MeshInstance3D" parent="."]
+position = Vector3(0, -0.08, 0)
+mesh = SubResource("1_slab")
+
+[node name="Inset" type="MeshInstance3D" parent="."]
+position = Vector3(0, 0.004, 0)
+mesh = SubResource("2_inset")

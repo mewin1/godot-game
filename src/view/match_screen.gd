@@ -6,7 +6,6 @@ extends Control
 ## Крутит симуляцию с фиксированным тиком и передаёт в неё команды игрока.
 
 const CONFIG_PATH: String = "res://data/game_config.tres"
-const THEME_PATH: String = "res://data/ui/ui_theme.tres"
 const VIGNETTE_SHADER: Shader = preload("res://assets/shaders/vignette.gdshader")
 const END_PANEL_SCENE: PackedScene = preload("res://scenes/match_end_panel.tscn")
 ## Логи живых матчей (для разработки: папка проекта, в git не попадает).
@@ -18,7 +17,7 @@ const TOAST_FONT_SIZE: int = 24
 const HALF_FADE_SECONDS: float = 0.35
 ## Не больше стольких тиков за кадр — чтобы игра не «догоняла» рывком после подвисания.
 const MAX_TICKS_PER_FRAME: int = 5
-const COLOR_BACKGROUND: Color = Color(0.08, 0.06, 0.047)
+const COLOR_BACKGROUND: Color = Color(0.045, 0.075, 0.115)
 const COLOR_TOAST: Color = Color(1.0, 0.8, 0.45)
 const COLOR_SIEGE: Color = Color(1.0, 0.45, 0.35)
 const SPEEDS: Array[int] = [1, 2]
@@ -40,9 +39,11 @@ var _was_enraged: bool = false
 ## В каком раунде выбыл каждый игрок (индекс → раунд) — для таблицы итогов.
 var _elimination_rounds: Dictionary[int, int] = {}
 
+var _court: PreparationCourt
 var _hud: MatchHud
 var _halves: BoxContainer
 var _menu_slot: Control
+var _right_column: VBoxContainer
 var _shop_panel: ShopPanel
 var _opponent_view: FieldView
 var _inventory: InventoryBar
@@ -92,12 +93,16 @@ func _update_split_direction() -> void:
 
 func _build_ui() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
-	theme = load(THEME_PATH) as Theme
+	texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	theme = DuskTheme.create()
 	var background: ColorRect = ColorRect.new()
 	background.color = COLOR_BACKGROUND
 	_add_full_rect(self, background)
+	_court = PreparationCourt.new()
+	_court.visible = false
+	_add_full_rect(self, _court)
 	var root_box: VBoxContainer = VBoxContainer.new()
-	root_box.add_theme_constant_override("separation", 4)
+	root_box.add_theme_constant_override("separation", 6)
 	_add_full_rect(self, root_box)
 	root_box.mouse_filter = Control.MOUSE_FILTER_PASS
 	_hud = MatchHud.new()
@@ -113,10 +118,6 @@ func _build_ui() -> void:
 	_halves.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	root_box.add_child(_halves)
 	_build_halves()
-	_inventory = InventoryBar.new()
-	_inventory.command_requested.connect(_on_command_requested)
-	_inventory.tower_selected.connect(_on_reserve_tower_selected)
-	root_box.add_child(_inventory)
 	_add_vignette()
 	_overlay = Control.new()
 	_add_full_rect(self, _overlay)
@@ -142,7 +143,7 @@ func _add_vignette() -> void:
 	var vignette: ColorRect = ColorRect.new()
 	var vignette_material: ShaderMaterial = ShaderMaterial.new()
 	vignette_material.shader = VIGNETTE_SHADER
-	vignette_material.set_shader_parameter("strength", 0.45)
+	vignette_material.set_shader_parameter("strength", 0.16)
 	vignette.material = vignette_material
 	_add_full_rect(self, vignette)
 
@@ -150,32 +151,64 @@ func _add_vignette() -> void:
 func _build_halves() -> void:
 	_menu_slot = Control.new()
 	_make_half(_menu_slot)
+	_menu_slot.size_flags_stretch_ratio = 0.70
+	var left_column: VBoxContainer = VBoxContainer.new()
+	_menu_slot.add_child(left_column)
+	left_column.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	left_column.offset_left = 12
+	left_column.offset_right = -8
+	left_column.offset_bottom = -12
 	_shop_panel = ShopPanel.new()
-	_shop_panel.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_shop_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_shop_panel.command_requested.connect(_on_command_requested)
-	_menu_slot.add_child(_shop_panel)
+	left_column.add_child(_shop_panel)
+	_inventory = InventoryBar.new()
+	_inventory.command_requested.connect(_on_command_requested)
+	_inventory.tower_selected.connect(_on_reserve_tower_selected)
+	left_column.add_child(_inventory)
 	_opponent_view = FieldView.new()
+	_opponent_view.has_atmosphere = true
 	_opponent_view.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_opponent_view.sound_requested.connect(_on_view_sound_requested)
 	_menu_slot.add_child(_opponent_view)
 	var right: VBoxContainer = VBoxContainer.new()
+	_right_column = right
 	_make_half(right)
+	right.size_flags_stretch_ratio = 1.30
 	_my_view = FieldView.new()
+	_my_view.has_atmosphere = true
 	_my_view.is_own_field = true
+	_my_view.preparation_court = _court
 	_my_view.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_my_view.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	right.add_child(_my_view)
+	_shop_panel.mount_selection(_my_view)
 	_my_view.command_requested.connect(_on_command_requested)
 	_my_view.tower_tapped.connect(_on_my_view_tower_tapped)
 	_my_view.sound_requested.connect(_on_view_sound_requested)
+	var bottom_row: HBoxContainer = HBoxContainer.new()
+	right.add_child(bottom_row)
 	var idols: HBoxContainer = HBoxContainer.new()
-	right.add_child(idols)
+	idols.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	idols.alignment = BoxContainer.ALIGNMENT_CENTER
+	idols.add_theme_constant_override("separation", 8)
+	bottom_row.add_child(idols)
 	for i: int in 3:
 		var slot: IdolSlot = IdolSlot.new()
 		slot.slot_index = i
+		slot.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		slot.custom_minimum_size = Vector2(78, 72)
 		slot.command_requested.connect(_on_command_requested)
 		idols.add_child(slot)
 		_idol_slots.append(slot)
+	var hero_dock: PanelContainer = PanelContainer.new()
+	hero_dock.theme_type_variation = &"HudPanel"
+	hero_dock.custom_minimum_size.x = 310
+	bottom_row.add_child(hero_dock)
+	var hero_row: HBoxContainer = HBoxContainer.new()
+	hero_row.add_theme_constant_override("separation", 5)
+	hero_dock.add_child(hero_row)
+	_hud.move_hero_controls(hero_row)
 
 
 func _make_half(half: Control) -> void:
@@ -272,6 +305,11 @@ func _refresh_views() -> void:
 		_refresh_hero_select(me)
 		return
 	var is_prep: bool = _sim.phase == MatchSim.Phase.PREP
+	_court.visible = is_prep and me.is_alive
+	_hud.set_preparation(_court.visible)
+	_menu_slot.size_flags_stretch_ratio = 0.64 if is_prep else 1.0
+	_right_column.size_flags_stretch_ratio = 1.36 if is_prep else 1.0
+	_opponent_view.offset_bottom = -(_right_column.size.y - _my_view.size.y)
 	if me.get_owned_tower(_selected_tower_id) == null or not is_prep:
 		_selected_tower_id = 0
 	_my_view.show_field(me.field, _sim.config, "Ваше поле")
@@ -282,6 +320,7 @@ func _refresh_views() -> void:
 			and _sim.phase != MatchSim.Phase.OVER
 	_shop_panel.visible = is_prep and me.is_alive
 	_shop_panel.refresh(me.get_owned_tower(_selected_tower_id))
+	_inventory.visible = is_prep and me.is_alive
 	_inventory.refresh(me, is_prep and me.is_alive)
 	for i: int in _idol_slots.size():
 		_idol_slots[i].refresh(me.field.idols[i], is_prep and me.is_alive,

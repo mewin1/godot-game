@@ -37,12 +37,19 @@ var is_own_field: bool = false
 var hero_hp: int = 0
 ## Центр таблички HP героя на экране (её место задаёт FieldView: там же терем).
 var hero_plate_center: Vector2 = Vector2.ZERO
+var hero_shake: Vector2 = Vector2.ZERO
 
 static var _puff_texture: Texture2D
 
 var _field: FieldState
 var show_target_labels: bool = false
 var selected_mob_id: int = 0
+var draw_world_towers: bool = false
+var is_preparation_court: bool = false
+var has_atmosphere: bool = false
+var tower_pulses: Dictionary[int, float] = {}
+var tower_pops: Dictionary[int, float] = {}
+var point_projector: Callable
 var _style: FieldStyle
 var _catalog: VisualCatalog
 var _origin: Vector2 = Vector2.ZERO
@@ -56,16 +63,22 @@ var _texts: Array[FloatText] = []
 var _lightning: Array[LightningArc] = []
 ## Куда смотрит моб (true — влево): сохраняем, чтобы он не «моргал» на вертикальных участках.
 var _facing_left: Dictionary[int, bool] = {}
+var _living_flame: LivingFlame
 
 
 func _init() -> void:
 	_catalog = VisualCatalog.get_default()
 	_style = _catalog.field
+	_living_flame = LivingFlame.new()
+	add_child(_living_flame)
 
 
 func _process(delta: float) -> void:
 	delta *= playback_speed
 	_time += delta
+	_living_flame.set_time(_time)
+	_living_flame.render_target_update_mode = (SubViewport.UPDATE_ALWAYS
+			if has_atmosphere and is_visible_in_tree() else SubViewport.UPDATE_DISABLED)
 	_breach_flash_left = maxf(0.0, _breach_flash_left - delta)
 	_update_projectiles(delta)
 	_impacts = _impacts.filter(func(impact: Impact) -> bool:
@@ -137,7 +150,8 @@ func _draw() -> void:
 		_draw_projectile(projectile)
 	for impact: Impact in _impacts:
 		_draw_impact(impact)
-	_draw_hero_hp(hero_plate_center)
+	if not is_preparation_court:
+		_draw_hero_hp(hero_plate_center)
 	for text: FloatText in _texts:
 		_draw_float_text(text)
 	if _breach_flash_left > 0.0:
@@ -148,11 +162,68 @@ func _draw() -> void:
 
 
 func _draw_mobs() -> void:
-	if _field.mobs.is_empty():
-		_facing_left.clear()
+	if not draw_world_towers:
+		for mob: MobState in _field.mobs:
+			_draw_mob(mob)
 		return
-	for mob: MobState in _field.mobs:
+	var towers: Array[TowerState] = _field.towers.duplicate()
+	towers.sort_custom(func(first: TowerState, second: TowerState) -> bool:
+		return first.center_milli().y < second.center_milli().y)
+	var mobs: Array[MobState] = _field.mobs.duplicate()
+	mobs.sort_custom(func(first: MobState, second: MobState) -> bool:
+		return _mob_screen_position(first).y < _mob_screen_position(second).y)
+	var tower_index: int = 0
+	for mob: MobState in mobs:
+		var foot: Vector2 = _mob_screen_position(mob)
+		while tower_index < towers.size() and _tower_foot(towers[tower_index]).y <= foot.y:
+			_draw_world_tower(towers[tower_index])
+			tower_index += 1
 		_draw_mob(mob)
+	while tower_index < towers.size():
+		_draw_world_tower(towers[tower_index])
+		tower_index += 1
+	var path: Array[Vector2i] = _field.get_active_path()
+	var gate: Vector2 = _milli_to_screen((Vector2(path[-1]) + Vector2.ONE * 0.5) * MILLI)
+	if is_preparation_court:
+		var foot: Vector2 = gate + Vector2(0, _cell_size * 0.15)
+		TowerPainter.draw_planted_icon(self, CourtyardPainter.EXIT_WEAPON, foot,
+				Vector2.ONE * _cell_size, Color("bd9469"), 0.84)
+	else:
+		CourtyardPainter.draw_exit(self, gate + hero_shake, _cell_size)
+	if mobs.is_empty():
+		_facing_left.clear()
+
+
+func _tower_foot(tower: TowerState) -> Vector2:
+	return _milli_to_screen(Vector2(tower.center_milli()))
+
+
+func _draw_world_tower(tower: TowerState) -> void:
+	var pulse: float = tower_pulses.get(tower.id, 0.0) / TowerPainter.FIRE_PULSE_SECONDS
+	var pop: float = tower_pops.get(tower.id, 0.0) / TowerPainter.POP_SECONDS
+	TowerPainter.draw_world_tower(self, tower, _tower_foot(tower), _cell_size, pulse, pop,
+			is_preparation_court)
+	_draw_tower_embers(tower, pulse, pop)
+
+
+func _draw_tower_embers(tower: TowerState, pulse: float, pop: float) -> void:
+	if not has_atmosphere:
+		return
+	var visual: TowerVisual = _catalog.get_tower(tower.data.id)
+	if not visual.has_embers:
+		return
+	var dimensions: Vector2 = TowerPainter.world_dimensions(tower, _cell_size, pulse, pop)
+	var height: float = dimensions.y
+	var foot: Vector2 = _tower_foot(tower)
+	var anchor: Vector2 = Vector2(0.5, 0.93)
+	if is_preparation_court:
+		foot.y += _cell_size * 0.23
+		anchor.y = 0.89
+	var source: Vector2 = foot + (visual.ember_source - anchor) * dimensions
+	var flame_size: Vector2 = Vector2(0.25, 0.30) * height
+	draw_texture_rect(_living_flame.get_texture(),
+			Rect2(source - flame_size * Vector2(0.5, 0.90), flame_size), false)
+	CourtAtmosphere.draw_embers(self, source, height, _time, float(tower.id))
 
 
 ## Моб: тень, картинка с покачиванием (повёрнута по ходу), синий оттенок под замедлением, HP.
@@ -164,7 +235,8 @@ func _draw_mob(mob: MobState) -> void:
 	if absf(step_x) > 0.01:
 		_facing_left[mob.id] = step_x < 0.0
 	var sprite_size: float = visual.size_cells * _cell_size
-	feet.y += sprite_size * 0.3
+	if not draw_world_towers:
+		feet.y += sprite_size * 0.3
 	var bob_speed: float = visual.bob_speed * (2.0 if _field.is_enraged else 1.0)
 	var phase: float = _time * bob_speed * PI + mob.id
 	var bob: float = absf(sin(phase)) * visual.bob_height * sprite_size
@@ -192,8 +264,10 @@ func _draw_mob(mob: MobState) -> void:
 		tint = Color(_style.enrage_tint, tint.a)
 	if mob.slow_percent > 0 or mob.wind_slow_percent > 0 or mob.cold_ticks_left > 0:
 		tint = tint * _style.slow_tint
-	draw_texture_rect(visual.texture, Rect2(Vector2(-sprite_size * 0.5, -sprite_size),
-			Vector2.ONE * sprite_size), false, tint)
+	var dimensions: Vector2 = Vector2(visual.texture.get_size())
+	dimensions *= sprite_size / dimensions.y
+	draw_texture_rect(visual.texture, Rect2(Vector2(-dimensions.x * 0.5, -sprite_size),
+			dimensions), false, tint)
 	draw_set_transform_matrix(Transform2D.IDENTITY)
 	if mob.shield_left > 0:
 		draw_arc(feet - Vector2(0, bob + sprite_size * 0.5), sprite_size * 0.55, -2.4, -0.7, 16,
@@ -254,6 +328,8 @@ func _draw_hp_bar(top_center: Vector2, width: float, ratio: float) -> void:
 func _draw_projectile(projectile: Projectile) -> void:
 	var t: float = projectile.age / projectile.visual.projectile_seconds
 	var from: Vector2 = _milli_to_screen(projectile.from_milli)
+	if draw_world_towers:
+		from.y -= _cell_size * 0.6
 	var to: Vector2 = _projectile_target(projectile)
 	var point: Vector2 = from.lerp(to, t)
 	var direction: Vector2 = (to - from).normalized()
@@ -339,7 +415,8 @@ func _add_impact(projectile: Projectile) -> void:
 
 
 func _projectile_target(projectile: Projectile) -> Vector2:
-	return _milli_to_screen(projectile.target_milli) - Vector2(0, _cell_size * 0.15)
+	var lift: float = 0.35 if draw_world_towers else 0.15
+	return _milli_to_screen(projectile.target_milli) - Vector2(0, _cell_size * lift)
 
 
 ## Мягкий «пых» дыма цвета моба. Частицы сами удаляются после проигрыша.
@@ -400,13 +477,16 @@ func _mob_screen_position(mob: MobState) -> Vector2:
 
 
 func _milli_to_screen(milli: Vector2) -> Vector2:
+	if point_projector.is_valid():
+		var projected: Vector2 = point_projector.call(milli)
+		return projected
 	return _origin + milli / MILLI * _cell_size
 
 
 func _hero_screen_position() -> Vector2:
 	var path: Array[Vector2i] = _field.get_active_path()
 	var cell: Vector2i = path[path.size() - 1]
-	return _origin + (Vector2(cell) + Vector2(0.5, 0.2)) * _cell_size
+	return _milli_to_screen((Vector2(cell) + Vector2(0.5, 0.2)) * MILLI)
 
 
 func _on_field_tower_fired(tower: TowerState, mob: MobState) -> void:

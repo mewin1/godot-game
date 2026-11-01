@@ -8,6 +8,7 @@ const MATCH: String = "res://scenes/match.tscn"
 const REACTION_LAB: String = "res://scenes/reaction_lab.tscn"
 const COMBAT_SANDBOX: String = "res://scenes/combat_sandbox.tscn"
 const HEROES: String = "res://scenes/heroes_gallery.tscn"
+const VISUAL_SLICE: String = "res://scenes/visual_slice.tscn"
 
 
 ## Переход на другую сцену с проверкой ошибки.

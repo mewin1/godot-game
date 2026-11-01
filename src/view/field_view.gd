@@ -1,7 +1,7 @@
 class_name FieldView
 extends Control
-## Рисует поле игрока (трава, дорога, декор, башни, терем героя) и принимает перетаскивание
-## башен. Мобы, снаряды и эффекты — в дочернем слое BattleLayer (рисуется поверх).
+## Каменный двор 2.5D, точная сетка и перенос фигур.
+## Постройки, бойцы и эффекты рисует дочерний BattleLayer с сортировкой по глубине.
 ## Только читает FieldState; действия игрока отдаёт наверх сигналом command_requested.
 
 signal command_requested(command: SimCommand)
@@ -18,23 +18,23 @@ const TITLE_COLOR: Color = Color(0.94, 0.89, 0.81)
 ## Насколько можно сдвинуть палец, чтобы нажатие ещё считалось нажатием, а не перетаскиванием.
 const TAP_SLOP: float = 12.0
 ## Сколько секунд башня «вздрагивает» после выстрела.
-const FIRE_PULSE_SECONDS: float = 0.18
+const FIRE_PULSE_SECONDS: float = TowerPainter.FIRE_PULSE_SECONDS
 const HERO_SHAKE_SECONDS: float = 0.4
 const HERO_SHAKE_PIXELS: float = 6.0
-const FRAME_MARGIN: float = 0.14
-## Терем шире клетки: в долях клетки.
-const HERO_WIDTH: float = 1.2
-const DECOR_SIZE: float = 0.92
 ## «Пружинка» башни после покупки или слияния.
-const POP_SECONDS: float = 0.35
+const POP_SECONDS: float = TowerPainter.POP_SECONDS
 const SIEGE_PULSE_SPEED: float = 5.0
-const POP_STRENGTH: float = 0.3
 const MERGE_BURST_COLOR: Color = Color(1.0, 0.82, 0.4)
 const SELL_BURST_COLOR: Color = Color(0.75, 0.62, 0.45)
 const LESHY_COLOR: Color = Color(0.55, 0.8, 0.35)
 const SCORCH_SHADE: Color = Color(0.05, 0.03, 0.02, 0.55)
 const SCORCH_EMBER: Color = Color(1.0, 0.5, 0.2)
+const GRID_ASPECT: float = CourtyardPainter.GRID_ASPECT
 
+var preparation_court: PreparationCourt
+var has_atmosphere: bool = false
+var _air: ColorRect
+var _air_material: ShaderMaterial
 var field: FieldState
 var config: GameConfig
 var title: String = ""
@@ -90,11 +90,20 @@ var _known_centers: Dictionary[int, Vector2i] = {}
 
 func _init() -> void:
 	_style = VisualCatalog.get_default().field
+	clip_contents = true
 	_battle = BattleLayer.new()
+	_battle.draw_world_towers = true
 	_battle.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_battle.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_battle.sound_requested.connect(_on_battle_sound_requested)
 	add_child(_battle)
+	_air = ColorRect.new()
+	_air.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_air_material = ShaderMaterial.new()
+	_air_material.shader = preload("res://assets/shaders/court_air.gdshader")
+	_air.material = _air_material
+	add_child(_air)
+	_air.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
 
 func _process(delta: float) -> void:
@@ -111,12 +120,15 @@ func _process(delta: float) -> void:
 			_fire_pulses.erase(tower_id)
 	_hero_shake_left = maxf(0.0, _hero_shake_left - delta)
 	_time += delta
+	_air_material.set_shader_parameter("clock", _time)
 	for tower_id: int in _pops.keys():
 		_pops[tower_id] -= delta
 		if _pops[tower_id] <= 0.0:
 			_pops.erase(tower_id)
 	if field != null and is_own_field:
 		_track_tower_changes()
+	_battle.tower_pulses = _fire_pulses
+	_battle.tower_pops = _pops
 	queue_redraw()
 
 
@@ -261,35 +273,68 @@ func _make_drop_command(payload: DragPayload) -> SimCommand:
 #region Рисование
 
 func _draw() -> void:
-	draw_rect(Rect2(Vector2.ZERO, size), _style.background_color)
+	var in_court: bool = preparation_court != null and preparation_court.visible
+	_battle.is_preparation_court = in_court
+	_battle.has_atmosphere = has_atmosphere
+	_air.visible = has_atmosphere
+	if not in_court:
+		draw_rect(Rect2(Vector2.ZERO, size), Color(0.055, 0.09, 0.14))
 	if field == null:
 		return
 	_update_layout()
 	_battle.set_layout(_origin, _cell_size)
-	_draw_title()
-	_draw_board()
-	_draw_road()
+	_battle.point_projector = Callable(self, "_to_screen")
+	if in_court:
+		CourtyardPainter.draw_preparation(self, field, _origin, _cell_size, _time)
+	else:
+		_draw_title()
+		CourtyardPainter.draw_field(self, field, _origin, _cell_size, _time)
+	_draw_footprints()
+	_draw_court_lights()
 	_draw_combo_coverage()
-	_draw_decor()
-	_draw_spawn()
 	_draw_knockback_mark()
 	_draw_wind()
-	_draw_towers()
+	_draw_tower_marks()
 	_draw_rite_targets()
 	_draw_hover()
-	_draw_hero()
+	_update_hero_plate()
+	_draw_siege_frame()
 
 
 func _update_layout() -> void:
 	var board: BoardLayout = field.layout
+	if preparation_court != null and preparation_court.visible:
+		var floor_rect: Rect2 = preparation_court.floor_for(board)
+		_cell_size = floor_rect.size.x / board.width
+		_origin = floor_rect.position - global_position
+		_update_air(board)
+		return
 	var available: Vector2 = size - Vector2(0, TITLE_HEIGHT)
-	# Поле с рамкой: клетка считается с запасом на рамку с обеих сторон.
-	var frame: Vector2 = Vector2.ONE * FRAME_MARGIN * 2.0
-	var cells_with_frame: Vector2 = Vector2(board.width, board.height) + frame
-	_cell_size = maxf(1.0, floorf(minf(available.x / cells_with_frame.x,
-			available.y / cells_with_frame.y)))
-	var board_size: Vector2 = Vector2(board.width, board.height) * _cell_size
-	_origin = Vector2(0, TITLE_HEIGHT) + (available - board_size) / 2.0
+	var board_units: Vector2 = Vector2(board.width, board.height * GRID_ASPECT)
+	var frame_units: Vector2 = Vector2(2.4, 2.1)
+	_cell_size = maxf(1.0, floorf(minf(available.x / (board_units.x + frame_units.x),
+			available.y / (board_units.y + frame_units.y))))
+	_origin = Vector2(0, TITLE_HEIGHT) + (available - board_units * _cell_size) * 0.5
+	_update_air(board)
+
+
+func _update_air(board: BoardLayout) -> void:
+	if _air_material == null or size.x <= 0 or size.y <= 0:
+		return
+	var extent: Vector2 = Vector2(board.width, board.height * GRID_ASPECT) * _cell_size
+	_air_material.set_shader_parameter("board", Vector4(
+			_origin.x / size.x, _origin.y / size.y, extent.x / size.x, extent.y / size.y))
+
+
+func _draw_court_lights() -> void:
+	if not has_atmosphere:
+		return
+	for tower: TowerState in field.towers:
+		var visual: TowerVisual = VisualCatalog.get_default().get_tower(tower.data.id)
+		if not visual.has_embers:
+			continue
+		var foot: Vector2 = _to_screen(Vector2(tower.center_milli()))
+		CourtAtmosphere.draw_lamp(self, foot, _cell_size, _time, float(tower.id))
 
 
 func _draw_title() -> void:
@@ -301,100 +346,32 @@ func _draw_title() -> void:
 			TITLE_COLOR)
 
 
-func _draw_board() -> void:
-	var board: BoardLayout = field.layout
-	var board_rect: Rect2 = Rect2(_origin, Vector2(board.width, board.height) * _cell_size)
-	draw_rect(board_rect.grow(_cell_size * FRAME_MARGIN), _style.frame_color)
-	var frame_line: Color = _style.selected_color.darkened(0.55)
-	var frame_width: float = 2.0
-	if is_under_siege:
-		var pulse: float = 0.5 + 0.5 * sin(_time * SIEGE_PULSE_SPEED)
-		frame_line = _style.breach_color.lerp(Color(1.0, 0.5, 0.35), pulse)
-		frame_width = 3.0 + 3.0 * pulse
-	draw_rect(board_rect.grow(_cell_size * FRAME_MARGIN * 0.35), frame_line, false, frame_width)
-	var grass_count: int = _style.grass_textures.size()
-	for y: int in board.height:
-		for x: int in board.width:
-			var cell: Vector2i = Vector2i(x, y)
-			var rect: Rect2 = _cell_rect(cell)
-			var grass: Texture2D = _style.grass_textures[_cell_hash(cell) % grass_count]
-			draw_texture_rect(grass, rect, false)
-			if field.is_buildable(cell):
-				draw_rect(rect, _style.buildable_tint)
-				var grid_color: Color = _style.grid_color
-				if not can_edit:
-					grid_color.a *= 0.4
-				draw_rect(rect.grow(-1.5), grid_color, false, 1.0)
-			else:
-				draw_rect(rect, _style.blocked_shade)
-
-
-## Дорога — толстая линия по центрам клеток пути, будущая дорога — бледный пунктир.
-func _draw_road() -> void:
-	var active: PackedVector2Array = _path_points(field.get_active_path())
-	var future: Array[Vector2i] = field.get_future_path()
-	if not future.is_empty():
-		var future_points: PackedVector2Array = _path_points(future)
-		future_points.insert(0, active[active.size() - 1])
-		for i: int in future_points.size() - 1:
-			draw_dashed_line(future_points[i], future_points[i + 1], _style.future_road_color,
-					_cell_size * 0.22, _cell_size * 0.18)
-	_draw_thick_path(active, _style.road_edge_color, _cell_size * (_style.road_width + 0.12))
-	_draw_thick_path(active, _style.road_color, _cell_size * _style.road_width)
-	_draw_thick_path(active, _style.road_light_color, _cell_size * _style.road_width * 0.35)
-
-
-func _draw_thick_path(points: PackedVector2Array, color: Color, width: float) -> void:
-	draw_polyline(points, color, width, true)
-	# Круги в точках поворота — иначе толстая линия рисует углы с зазубринами.
-	for point: Vector2 in points:
-		draw_circle(point, width * 0.5, color, true, -1.0, true)
-
-
-func _draw_decor() -> void:
-	var board: BoardLayout = field.layout
-	var reserved: Dictionary[Vector2i, bool] = {}
-	for cell: Vector2i in field.get_active_path():
-		reserved[cell] = true
-	for cell: Vector2i in field.get_future_path():
-		reserved[cell] = true
-	var decor_count: int = _style.decor_textures.size()
-	for y: int in board.height:
-		for x: int in board.width:
-			var cell: Vector2i = Vector2i(x, y)
-			if reserved.has(cell) or field.is_buildable(cell):
-				continue
-			var cell_hash: int = _cell_hash(cell)
-			if cell_hash % 100 >= _style.decor_percent:
-				continue
-			var texture: Texture2D = _style.decor_textures[(cell_hash / 100) % decor_count]
-			var decor_size: float = _cell_size * DECOR_SIZE
-			var rect: Rect2 = _cell_rect(cell)
-			var draw_position: Vector2 = rect.get_center() \
-					- Vector2(decor_size * 0.5, decor_size * 0.6)
-			draw_texture_rect(texture, Rect2(draw_position, Vector2.ONE * decor_size), false)
-
-
-func _draw_spawn() -> void:
-	var path: Array[Vector2i] = field.get_active_path()
-	var rect: Rect2 = _cell_rect(path[0])
-	var spawn_size: float = _cell_size * 1.1
-	var draw_position: Vector2 = rect.get_center() - Vector2(spawn_size * 0.5, spawn_size * 0.55)
-	draw_texture_rect(_style.spawn_texture, Rect2(draw_position, Vector2.ONE * spawn_size), false)
-
-
-func _draw_towers() -> void:
+func _draw_footprints() -> void:
 	for tower: TowerState in field.towers:
-		var top_left: Vector2 = _origin + Vector2(tower.anchor) * _cell_size
-		var pulse: float = _fire_pulses.get(tower.id, 0.0) / FIRE_PULSE_SECONDS
-		if _pops.has(tower.id):
-			var progress: float = 1.0 - _pops[tower.id] / POP_SECONDS
-			var pop_scale: float = 1.0 + POP_STRENGTH * sin(progress * PI)
-			var center: Vector2 = _to_screen(Vector2(tower.center_milli()))
-			draw_set_transform(center * (1.0 - pop_scale), 0.0, Vector2.ONE * pop_scale)
-		TowerPainter.draw_tower(self, tower.data, tower.rotation, tower.level, top_left, _cell_size,
-				pulse)
-		draw_set_transform_matrix(Transform2D.IDENTITY)
+		var visual: TowerVisual = VisualCatalog.get_default().get_tower(tower.data.id)
+		var cells: Array[Vector2i] = tower.cells()
+		for cell: Vector2i in cells:
+			var rect: Rect2 = _cell_rect(cell).grow(-1.5)
+			if _battle.is_preparation_court:
+				draw_rect(rect, Color(visual.plate_color, 0.14))
+				_draw_foundation_edges(rect, cell, cells, visual)
+				continue
+			draw_rect(rect, Color(visual.plate_color, 0.24))
+			draw_rect(rect, Color(visual.plate_edge_color, 0.8), false, 1.5)
+
+
+func _draw_foundation_edges(rect: Rect2, cell: Vector2i, cells: Array[Vector2i],
+		visual: TowerVisual) -> void:
+	var corners: PackedVector2Array = [rect.position, Vector2(rect.end.x, rect.position.y),
+			rect.end, Vector2(rect.position.x, rect.end.y)]
+	var edge: Color = visual.plate_edge_color.lerp(Color("b9a588"), 0.65)
+	for side: int in TowerPainter.NEIGHBORS.size():
+		if not cells.has(cell + TowerPainter.NEIGHBORS[side]):
+			draw_line(corners[side], corners[(side + 1) % 4], Color(edge, 0.74), 1.3, true)
+
+
+func _draw_tower_marks() -> void:
+	for tower: TowerState in field.towers:
 		if field.silence_ticks_left > 0:
 			_draw_scorched(tower)
 		_draw_boost_mark(tower)
@@ -481,30 +458,19 @@ func _draw_hover() -> void:
 func _draw_range(center_milli: Vector2i, range_milli: int, color: Color) -> void:
 	var radius: float = range_milli / MILLI * _cell_size
 	var center: Vector2 = _to_screen(Vector2(center_milli))
-	draw_circle(center, radius, Color(color, 0.1))
-	draw_arc(center, radius, 0.0, TAU, 64, Color(color, 0.6), 2.0, true)
+	draw_set_transform(center, 0, Vector2(1, GRID_ASPECT))
+	draw_circle(Vector2.ZERO, radius, Color(color, 0.1))
+	draw_arc(Vector2.ZERO, radius, 0.0, TAU, 64, Color(color, 0.6), 2.0, true)
+	draw_set_transform_matrix(Transform2D.IDENTITY)
 
 
-## Терем в конце пути, под ним табличка с HP. При прорыве терем трясётся.
-func _draw_hero() -> void:
+func _update_hero_plate() -> void:
 	var path: Array[Vector2i] = field.get_active_path()
 	var rect: Rect2 = _cell_rect(path[path.size() - 1])
-	var shake: Vector2 = Vector2.ZERO
-	if _hero_shake_left > 0.0:
-		var strength: float = _hero_shake_left / HERO_SHAKE_SECONDS * HERO_SHAKE_PIXELS
-		shake = Vector2(randf_range(-strength, strength), randf_range(-strength, strength))
-	var texture: Texture2D = _style.hero_texture
-	var width: float = _cell_size * HERO_WIDTH
-	var height: float = width * texture.get_height() / texture.get_width()
-	var bottom_center: Vector2 = Vector2(rect.get_center().x, rect.end.y + _cell_size * 0.05)
-	var draw_position: Vector2 = bottom_center - Vector2(width * 0.5, height) + shake
-	draw_texture_rect(texture, Rect2(draw_position, Vector2(width, height)), false)
-	if _hero_shake_left > 0.0:
-		var flash: Color = Color(_style.breach_color, 0.5 * _hero_shake_left / HERO_SHAKE_SECONDS)
-		draw_texture_rect(texture, Rect2(draw_position, Vector2(width, height)), false, flash)
-	# Табличку HP рисует боевой слой — поверх мобов, чтобы толпа у терема её не закрывала.
+	var strength: float = _hero_shake_left / HERO_SHAKE_SECONDS * HERO_SHAKE_PIXELS
+	_battle.hero_shake = Vector2(sin(_time * 50.0), cos(_time * 41.0)) * strength
 	_battle.hero_hp = hero_hp
-	_battle.hero_plate_center = Vector2(rect.get_center().x, rect.end.y - _cell_size * 0.1) + shake
+	_battle.hero_plate_center = Vector2(rect.get_center().x, rect.end.y - _cell_size * 0.1)
 
 
 #endregion
@@ -550,28 +516,19 @@ func _remember_towers() -> void:
 		_known_centers[tower.id] = tower.center_milli()
 
 
-func _path_points(cells: Array[Vector2i]) -> PackedVector2Array:
-	var points: PackedVector2Array = []
-	for cell: Vector2i in cells:
-		points.append(_cell_rect(cell).get_center())
-	return points
-
-
-## Устойчивое «случайное» число для клетки: трава и декор не мигают от кадра к кадру.
-func _cell_hash(cell: Vector2i) -> int:
-	return absi(hash(cell))
-
-
 func _to_screen(milli: Vector2) -> Vector2:
-	return _origin + milli / MILLI * _cell_size
+	return _origin + milli / MILLI * Vector2(_cell_size, _cell_size * GRID_ASPECT)
 
 
 func _cell_rect(cell: Vector2i) -> Rect2:
-	return Rect2(_origin + Vector2(cell) * _cell_size, Vector2.ONE * _cell_size)
+	var first: Vector2 = _to_screen(Vector2(cell) * MILLI)
+	var last: Vector2 = _to_screen((Vector2(cell) + Vector2.ONE) * MILLI)
+	return Rect2(first, last - first).abs()
 
 
 func _cell_at(screen_position: Vector2) -> Vector2i:
-	var local: Vector2 = (screen_position - _origin) / _cell_size
+	var local: Vector2 = (screen_position - _origin) \
+			/ Vector2(_cell_size, _cell_size * GRID_ASPECT)
 	return Vector2i(floori(local.x), floori(local.y))
 
 
@@ -592,7 +549,8 @@ func _draw_wind() -> void:
 	for tower: TowerState in field.towers:
 		if tower.data.wind_length_milli > 0:
 			_draw_wind_tower(tower, tower.id == selected_tower_id)
-	if _hover != null and _hover.data != null and _hover.data.wind_length_milli > 0 and _hover_merge_target == null:
+	if _hover != null and _hover.data != null and _hover.data.wind_length_milli > 0 \
+			and _hover_merge_target == null:
 		var preview: TowerState = TowerState.new()
 		preview.data = _hover.data
 		preview.anchor = _hover_anchor
@@ -603,11 +561,13 @@ func _draw_wind() -> void:
 func _draw_wind_tower(tower: TowerState, show_area: bool) -> void:
 	var direction: Vector2i = DivineCombat.wind_direction(tower)
 	var start: Vector2 = _to_screen(Vector2(tower.center_milli()))
-	var end: Vector2 = start + Vector2(direction) * _cell_size * 1.6
+	var end: Vector2 = _to_screen(Vector2(tower.center_milli())
+			+ Vector2(direction) * MILLI * 1.6)
 	var color: Color = Color(0.6, 0.93, 0.79, 0.9)
 	draw_line(start, end, color, 3, true)
-	var side: Vector2 = Vector2(-direction.y, direction.x) * _cell_size * 0.16
-	var behind: Vector2 = end - Vector2(direction) * _cell_size * 0.3
+	var projected_direction: Vector2 = (end - start).normalized()
+	var side: Vector2 = projected_direction.orthogonal() * _cell_size * 0.16
+	var behind: Vector2 = end - projected_direction * _cell_size * 0.3
 	draw_colored_polygon(PackedVector2Array([end, behind + side, behind - side]), color)
 	if not show_area:
 		return
@@ -619,7 +579,8 @@ func _draw_wind_tower(tower: TowerState, show_area: bool) -> void:
 		var next: int = mini(i + 1, path.size() - 1)
 		var movement: Vector2i = path[next] - path[maxi(0, next - 1)]
 		var alignment: int = movement.x * direction.x + movement.y * direction.y
-		var tint: Color = Color(0.85, 0.3, 0.2, 0.35) if alignment > 0 				else Color(0.3, 0.85, 0.65, 0.3)
+		var tint: Color = Color(0.85, 0.3, 0.2, 0.35) if alignment > 0 \
+				else Color(0.3, 0.85, 0.65, 0.3)
 		draw_rect(_cell_rect(path[i]).grow(-2), tint)
 
 
@@ -658,3 +619,14 @@ func _draw_rite_targets() -> void:
 		var tint: Color = _style.valid_color if reason == "" else _style.invalid_color
 		for cell: Vector2i in tower.cells():
 			draw_rect(_cell_rect(cell).grow(-2), tint, false, 3)
+
+
+## Осада остаётся заметной и после смены рисовальщика поля.
+func _draw_siege_frame() -> void:
+	if not is_under_siege:
+		return
+	var board_size: Vector2 = Vector2(field.layout.width,
+			field.layout.height * GRID_ASPECT) * _cell_size
+	var pulse: float = 0.5 + 0.5 * sin(_time * SIEGE_PULSE_SPEED)
+	draw_rect(Rect2(_origin, board_size).grow(3),
+			Color(1.0, 0.3, 0.16, 0.4 + pulse * 0.4), false, 2 + pulse * 2)

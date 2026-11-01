@@ -24,9 +24,16 @@ const CHIP_FONT_SIZE: int = 16
 const BUTTON_SIZE: Vector2 = Vector2(52, 48)
 const DANGER_PULSE_SPEED: float = 5.0
 const COLOR_ELIMINATED: Color = Color(1, 1, 1, 0.4)
-const PORTRAIT_SIZE: float = 44.0
-const CHIP_PORTRAIT_SIZE: float = 26.0
+const PORTRAIT_SIZE: float = 52.0
+const CHIP_PORTRAIT_SIZE: float = 46.0
 
+var _bar: PanelContainer
+var _legacy_row: HFlowContainer
+var _chip_row: HFlowContainer
+var _prep_header: Control
+var _prep_info: VBoxContainer
+var _prep_phase: HBoxContainer
+var _prep_tools: HBoxContainer
 var _round_label: Label
 var _phase_label: Label
 var _hp_label: Label
@@ -48,16 +55,35 @@ var _threat: PackedStringArray = []
 var _player_colors: FieldStyle = VisualCatalog.get_default().field
 
 
+## Переносит портрет, способность и показатели к нижнему краю своего поля.
+func move_hero_controls(target: HBoxContainer) -> void:
+	var portrait_frame: PanelContainer = PanelContainer.new()
+	portrait_frame.add_theme_stylebox_override("panel", DuskTheme.panel(
+			Color("101b25"), DuskTheme.GOLD, 3))
+	target.add_child(portrait_frame)
+	_hero_portrait.reparent(portrait_frame)
+	for control: Control in [_hp_label.get_parent() as Control,
+			_gold_label.get_parent() as Control, _income_label.get_parent() as Control,
+			_skill_button]:
+		control.reparent(target)
+	_hero_portrait.custom_minimum_size = Vector2(64, 64)
+	_skill_button.custom_minimum_size = Vector2(124, 56)
+	_skill_button.clip_text = true
+	_skill_button.add_theme_font_size_override("font_size", 12)
+
+
 func _init() -> void:
 	add_theme_constant_override("separation", 4)
 	var bar: PanelContainer = PanelContainer.new()
 	bar.theme_type_variation = &"HudPanel"
 	add_child(bar)
+	_bar = bar
 	# Flow-контейнер переносит элементы на новую строку на узком (вертикальном) экране.
 	var row: HFlowContainer = HFlowContainer.new()
 	row.add_theme_constant_override("h_separation", 14)
 	row.add_theme_constant_override("v_separation", 2)
 	bar.add_child(row)
+	_legacy_row = row
 	_round_label = _add_label(row, VALUE_FONT_SIZE)
 	_round_label.theme_type_variation = &"HeaderLabel"
 	_round_label.add_theme_font_size_override("font_size", VALUE_FONT_SIZE)
@@ -89,8 +115,69 @@ func _init() -> void:
 	_siege_panel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	_siege_panel.visible = false
 	add_child(_siege_panel)
-	_siege_label = _add_label(_siege_panel, 20)
+	_siege_label = _add_label(_siege_panel, 17)
 	_siege_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_build_prep_header()
+
+
+func _build_prep_header() -> void:
+	_prep_header = Control.new()
+	_prep_header.custom_minimum_size.y = 90
+	_prep_header.visible = false
+	_prep_header.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_prep_header)
+	_prep_info = VBoxContainer.new()
+	_prep_info.position = Vector2(22, 12)
+	_prep_info.add_theme_constant_override("separation", 0)
+	_prep_header.add_child(_prep_info)
+	_prep_phase = HBoxContainer.new()
+	_prep_phase.add_theme_constant_override("separation", 12)
+	_prep_info.add_child(_prep_phase)
+	_prep_tools = HBoxContainer.new()
+	_prep_header.add_child(_prep_tools)
+	_prep_tools.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
+	_prep_tools.offset_right = -14
+	_prep_tools.offset_left = -160
+	_prep_tools.offset_top = 14
+
+
+## В подготовке та же информация размещена поверх пейзажа.
+func set_preparation(enabled: bool) -> void:
+	if enabled == _prep_header.visible:
+		return
+	_prep_header.visible = enabled
+	_bar.visible = not enabled
+	var phase_parent: Control = _prep_phase if enabled else _legacy_row
+	_round_label.reparent(phase_parent)
+	_phase_label.reparent(phase_parent)
+	_siege_panel.reparent(_prep_info if enabled else self)
+	_chip_row.reparent(_prep_header if enabled else self)
+	if enabled:
+		_chip_row.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+		_chip_row.set_anchor_and_offset(SIDE_LEFT, 0.455, 0)
+		_chip_row.set_anchor_and_offset(SIDE_RIGHT, 0.855, 0)
+		_chip_row.offset_top = 8
+		_siege_panel.add_theme_stylebox_override("panel", DuskTheme.panel(
+				Color(0.04, 0.07, 0.10, 0.78), Color.TRANSPARENT, 4))
+	else:
+		move_child(_chip_row, 1)
+		_siege_panel.remove_theme_stylebox_override("panel")
+	var tools_parent: Control = _prep_tools if enabled else _legacy_row
+	for button: Button in [_pause_button, _speed_button, _sound_button]:
+		button.reparent(tools_parent)
+		button.custom_minimum_size = Vector2(44, 36) if enabled else BUTTON_SIZE
+	for i: int in _chips.size():
+		var box: BoxContainer = _chip_portraits[i].get_parent() as BoxContainer
+		box.vertical = enabled
+		box.add_theme_constant_override("separation", 0 if enabled else 4)
+		_chip_labels[i].add_theme_font_size_override("font_size", 12 if enabled else CHIP_FONT_SIZE)
+		_chip_portraits[i].custom_minimum_size = Vector2(62, 54) if enabled else Vector2.ONE * CHIP_PORTRAIT_SIZE
+		if enabled:
+			_chips[i].add_theme_stylebox_override("panel", DuskTheme.panel(
+					Color("101c27"), DuskTheme.GOLD.darkened(0.4), 2))
+		else:
+			_chips[i].remove_theme_stylebox_override("panel")
+	_siege_label.add_theme_font_size_override("font_size", 14 if enabled else 17)
 
 
 func _process(delta: float) -> void:
@@ -154,9 +241,9 @@ func _refresh_hero(sim: MatchSim, me: PlayerState) -> void:
 	_skill_button.visible = skill != null
 	if skill == null:
 		return
-	var reason: String = me.check_skill_available(sim.phase)
+	var reason: String = me.check_skill_activation(sim)
 	var cost: int = me.get_skill_cost()
-	_skill_button.text = "%s · %d зол." % [skill.display_name, cost]
+	_skill_button.text = "%s\n◉ %d" % [skill.display_name, cost]
 	_skill_button.disabled = reason != "" or me.gold < cost or not me.is_alive
 	# Навык можно нажать — кнопка мягко «дышит», чтобы про неё не забывали.
 	var pulse: float = 0.85 + 0.15 * sin(_time * DANGER_PULSE_SPEED)
@@ -203,7 +290,8 @@ func _refresh_chips(sim: MatchSim, human_index: int) -> void:
 		var chip: PanelContainer = _chips[player.index]
 		var label: Label = _chip_labels[player.index]
 		var display_name: String = "Вы" if player.index == human_index else player.display_name
-		label.add_theme_color_override("font_color", _player_colors.get_player_color(player.index))
+		label.add_theme_color_override("font_color", DuskTheme.TEXT if _prep_header.visible
+				else _player_colors.get_player_color(player.index))
 		_chip_portraits[player.index].texture = HeroPortraits.get_portrait(player.hero)
 		if player.hero != null:
 			chip.tooltip_text = "%s — %s" % [player.hero.display_name, player.hero.description]
@@ -214,12 +302,16 @@ func _refresh_chips(sim: MatchSim, human_index: int) -> void:
 			continue
 		var mark: String = ""
 		if player.index == ghost_index:
-			mark = " (призрак)"
+			mark = " ◇" if _prep_header.visible else " (призрак)"
+			chip.tooltip_text += "\nПризрак этого игрока"
 		label.text = "%s ♥%d%s" % [display_name, maxi(0, player.hero_hp), mark]
 		chip.modulate = Color.WHITE
 		var is_rival: bool = player.index == opponent_index or player.index == ghost_index \
 				or (sim.siege_leader == human_index and sim.siege_attackers.has(player.index))
 		chip.theme_type_variation = &"CardPanelActive" if is_rival else &"CardPanel"
+		if _prep_header.visible:
+			var style: StyleBoxFlat = chip.get_theme_stylebox("panel") as StyleBoxFlat
+			style.border_color = DuskTheme.GOLD if is_rival else Color("56606a")
 
 
 ## Осада: красное мигающее предупреждение, если двое идут на вас; спокойная строка — иначе.
@@ -253,6 +345,7 @@ func _build_lobby_row() -> void:
 	row.add_theme_constant_override("h_separation", 6)
 	row.add_theme_constant_override("v_separation", 4)
 	add_child(row)
+	_chip_row = row
 	for i: int in 8:
 		var chip: PanelContainer = PanelContainer.new()
 		chip.theme_type_variation = &"CardPanel"
@@ -260,7 +353,7 @@ func _build_lobby_row() -> void:
 		row.add_child(chip)
 		chip.mouse_filter = Control.MOUSE_FILTER_STOP
 		chip.gui_input.connect(_on_chip_gui_input.bind(i))
-		var chip_box: HBoxContainer = HBoxContainer.new()
+		var chip_box: BoxContainer = BoxContainer.new()
 		chip_box.add_theme_constant_override("separation", 4)
 		chip.add_child(chip_box)
 		var portrait: TextureRect = _make_portrait(CHIP_PORTRAIT_SIZE)

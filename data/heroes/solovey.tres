@@ -19,7 +19,7 @@ count = 4
 [sub_resource type="Resource" id="skill"]
 script = ExtResource("skill")
 display_name = "Ватага"
-description = "В эту волну с армией идут 4 разбойника (прорвался — +3 золота)."
+description = "В эту волну с армией идут 4 разбойника (прорвался — +3 золота). Доступно с первого выхода армии."
 timing = 0
 cost = 6
 cost_step = 2

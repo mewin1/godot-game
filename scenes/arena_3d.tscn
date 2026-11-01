@@ -1,0 +1,38 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/view/arena_3d.gd" id="1_arena"]
+
+[node name="Arena3D" type="SubViewport"]
+render_target_update_mode = 4
+size = Vector2i(1100, 1200)
+script = ExtResource("1_arena")
+
+[node name="World" type="Node3D" parent="."]
+
+[node name="Camera" type="Camera3D" parent="World"]
+position = Vector3(4.5, 10, 10.77)
+rotation = Vector3(-1.047198, 0, 0)
+projection = 1
+size = 11.0
+current = true
+
+[node name="Moon" type="DirectionalLight3D" parent="World"]
+transform = Transform3D(0.8, -0.3, 0.5, 0, 0.86, 0.5, -0.6, -0.4, 0.69, 0, 8, 0)
+light_color = Color(0.56, 0.68, 0.9, 1)
+light_energy = 0.8
+shadow_enabled = true
+
+[node name="Lantern" type="OmniLight3D" parent="World"]
+position = Vector3(0.4, 3, 8.5)
+light_color = Color(1, 0.54, 0.22, 1)
+light_energy = 2.4
+omni_range = 8.0
+shadow_enabled = true
+
+[node name="Tiles" type="Node3D" parent="World"]
+
+[node name="Towers" type="Node3D" parent="World"]
+
+[node name="Units" type="Node3D" parent="World"]
+
+[node name="Perimeter" type="Node3D" parent="World"]
