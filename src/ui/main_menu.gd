@@ -31,6 +31,11 @@ func _ready() -> void:
 	_sandbox_button.pressed.connect(_on_sandbox_pressed)
 	_quit_button.pressed.connect(_on_quit_button_pressed)
 	_sound_button.pressed.connect(_on_sound_button_pressed)
+	var settings_button: Button = Button.new()
+	settings_button.text = "Настройки"
+	settings_button.pressed.connect(_on_settings_pressed)
+	_menu.add_child(settings_button)
+	UiFx.add_press_feedback(settings_button)
 	for button: Button in [_play_button, _how_to_button, _heroes_button, _lab_button, _quit_button,
 			_sound_button]:
 		UiFx.add_press_feedback(button)
@@ -82,6 +87,11 @@ func _on_sound_button_pressed() -> void:
 	SoundBank.set_muted(not SoundBank.is_muted())
 	_update_sound_icon()
 	_sound_bank.play(&"click")
+
+
+func _on_settings_pressed() -> void:
+	_sound_bank.play(&"click")
+	ScenePaths.go_to(get_tree(), ScenePaths.SETTINGS)
 
 
 func _on_lab_pressed() -> void:

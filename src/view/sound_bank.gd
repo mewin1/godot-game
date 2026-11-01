@@ -12,6 +12,8 @@ const MIN_INTERVAL: float = 0.07
 const VOLUME_DB: float = -8.0
 
 static var _is_muted: bool = false
+## Общая громкость эффектов в процентах (0–100), сохраняется вместе с mute.
+static var _volume_percent: int = 100
 static var _is_settings_loaded: bool = false
 ## Звуки генерируются один раз за запуск игры (~50 мс) и дальше общие для всех сцен.
 static var _streams: Dictionary[StringName, AudioStreamWAV] = {}
@@ -38,6 +40,20 @@ static func set_muted(muted: bool) -> void:
 		push_warning("Не удалось сохранить настройки звука")
 
 
+static func get_volume() -> int:
+	_load_settings()
+	return _volume_percent
+
+
+static func set_volume(percent: int) -> void:
+	_volume_percent = clampi(percent, 0, 100)
+	var settings: ConfigFile = ConfigFile.new()
+	settings.load(SETTINGS_PATH)
+	settings.set_value("audio", "volume", _volume_percent)
+	if settings.save(SETTINGS_PATH) != OK:
+		push_warning("Не удалось сохранить громкость")
+
+
 func _ready() -> void:
 	_noise.seed = 7
 	for i: int in PLAYER_COUNT:
@@ -54,7 +70,7 @@ func _process(delta: float) -> void:
 
 ## Играет звук по id, если звук включён и этот звук не звучал только что.
 func play(sound_id: StringName, pitch_spread: float = 0.06) -> void:
-	if is_muted() or not _streams.has(sound_id):
+	if is_muted() or _volume_percent <= 0 or not _streams.has(sound_id):
 		return
 	if _clock - _last_played.get(sound_id, -1.0) < MIN_INTERVAL:
 		return
@@ -62,7 +78,8 @@ func play(sound_id: StringName, pitch_spread: float = 0.06) -> void:
 	var player: AudioStreamPlayer = _players[_next_player]
 	_next_player = (_next_player + 1) % _players.size()
 	player.stream = _streams[sound_id]
-	player.volume_db = VOLUME_DB + _volumes.get(sound_id, 0.0)
+	player.volume_db = VOLUME_DB + _volumes.get(sound_id, 0.0) \
+			+ linear_to_db(_volume_percent / 100.0)
 	player.pitch_scale = 1.0 + randf_range(-pitch_spread, pitch_spread)
 	player.play()
 
@@ -74,6 +91,7 @@ static func _load_settings() -> void:
 	var settings: ConfigFile = ConfigFile.new()
 	if settings.load(SETTINGS_PATH) == OK:
 		_is_muted = settings.get_value("audio", "muted", false)
+		_volume_percent = settings.get_value("audio", "volume", 100)
 
 
 #region Синтез

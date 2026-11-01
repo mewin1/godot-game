@@ -11,3 +11,11 @@ static func apply(window: Window) -> void:
 	var target: Vector2i = PORTRAIT if window.size.y > window.size.x else LANDSCAPE
 	if window.content_scale_size != target:
 		window.content_scale_size = target
+
+
+static func is_fullscreen(window: Window) -> bool:
+	return window.mode == Window.MODE_FULLSCREEN
+
+
+static func set_fullscreen(window: Window, enabled: bool) -> void:
+	window.mode = Window.MODE_FULLSCREEN if enabled else Window.MODE_WINDOWED
