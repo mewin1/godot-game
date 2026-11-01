@@ -5,7 +5,7 @@ extends Control
 const SOUND_ON_ICON: Texture2D = preload("res://assets/ui/icon_sound_on.svg")
 const SOUND_OFF_ICON: Texture2D = preload("res://assets/ui/icon_sound_off.svg")
 
-var _sound_bank: SoundBank
+@onready var _sound_bank: SoundBank = $SoundBank
 
 @onready var _menu: VBoxContainer = %Menu
 @onready var _play_button: Button = %PlayButton
@@ -21,9 +21,9 @@ func _ready() -> void:
 	ScreenFit.apply(get_window())
 	theme = DuskTheme.create()
 	var background: TextureRect = $Background
-	background.texture = CourtyardPainter.ENVIRONMENT
-	_sound_bank = SoundBank.new()
-	add_child(_sound_bank)
+	var backdrop: ShaderMaterial = ShaderMaterial.new()
+	backdrop.shader = preload("res://assets/shaders/menu_watch.gdshader")
+	background.material = backdrop
 	_play_button.pressed.connect(_on_play_button_pressed)
 	_how_to_button.pressed.connect(_on_how_to_button_pressed)
 	_heroes_button.pressed.connect(_on_heroes_button_pressed)
@@ -31,37 +31,27 @@ func _ready() -> void:
 	_sandbox_button.pressed.connect(_on_sandbox_pressed)
 	_quit_button.pressed.connect(_on_quit_button_pressed)
 	_sound_button.pressed.connect(_on_sound_button_pressed)
-	var settings_button: Button = Button.new()
-	settings_button.text = "Настройки"
-	settings_button.pressed.connect(_on_settings_pressed)
-	_menu.add_child(settings_button)
-	UiFx.add_press_feedback(settings_button)
-	var team3_button: Button = Button.new()
-	team3_button.text = "3 на 3"
-	team3_button.pressed.connect(_on_team3_pressed)
-	_menu.add_child(team3_button)
-	UiFx.add_press_feedback(team3_button)
-	var team2_button: Button = Button.new()
-	team2_button.text = "2 на 2 на 2"
-	team2_button.pressed.connect(_on_team2_pressed)
-	_menu.add_child(team2_button)
-	UiFx.add_press_feedback(team2_button)
-	for button: Button in [_play_button, _how_to_button, _heroes_button, _lab_button, _quit_button,
-			_sound_button]:
+	_add_button(%Teams as HBoxContainer, "3 на 3", _on_team3_pressed)
+	_add_button(%Teams as HBoxContainer, "2 на 2 на 2", _on_team2_pressed)
+	_add_button(%Library as GridContainer, "Настройки", _on_settings_pressed)
+	_add_button(%Library as GridContainer, "Проба графики 2.5D", _on_visual_slice_pressed)
+	for button: Button in [_play_button, _how_to_button, _heroes_button, _lab_button,
+			_sandbox_button, _quit_button, _sound_button]:
 		UiFx.add_press_feedback(button)
 	_update_sound_icon()
-	var visual_button: Button = Button.new()
-	visual_button.text = "Проба графики 2.5D"
-	visual_button.position = Vector2(24, 24)
-	visual_button.size = Vector2(270, 52)
-	visual_button.pressed.connect(_on_visual_slice_pressed)
-	add_child(visual_button)
-	# Ждём кадр: контейнер должен посчитать размеры, иначе «пружинка» крутится вокруг угла.
+	_menu.modulate.a = 0.0
 	await get_tree().process_frame
-	var delay: float = 0.0
-	for child: Node in _menu.get_children():
-		UiFx.pop_in(child as Control, delay)
-		delay += 0.07
+	create_tween().tween_property(_menu, "modulate:a", 1.0, 0.4).set_trans(Tween.TRANS_SINE)
+
+
+func _add_button(parent: Container, title: String, action: Callable) -> void:
+	var button: Button = Button.new()
+	button.text = title
+	button.custom_minimum_size.y = 42
+	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	button.pressed.connect(action)
+	parent.add_child(button)
+	UiFx.add_press_feedback(button)
 
 
 func _update_sound_icon() -> void:
@@ -76,7 +66,7 @@ func _notification(what: int) -> void:
 
 func _on_play_button_pressed() -> void:
 	_sound_bank.play(&"click")
-	MatchScreen.requested_teams = 0
+	ScenePaths.requested_teams = 0
 	ScenePaths.go_to(get_tree(), ScenePaths.MATCH)
 
 
@@ -107,13 +97,13 @@ func _on_settings_pressed() -> void:
 
 func _on_team3_pressed() -> void:
 	_sound_bank.play(&"click")
-	MatchScreen.requested_teams = 2
+	ScenePaths.requested_teams = 2
 	ScenePaths.go_to(get_tree(), ScenePaths.MATCH)
 
 
 func _on_team2_pressed() -> void:
 	_sound_bank.play(&"click")
-	MatchScreen.requested_teams = 3
+	ScenePaths.requested_teams = 3
 	ScenePaths.go_to(get_tree(), ScenePaths.MATCH)
 
 

@@ -55,6 +55,8 @@ var hp_lost_this_round: int = 0
 var raw_breach_damage: int = 0
 ## Засчитанный урон до ограничения остатком HP; расходует общий предел раунда.
 var limited_breach_damage: int = 0
+## «Перелёт» добивающего удара (урон сверх остатка HP) — только для тай-брейка выбывших.
+var breach_overkill: int = 0
 var is_ready: bool = false
 ## Бафы на выбор (пусто — выбирать нечего).
 var buff_offers: Array[SendBuffData] = []
@@ -382,6 +384,7 @@ func end_prep() -> void:
 func add_to_hash(hasher: StateHasher) -> void:
 	hasher.add_many([index, hero_hp, gold, income, streak, int(is_alive), place, fell_tick,
 			army_damage_dealt, hp_lost_this_round, raw_breach_damage, limited_breach_damage,
+			breach_overkill,
 			buff_offers.size(), skill_uses, int(is_skill_used_this_round),
 			int(is_hero_triggered), free_rerolls_left, next_tower_bonus_levels,
 			discover_offers.size(), gift_towers.size()])

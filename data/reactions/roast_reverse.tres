@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="ReactionData" format=3]
+[ext_resource type="Script" path="res://src/sim/data/reaction_data.gd" id="1"]
+[resource]
+script = ExtResource("1")
+id = &"roast_reverse"
+incoming = &"fire"
+required = &"charge"
+consume = Array[StringName]([&"charge"])
+damage_percent = 125
+stun_ticks = 4
+suppress_status = true
+display_name = "Прожарка"
+explanation = "Заряд → Огонь: урон ×1.25, стан 0.2 с; заряд поглощается."

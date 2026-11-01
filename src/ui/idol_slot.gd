@@ -7,6 +7,7 @@ signal command_requested(command: SimCommand)
 var slot_index: int = 0
 var idol: IdolState
 var can_edit: bool = false
+var _base: StyleBoxFlat = DuskTheme.panel(Color("101b26aa"), Color("82735788"), 0)
 
 
 func _init() -> void:
@@ -74,18 +75,17 @@ func _drop_data(_at_position: Vector2, value: Variant) -> void:
 
 func _draw() -> void:
 	var rect: Rect2 = Rect2(Vector2.ZERO, size).grow(-2)
-	draw_style_box(DuskTheme.panel(DuskTheme.INK, DuskTheme.GOLD.darkened(0.4), 0), rect)
+	draw_style_box(_base, rect)
 	if idol == null:
 		return
 	var font: Font = get_theme_default_font()
-	var color: Color = Color(0.42, 0.52, 0.62) if idol.god == &"" else \
-			Color(0.87, 0.68, 0.34)
+	var color: Color = Color("abb9c7") if idol.god == &"" else GodSymbols.get_color(idol.god)
 	var icon_size: float = minf(54, size.y - 18)
 	var icon: Texture2D = GodSymbols.get_icon(idol.god)
 	var center: Vector2 = Vector2(size.x * 0.5, icon_size * 0.5 + 1)
 	draw_texture_rect(preload("res://data/visuals/soft_light.tres"),
 			Rect2(center - Vector2.ONE * icon_size * 0.65, Vector2.ONE * icon_size * 1.3),
-			false, Color(0.52, 0.66, 0.78, 0.16))
+			false, Color(color, 0.18))
 	draw_arc(center, icon_size * 0.46, PI * 0.12, PI * 0.88, 24,
 			Color(0.71, 0.60, 0.39, 0.4), 1, true)
 	draw_texture_rect(icon, Rect2(Vector2((size.x - icon_size) * 0.5, 1),

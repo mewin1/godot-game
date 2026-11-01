@@ -45,6 +45,7 @@ var _sound_button: Button
 var _chips: Array[PanelContainer] = []
 var _chip_labels: Array[Label] = []
 var _chip_portraits: Array[TextureRect] = []
+var _hero_name: Label
 var _hero_portrait: TextureRect
 var _skill_button: Button
 var _siege_panel: PanelContainer
@@ -58,15 +59,26 @@ var _player_colors: FieldStyle = VisualCatalog.get_default().field
 ## Переносит портрет, способность и показатели к нижнему краю своего поля.
 func move_hero_controls(target: HBoxContainer) -> void:
 	var portrait_frame: PanelContainer = PanelContainer.new()
-	portrait_frame.add_theme_stylebox_override("panel", DuskTheme.panel(
-			Color("101b25"), DuskTheme.GOLD, 3))
+	var rim: StyleBoxFlat = DuskTheme.panel(Color("101b25"), DuskTheme.GOLD, 3)
+	rim.set_corner_radius_all(42)
+	portrait_frame.add_theme_stylebox_override("panel", rim)
 	target.add_child(portrait_frame)
 	_hero_portrait.reparent(portrait_frame)
+	portrait_frame.clip_children = CanvasItem.CLIP_CHILDREN_AND_DRAW
+	_hero_portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	_hero_portrait.custom_minimum_size = Vector2(70, 70)
+	var stats: VBoxContainer = VBoxContainer.new()
+	stats.alignment = BoxContainer.ALIGNMENT_CENTER
+	target.add_child(stats)
+	_hero_name = _add_label(stats, 15)
+	_hero_name.add_theme_color_override("font_color", Color("e9cea2"))
+	_hero_name.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	var vitals: HBoxContainer = HBoxContainer.new()
+	stats.add_child(vitals)
 	for control: Control in [_hp_label.get_parent() as Control,
-			_gold_label.get_parent() as Control, _income_label.get_parent() as Control,
-			_skill_button]:
-		control.reparent(target)
-	_hero_portrait.custom_minimum_size = Vector2(64, 64)
+			_gold_label.get_parent() as Control, _income_label.get_parent() as Control]:
+		control.reparent(vitals)
+	_skill_button.reparent(target)
 	_skill_button.custom_minimum_size = Vector2(124, 56)
 	_skill_button.clip_text = true
 	_skill_button.add_theme_font_size_override("font_size", 12)
@@ -236,6 +248,8 @@ func set_muted(is_muted: bool) -> void:
 
 ## Портрет героя и кнопка навыка: цена, доступность, подсказка с описанием.
 func _refresh_hero(sim: MatchSim, me: PlayerState) -> void:
+	if _hero_name != null:
+		_hero_name.text = me.hero.display_name if me.hero != null else ""
 	_hero_portrait.texture = HeroPortraits.get_portrait(me.hero)
 	_hero_portrait.visible = me.hero != null
 	if me.hero != null:

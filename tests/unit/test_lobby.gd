@@ -282,11 +282,26 @@ func test_same_round_deaths_ranked_by_who_fell_later() -> void:
 	sim.tick_count = 200
 	_add_breaches(sim, late, 23, -1)
 	sim._collect_field_results(late)
-	assert_lt(late.hero_hp, early.hero_hp, "у павшего позже минус больше")
+	assert_gt(late.breach_overkill, early.breach_overkill, "у павшего позже перелёт больше")
 	_finish_round_now(sim)
 	assert_false(early.is_alive)
 	assert_false(late.is_alive)
 	assert_lt(late.place, early.place, "кто пал позже — выше место")
+
+
+## HP не уходит в минус: добивающий урон сверх остатка уходит в breach_overkill.
+func test_breach_stops_hp_at_zero_and_tracks_overkill() -> void:
+	_config.breach_limits = []
+	var sim: MatchSim = MatchSim.new(_config, SEED, 2, 0)
+	sim.start()
+	_disable_bots(sim)
+	var player: PlayerState = sim.players[0]
+	player.hero_hp = 3
+	_remove_all_waves(sim)
+	_add_breaches(sim, player, 10, -1)
+	sim._collect_field_results(player)
+	assert_eq(player.hero_hp, 0, "HP не уходит в минус")
+	assert_eq(player.breach_overkill, 7, "перелёт = 10 − 3")
 
 
 ## Осада — выравнивание, а не добивание: каждая армия атакующих бьёт лидера слабее,

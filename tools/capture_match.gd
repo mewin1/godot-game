@@ -89,7 +89,8 @@ func _save_picture() -> void:
 	await RenderingServer.frame_post_draw
 	var picture: Image = root.get_texture().get_image()
 	assert(picture.save_png(_output) == OK)
-	print("CAPTURE: ", _output, " · ", picture.get_size())
+	print("CAPTURE: ", _output, " · ", picture.get_size(), " · screen ", root.current_screen,
+			" · position ", root.position)
 	_scene.queue_free()
 	await process_frame
 	await create_timer(0.15).timeout

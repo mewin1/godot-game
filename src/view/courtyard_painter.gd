@@ -13,12 +13,22 @@ const LOCK_COLOR: Color = Color("75808c")
 
 ## Фон с рамкой точно совмещён с модульным полем любой формы.
 static func draw_field(canvas: CanvasItem, field: FieldState, origin: Vector2,
-		cell_size: float, time: float) -> void:
+		cell_size: float, time: float, match_court: bool = false) -> void:
 	var step: Vector2 = Vector2(cell_size, cell_size * GRID_ASPECT)
 	var board: Rect2 = Rect2(origin, Vector2(field.layout.width, field.layout.height) * step)
 	var backdrop_size: Vector2 = board.size / FLOOR_AREA.size
 	canvas.draw_texture_rect(ENVIRONMENT,
 			Rect2(origin - backdrop_size * FLOOR_AREA.position, backdrop_size), false)
+	if match_court:
+		# Общий фрагмент двора даёт непрерывный свет под всей сеткой двух арен.
+		var painting: Texture2D = PreparationCourt.PAINTING
+		var region: Rect2 = Rect2(Vector2(painting.get_size()) * Vector2(0.445, 0.23),
+				Vector2(painting.get_size()) * Vector2(0.40, 0.39))
+		canvas.draw_texture_rect_region(painting, board, region)
+		draw_preparation(canvas, field, origin, cell_size)
+		draw_gate_mark(canvas, origin, step, field.layout.path_cells, time)
+		canvas.draw_rect(board.grow(1), BRASS, false, 2.0)
+		return
 	var road: Array[Vector2i] = field.get_active_path()
 	var future: Array[Vector2i] = field.get_future_path()
 	for y: int in field.layout.height:
@@ -87,7 +97,7 @@ static func draw_exit(canvas: CanvasItem, foot: Vector2, cell_size: float) -> vo
 
 ## Сквозь материал каждой плиты виден общий свет двора. Швы рисуются один раз.
 static func draw_preparation(canvas: CanvasItem, field: FieldState, origin: Vector2,
-		cell_size: float, time: float) -> void:
+		cell_size: float) -> void:
 	var step: Vector2 = Vector2(cell_size, cell_size * GRID_ASPECT)
 	var road: Array[Vector2i] = field.get_active_path()
 	var future: Array[Vector2i] = field.get_future_path()
@@ -103,7 +113,7 @@ static func draw_preparation(canvas: CanvasItem, field: FieldState, origin: Vect
 				elif (x + y) % 2 == 0:
 					_draw_lock(canvas, rect.get_center(), cell_size * 0.09)
 			canvas.draw_rect(rect, tint)
-	_draw_lane(canvas, road, origin, cell_size)
+	_draw_lane(canvas, road, origin, cell_size, Vector2(field.layout.width, field.layout.height))
 	var end: Vector2 = origin + Vector2(field.layout.width, field.layout.height) * step
 	var seam: Color = Color(0.06, 0.08, 0.10, 0.43)
 	for x: int in range(1, field.layout.width):
@@ -114,12 +124,11 @@ static func draw_preparation(canvas: CanvasItem, field: FieldState, origin: Vect
 		canvas.draw_line(Vector2(origin.x, py), Vector2(end.x, py), seam, 1, true)
 		canvas.draw_line(Vector2(origin.x, py + 1), Vector2(end.x, py + 1),
 				Color(0.68, 0.72, 0.75, 0.13), 1, true)
-	_draw_gate_mark(canvas, origin, step, road, time)
 
 
 ## Дорожная кладка с загибами проходит через центры тех же клеток, что и отряды.
 static func _draw_lane(canvas: CanvasItem, road: Array[Vector2i], origin: Vector2,
-		cell_size: float) -> void:
+		cell_size: float, board_cells: Vector2) -> void:
 	if road.size() < 2:
 		return
 	var points: PackedVector2Array = []
@@ -141,13 +150,15 @@ static func _draw_lane(canvas: CanvasItem, road: Array[Vector2i], origin: Vector
 	points.append((last + Vector2(road[-1] - road[-2]) * 0.36) * cell_size)
 	canvas.draw_set_transform(origin, 0, Vector2(1, GRID_ASPECT))
 	_draw_lane_band(canvas, points, Color(0.12, 0.12, 0.13, 0.48), cell_size * 0.82)
-	_draw_lane_band(canvas, points, Color(0.79, 0.72, 0.60, 0.63), cell_size * 0.78)
-	_draw_lane_band(canvas, points, Color(0.91, 0.84, 0.69, 0.11), cell_size * 0.65)
+	_draw_lane_band(canvas, points, Color(0.76, 0.69, 0.60, 0.52), cell_size * 0.78)
+	_draw_lane_band(canvas, points, Color(0.87, 0.84, 0.80, 0.22), cell_size * 0.78,
+			board_cells * cell_size)
+	_draw_lane_band(canvas, points, Color(0.91, 0.84, 0.69, 0.14), cell_size * 0.65)
 	canvas.draw_set_transform_matrix(Transform2D.IDENTITY)
 
 
 static func _draw_lane_band(canvas: CanvasItem, points: PackedVector2Array,
-		color: Color, width: float) -> void:
+		color: Color, width: float, extent: Vector2 = Vector2.ZERO) -> void:
 	# One filled outline avoids translucent triangle seams at rounded corners.
 	var left: PackedVector2Array = []
 	var right: PackedVector2Array = []
@@ -159,10 +170,18 @@ static func _draw_lane_band(canvas: CanvasItem, points: PackedVector2Array,
 		right.append(points[index] - normal)
 	right.reverse()
 	left.append_array(right)
-	canvas.draw_colored_polygon(left, color)
+	if extent == Vector2.ZERO:
+		canvas.draw_colored_polygon(left, color)
+		return
+	# Одна выборка дорожного камня на весь двор, без повторяющихся плиток.
+	var uvs: PackedVector2Array = []
+	for vertex: Vector2 in left:
+		uvs.append(Vector2(0.51, 0.01) + vertex / extent * 0.48)
+	canvas.draw_colored_polygon(left, color, uvs, MATERIALS)
 
 
-static func _draw_gate_mark(canvas: CanvasItem, origin: Vector2, step: Vector2,
+## Движущийся знак входа поверх неподвижной кладки.
+static func draw_gate_mark(canvas: CanvasItem, origin: Vector2, step: Vector2,
 		road: Array[Vector2i], time: float) -> void:
 	if road.size() < 2:
 		return
@@ -176,3 +195,22 @@ static func _draw_gate_mark(canvas: CanvasItem, origin: Vector2, step: Vector2,
 		canvas.draw_polyline(PackedVector2Array([heel - flank * step, tip, heel + flank * step]),
 				color, 2, true)
 		tip -= travel * step * 0.18
+
+## Команды статичного слоя хранятся в CanvasItem между кадрами движения.
+class FloorLayer extends Node2D:
+	var field: FieldState
+	var path_length: int = -1
+	var cell_size: float
+
+	func sync(source: FieldState, origin: Vector2, cell: float) -> void:
+		position = origin
+		if source == field and cell == cell_size and path_length == source.path_length:
+			return
+		field = source
+		path_length = source.path_length
+		cell_size = cell
+		queue_redraw()
+
+	func _draw() -> void:
+		if field != null:
+			CourtyardPainter.draw_preparation(self, field, Vector2.ZERO, cell_size)

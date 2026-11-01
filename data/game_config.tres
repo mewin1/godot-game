@@ -101,6 +101,9 @@
 [ext_resource type="Script" path="res://src/sim/data/reaction_data.gd" id="reaction_type"]
 [ext_resource type="Resource" path="res://data/reactions/steam.tres" id="reaction_steam"]
 [ext_resource type="Resource" path="res://data/reactions/roast.tres" id="reaction_roast"]
+[ext_resource type="Resource" path="res://data/reactions/roast_reverse.tres" id="reaction_roast_reverse"]
+[ext_resource type="Resource" path="res://data/reactions/melt_reverse_cold.tres" id="reaction_melt_reverse_cold"]
+[ext_resource type="Resource" path="res://data/reactions/melt_reverse_frozen.tres" id="reaction_melt_reverse_frozen"]
 
 [ext_resource type="Resource" path="res://data/reactions/melt.tres" id="reaction_melt"]
 [ext_resource type="Resource" path="res://data/reactions/freeze.tres" id="reaction_freeze"]
@@ -157,7 +160,7 @@
 
 [resource]
 script = ExtResource("1_script")
-reactions = Array[ExtResource("reaction_type")]([ExtResource("reaction_steam"), ExtResource("reaction_roast"), ExtResource("reaction_melt"), ExtResource("reaction_freeze"), ExtResource("reaction_shatter"), ExtResource("reaction_execute"), ExtResource("reaction_chain"), ExtResource("reaction_infection"), ExtResource("reaction_conservation"), ExtResource("reaction_surge"), ExtResource("reaction_wildfire"), ExtResource("reaction_blizzard"), ExtResource("reaction_frozen_wind")])
+reactions = Array[ExtResource("reaction_type")]([ExtResource("reaction_steam"), ExtResource("reaction_roast_reverse"), ExtResource("reaction_melt_reverse_cold"), ExtResource("reaction_melt_reverse_frozen"), ExtResource("reaction_roast"), ExtResource("reaction_melt"), ExtResource("reaction_freeze"), ExtResource("reaction_shatter"), ExtResource("reaction_execute"), ExtResource("reaction_chain"), ExtResource("reaction_infection"), ExtResource("reaction_conservation"), ExtResource("reaction_surge"), ExtResource("reaction_wildfire"), ExtResource("reaction_blizzard"), ExtResource("reaction_frozen_wind")])
 board = ExtResource("2_ext")
 towers = Array[ExtResource("5_ext")]([ExtResource("new_spark"), ExtResource("new_thunder"), ExtResource("new_brazier"), ExtResource("new_furnace"), ExtResource("new_wind"), ExtResource("new_gale"), ExtResource("new_water"), ExtResource("new_rime"), ExtResource("new_glacier"), ExtResource("new_ice_lance"), ExtResource("new_bolt"), ExtResource("new_war_engine"), ExtResource("new_war_rocket"), ExtResource("new_hex"), ExtResource("new_plague"), ExtResource("new_doom"), ExtResource("new_storm"), ExtResource("new_cinder"), ExtResource("new_vortex"), ExtResource("new_dew"), ExtResource("new_rain")])
 send_buffs = Array[ExtResource("6_ext")]([ExtResource("13_ext"), ExtResource("14_ext"), ExtResource("15_ext"), ExtResource("16_ext"), ExtResource("17_ext"), ExtResource("18_ext"), ExtResource("19_ext"), ExtResource("20_ext"), ExtResource("21_ext"), ExtResource("22_ext"), ExtResource("23_ext")])

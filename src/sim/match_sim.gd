@@ -480,17 +480,17 @@ func _apply_breach(player: PlayerState, mob: MobState) -> void:
 	if limit > 0:
 		damage = mini(damage, maxi(0, limit - player.limited_breach_damage))
 	player.limited_breach_damage += damage
-	# Отрицательный остаток нужен тай-брейку, но за HP после смерти не платим.
 	var actual_damage: int
 	if _is_team_mode():
 		var team: int = team_of[player.index]
 		actual_damage = mini(maxi(0, team_hp[team]), damage)
-		team_hp[team] -= damage
+		team_hp[team] -= actual_damage
 		if team_hp[team] <= 0 and team_fell_tick[team] < 0:
 			team_fell_tick[team] = player.field.wave_tick if config.synchronized_battle else tick_count
 	else:
 		actual_damage = mini(maxi(0, player.hero_hp), damage)
-		player.hero_hp -= damage
+		player.hero_hp -= actual_damage
+	player.breach_overkill += damage - actual_damage
 	player.hp_lost_this_round += actual_damage
 	player.field.battle_report.record_hp_loss(mob, actual_damage)
 	player.field.breach_resolved.emit(mob, actual_damage)
@@ -561,10 +561,12 @@ func _eliminate_dead(alive: Array[PlayerState]) -> void:
 		player_eliminated.emit(player)
 
 
-## Сортировка «хуже → лучше»: меньше HP хуже; при равенстве — больший индекс (стабильно).
+## Сортировка «хуже → лучше»: меньше HP хуже; при равенстве — больший «перелёт» хуже.
 func _is_worse_player(a: PlayerState, b: PlayerState) -> bool:
 	if a.hero_hp != b.hero_hp:
 		return a.hero_hp < b.hero_hp
+	if a.breach_overkill != b.breach_overkill:
+		return a.breach_overkill > b.breach_overkill
 	return a.index > b.index
 
 

@@ -96,5 +96,5 @@ func test_logger_separates_actual_losses_from_overkill() -> void:
 		var hp: float = row["hp"]
 		assert_eq(actual, 2.0)
 		assert_eq(raw_damage, 10.0)
-		assert_eq(hp, -8.0)
+		assert_eq(hp, 0.0)
 	assert_true(found)

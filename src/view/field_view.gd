@@ -33,6 +33,8 @@ const GRID_ASPECT: float = CourtyardPainter.GRID_ASPECT
 
 var preparation_court: PreparationCourt
 var has_atmosphere: bool = false
+var _floor: CourtyardPainter.FloorLayer = CourtyardPainter.FloorLayer.new()
+var _air_bounds: Vector4
 var _air: ColorRect
 var _air_material: ShaderMaterial
 var field: FieldState
@@ -90,6 +92,8 @@ var _known_centers: Dictionary[int, Vector2i] = {}
 
 func _init() -> void:
 	_style = VisualCatalog.get_default().field
+	_floor.show_behind_parent = true
+	add_child(_floor)
 	clip_contents = true
 	_battle = BattleLayer.new()
 	_battle.draw_world_towers = true
@@ -274,9 +278,10 @@ func _make_drop_command(payload: DragPayload) -> SimCommand:
 
 func _draw() -> void:
 	var in_court: bool = preparation_court != null and preparation_court.visible
-	_battle.is_preparation_court = in_court
+	_battle.is_preparation_court = in_court and not preparation_court.split
 	_battle.has_atmosphere = has_atmosphere
 	_air.visible = has_atmosphere
+	_floor.visible = in_court and field != null
 	if not in_court:
 		draw_rect(Rect2(Vector2.ZERO, size), Color(0.055, 0.09, 0.14))
 	if field == null:
@@ -285,10 +290,14 @@ func _draw() -> void:
 	_battle.set_layout(_origin, _cell_size)
 	_battle.point_projector = Callable(self, "_to_screen")
 	if in_court:
-		CourtyardPainter.draw_preparation(self, field, _origin, _cell_size, _time)
+		_floor.sync(field, _origin, _cell_size)
+		CourtyardPainter.draw_gate_mark(self, _origin, Vector2(1, GRID_ASPECT) * _cell_size,
+				field.layout.path_cells, _time)
+		if preparation_court.split:
+			_draw_title()
 	else:
+		CourtyardPainter.draw_field(self, field, _origin, _cell_size, _time, has_atmosphere)
 		_draw_title()
-		CourtyardPainter.draw_field(self, field, _origin, _cell_size, _time)
 	_draw_footprints()
 	_draw_court_lights()
 	_draw_combo_coverage()
@@ -303,7 +312,7 @@ func _draw() -> void:
 
 func _update_layout() -> void:
 	var board: BoardLayout = field.layout
-	if preparation_court != null and preparation_court.visible:
+	if preparation_court != null and preparation_court.visible and not preparation_court.split:
 		var floor_rect: Rect2 = preparation_court.floor_for(board)
 		_cell_size = floor_rect.size.x / board.width
 		_origin = floor_rect.position - global_position
@@ -315,6 +324,9 @@ func _update_layout() -> void:
 	_cell_size = maxf(1.0, floorf(minf(available.x / (board_units.x + frame_units.x),
 			available.y / (board_units.y + frame_units.y))))
 	_origin = Vector2(0, TITLE_HEIGHT) + (available - board_units * _cell_size) * 0.5
+	if preparation_court != null and preparation_court.visible:
+		preparation_court.fit_duel(Rect2(global_position + _origin, board_units * _cell_size),
+				is_own_field)
 	_update_air(board)
 
 
@@ -322,8 +334,11 @@ func _update_air(board: BoardLayout) -> void:
 	if _air_material == null or size.x <= 0 or size.y <= 0:
 		return
 	var extent: Vector2 = Vector2(board.width, board.height * GRID_ASPECT) * _cell_size
-	_air_material.set_shader_parameter("board", Vector4(
-			_origin.x / size.x, _origin.y / size.y, extent.x / size.x, extent.y / size.y))
+	var bounds: Vector4 = Vector4(_origin.x / size.x, _origin.y / size.y,
+			extent.x / size.x, extent.y / size.y)
+	if bounds != _air_bounds:
+		_air_bounds = bounds
+		_air_material.set_shader_parameter("board", bounds)
 
 
 func _draw_court_lights() -> void:
@@ -352,7 +367,7 @@ func _draw_footprints() -> void:
 		var cells: Array[Vector2i] = tower.cells()
 		for cell: Vector2i in cells:
 			var rect: Rect2 = _cell_rect(cell).grow(-1.5)
-			if _battle.is_preparation_court:
+			if has_atmosphere:
 				draw_rect(rect, Color(visual.plate_color, 0.14))
 				_draw_foundation_edges(rect, cell, cells, visual)
 				continue

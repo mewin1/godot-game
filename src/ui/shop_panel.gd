@@ -38,7 +38,7 @@ var _last_battle_summary: String = ""
 
 func _init() -> void:
 	var panel_style: StyleBoxFlat = StyleBoxFlat.new()
-	panel_style.bg_color = Color(0.035, 0.063, 0.083, 0.94)
+	panel_style.bg_color = Color(0.035, 0.063, 0.083, 0.79)
 	panel_style.border_color = Color(0.42, 0.35, 0.25)
 	panel_style.set_border_width_all(1)
 	panel_style.set_corner_radius_all(4)
@@ -129,7 +129,7 @@ func mount_selection(field_view: Control) -> void:
 	_selection_panel.visible = false
 	_selection_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_selection_panel.add_theme_stylebox_override("panel", DuskTheme.panel(
-			Color("0d1822ee"), Color("78684b"), 8))
+			Color("0d1822cf"), Color("78684b"), 8))
 	field_view.add_child(_selection_panel)
 	_selection_panel.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
 	_selection_panel.offset_left = 20

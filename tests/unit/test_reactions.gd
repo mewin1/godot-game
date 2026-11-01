@@ -46,6 +46,29 @@ func test_roast_consumes_burn_and_stuns_for_four_ticks() -> void:
 	assert_gt(_mob.current_speed(), 0)
 
 
+func test_fire_on_cold_triggers_melt_reverse() -> void:
+	_mob.cold_ticks_left = 60
+	_mob.cold_slow_percent = 30
+	DivineCombat.hit(_field, _tower("brazier"), _mob, 100)
+	assert_eq(_mob.hp, 850, "огонь по холоду — таяние ×1.5")
+	assert_eq(_mob.cold_ticks_left, 0, "холод поглощён")
+
+
+func test_fire_on_frozen_triggers_melt_reverse() -> void:
+	_mob.freeze_ticks_left = 30
+	DivineCombat.hit(_field, _tower("brazier"), _mob, 100)
+	assert_eq(_mob.hp, 850, "огонь по заморозке — таяние ×1.5")
+	assert_eq(_mob.freeze_ticks_left, 0, "заморозка поглощена")
+
+
+func test_fire_on_charge_triggers_roast_reverse() -> void:
+	_mob.charge_ticks_left = 60
+	DivineCombat.hit(_field, _tower("brazier"), _mob, 100)
+	assert_eq(_mob.hp, 875, "огонь по заряду — прожарка ×1.25")
+	assert_eq(_mob.charge_ticks_left, 0, "заряд поглощён")
+	assert_gt(_mob.stun_ticks_left, 0, "стан 0.2 с")
+
+
 func test_shield_blocks_reaction_and_preserves_statuses() -> void:
 	_mob.wet_ticks_left = 60
 	_mob.shield_left = 1

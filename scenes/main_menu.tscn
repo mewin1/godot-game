@@ -1,12 +1,13 @@
-[gd_scene load_steps=12 format=3]
+[gd_scene load_steps=13 format=3]
 
 [ext_resource type="Script" path="res://src/ui/main_menu.gd" id="1_script"]
 [ext_resource type="Theme" path="res://data/ui/ui_theme.tres" id="2_theme"]
-[ext_resource type="Texture2D" path="res://assets/ui/menu_background.svg" id="3_background"]
+[ext_resource type="Texture2D" path="res://assets/dusk/preparation.png" id="3_background"]
 [ext_resource type="Shader" path="res://assets/shaders/vignette.gdshader" id="4_vignette"]
-[ext_resource type="Texture2D" path="res://assets/ui/ornament.svg" id="5_ornament"]
+[ext_resource type="Script" path="res://src/view/sound_bank.gd" id="5_sound_bank"]
 [ext_resource type="Texture2D" path="res://assets/ui/icon_sound_on.svg" id="6_sound"]
 
+[ext_resource type="Script" path="res://src/ui/menu_watch.gd" id="8_watch"]
 [ext_resource type="Shader" path="res://assets/shaders/fog.gdshader" id="7_fog"]
 
 [sub_resource type="ShaderMaterial" id="vignette_material"]
@@ -33,6 +34,9 @@ grow_vertical = 2
 theme = ExtResource("2_theme")
 script = ExtResource("1_script")
 
+[node name="SoundBank" type="Node" parent="."]
+script = ExtResource("5_sound_bank")
+
 [node name="Background" type="TextureRect" parent="."]
 layout_mode = 1
 anchors_preset = 15
@@ -44,6 +48,13 @@ mouse_filter = 2
 texture = ExtResource("3_background")
 expand_mode = 1
 stretch_mode = 6
+
+[node name="Watch" type="Control" parent="."]
+script = ExtResource("8_watch")
+layout_mode = 1
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
 
 [node name="Fog" type="ColorRect" parent="."]
 material = SubResource("fog_material")
@@ -67,7 +78,7 @@ grow_vertical = 0
 mouse_filter = 2
 
 [node name="Embers" type="CPUParticles2D" parent="EmbersAnchor"]
-amount = 40
+amount = 18
 lifetime = 7.0
 preprocess = 7.0
 emission_shape = 3
@@ -77,8 +88,8 @@ spread = 20.0
 gravity = Vector2(6, -6)
 initial_velocity_min = 40.0
 initial_velocity_max = 90.0
-scale_amount_min = 3.0
-scale_amount_max = 6.0
+scale_amount_min = 1.0
+scale_amount_max = 2.4
 scale_amount_curve = SubResource("ember_size")
 color_ramp = SubResource("ember_colors")
 
@@ -92,86 +103,90 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 
-[node name="Center" type="CenterContainer" parent="."]
+[node name="Menu" type="VBoxContainer" parent="."]
+unique_name_in_owner = true
 layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
+anchor_left = 0.06
+anchor_top = 0.5
+anchor_right = 0.06
+anchor_bottom = 0.5
+offset_top = -265.0
+offset_bottom = 265.0
+offset_right = 448.0
 grow_vertical = 2
+theme_override_constants/separation = 10
 
-[node name="Frame" type="PanelContainer" parent="Center"]
-layout_mode = 2
-theme_type_variation = &"HudPanel"
+[node name="Kicker" type="Label" parent="Menu"]
+theme_override_colors/font_color = Color(0.86, 0.71, 0.46, 1)
+theme_override_font_sizes/font_size = 16
+text = "Т А К Т И Ч Е С К А Я   О Б О Р О Н А"
 
-[node name="Menu" type="VBoxContainer" parent="Center/Frame"]
-unique_name_in_owner = true
-layout_mode = 2
-theme_override_constants/separation = 16
-
-[node name="Title" type="Label" parent="Center/Frame/Menu"]
-layout_mode = 2
+[node name="Title" type="Label" parent="Menu"]
 theme_type_variation = &"TitleLabel"
+theme_override_constants/outline_size = 2
+theme_override_colors/font_color = Color(0.99, 0.93, 0.81, 1)
+theme_override_font_sizes/font_size = 86
 text = "Застава"
-horizontal_alignment = 1
 
-[node name="Subtitle" type="Label" parent="Center/Frame/Menu"]
-layout_mode = 2
-theme_type_variation = &"DimLabel"
-theme_override_font_sizes/font_size = 18
-text = "башни, армия и пятеро у одного костра"
-horizontal_alignment = 1
+[node name="Subtitle" type="Label" parent="Menu"]
+theme_override_font_sizes/font_size = 20
+text = "Соберите войско и удержите свой двор."
 
-[node name="Ornament" type="TextureRect" parent="Center/Frame/Menu"]
+[node name="Gap" type="Control" parent="Menu"]
 custom_minimum_size = Vector2(0, 16)
-layout_mode = 2
-texture = ExtResource("5_ornament")
-expand_mode = 1
-stretch_mode = 1
+mouse_filter = 2
 
-[node name="PlayButton" type="Button" parent="Center/Frame/Menu"]
+[node name="PlayButton" type="Button" parent="Menu"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(340, 76)
-layout_mode = 2
+custom_minimum_size = Vector2(0, 64)
 theme_type_variation = &"AccentButton"
-theme_override_font_sizes/font_size = 30
+theme_override_font_sizes/font_size = 27
 text = "Играть"
 
-[node name="HowToButton" type="Button" parent="Center/Frame/Menu"]
+[node name="Teams" type="HBoxContainer" parent="Menu"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(340, 64)
-layout_mode = 2
-theme_override_font_sizes/font_size = 24
+theme_override_constants/separation = 8
+
+[node name="Resources" type="Label" parent="Menu"]
+theme_override_colors/font_color = Color(0.70, 0.75, 0.78, 1)
+theme_override_font_sizes/font_size = 14
+text = "П О Д Г О Т О В К А"
+
+[node name="Library" type="GridContainer" parent="Menu"]
+unique_name_in_owner = true
+columns = 2
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 6
+
+[node name="HowToButton" type="Button" parent="Menu/Library"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 42)
+size_flags_horizontal = 3
 text = "Как играть"
 
-[node name="HeroesButton" type="Button" parent="Center/Frame/Menu"]
+[node name="HeroesButton" type="Button" parent="Menu/Library"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(340, 64)
-layout_mode = 2
-theme_override_font_sizes/font_size = 24
+custom_minimum_size = Vector2(0, 42)
+size_flags_horizontal = 3
 text = "Справочник"
 
-[node name="ReactionLabButton" type="Button" parent="Center/Frame/Menu"]
+[node name="ReactionLabButton" type="Button" parent="Menu/Library"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(340, 54)
-layout_mode = 2
-theme_override_font_sizes/font_size = 24
+custom_minimum_size = Vector2(0, 42)
+size_flags_horizontal = 3
 text = "Стенд реакций"
 
-[node name="SandboxButton" type="Button" parent="Center/Frame/Menu"]
+[node name="SandboxButton" type="Button" parent="Menu/Library"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(340, 54)
-layout_mode = 2
-theme_override_font_sizes/font_size = 24
+custom_minimum_size = Vector2(0, 42)
+size_flags_horizontal = 3
 text = "Песочница боя"
 
-[node name="QuitButton" type="Button" parent="Center/Frame/Menu"]
+[node name="QuitButton" type="Button" parent="Menu"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(340, 64)
-layout_mode = 2
-theme_override_font_sizes/font_size = 24
+size_flags_horizontal = 0
+flat = true
 text = "Выход"
-
 [node name="SoundButton" type="Button" parent="."]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(64, 64)

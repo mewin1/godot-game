@@ -16,7 +16,7 @@ var _next: Button
 
 
 func _init() -> void:
-	add_theme_stylebox_override("panel", DuskTheme.panel(Color("0b151eea"), Color("655940"), 8))
+	add_theme_stylebox_override("panel", DuskTheme.panel(Color("0b151ec9"), Color("655940"), 8))
 	var column: VBoxContainer = VBoxContainer.new()
 	column.add_theme_constant_override("separation", 2)
 	add_child(column)

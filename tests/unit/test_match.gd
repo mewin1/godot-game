@@ -323,7 +323,8 @@ func test_breach_rewards_only_for_remaining_hp() -> void:
 	sim._collect_field_results(defender)
 	assert_eq(sender.army_damage_dealt, 2)
 	assert_eq(sender.gold - gold_before, 2 * _config.army_gold_per_hp + 7)
-	assert_eq(defender.hero_hp, -7, "сырой остаток сохранён для тай-брейка")
+	assert_eq(defender.hero_hp, 0, "HP не уходит в минус")
+	assert_eq(defender.breach_overkill, 7, "перелёт сохранён для тай-брейка")
 	var fell_tick: int = defender.fell_tick
 	var late: MobState = MobState.create(data)
 	late.sender_index = 1

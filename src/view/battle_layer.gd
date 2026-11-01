@@ -55,6 +55,7 @@ var _catalog: VisualCatalog
 var _origin: Vector2 = Vector2.ZERO
 var _cell_size: float = 32.0
 var _time: float = 0.0
+var _flashes: Array[ReactionFlash] = []
 var _reaction_next_text: Dictionary[StringName, float] = {}
 var _breach_flash_left: float = 0.0
 var _projectiles: Array[Projectile] = []
@@ -80,6 +81,10 @@ func _process(delta: float) -> void:
 	_living_flame.render_target_update_mode = (SubViewport.UPDATE_ALWAYS
 			if has_atmosphere and is_visible_in_tree() else SubViewport.UPDATE_DISABLED)
 	_breach_flash_left = maxf(0.0, _breach_flash_left - delta)
+	for i: int in range(_flashes.size() - 1, -1, -1):
+		_flashes[i].age += delta
+		if _flashes[i].age >= ReactionFlash.LIFETIME:
+			_flashes.remove_at(i)
 	_update_projectiles(delta)
 	_impacts = _impacts.filter(func(impact: Impact) -> bool:
 		impact.age += delta
@@ -108,6 +113,7 @@ func set_field(field: FieldState) -> void:
 	_impacts.clear()
 	_texts.clear()
 	_reaction_next_text.clear()
+	_flashes.clear()
 	_facing_left.clear()
 	_lightning.clear()
 	_field.lightning_fired.connect(_on_lightning_fired)
@@ -152,6 +158,8 @@ func _draw() -> void:
 		_draw_impact(impact)
 	if not is_preparation_court:
 		_draw_hero_hp(hero_plate_center)
+	for flash: ReactionFlash in _flashes:
+		flash.draw(self, _milli_to_screen(Vector2(flash.position_milli)), _cell_size)
 	for text: FloatText in _texts:
 		_draw_float_text(text)
 	if _breach_flash_left > 0.0:
@@ -184,9 +192,9 @@ func _draw_mobs() -> void:
 		tower_index += 1
 	var path: Array[Vector2i] = _field.get_active_path()
 	var gate: Vector2 = _milli_to_screen((Vector2(path[-1]) + Vector2.ONE * 0.5) * MILLI)
-	if is_preparation_court:
-		var foot: Vector2 = gate + Vector2(0, _cell_size * 0.15)
-		TowerPainter.draw_planted_icon(self, CourtyardPainter.EXIT_WEAPON, foot,
+	if has_atmosphere:
+		var foot: Vector2 = gate + hero_shake + Vector2(0, _cell_size * 0.15)
+		PlantedSprite.draw(self, CourtyardPainter.EXIT_WEAPON, foot,
 				Vector2.ONE * _cell_size, Color("bd9469"), 0.84)
 	else:
 		CourtyardPainter.draw_exit(self, gate + hero_shake, _cell_size)
@@ -202,7 +210,7 @@ func _draw_world_tower(tower: TowerState) -> void:
 	var pulse: float = tower_pulses.get(tower.id, 0.0) / TowerPainter.FIRE_PULSE_SECONDS
 	var pop: float = tower_pops.get(tower.id, 0.0) / TowerPainter.POP_SECONDS
 	TowerPainter.draw_world_tower(self, tower, _tower_foot(tower), _cell_size, pulse, pop,
-			is_preparation_court)
+			has_atmosphere)
 	_draw_tower_embers(tower, pulse, pop)
 
 
@@ -214,11 +222,8 @@ func _draw_tower_embers(tower: TowerState, pulse: float, pop: float) -> void:
 		return
 	var dimensions: Vector2 = TowerPainter.world_dimensions(tower, _cell_size, pulse, pop)
 	var height: float = dimensions.y
-	var foot: Vector2 = _tower_foot(tower)
-	var anchor: Vector2 = Vector2(0.5, 0.93)
-	if is_preparation_court:
-		foot.y += _cell_size * 0.23
-		anchor.y = 0.89
+	var foot: Vector2 = _tower_foot(tower) + Vector2(0, _cell_size * 0.23)
+	var anchor: Vector2 = Vector2(0.5, 0.89)
 	var source: Vector2 = foot + (visual.ember_source - anchor) * dimensions
 	var flame_size: Vector2 = Vector2(0.25, 0.30) * height
 	draw_texture_rect(_living_flame.get_texture(),
@@ -235,6 +240,8 @@ func _draw_mob(mob: MobState) -> void:
 	if absf(step_x) > 0.01:
 		_facing_left[mob.id] = step_x < 0.0
 	var sprite_size: float = visual.size_cells * _cell_size
+	if has_atmosphere:
+		sprite_size *= 1.12
 	if not draw_world_towers:
 		feet.y += sprite_size * 0.3
 	var bob_speed: float = visual.bob_speed * (2.0 if _field.is_enraged else 1.0)
@@ -242,7 +249,16 @@ func _draw_mob(mob: MobState) -> void:
 	var bob: float = absf(sin(phase)) * visual.bob_height * sprite_size
 	var tilt: float = sin(phase) * 0.07
 	draw_set_transform(feet, 0.0, Vector2(1.0, 0.32))
-	draw_circle(Vector2.ZERO, sprite_size * 0.36, SHADOW_COLOR)
+	if has_atmosphere:
+		# Мягкая тень между сапогами, чтобы пехота держалась на камне при шаге.
+		var shadow_size: Vector2 = Vector2.ONE * sprite_size * 0.66
+		draw_texture_rect(preload("res://data/visuals/soft_light.tres"),
+				Rect2(-shadow_size * 0.5, shadow_size), false, Color(0.02, 0.03, 0.05, 0.8))
+		if not mob.data.is_flying:
+			bob *= 0.35
+			tilt *= 0.55
+	else:
+		draw_circle(Vector2.ZERO, sprite_size * 0.36, SHADOW_COLOR)
 	if mob.sender_index >= 0:
 		# Чья армия: кольцо цвета игрока под юнитом.
 		draw_arc(Vector2.ZERO, sprite_size * 0.36, 0.0, TAU, 24,
@@ -371,7 +387,14 @@ func _draw_projectile(projectile: Projectile) -> void:
 func _draw_impact(impact: Impact) -> void:
 	var t: float = impact.age / IMPACT_SECONDS
 	var alpha: float = 1.0 - t
-	draw_circle(impact.position, impact.radius * (0.4 + 0.3 * t), Color(impact.color, 0.45 * alpha))
+	var core: float = _cell_size * 0.14 * alpha
+	draw_circle(impact.position, core, Color(1.0, 0.94, 0.83, alpha), true, -1, true)
+	for ray: int in 5:
+		var angle: float = TAU * ray / 5.0 + impact.position.x
+		var direction: Vector2 = Vector2.from_angle(angle) * Vector2(1, 0.72)
+		var reach: float = _cell_size * (0.12 + 0.26 * t)
+		draw_line(impact.position + direction * (reach - core),
+				impact.position + direction * reach, Color(impact.color, alpha), 2, true)
 	if impact.is_area:
 		draw_arc(impact.position, impact.radius * (0.5 + 0.5 * t), 0.0, TAU, 40,
 				Color(impact.color, 0.8 * alpha), 3.0, true)
@@ -381,11 +404,12 @@ func _draw_float_text(text: FloatText) -> void:
 	var t: float = text.age / FLOAT_TEXT_SECONDS
 	var font: Font = get_theme_default_font()
 	var font_size: int = maxi(14, int(_cell_size * 0.38))
-	var point: Vector2 = text.position - Vector2(30, _cell_size * 0.8 * t)
+	var width: float = font.get_string_size(text.text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
+	var point: Vector2 = text.position - Vector2(width * 0.5, _cell_size * 0.8 * t)
 	var color: Color = Color(text.color, clampf(2.0 - 2.0 * t, 0.0, 1.0))
-	draw_string_outline(font, point, text.text, HORIZONTAL_ALIGNMENT_CENTER, 60, font_size, 5,
+	draw_string_outline(font, point, text.text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, 5,
 			Color(0, 0, 0, color.a * 0.8))
-	draw_string(font, point, text.text, HORIZONTAL_ALIGNMENT_CENTER, 60, font_size, color)
+	draw_string(font, point, text.text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, color)
 
 #endregion
 
@@ -623,9 +647,15 @@ func _show_reaction(effect_id: StringName, mob: MobState) -> bool:
 	for rule: ReactionData in _field.config.reactions:
 		if rule.id != effect_id:
 			continue
+		var position_milli: Vector2i = _field.get_mob_position(mob)
+		var flash: ReactionFlash = ReactionFlash.new(rule, position_milli)
+		if _flashes.size() >= 24:
+			_flashes.pop_front()
+		_flashes.append(flash)
 		if _time >= _reaction_next_text.get(effect_id, 0.0):
-			var spot: Vector2 = _milli_to_screen(Vector2(_field.get_mob_position(mob)))
-			_add_text(spot, rule.display_name, Color(0.95, 0.85, 0.55))
+			var spot: Vector2 = _milli_to_screen(Vector2(position_milli))
+			_add_text(spot - Vector2(0, _cell_size * 0.6), rule.display_name,
+					flash.color.lightened(0.35))
 			_reaction_next_text[effect_id] = _time + 0.7
 		return true
 	return false

@@ -25,8 +25,6 @@ const SPEEDS: Array[int] = [1, 2]
 @export var player_count: int = 6
 ## Писать лог матча для анализа баланса.
 @export var is_logging_enabled: bool = true
-## Режим, выбранный в меню: 0 — соло, 2 — 3v3, 3 — 2v2v2.
-static var requested_teams: int = 0
 
 var _sim: MatchSim
 var _logger: MatchLogger
@@ -170,6 +168,7 @@ func _build_halves() -> void:
 	left_column.add_child(_inventory)
 	_opponent_view = FieldView.new()
 	_opponent_view.has_atmosphere = true
+	_opponent_view.preparation_court = _court
 	_opponent_view.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_opponent_view.sound_requested.connect(_on_view_sound_requested)
 	_menu_slot.add_child(_opponent_view)
@@ -204,7 +203,8 @@ func _build_halves() -> void:
 		idols.add_child(slot)
 		_idol_slots.append(slot)
 	var hero_dock: PanelContainer = PanelContainer.new()
-	hero_dock.theme_type_variation = &"HudPanel"
+	hero_dock.add_theme_stylebox_override("panel", DuskTheme.panel(
+			Color("0c1823c9"), Color("71634e99"), 5))
 	hero_dock.custom_minimum_size.x = 310
 	bottom_row.add_child(hero_dock)
 	var hero_row: HBoxContainer = HBoxContainer.new()
@@ -258,7 +258,7 @@ func _start_match() -> void:
 	var config: GameConfig = load(CONFIG_PATH) as GameConfig
 	# Сид матча выбирает отображение: внутри симуляции случайность только от этого сида.
 	var match_seed: int = randi()
-	_sim = MatchSim.new(config, match_seed, player_count, 1, requested_teams)
+	_sim = MatchSim.new(config, match_seed, player_count, 1, ScenePaths.requested_teams)
 	if is_logging_enabled:
 		_logger = _create_logger(match_seed)
 	_sim.command_failed.connect(_on_sim_command_failed)
@@ -307,7 +307,8 @@ func _refresh_views() -> void:
 		_refresh_hero_select(me)
 		return
 	var is_prep: bool = _sim.phase == MatchSim.Phase.PREP
-	_court.visible = is_prep and me.is_alive
+	_court.visible = true
+	_court.split = not (is_prep and me.is_alive)
 	_hud.set_preparation(_court.visible)
 	_menu_slot.size_flags_stretch_ratio = 0.64 if is_prep else 1.0
 	_right_column.size_flags_stretch_ratio = 1.36 if is_prep else 1.0

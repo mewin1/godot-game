@@ -12,6 +12,10 @@ const VISUAL_SLICE: String = "res://scenes/visual_slice.tscn"
 const SETTINGS: String = "res://scenes/settings.tscn"
 
 
+## Параметр следующего перехода из меню в матч.
+static var requested_teams: int = 0
+
+
 ## Переход на другую сцену с проверкой ошибки.
 static func go_to(tree: SceneTree, path: String) -> void:
 	var error: Error = tree.change_scene_to_file(path)
