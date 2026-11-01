@@ -16,6 +16,20 @@ func test_start_gold_and_income_from_config() -> void:
 	assert_eq(_player.income, _config.base_income)
 
 
+func test_tower_income_per_round_scales_with_tower_count() -> void:
+	_config.tower_income_per_round = 2
+	var data: TowerData = SimFixtures.find_tower(_config, &"ice_1")
+	_player.field.add_tower(data, Vector2i(0, 0), 0)
+	_player.field.add_tower(data, Vector2i(0, 5), 0)
+	assert_eq(_player.field.get_round_income(), 2 * 2)
+
+
+func test_tower_income_disabled_by_default() -> void:
+	var data: TowerData = SimFixtures.find_tower(_config, &"ice_1")
+	_player.field.add_tower(data, Vector2i(0, 0), 0)
+	assert_eq(_player.field.get_round_income(), 0)
+
+
 func test_shop_shows_three_offers_on_level_one() -> void:
 	assert_eq(_player.shop.offers.size(), 3)
 

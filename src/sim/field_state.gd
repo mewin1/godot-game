@@ -702,7 +702,7 @@ func count_schools() -> Dictionary[StringName, int]:
 
 ## Доход от построек (лавки) и бонуса школы «Двор» в конце раунда.
 func get_round_income() -> int:
-	var total: int = _school_income()
+	var total: int = _school_income() + _config.tower_income_per_round * towers.size()
 	for tower: TowerState in towers:
 		if tower.data.income_per_round > 0:
 			total += _config.get_level_damage(tower.data.income_per_round, tower.level)
