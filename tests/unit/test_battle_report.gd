@@ -63,6 +63,7 @@ func test_shield_and_full_status_slots_do_not_grant_support_credit() -> void:
 	DivineCombat.hit(_field, tower, mob, 0)
 	mob.charge_ticks_left = 60
 	mob.curse_ticks_left = 60
+	mob.burn_ticks_left = 60
 	DivineCombat.hit(_field, tower, mob, 0)
 	assert_true(_field.battle_report.marks_by_tower.is_empty())
 	mob.remove_status(&"charge")

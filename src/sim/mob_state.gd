@@ -158,13 +158,14 @@ func remove_status(tag: StringName) -> void:
 			charges = 0
 
 
-## Третий статус не вытесняет два действующих; обновление разрешено.
+## Четвёртый статус не вытесняет три действующих; обновление разрешено.
+## Три слота (как ауры в Genshin): холод/заморозка делят один слот.
 func can_apply_status(tag: StringName) -> bool:
 	var active: Array[StringName] = status_tags()
 	if tag == &"cold" or tag == &"frozen":
 		if active.has(&"cold") or active.has(&"frozen"):
 			return true
-	return active.has(tag) or active.size() < 2
+	return active.has(tag) or active.size() < 3
 
 
 ## Накопленный взрыв и оставшиеся обычные тики огня; без ещё не полученных бонусов ветра.

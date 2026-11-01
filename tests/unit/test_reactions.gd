@@ -55,11 +55,13 @@ func test_shield_blocks_reaction_and_preserves_statuses() -> void:
 	assert_eq(_mob.burn_ticks_left, 0)
 
 
-func test_third_status_rejected_but_existing_refresh_allowed() -> void:
+func test_fourth_status_rejected_but_existing_refresh_allowed() -> void:
 	_mob.wet_ticks_left = 60
 	_mob.charge_ticks_left = 60
-	assert_false(_mob.can_apply_status(&"burn"))
-	assert_true(_mob.can_apply_status(&"wet"))
+	assert_true(_mob.can_apply_status(&"burn"), "третий статус разрешён")
+	_mob.burn_ticks_left = 60
+	assert_false(_mob.can_apply_status(&"curse"), "четвёртый статус запрещён")
+	assert_true(_mob.can_apply_status(&"wet"), "существующий обновляется")
 	DivineCombat.hit(_field, _tower("brazier"), _mob, 100)
 	assert_eq(_mob.status_tags().size(), 1, "пар освобождает слот мокроты")
 
@@ -245,6 +247,7 @@ func test_frozen_wind_spreads_slow_and_respects_shield_and_status_limit() -> voi
 	target.remove_status(&"cold")
 	target.wet_ticks_left = 60
 	target.charge_ticks_left = 60
+	target.burn_ticks_left = 60
 	_mob.wind_reaction_cooldown = 0
 	WindReactions.apply(_field, _mob)
 	assert_eq(target.cold_ticks_left, 0)
@@ -318,11 +321,13 @@ func test_steam_controls_movement_without_adding_a_third_elemental_status() -> v
 	assert_eq(_mob.current_speed(), original_speed)
 
 
-func test_cold_and_frozen_share_existing_slot_with_second_status() -> void:
+func test_cold_and_frozen_share_one_slot() -> void:
 	_mob.freeze_ticks_left = 30
 	_mob.charge_ticks_left = 60
 	assert_true(_mob.can_apply_status(&"cold"), "Холод обновляет тот же слот заморозки")
-	assert_false(_mob.can_apply_status(&"burn"), "Настоящий третий статус запрещён")
+	assert_true(_mob.can_apply_status(&"burn"), "Третий стихийный статус разрешён")
+	_mob.burn_ticks_left = 60
+	assert_false(_mob.can_apply_status(&"curse"), "Четвёртый стихийный статус запрещён")
 	_mob.freeze_ticks_left = 0
 	_mob.cold_ticks_left = 30
 	assert_true(_mob.can_apply_status(&"frozen"), "Заморозка заменяет слот холода")
