@@ -466,6 +466,7 @@ func _finish_round() -> void:
 	_pay_siege_rewards()
 	for player: PlayerState in alive:
 		player.gold += player.get_total_income()
+		player.gold += config.get_interest(player.gold)
 		if player.index != ghost_target:
 			# Против призрака урон не засчитывается — злость не копится и не сбрасывается.
 			if config.clean_wave_income > 0 and player.hp_lost_this_round == 0:

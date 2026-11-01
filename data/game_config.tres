@@ -172,6 +172,8 @@ wave_specials = Array[ExtResource("wave_script")]([])
 school_bonuses = Array[ExtResource("school_script")]([])
 army_gold_per_hp = 3
 clean_wave_income = 0
+interest_step = 5
+interest_cap = 3
 army_rage_percent = 0
 
 rites = Array[ExtResource("rite_type")]([ExtResource("rite_perun_charge"), ExtResource("rite_perun_chain"), ExtResource("rite_perun_power"), ExtResource("rite_svarog_burn"), ExtResource("rite_svarog_power"), ExtResource("rite_stribog_power"), ExtResource("rite_stribog_length"), ExtResource("rite_enchant_damage"), ExtResource("rite_enchant_rate"), ExtResource("rite_enchant_range"), ExtResource("rite_awaken_wide"), ExtResource("rite_awaken_focus"), ExtResource("rite_water_duration"), ExtResource("rite_ice_power"), ExtResource("rite_ice_duration"), ExtResource("rite_ice_targets"), ExtResource("rite_curse_power"), ExtResource("rite_curse_targets"), ExtResource("rite_war_power"), ExtResource("rite_war_targets")])

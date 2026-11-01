@@ -74,6 +74,10 @@ extends Resource
 @export_group("Экономика")
 @export var start_gold: int = 20
 @export var base_income: int = 10
+## «Азарт»: +1 золота за каждые interest_step накопленного в конце раунда, максимум interest_cap.
+## Копить = не качать армию и оборону — вечный выбор «сейчас или потом». 0 — выключено.
+@export var interest_step: int = 0
+@export var interest_cap: int = 3
 ## Волна отбита без единого прорыва — хозяин получает этот бонус золота (0 — выключено).
 ## Даёт обороне собственный источник экономики, симметричный доходу от армии.
 @export var clean_wave_income: int = 0
@@ -195,6 +199,13 @@ func get_round_hp_percent(round_number: int, growth_percent: int) -> int:
 	for i: int in round_number - 1:
 		percent = percent * (100 + growth_percent) / 100
 	return percent
+
+
+## Процент на накопленное золото в конце раунда.
+func get_interest(gold: int) -> int:
+	if interest_step <= 0:
+		return 0
+	return mini(gold / interest_step, interest_cap)
 
 
 func get_level_damage(base_damage: int, tower_level: int) -> int:

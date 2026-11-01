@@ -30,6 +30,22 @@ func test_tower_income_disabled_by_default() -> void:
 	assert_eq(_player.field.get_round_income(), 0)
 
 
+func test_interest_scales_and_caps() -> void:
+	_config.interest_step = 5
+	_config.interest_cap = 3
+	assert_eq(_config.get_interest(0), 0)
+	assert_eq(_config.get_interest(4), 0)
+	assert_eq(_config.get_interest(5), 1)
+	assert_eq(_config.get_interest(14), 2)
+	assert_eq(_config.get_interest(20), 3)
+	assert_eq(_config.get_interest(100), 3)
+
+
+func test_interest_disabled_when_step_zero() -> void:
+	_config.interest_step = 0
+	assert_eq(_config.get_interest(100), 0)
+
+
 func test_shop_shows_three_offers_on_level_one() -> void:
 	assert_eq(_player.shop.offers.size(), 3)
 
