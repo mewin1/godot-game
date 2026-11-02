@@ -18,6 +18,8 @@ var temporary_mobs: Array[MobData] = []
 var rage_percent: int = 0
 ## Сколько раз куплено каждое улучшение (по порядку config.army_upgrades).
 var upgrade_counts: Array[int] = []
+## Индексы улучшений, видимые сейчас в лавке армии (казино — случайное подмножество).
+var offers: Array[int] = []
 
 var _config: GameConfig
 
@@ -68,11 +70,17 @@ func check_upgrade_available(index: int, shop_level: int) -> String:
 	return ""
 
 
-## Применяет купленное улучшение (проверки и оплата — у игрока).
-func apply_upgrade(index: int) -> void:
+## Применяет купленное улучшение (проверки и оплата — у игрока). «Дух» получает выбранную стихию.
+func apply_upgrade(index: int, element: StringName = &"") -> void:
 	var upgrade: ArmyUpgradeData = get_upgrade(index)
 	upgrade_counts[index] += 1
-	_apply_effect(upgrade.kind, upgrade.value, upgrade.mob)
+	if upgrade.choose_element and upgrade.mob != null:
+		var mob: MobData = upgrade.mob.duplicate() as MobData
+		mob.resist = element
+		for i: int in upgrade.value:
+			added_mobs.append(mob)
+	else:
+		_apply_effect(upgrade.kind, upgrade.value, upgrade.mob)
 
 
 func get_total_upgrades() -> int:
@@ -80,6 +88,18 @@ func get_total_upgrades() -> int:
 	for count: int in upgrade_counts:
 		total += count
 	return total
+
+
+## Казино армии: army_offer_count случайных открытых юнитов (0 — все открытые, прежние правила).
+func roll_offers(shop_level: int, rng: RandomNumberGenerator) -> void:
+	offers.clear()
+	for i: int in _config.army_upgrades.size():
+		if check_upgrade_available(i, shop_level) == "":
+			offers.append(i)
+	if _config.army_offer_count <= 0 or offers.size() <= _config.army_offer_count:
+		return
+	while offers.size() > _config.army_offer_count:
+		offers.remove_at(rng.randi_range(0, offers.size() - 1))
 
 #endregion
 
@@ -136,8 +156,11 @@ func add_to_hash(hasher: StateHasher) -> void:
 	hasher.add_many([base_units, hp_percent, speed_percent, extra_units, cost_discount, extra_income,
 			added_mobs.size(), temporary_mobs.size(), rage_percent])
 	hasher.add_many(upgrade_counts)
+	hasher.add(offers.size())
+	hasher.add_many(offers)
 	for data: MobData in added_mobs + temporary_mobs:
 		hasher.add_string(data.id)
+		hasher.add_string(data.resist)
 	for buff: SendBuffData in buffs:
 		hasher.add_string(buff.id)
 

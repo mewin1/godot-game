@@ -245,11 +245,24 @@ func test_wind_spreads_without_recursive_same_tick_cascade() -> void:
 	distant.progress = 5000
 	_field.mobs.append(distant)
 	WindReactions.apply(_field, _mob)
-	assert_eq(_mob.progress, 3250)
+	assert_eq(_mob.progress, 2600)
 	assert_eq(target.wet_ticks_left, 30)
 	WindReactions.apply(_field, target)
 	assert_eq(distant.wet_ticks_left, 0)
 	assert_eq(target.progress, 4000)
+
+
+func test_wet_wind_surge_pushes_backward_and_clamps_at_start() -> void:
+	_mob.progress = 300
+	_mob.wet_ticks_left = 60
+	_mob.is_in_wind = true
+	WindReactions.apply(_field, _mob)
+	assert_eq(_mob.progress, 0, "откат не уводит моба раньше старта пути")
+	_mob.progress = 3000
+	_mob.wet_ticks_left = 60
+	_mob.wind_reaction_cooldown = 0
+	WindReactions.apply(_field, _mob)
+	assert_eq(_mob.progress, 2600, "мокрота + ветер толкают назад на 0.4 клетки")
 
 
 func test_frozen_wind_spreads_slow_and_respects_shield_and_status_limit() -> void:

@@ -18,6 +18,8 @@ attacks = false
 wind_length_milli = 5000
 wind_power_per_level = 5
 wind_length_per_level_milli = 1000
+wind_on_ticks = 40
+wind_off_ticks = 40
 neighbor_fire_rate_percent = 10
 shop_weight = 5
 

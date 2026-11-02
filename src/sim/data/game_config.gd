@@ -34,6 +34,8 @@ extends Resource
 @export var chain_lifetime_ticks: int = 60
 @export var max_wind_slow_percent: int = 55
 @export var wind_fire_bonus_percent: int = 25
+## Резист моба к стихии: на столько процентов меньше урона от башен этой стихии.
+@export var resist_percent: int = 30
 @export var enchant_damage_percent: int = 20
 @export var enchant_rate_percent: int = 15
 @export var enchant_range_milli: int = 500
@@ -125,6 +127,10 @@ extends Resource
 @export var army_base_units: int = 3
 ## Цена улучшения армии не опускается ниже этого (скидки от бафов).
 @export var army_upgrade_min_cost: int = 1
+## Казино армии: сколько разных юнитов показывается в лавке (0 — все открытые, прежние правила).
+@export var army_offer_count: int = 0
+## Цена обновления лавки армии (за золото).
+@export var army_reroll_cost: int = 2
 ## Каждая покупка улучшения армии навсегда добавляет к доходу такой процент от его базовой цены
 ## (20% — первая покупка окупается за ~5 раундов, повторные — дольше).
 @export var army_income_percent: int = 20

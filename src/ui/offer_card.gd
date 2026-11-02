@@ -199,7 +199,7 @@ func _draw() -> void:
 		caption = "Подарок" if is_gift else "◉ %d" % tower_cost
 		if is_free_catalog:
 			caption = "Перетащите на поле"
-	elif stored_tower != null and stored_tower.enchantment >= 0:
+	elif stored_tower != null and not stored_tower.enchantments.is_empty():
 		caption = "Чары"
 	draw_string(font, Vector2(6, size.y - 6), caption, HORIZONTAL_ALIGNMENT_LEFT,
 			size.x - 12, 16, TEXT_COLOR)

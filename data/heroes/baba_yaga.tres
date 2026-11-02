@@ -17,9 +17,9 @@ levels = 1
 [sub_resource type="Resource" id="skill"]
 script = ExtResource("skill")
 display_name = "Варево"
-description = "Следующая купленная башня — сразу 2-го уровня."
+description = "Следующая купленная башня — сразу 2-го уровня. По цене слияния, но без второй копии."
 timing = 0
-cost = 10
+cost = 6
 cost_step = 0
 effect = SubResource("skill_effect")
 

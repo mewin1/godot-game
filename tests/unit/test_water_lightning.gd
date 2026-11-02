@@ -169,12 +169,12 @@ func test_water_reserve_merge_keeps_rite_and_strengthens_wetting() -> void:
 		else:
 			assert_eq(player.buy_tower_into(0, player.reserve[0].id), "")
 	var tower: TowerState = player.reserve[0]
-	tower.enchantment = RiteData.Effect.ENCHANT_RANGE
+	tower.enchantments.append(int(RiteData.Effect.ENCHANT_RANGE))
 	assert_eq(player.place_from_reserve(tower.id, Vector2i(2, 4), 0), "")
 	var mob: MobState = _mob()
 	DivineCombat.hit(player.field, tower, mob, 4)
 	assert_eq(mob.wet_ticks_left, 80)
-	assert_eq(tower.enchantment, int(RiteData.Effect.ENCHANT_RANGE))
+	assert_true(tower.has_enchantment(int(RiteData.Effect.ENCHANT_RANGE)))
 
 
 func test_wetness_changes_hash_and_wide_awakening_reaches_another_target() -> void:

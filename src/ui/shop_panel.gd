@@ -12,6 +12,7 @@ var _army_grid: GridContainer
 var _army_buttons: Array[ArmyOfferButton] = []
 var _level_title: Label
 var _army_title: Label
+var _army_reroll: Button
 var _selection_panel: PanelContainer
 var _selection: Label
 var _buff_box: VBoxContainer
@@ -34,6 +35,8 @@ var _battle_summary: Button
 var _battle_details: AcceptDialog
 var _last_battle_details: String = ""
 var _last_battle_summary: String = ""
+var _spirit_popup: PopupPanel
+var _spirit_choice_index: int = -1
 
 
 func _init() -> void:
@@ -85,6 +88,8 @@ func _init() -> void:
 	_battle_details.ok_button_text = "Понятно"
 	_battle_details.get_label().add_theme_font_size_override("font_size", 14)
 	add_child(_battle_details)
+	_spirit_popup = PopupPanel.new()
+	add_child(_spirit_popup)
 	_offer_grid = GridContainer.new()
 	_offer_grid.columns = 3
 	_offer_grid.add_theme_constant_override("h_separation", 5)
@@ -92,8 +97,13 @@ func _init() -> void:
 	box.add_child(_offer_grid)
 	_army_title = _heading(18)
 	box.add_child(_army_title)
+	_army_reroll = _button("Обновить", _on_army_reroll)
+	_army_reroll.size_flags_horizontal = Control.SIZE_SHRINK_END
+	_army_reroll.autowrap_mode = TextServer.AUTOWRAP_OFF
+	_army_reroll.add_theme_font_size_override("font_size", 13)
+	box.add_child(_army_reroll)
 	_army_grid = GridContainer.new()
-	_army_grid.columns = 3
+	_army_grid.columns = 4
 	_army_grid.add_theme_constant_override("h_separation", 5)
 	_army_grid.add_theme_constant_override("v_separation", 5)
 	box.add_child(_army_grid)
@@ -152,7 +162,7 @@ func setup(sim: MatchSim, player: PlayerState) -> void:
 	_strategy_summary.tooltip_text = _recipe_hint
 	for i: int in sim.config.army_upgrades.size():
 		var button: ArmyOfferButton = ArmyOfferButton.new()
-		button.setup(sim.config.army_upgrades[i])
+		button.setup()
 		button.pressed.connect(_on_army.bind(i))
 		_army_grid.add_child(button)
 		_army_buttons.append(button)
@@ -215,18 +225,30 @@ func refresh(selected_tower: TowerState) -> void:
 	_upgrade.disabled = not _player.shop.can_upgrade() or _player.gold < upgrade_price
 	_upgrade.tooltip_text = _upgrade_context()
 	_army_title.text = "Армия   ·   %d бойцов" % _player.army.get_unit_count()
+	_army_reroll.text = "Обновить · %d" % _sim.config.army_reroll_cost
+	_army_reroll.disabled = _player.gold < _sim.config.army_reroll_cost
 	for i: int in _army_buttons.size():
 		var army: ArmyState = _player.army
-		var cost: int = army.get_upgrade_cost(i)
-		var locked: String = army.check_upgrade_available(i, _player.shop.level)
+		_army_buttons[i].visible = i < army.offers.size()
+		if not _army_buttons[i].visible:
+			continue
+		var upgrade_index: int = army.offers[i]
+		var cost: int = army.get_upgrade_cost(upgrade_index)
+		var locked: String = army.check_upgrade_available(upgrade_index, _player.shop.level)
 		_army_buttons[i].disabled = locked != "" or _player.gold < cost
 		var compact: bool = _player.shop.offers.size() > 3 or selected_tower != null
+		_army_buttons[i].show_upgrade(army.get_upgrade(upgrade_index))
 		_army_buttons[i].show_price(cost, compact)
-		var mob: MobData = army.get_upgrade(i).mob
+		var mob: MobData = army.get_upgrade(upgrade_index).mob
 		var detail: String = mob.description if mob != null else "Постоянное усиление армии и дохода"
-		_army_buttons[i].tooltip_text = locked if locked != "" else \
-				army.get_upgrade(i).display_name + "\n" + detail + \
-				"\nЦена %d зол. · доход +%d" % [cost, army.get_upgrade_income(i)]
+		var tip: String = army.get_upgrade(upgrade_index).display_name
+		var stats: String = _army_stats(mob)
+		if stats != "":
+			tip += "\n" + stats
+		if detail != "":
+			tip += "\n" + detail
+		tip += "\nЦена %d зол. · доход +%d" % [cost, army.get_upgrade_income(upgrade_index)]
+		_army_buttons[i].tooltip_text = locked if locked != "" else tip
 	_refresh_choices()
 	_selection_panel.visible = selected_tower != null
 	if selected_tower != null:
@@ -258,6 +280,31 @@ func _tower_details(tower: TowerState) -> String:
 	if tower.level == _sim.config.max_tower_level and tower.awakening < 0:
 		lines.append("Чары и пробуждение сохраняются при переносе и слиянии.")
 	return "\n".join(lines)
+
+
+## Подробности юнита армии для подсказки: HP, скорость и особенности; урон — на карточке.
+func _army_stats(mob: MobData) -> String:
+	if mob == null:
+		return ""
+	var ticks: int = _sim.config.ticks_per_second
+	var parts: PackedStringArray = []
+	parts.append("HP %d" % mob.hp)
+	parts.append("Скорость %.1f кл/с" % (mob.speed_milli_per_tick * ticks / 1000.0))
+	if mob.armor > 0:
+		parts.append("Броня %d" % mob.armor)
+	if mob.is_flying:
+		parts.append("Летает")
+	if mob.shield_hits > 0:
+		parts.append("Щит %d" % mob.shield_hits)
+	if mob.split_count > 0:
+		parts.append("Делится на %d" % mob.split_count)
+	if mob.heal_percent > 0:
+		parts.append("Лечит %d%%" % mob.heal_percent)
+	if mob.reveal_radius_milli > 0:
+		parts.append("Скрытный")
+	if mob.sprint_from_percent > 0:
+		parts.append("Рывок")
+	return " · ".join(parts)
 
 
 func _rite_context(rite: RiteData) -> String:
@@ -389,7 +436,49 @@ func _on_ready() -> void:
 
 
 func _on_army(index: int) -> void:
-	command_requested.emit(BuyArmyUpgradeCommand.new(index))
+	if index < 0 or index >= _player.army.offers.size():
+		return
+	var upgrade_index: int = _player.army.offers[index]
+	var upgrade: ArmyUpgradeData = _player.army.get_upgrade(upgrade_index)
+	if upgrade != null and upgrade.choose_element:
+		_open_spirit_choice(upgrade_index)
+	else:
+		command_requested.emit(BuyArmyUpgradeCommand.new(upgrade_index))
+
+
+## Попап выбора стихии для «Духа»: кнопки — активные боги матча.
+func _open_spirit_choice(upgrade_index: int) -> void:
+	_spirit_choice_index = upgrade_index
+	for child: Node in _spirit_popup.get_children():
+		child.queue_free()
+	var margin: MarginContainer = MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 16)
+	margin.add_theme_constant_override("margin_right", 16)
+	margin.add_theme_constant_override("margin_top", 14)
+	margin.add_theme_constant_override("margin_bottom", 14)
+	_spirit_popup.add_child(margin)
+	var box: VBoxContainer = VBoxContainer.new()
+	box.add_theme_constant_override("separation", 6)
+	margin.add_child(box)
+	var title: Label = _label("Стихия духа", 16)
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	box.add_child(title)
+	for god: StringName in _sim.active_gods:
+		var button: Button = _button(GodSymbols.get_power_name(god), _on_spirit_picked.bind(god))
+		button.custom_minimum_size = Vector2(210, 30)
+		box.add_child(button)
+	_spirit_popup.popup_centered()
+
+
+func _on_spirit_picked(god: StringName) -> void:
+	_spirit_popup.hide()
+	if _spirit_choice_index >= 0:
+		command_requested.emit(BuyArmyUpgradeCommand.new(_spirit_choice_index, god))
+		_spirit_choice_index = -1
+
+
+func _on_army_reroll() -> void:
+	command_requested.emit(RerollArmyCommand.new())
 
 
 func _on_buff(index: int) -> void:

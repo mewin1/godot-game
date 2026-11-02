@@ -98,7 +98,7 @@ func _run() -> void:
 	assert(reserve_card._can_drop_data(Vector2.ZERO, enchant))
 	reserve_card._drop_data(Vector2.ZERO, enchant)
 	sim.tick()
-	assert(player.reserve[0].enchantment == RiteData.Effect.ENCHANT_DAMAGE)
+	assert(player.reserve[0].has_enchantment(int(RiteData.Effect.ENCHANT_DAMAGE)))
 	assert(not reserve_card._can_drop_data(Vector2.ZERO, enchant),
 			"Повторные чары должны отклоняться до отпускания мыши")
 	var awaken: DragPayload = DragPayload.for_rite(2,
@@ -116,7 +116,7 @@ func _run() -> void:
 			Vector2i(spot.x, spot.y), spot.z)
 	var at_tower: Vector2 = own_view._cell_rect(field_tower.anchor).get_center()
 	assert(own_view._can_drop_data(at_tower, enchant))
-	field_tower.enchantment = RiteData.Effect.ENCHANT_DAMAGE
+	field_tower.enchantments.append(int(RiteData.Effect.ENCHANT_DAMAGE))
 	assert(not own_view._can_drop_data(at_tower, enchant))
 	assert(not own_view._can_drop_data(at_tower, awaken))
 	field_tower.level = 3

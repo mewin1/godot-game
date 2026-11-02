@@ -75,7 +75,8 @@ func _check_draft(gods: Array[StringName]) -> void:
 			player.shop.roll(player.rng)
 			for tower: TowerData in player.shop.offers:
 				if tower != null:
-					assert_true(gods.has(tower.god))
+					assert_true(tower.god == &"" or gods.has(tower.god),
+							"нейтральная постройка доступна при любом драфте")
 			for rite: RiteData in player.shop.rite_offers:
 				if rite != null:
 					assert_true(player.shop.is_god_active(rite.god))

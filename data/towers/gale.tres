@@ -16,6 +16,8 @@ range_milli = 2700
 description = "Узкий поток по стрелке: усиливает контроль и разнос стихий. Соседние башни стреляют на 10% быстрее."
 wind_length_milli = 4000
 wind_power_percent = 20
+wind_on_ticks = 40
+wind_off_ticks = 40
 
 attacks = false
 tags = Array[StringName]([&"wind"])

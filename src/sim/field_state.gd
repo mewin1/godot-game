@@ -197,8 +197,9 @@ func copy_towers_from(other: FieldState) -> void:
 		var tower: TowerState = add_tower(source.data, source.anchor, source.rotation)
 		tower.level = source.level
 		tower.cooldown_left = source.cooldown_left
-		tower.enchantment = source.enchantment
+		tower.enchantments = source.enchantments.duplicate()
 		tower.awakening = source.awakening
+		tower.wind_cycle_ticks = source.wind_cycle_ticks
 	for i: int in idols.size():
 		var source_idol: IdolState = other.idols[i]
 		idols[i] = source_idol.duplicate_state()
@@ -319,6 +320,7 @@ func tick(automatic_fire: bool = true) -> void:
 	_heal_mobs()
 	if automatic_fire:
 		_fire_towers()
+	_tick_wind_cycles()
 	_add_split_mobs()
 	_remove_finished_mobs()
 	wave_tick += 1
@@ -375,6 +377,7 @@ func add_to_hash(hasher: StateHasher) -> void:
 				mob.stun_ticks_left, mob.sender_index, mob.wet_ticks_left, mob.charges, mob.charge_ticks_left, mob.burn_damage,
 				mob.burn_ticks_left, mob.burn_cooldown, mob.wind_slow_percent, mob.wind_boost_percent])
 		hasher.add_string(mob.data.id)
+		hasher.add_string(mob.resist)
 	hasher.add(_spawn_queue.size())
 	for entry: SpawnEntry in _spawn_queue:
 		hasher.add(entry.spawn_tick)
@@ -450,6 +453,15 @@ func _breach(mob: MobState) -> void:
 	battle_report.record_breach(mob)
 	pending_breaches.append(mob)
 	mob_breached.emit(mob)
+
+
+## Ветер импульсный: таймер каждой ветряной башни сдвигает фазу «дует/пауза».
+func _tick_wind_cycles() -> void:
+	for tower: TowerState in towers:
+		var period: int = tower.data.wind_on_ticks + tower.data.wind_off_ticks
+		if tower.data.wind_length_milli <= 0 or period <= 0:
+			continue
+		tower.wind_cycle_ticks = (tower.wind_cycle_ticks + 1) % period
 
 
 func _fire_towers() -> void:
@@ -545,14 +557,16 @@ func _hit(mob: MobState, damage: int, data: TowerData, tower: TowerState = null)
 	if tower != null and tower.data.god != &"":
 		DivineCombat.hit(self, tower, mob, damage)
 	else:
-		deal_mob_damage(mob, damage, tower.id if tower != null else 0, &"hit")
+		deal_mob_damage(mob, damage, tower.id if tower != null else 0, &"hit",
+				tower.data.armor_pierce if tower != null else 0)
 
 
 ## Единственное место награды за смерть, в том числе от горения и цепи.
+## armor_pierce — пробивание брони удара (у прямых выстрелов башни, не у горения/проклятия).
 func deal_mob_damage(mob: MobState, damage: int, tower_id: int = 0,
-		kind: StringName = &"other") -> void:
+		kind: StringName = &"other", armor_pierce: int = 0) -> void:
 	var before: int = maxi(0, mob.hp)
-	var was_killed: bool = mob.take_damage(damage)
+	var was_killed: bool = mob.take_damage(damage, armor_pierce)
 	battle_report.record_damage(tower_id, kind, before - maxi(0, mob.hp))
 	if before > maxi(0, mob.hp):
 		damage_recorded.emit(mob, before - maxi(0, mob.hp), tower_id, kind)
@@ -626,10 +640,13 @@ func _apply_healing(target: MobState, percent: int) -> void:
 
 #region Соседство и бонусы
 
-## Число целей с усилением идола; область по всем целям уже не ограничена счётчиком.
+## Число целей с усилением идола и чарами; область по всем целям уже не ограничена счётчиком.
 func get_tower_targets(tower: TowerState) -> int:
 	var idol: IdolState = get_idol(tower.data.god)
-	return tower.data.targets_per_shot + (idol.extra_targets if idol != null else 0)
+	var extra: int = idol.extra_targets if idol != null else 0
+	if tower.has_enchantment(RiteData.Effect.TARGETS):
+		extra += 1
+	return tower.data.targets_per_shot + extra
 
 
 ## Урон башни с уровнем и бонусом соседей.
@@ -641,7 +658,7 @@ func get_tower_damage(tower: TowerState) -> int:
 	var idol: IdolState = get_idol(tower.data.god)
 	if idol != null:
 		bonus += idol.damage_percent
-	if tower.enchantment == RiteData.Effect.ENCHANT_DAMAGE:
+	if tower.has_enchantment(RiteData.Effect.ENCHANT_DAMAGE):
 		bonus += _config.enchant_damage_percent
 	if tower.awakening == RiteData.Effect.AWAKEN_FOCUS:
 		bonus += _config.awakening_power_percent
@@ -653,7 +670,7 @@ func get_tower_cooldown(tower: TowerState) -> int:
 	if _are_bonuses_dirty:
 		_refresh_bonuses()
 	var rate: int = tower.bonus_fire_rate_percent
-	if tower.enchantment == RiteData.Effect.ENCHANT_RATE:
+	if tower.has_enchantment(RiteData.Effect.ENCHANT_RATE):
 		rate += _config.enchant_rate_percent
 	return maxi(1, tower.data.cooldown_ticks * 100 / (100 + rate))
 
@@ -670,7 +687,7 @@ func get_tower_range(tower: TowerState) -> int:
 	if _are_bonuses_dirty:
 		_refresh_bonuses()
 	var reach: int = tower.data.range_milli + tower.bonus_range_milli
-	if tower.enchantment == RiteData.Effect.ENCHANT_RANGE:
+	if tower.has_enchantment(RiteData.Effect.ENCHANT_RANGE):
 		reach += _config.enchant_range_milli
 	if tower.awakening == RiteData.Effect.AWAKEN_WIDE:
 		reach += _config.enchant_range_milli

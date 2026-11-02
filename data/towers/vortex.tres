@@ -17,4 +17,6 @@ attacks = false
 wind_length_milli = 6000
 wind_half_width_milli = 2200
 wind_power_percent = 25
+wind_on_ticks = 40
+wind_off_ticks = 40
 neighbor_fire_rate_percent = 10

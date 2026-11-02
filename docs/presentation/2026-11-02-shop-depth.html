@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="ru">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Застава · Чистая лавка, ветер и армия-казино</title>
+<style>
+:root{color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:#141c22;color:#ece8df;font:17px/1.6 system-ui,sans-serif}
+main{max-width:1080px;margin:auto;padding:44px 22px 80px}
+h1{font-size:clamp(32px,5vw,54px);line-height:1.12;color:#efcd83;margin:6px 0 8px}
+h2{margin-top:44px;color:#efcd83;font-size:26px}
+h3{color:#f4eee0;margin:0 0 8px}
+p{max-width:960px}
+.muted{color:#b7c4ca}
+.lead{font-size:19px}
+a{color:#efcd83}
+code{color:#b4dfeb;background:#0e161c;padding:1px 6px;border-radius:5px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-top:20px}
+.card{background:#1f2d36;border:1px solid #3a4c55;border-radius:12px;padding:20px}
+.card b{font-size:22px;color:#efcd83}
+.card .big{font-size:30px;color:#efcd83;display:block;margin-bottom:4px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.panel{background:#1f2d36;border:1px solid #3a4c55;border-radius:12px;padding:20px}
+.panel.good{border-color:#527a60}
+.panel.warn{border-color:#7a5c2c}
+.panel.bad{border-color:#7a3c3c}
+.badge{display:inline-block;padding:3px 10px;margin:2px 4px 2px 0;border-radius:20px;font-size:14px;background:#2c414e;border:1px solid #49606e}
+.badge.new{background:#2e4a33;border-color:#4f8a5c;color:#bde8c6}
+.badge.fix{background:#4a3d1f;border-color:#8a7435;color:#f0dcae}
+.badge.plan{background:#23384d;border-color:#3f6b93;color:#bcdcf0}
+table{border-collapse:collapse;width:100%;margin:16px 0}
+td,th{padding:9px 11px;text-align:left;border-bottom:1px solid #3a4c55;font-size:15px}
+th{color:#efcd83;font-weight:600}
+tr.weak td{color:#e6a3a3}
+tr.strong td{color:#a8d8b8}
+.bar-row{display:grid;grid-template-columns:170px 1fr 56px;gap:10px;align-items:center;margin:7px 0}
+.bar-label{font-size:15px;text-align:right;color:#d9d3c6}
+.bar-track{background:#111b20;border-radius:6px;height:22px;overflow:hidden}
+.bar-fill{height:100%;background:linear-gradient(90deg,#7a5a2c,#e9c46a);border-radius:6px}
+.bar-val{font-size:14px;color:#b7c4ca}
+.illustration{background:#0e161c;border:1px solid #2a3a43;border-radius:12px;padding:16px;text-align:center;margin:16px 0}
+.illustration svg{max-width:100%;height:auto}
+.caption{font-size:14px;color:#b7c4ca;margin-top:10px}
+.tick{color:#a8d8b8;font-weight:700}
+.cross{color:#d98c8c;font-weight:700}
+ul li{margin:6px 0}
+footer{font-size:14px;color:#b7c4ca;margin-top:50px;border-top:1px solid #2a3a43;padding-top:16px}
+@media(max-width:760px){.cards,.grid2{grid-template-columns:1fr}.bar-row{grid-template-columns:120px 1fr 46px}}
+</style>
+<main>
+
+<p class="muted">2 ноября 2026 · сессия «чистая лавка, ветер и армия-казино»</p>
+<h1>Лавка стала честной:<br>картинка + цена + урон, ветер и казино</h1>
+<p class="lead">Переработал лавку по видению автора: на карточке только главное, детали — по наведению. Вода отталкивает, ветер стал импульсным, у башен появилось несколько чар, а армия выпадает как в казино. Всё проверено тестами и ботами.</p>
+
+<div class="cards">
+  <div class="card"><b>🃏 Чистая лавка</b><p>Карточка = <b>картинка + цена + урон</b> (+ тир у башен). Стат-бафы «+HP/+скорость/+юнитов» убраны из лавки армии.</p></div>
+  <div class="card"><b>💨 Ветер и башни</b><p>Импульсный ветер (рывок с паузой), вода толкает <b>назад</b>, на башню — несколько чар, «+1 цель» и нейтральный «Маяк».</p></div>
+  <div class="card"><b>🎰 Армия-казино</b><p>В лавке — <b>4 случайных юнита</b>, реролл за 2 золота. Нужный юнит может не выпасть — тот самый «регнуть ещё катку».</p></div>
+  <div class="card"><b>✅ Проверки</b><p><span class="big">314/314</span>тестов прошли, полная проверка зелёная, боты прогнаны (1 зависший матч — известная проблема темпа).</p></div>
+</div>
+
+<h2>1 · Фаза 1 — чистая лавка и логика</h2>
+
+<h3>а) Лавка армии — только конкретные юниты</h3>
+<div class="illustration">
+  <svg viewBox="0 0 860 190" width="860" role="img" aria-label="Армия до и после">
+    <rect x="8" y="8" width="400" height="174" rx="12" fill="#1f2d36" stroke="#3a4c55"/>
+    <text x="28" y="40" fill="#b7c4ca" font-size="16">Было — 11 улучшений</text>
+    <g font-size="14" fill="#d9d3c6">
+      <text x="28" y="70" fill="#d98c8c">＋ Юниты +20% HP · ＋ скорость · ＋ число</text>
+      <text x="28" y="94">🐎 Разведчик · 🛡 Латник · 👑 Воевода</text>
+      <text x="28" y="118">💚 Лекарь · 🛡 Витязь · 🌫 Лазутчик</text>
+      <text x="28" y="142">🦇 Нетопырь · 🥖 Колобок</text>
+      <text x="28" y="166" fill="#b7c4ca">три стат-бафа размывали «юнит = существо»</text>
+    </g>
+    <rect x="452" y="8" width="400" height="174" rx="12" fill="#1f2d36" stroke="#4f8a5c"/>
+    <text x="472" y="40" fill="#bde8c6" font-size="16">Стало — 8 юнитов</text>
+    <g font-size="14" fill="#d9d3c6">
+      <text x="472" y="70">🐎 Разведчик · 🛡 Латник · 👑 Воевода</text>
+      <text x="472" y="94">💚 Лекарь · 🛡 Витязь · 🌫 Лазутчик</text>
+      <text x="472" y="118">🦇 Нетопырь · 🥖 Колобок</text>
+      <text x="472" y="142" fill="#a8d8b8">✓ HP/скорость/число уже даёт бесплатный баф</text>
+      <text x="472" y="166" fill="#a8d8b8">✓ после каждого раунда</text>
+    </g>
+  </svg>
+  <div class="caption">«+HP / +скорость / +юнитов» убраны из лавки: они дублировали бесплатный баф после боя. Теперь армия — это существа с характером, а не мешок статов.</div>
+</div>
+
+<h3>б) Карточка = картинка + цена + урон (+ тир у башен)</h3>
+<div class="illustration">
+  <svg viewBox="0 0 860 250" width="860" role="img" aria-label="Карточка башни и юнита">
+    <text x="220" y="28" fill="#efcd83" font-size="16" text-anchor="middle">Башня</text>
+    <rect x="70" y="42" width="300" height="190" rx="12" fill="#111c27" stroke="#78684b"/>
+    <rect x="70" y="42" width="300" height="8" fill="#d8644f"/>
+    <circle cx="150" cy="130" r="44" fill="#2c414e" stroke="#49606e"/>
+    <text x="150" y="138" fill="#d9d3c6" font-size="30" text-anchor="middle">🏰</text>
+    <rect x="330" y="48" width="30" height="18" rx="3" fill="#0e161c" stroke="#78684b"/>
+    <text x="345" y="61" fill="#efcd83" font-size="12" text-anchor="middle">Т1</text>
+    <text x="80" y="222" fill="#e6cea1" font-size="15">🪙 6</text>
+    <text x="150" y="222" fill="#cfd8dd" font-size="14">Урон 10</text>
+    <text x="80" y="120" fill="#b7c4ca" font-size="12">имя — внизу</text>
+    <text x="220" y="28" fill="#efcd83" font-size="16" text-anchor="middle" dx="0">Юнит</text>
+    <rect x="490" y="42" width="300" height="190" rx="12" fill="#111c27" stroke="#78684b"/>
+    <rect x="490" y="42" width="300" height="8" fill="#c59968"/>
+    <circle cx="590" cy="130" r="44" fill="#2c414e" stroke="#49606e"/>
+    <text x="590" y="138" fill="#d9d3c6" font-size="30" text-anchor="middle">🦇</text>
+    <text x="500" y="222" fill="#e6cea1" font-size="15">🪙 8</text>
+    <text x="590" y="222" fill="#cfd8dd" font-size="14">Урон 1</text>
+    <text x="500" y="120" fill="#b7c4ca" font-size="12">HP/скорость/броня/лёт/деление —</text>
+    <text x="500" y="138" fill="#b7c4ca" font-size="12">только по наведению</text>
+  </svg>
+  <div class="caption">На карточке — только то, что нужно для решения «купить/нет»: картинка, цена, урон и тир. Всё остальное спрятано в подсказку, чтобы карточка не превращалась в таблицу.</div>
+</div>
+
+<h3>в) Вода отталкивает, а не разгоняет</h3>
+<p>Реакция «Мокрота → Ветер» была <b>Разгоном вперёд</b> (толкала моба к терему — самому себе во вред). Стала <b>Откатом</b>: толчок <b>назад на 0.4 клетки</b> (было 0.25 вперёд). По логике — ветер дует, вода отталкивает. Справка и урок читают те же ресурсы, текст поправлен.</p>
+
+<h3>г) Последний слот витрины — всегда заклинание</h3>
+<p>Раньше заговор выпадал в слотах 3+ со случайным шансом. Теперь <b>последний слот витрины всегда заклинание</b> (чары/заговор/усиление идола) — нужный баф можно целенаправленно искать рероллом, а не надеяться на случай.</p>
+
+<h2>2 · Фаза 2 — ветер и глубина башен</h2>
+
+<h3>а) Ветер импульсный</h3>
+<div class="illustration">
+  <svg viewBox="0 0 860 170" width="860" role="img" aria-label="Импульсный ветер">
+    <text x="20" y="30" fill="#b7c4ca" font-size="15">Было — постоянный поток</text>
+    <rect x="20" y="44" width="820" height="34" rx="6" fill="#67ae88" opacity="0.85"/>
+    <text x="430" y="66" fill="#0e161c" font-size="14" text-anchor="middle">дует всегда (слабо)</text>
+    <text x="20" y="112" fill="#efcd83" font-size="15">Стало — рывок</text>
+    <rect x="20" y="126" width="410" height="34" rx="6" fill="#67ae88"/>
+    <rect x="430" y="126" width="410" height="34" rx="6" fill="#1f2d36" stroke="#3a4c55"/>
+    <text x="225" y="148" fill="#0e161c" font-size="14" text-anchor="middle">дует ~2 с (сильно)</text>
+    <text x="635" y="148" fill="#b7c4ca" font-size="14" text-anchor="middle">пауза ~2 с</text>
+  </svg>
+  <div class="caption">Ветер — не фоновый поток, а заметный рывок: дует ~2 секунды с сильным замедлением, затем ~2 секунды передышки. По огню — усиление горения, по воде — резкий толчок назад (реакции уже существуют, теперь они «вспыхивают» в момент рывка).</div>
+</div>
+
+<h3>б) Несколько чар и «+1 цель»</h3>
+<ul>
+  <li><b>Несколько чар на башню.</b> Раньше был один слот (`enchantment`). Теперь — список: на одну башню можно наложить <b>урон + темп + дальность + цель</b> разом, но повторная чара того же вида отклоняется. Сохраняется при слиянии и переносе.</li>
+  <li><b>Новая чара «Размах целей»</b> — постройка выбирает <b>на одну цель больше</b> (для стреляющих). Логично дополняет идольские «+цели».</li>
+</ul>
+
+<h3>в) Поддержка без стихии — «Маяк»</h3>
+<div class="panel good">
+  <p><b>Маяк</b> — нейтральная постройка (доступна при любом драфте, без урона и стихии). Не стреляет, но <b>соседние башни видят на 0.25 клетки дальше</b> (растёт с уровнем). Решение «данные против кода»: это чистые данные (`neighbor_range_milli`), нового кода не потребовалось — только ресурс и запись в каталог.</p>
+</div>
+
+<h2>3 · Фаза 3 — армия-казино</h2>
+<div class="illustration">
+  <svg viewBox="0 0 860 200" width="860" role="img" aria-label="Армия-казино">
+    <text x="20" y="28" fill="#b7c4ca" font-size="15">Было — все 8 юнитов всегда</text>
+    <g fill="#2c414e" stroke="#49606e">
+      <rect x="20" y="42" width="96" height="44" rx="6"/><rect x="124" y="42" width="96" height="44" rx="6"/><rect x="228" y="42" width="96" height="44" rx="6"/><rect x="332" y="42" width="96" height="44" rx="6"/>
+      <rect x="20" y="94" width="96" height="44" rx="6"/><rect x="124" y="94" width="96" height="44" rx="6"/><rect x="228" y="94" width="96" height="44" rx="6"/><rect x="332" y="94" width="96" height="44" rx="6"/>
+    </g>
+    <text x="20" y="162" fill="#d98c8c" font-size="13">8 слотов — выбор без азарта</text>
+    <text x="460" y="28" fill="#efcd83" font-size="15">Стало — 4 случайных + реролл</text>
+    <g fill="#2e4a33" stroke="#4f8a5c">
+      <rect x="460" y="42" width="96" height="44" rx="6"/><rect x="564" y="42" width="96" height="44" rx="6"/><rect x="668" y="42" width="96" height="44" rx="6"/><rect x="772" y="42" width="96" height="44" rx="6" fill="#7a3c3c" stroke="#7a3c3c" opacity="0.55"/>
+    </g>
+    <text x="508" y="70" fill="#d9d3c6" font-size="14" text-anchor="middle">🐎</text>
+    <text x="612" y="70" fill="#d9d3c6" font-size="14" text-anchor="middle">🥖</text>
+    <text x="716" y="70" fill="#d9d3c6" font-size="14" text-anchor="middle">🦇</text>
+    <text x="820" y="70" fill="#d98c8c" font-size="14" text-anchor="middle">?</text>
+    <text x="820" y="162" fill="#d98c8c" font-size="13">нужного юнита нет — реролл 🪙2</text>
+    <text x="460" y="120" fill="#bde8c6" font-size="13">👑 Воевода может упасть поздно и отыграть партию</text>
+  </svg>
+  <div class="caption">Армия выпадает по 4 случайных юнита из открытых (не все сразу). Реролл — 2 золота. Сильный юнит вроде воеводы может прийти поздно и перевернуть партию — тот самый казино-драфт.</div>
+</div>
+<p>Экономика осталась консервативной намеренно: <b>стоимость реролла фиксированная (2), гарантий выпадения нет, доход от покупки армии не менялся</b>. Это минимальное «трогание экономики», чтобы казино работало как азарт, а не как новый генератор золота. Дальнейшие ручки (цена реролла, гарантии) — после живой партии автора.</p>
+
+<h3>Дух — стихийный юнит с резистом</h3>
+<div class="panel good">
+  <p>Новый юнит <b>«Дух»</b> (стихийный, 60 HP): при покупке открывается <b>попап выбора стихии</b> из активных богов матча, и дух получает <b>резист к этой стихии</b> — башни выбранного бога бьют его на 30% слабее (прямой удар; реакции и горение не трогаются, чтобы не сломать их). Видишь, что соперник массово строит Перуна — берёшь духа с резистом к молнии.</p>
+</div>
+
+<h2>4 · Замеры ботов</h2>
+<p>Прогон <code>balance_sim</code> (5 игроков, сиды 1401+):</p>
+<table>
+  <tr><th>Сиды</th><th>Итог</th><th>Раунды</th></tr>
+  <tr class="strong"><td>1401–1405, 1407–1408</td><td><span class="tick">✓ 7 из 8 завершились</span></td><td>20–25 раундов (медиана 21)</td></tr>
+  <tr class="weak"><td>1406</td><td><span class="cross">✗ завис</span></td><td>раунд 29, армия 109 юнитов</td></tr>
+</table>
+<p>Зависание <b>seed 1406</b> — это <b>известная отложенная проблема темпа</b> (огромная армия ~109 юнитов, волна не завершается в лимит): она описана в <code>continue_army_tempo.md</code> и в этой сессии намеренно не чинилась. Нужна отдельная сессия по темпу; баланс ветра/казино автору стоит оценить живой партией.</p>
+
+<h2>5 · Что осталось на потом</h2>
+<div class="grid2">
+  <div class="panel warn">
+    <h3>🗿 Фаза 4 — идолы и реакции</h3>
+    <p><span class="badge plan">решено, не сделано</span> Идол — попап стихии при повышении магазина (+ базовое усиление, чтобы за игру не остаться без идолов). Заклинания, прокачивающие конкретную реакцию (урон молнии, замедление ветра+воды).</p>
+  </div>
+  <div class="panel good">
+    <h3>👑 Герои — стихии уже видны</h3>
+    <p><span class="badge new">уже было</span> Окно выбора героя уже показывает «Боги матча» (активные стихии) — этот пункт был готов. Полный переход героев к «стратегии с контрами/синергиями» — отдельная сессия.</p>
+  </div>
+  <div class="panel warn">
+    <h3>🗺 Фаза 5 — карта и инвентарь</h3>
+    <p><span class="badge plan">исследование</span> Посчитать тесноту (бот-замеры, клетки, фигуры), сравнить с референсами, потом решить «меньше клеток + простые фигуры» или «больше клеток + тетрис». Менять последними, не вслепую.</p>
+  </div>
+  <div class="panel warn">
+    <h3>📦 Инвентарь</h3>
+    <p><span class="badge plan">решено, не сделано</span> Сократить слоты или расширять за золото/уровень магазина. Замеры карты подскажут, сколько слотов реально нужно.</p>
+  </div>
+</div>
+
+<h2>6 · Проверки</h2>
+<ul>
+  <li><b>GUT:</b> 314/314 тестов, 8339 утверждений — зелёно.</li>
+  <li><b>Полная проверка</b> (<code>check_project.py</code>): import, GUT, smoke, lessons, sandbox, launch — все этапы зелёные.</li>
+  <li><b>Новые тесты:</b> импульс ветра (дует/пауза), несколько чар + отказ дубля, «+1 цель», «Маяк» даёт соседям дальность, казино армии (подмножество + детерминизм), откат воды назад, последний слот — всегда заклинание, «Дух» (резист к выбранной стихии, снижение урона).</li>
+  <li><b>Детерминизм:</b> новые состояния (таймер ветра, список чар, витрина армии, резист духа) включены в хэш состояния.</li>
+</ul>
+
+<footer>
+  <p class="muted">Живая партия автора — следующий шаг после оценки кадров. Коммиты не делались; рабочее дерево сохранено. Продолжение — <code>memory/CURRENT.md</code>.</p>
+</footer>
+</main>
+</html>

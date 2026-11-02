@@ -222,7 +222,8 @@ func _on_field_mob_breached(_mob: MobState, player_index: int) -> void:
 func _reserve_snapshot(player: PlayerState) -> Array[Array]:
 	var result: Array[Array] = []
 	for tower: TowerState in player.reserve:
-		result.append([String(tower.data.id), tower.level, tower.enchantment, tower.awakening])
+		result.append([String(tower.data.id), tower.level, tower.enchantments.duplicate(),
+				tower.awakening])
 	return result
 
 
@@ -238,5 +239,5 @@ func _placement_snapshot(player: PlayerState) -> Array[Dictionary]:
 	for tower: TowerState in player.field.towers:
 		result.append({"id": tower.id, "type": String(tower.data.id), "level": tower.level,
 				"x": tower.anchor.x, "y": tower.anchor.y, "rotation": tower.rotation,
-				"enchantment": tower.enchantment, "awakening": tower.awakening})
+				"enchantments": tower.enchantments.duplicate(), "awakening": tower.awakening})
 	return result

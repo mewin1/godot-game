@@ -44,7 +44,7 @@ func thaw(rng: RandomNumberGenerator) -> void:
 	is_frozen = false
 	for i: int in offers.size():
 		if offers[i] == null and get_rite(i) == null:
-			offers[i] = _random_tower(rng, i < 2)
+			_fill_slot(rng, i)
 	while offers.size() < get_offer_count():
 		_append_offer(rng, offers.size())
 
@@ -84,15 +84,37 @@ func get_rite(index: int) -> RiteData:
 
 
 func _append_offer(rng: RandomNumberGenerator, index: int) -> void:
+	var rite: RiteData = _roll_rite(rng) if _is_rite_slot(rng, index) else null
+	rite_offers.append(rite)
+	offers.append(_random_tower(rng, index < 2) if rite == null else null)
+
+
+## Последний слот витрины — всегда заклинание; средние слоты — с шансом конфига.
+func _is_rite_slot(rng: RandomNumberGenerator, index: int) -> bool:
+	if index == get_offer_count() - 1:
+		return true
+	return index >= 2 and rng.randi_range(1, 100) <= _config.rite_offer_percent
+
+
+## Случайное заклинание из открытых тиров и активных богов; null — заклинаний нет.
+func _roll_rite(rng: RandomNumberGenerator) -> RiteData:
 	var pool: Array[RiteData] = []
 	for rite: RiteData in _config.rites:
 		if rite.tier <= level and is_god_active(rite.god):
 			pool.append(rite)
-	var rite: RiteData = null
-	if index >= 2 and not pool.is_empty() and rng.randi_range(1, 100) <= _config.rite_offer_percent:
-		rite = pool[rng.randi_range(0, pool.size() - 1)]
-	rite_offers.append(rite)
-	offers.append(_random_tower(rng, index < 2) if rite == null else null)
+	if pool.is_empty():
+		return null
+	return pool[rng.randi_range(0, pool.size() - 1)]
+
+
+## Заполняет пустое место витрины: последний слот — заклинание, остальные — башни.
+func _fill_slot(rng: RandomNumberGenerator, index: int) -> void:
+	if index == get_offer_count() - 1:
+		var rite: RiteData = _roll_rite(rng)
+		rite_offers[index] = rite
+		offers[index] = _random_tower(rng, false) if rite == null else null
+	else:
+		offers[index] = _random_tower(rng, index < 2)
 
 
 func add_to_hash(hasher: StateHasher) -> void:

@@ -153,8 +153,9 @@ func merge_towers(source_id: int, target_id: int) -> String:
 	target.level += 1
 	target.invested_total += source.invested_total
 	target.invested_this_phase += source.invested_this_phase
-	if target.enchantment < 0:
-		target.enchantment = source.enchantment
+	for effect: int in source.enchantments:
+		if not target.has_enchantment(effect):
+			target.enchantments.append(effect)
 	_remove_owned_tower(source)
 	field.mark_towers_changed()
 	_check_discover(target)
@@ -212,6 +213,15 @@ func reroll_shop() -> String:
 	return ""
 
 
+## Обновить лавку армии за золото (казино юнитов).
+func reroll_army() -> String:
+	if gold < _config.army_reroll_cost:
+		return "Не хватает золота"
+	gold -= _config.army_reroll_cost
+	army.roll_offers(shop.level, rng)
+	return ""
+
+
 ## Цена повышения магазина с учётом скидки героя (скидка не опускает цену ниже минимума).
 func get_shop_upgrade_price() -> int:
 	if shop_upgrade_discount <= 0:
@@ -236,16 +246,22 @@ func upgrade_shop() -> String:
 #region Армия
 
 ## Купить улучшение армии: действует до конца матча и навсегда добавляет доход.
-func buy_army_upgrade(upgrade_index: int) -> String:
+## Для «Духа» (choose_element) — element выбирает стихию резиста.
+func buy_army_upgrade(upgrade_index: int, element: StringName = &"") -> String:
 	var error: String = army.check_upgrade_available(upgrade_index, shop.level)
 	if error != "":
 		return error
 	var cost: int = army.get_upgrade_cost(upgrade_index)
 	if gold < cost:
 		return "Не хватает золота"
+	var upgrade: ArmyUpgradeData = army.get_upgrade(upgrade_index)
+	if upgrade.choose_element and element == &"":
+		if shop.active_gods.is_empty():
+			return "Нет активных стихий для выбора"
+		element = shop.active_gods[0]
 	gold -= cost
 	income += army.get_upgrade_income(upgrade_index)
-	army.apply_upgrade(upgrade_index)
+	army.apply_upgrade(upgrade_index, element)
 	return ""
 
 
@@ -367,6 +383,7 @@ func start_prep(offer_buffs: bool) -> void:
 		shop.thaw(rng)
 	else:
 		shop.roll(rng)
+	army.roll_offers(shop.level, rng)
 	if offer_buffs:
 		buff_offers = army.roll_buff_offers(shop.level, rng)
 
@@ -568,15 +585,16 @@ func check_tower_rite(rite: RiteData, tower_id: int) -> String:
 	var tower: TowerState = get_owned_tower(tower_id)
 	if tower == null:
 		return "Выберите башню на поле или в резерве"
-	if rite.effect == RiteData.Effect.ENCHANT_RATE and not tower.data.attacks:
-		return "Ритм подходит только стреляющей постройке"
-	if rite.effect >= RiteData.Effect.AWAKEN_WIDE:
-		if tower.level < _config.max_tower_level or tower.enchantment < 0:
+	if rite.effect == RiteData.Effect.ENCHANT_RATE or rite.effect == RiteData.Effect.TARGETS:
+		if not tower.data.attacks:
+			return "Эта чара подходит только стреляющей постройке"
+	if rite.effect == RiteData.Effect.AWAKEN_WIDE or rite.effect == RiteData.Effect.AWAKEN_FOCUS:
+		if tower.level < _config.max_tower_level or tower.enchantments.is_empty():
 			return "Пробуждение требует башню 3-го уровня с чарами"
 		if tower.awakening >= 0:
 			return "Башня уже пробуждена"
-	elif tower.enchantment >= 0:
-		return "На башне уже есть чары; сохраняются при слиянии"
+	elif tower.has_enchantment(rite.effect):
+		return "Эта чара уже есть на башне"
 	return ""
 
 
@@ -585,10 +603,10 @@ func _apply_tower_rite(rite: RiteData, tower_id: int) -> String:
 	if error != "":
 		return error
 	var tower: TowerState = get_owned_tower(tower_id)
-	if rite.effect >= RiteData.Effect.AWAKEN_WIDE:
+	if rite.effect == RiteData.Effect.AWAKEN_WIDE or rite.effect == RiteData.Effect.AWAKEN_FOCUS:
 		tower.awakening = rite.effect
 	else:
-		tower.enchantment = rite.effect
+		tower.enchantments.append(rite.effect)
 	_add_investment(tower, rite.cost)
 	return ""
 

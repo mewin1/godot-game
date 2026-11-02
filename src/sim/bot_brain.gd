@@ -112,10 +112,10 @@ func _spend_rest_on_army(sim: MatchSim, player: PlayerState) -> void:
 		index = _pick_affordable_upgrade(player, 0)
 
 
-## Случайное доступное улучшение, на которое хватает золота с запасом reserve; -1 — нет такого.
+## Случайное доступное улучшение из текущей лавки армии, на которое хватает золота с запасом.
 func _pick_affordable_upgrade(player: PlayerState, reserve: int) -> int:
 	var choices: Array[int] = []
-	for index: int in player.army.upgrade_counts.size():
+	for index: int in player.army.offers:
 		if player.army.check_upgrade_available(index, player.shop.level) != "":
 			continue
 		if player.gold >= player.army.get_upgrade_cost(index) + reserve:

@@ -26,7 +26,11 @@ static func apply(field: FieldState, mob: MobState) -> void:
 		# Получатель не разносит только что полученное дальше в тот же тик.
 		target.wind_reaction_cooldown = maxi(target.wind_reaction_cooldown, rule.interval_ticks)
 	if mob.freeze_ticks_left <= 0 and mob.stun_ticks_left <= 0:
-		mob.progress = mini(field.get_path_end_progress(), mob.progress + rule.push_milli)
+		# Толчок: положительный push_milli — вперёд, отрицательный — назад (не раньше старта).
+		if rule.push_milli >= 0:
+			mob.progress = mini(field.get_path_end_progress(), mob.progress + rule.push_milli)
+		else:
+			mob.progress = maxi(0, mob.progress + rule.push_milli)
 	field.trigger_reaction(rule.id, mob)
 
 

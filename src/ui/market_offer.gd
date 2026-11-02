@@ -42,7 +42,7 @@ func _layout_caption() -> void:
 	for caption: Label in [_tower_label, _rite_label]:
 		caption.position = Vector2(CONTENT_MARGIN, size.y - CAPTION_HEIGHT + CONTENT_MARGIN)
 		caption.size = Vector2(size.x - CONTENT_MARGIN * 2,
-				CAPTION_HEIGHT - CONTENT_MARGIN * 2)
+				CAPTION_HEIGHT - CONTENT_MARGIN * 2 - 12)
 		caption.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		caption.add_theme_font_size_override("font_size", 12 if size.y < 140 else 13)
 
@@ -99,6 +99,11 @@ func _draw() -> void:
 	draw_line(Vector2(8, size.y - CAPTION_HEIGHT),
 			Vector2(size.x - 8, size.y - CAPTION_HEIGHT),
 			Color(0.69, 0.61, 0.45, 0.24))
+	# Урон и тир — сразу на карточке; остальное — в подсказке.
+	if data != null:
+		draw_string(get_theme_default_font(), Vector2(size.x * 0.5, size.y - 3),
+				"Урон %d · Тир %d" % [data.damage, data.tier],
+				HORIZONTAL_ALIGNMENT_CENTER, size.x - 8, 10, Color("cfd8dd"))
 	if not is_active:
 		draw_rect(rect, Color(0.03, 0.05, 0.08, 0.24))
 	# Стихия остаётся видна и при нехватке золота, независимо от оттенка картинки.

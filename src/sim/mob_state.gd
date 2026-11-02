@@ -50,6 +50,8 @@ var burn_cooldown: int = 0
 var wind_slow_percent: int = 0
 var wind_boost_percent: int = 0
 var is_in_wind: bool = false
+## Резист к стихии (бог); меньше урона от башен этого бога.
+var resist: StringName = &""
 
 
 ## Создаёт моба по данным с бонусами к HP и скорости в процентах.
@@ -63,6 +65,7 @@ static func create(mob_data: MobData, hp_bonus_percent: int = 0,
 	mob.armor = mob_data.armor
 	mob.kill_reward = mob_data.kill_reward
 	mob.breach_damage = mob_data.breach_damage
+	mob.resist = mob_data.resist
 	mob.shield_left = mob_data.shield_hits
 	mob.heal_cooldown = mob_data.heal_interval_ticks
 	return mob
@@ -73,7 +76,8 @@ func is_alive() -> bool:
 
 
 ## Наносит урон с учётом брони (не меньше 1). Возвращает true, если моб от этого умер.
-func take_damage(amount: int) -> bool:
+## armor_pierce — сколько брони игнорирует удар (пробивание башни).
+func take_damage(amount: int, armor_pierce: int = 0) -> bool:
 	if not is_alive():
 		return false
 	if shield_left > 0:
@@ -81,7 +85,8 @@ func take_damage(amount: int) -> bool:
 		return false
 	if amount <= 0:
 		return false
-	hp -= maxi(1, amount - armor)
+	var effective_armor: int = maxi(0, armor - armor_pierce)
+	hp -= maxi(1, amount - effective_armor)
 	return hp <= 0
 
 

@@ -10,6 +10,8 @@ extends Resource
 @export var value: int = 1
 ## Для ADD_MOB: какой юнит добавить в армию.
 @export var mob: MobData
+## «Дух»: при покупке игрок выбирает стихию, юнит получает к ней резист.
+@export var choose_element: bool = false
 @export var base_cost: int = 6
 @export var cost_step: int = 3
 ## Сколько раз можно купить (0 — без ограничения).

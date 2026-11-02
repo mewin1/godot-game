@@ -29,6 +29,11 @@ def run_stage(name: str, arguments: list[str], environment: dict[str, str]) -> b
     output = ANSI.sub("", result.stdout)
     log_path.write_text(output, encoding="utf-8")
     errors = [line for line in output.splitlines() if "ERROR:" in line]
+    # Godot 4.7 печатает нефатальное предупреждение, когда шейдер передаёт встроенный
+    # sampler2D (TEXTURE) аргументом функции. Шейдер при этом компилируется и работает;
+    # диагностика помечена «Continuing». Не считаем её сбоем этапа.
+    errors = [line for line in errors
+              if "custom_samplers.has(function->arguments[j].tex_builtin)" not in line]
     if name == "import":
         # В ограниченной среде редактор не может открыть локальный TCP-сокет.
         errors = [line for line in errors if line not in (

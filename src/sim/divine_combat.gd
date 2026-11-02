@@ -20,6 +20,14 @@ static func is_in_wind(field: FieldState, tower: TowerState, point: Vector2i) ->
 			and across <= wind_width(field, tower)
 
 
+## Дует ли башня сейчас: 0/0 — постоянный поток, иначе активна первые wind_on_ticks цикла.
+static func is_wind_blowing(tower: TowerState) -> bool:
+	var period: int = tower.data.wind_on_ticks + tower.data.wind_off_ticks
+	if period <= 0:
+		return true
+	return tower.wind_cycle_ticks < tower.data.wind_on_ticks
+
+
 ## Полуширина потока с пробуждением размаха.
 static func wind_width(field: FieldState, tower: TowerState) -> int:
 	var extra: int = 0
@@ -35,7 +43,7 @@ static func wind_length(field: FieldState, tower: TowerState) -> int:
 	var idol: IdolState = field.get_idol(tower.data.god)
 	if idol != null:
 		length += idol.wind_length_milli
-	if tower.enchantment == RiteData.Effect.ENCHANT_RANGE:
+	if tower.has_enchantment(RiteData.Effect.ENCHANT_RANGE):
 		length += field.config.enchant_range_milli
 	if tower.awakening == RiteData.Effect.AWAKEN_FOCUS:
 		length += field.config.enchant_range_milli * 2
@@ -53,8 +61,8 @@ static func apply_wind(field: FieldState, mob: MobState) -> void:
 	var movement: Vector2i = field.layout.path_cells[path_index + 1] \
 			- field.layout.path_cells[path_index]
 	for tower: TowerState in field.towers:
-		if tower.data.wind_length_milli <= 0 or not is_in_wind(field, tower,
-				field.get_mob_position(mob)):
+		if tower.data.wind_length_milli <= 0 or not is_wind_blowing(tower) \
+				or not is_in_wind(field, tower, field.get_mob_position(mob)):
 			continue
 		mob.is_in_wind = true
 		if mob.is_alive():
@@ -64,7 +72,7 @@ static func apply_wind(field: FieldState, mob: MobState) -> void:
 		var idol: IdolState = field.get_idol(tower.data.god)
 		if idol != null:
 			power += idol.wind_power
-		if tower.enchantment == RiteData.Effect.ENCHANT_DAMAGE:
+		if tower.has_enchantment(RiteData.Effect.ENCHANT_DAMAGE):
 			power += field.config.enchant_damage_percent / 3
 		power = mini(power, field.config.max_wind_slow_percent)
 		var direction: Vector2i = wind_direction(tower)
@@ -136,7 +144,9 @@ static func hit(field: FieldState, tower: TowerState, mob: MobState, damage: int
 	var was_burning: bool = mob.burn_ticks_left > 0
 	if was_burning:
 		damage += damage * tower.data.burning_target_bonus_percent / 100
-	field.deal_mob_damage(mob, damage, tower.id, &"hit")
+	if mob.resist != &"" and mob.resist == tower.data.god:
+		damage = damage * (100 - field.config.resist_percent) / 100
+	field.deal_mob_damage(mob, damage, tower.id, &"hit", tower.data.armor_pierce)
 	if was_shielded:
 		return
 	if tower.data.wet_ticks > 0 and mob.is_alive() and mob.can_apply_status(&"wet"):
@@ -227,7 +237,7 @@ static func _chain(field: FieldState, tower: TowerState, mob: MobState, damage: 
 		field.lightning_fired.emit(field.get_mob_position(previous),
 				field.get_mob_position(next_target))
 		field.deal_mob_damage(next_target, maxi(1, damage * field.config.chain_percent / 100),
-				tower.id, &"chain")
+				tower.id, &"chain", tower.data.armor_pierce)
 		previous = next_target
 
 

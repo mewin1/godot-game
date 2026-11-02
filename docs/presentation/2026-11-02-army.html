@@ -1,0 +1,324 @@
+<!doctype html>
+<html lang="ru">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Застава · Итоги сессии: армия оживает</title>
+<style>
+:root{color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:#141c22;color:#ece8df;font:17px/1.6 system-ui,sans-serif}
+main{max-width:1080px;margin:auto;padding:44px 22px 80px}
+h1{font-size:clamp(32px,5vw,54px);line-height:1.12;color:#efcd83;margin:6px 0 8px}
+h2{margin-top:44px;color:#efcd83;font-size:26px}
+h3{color:#f4eee0;margin:0 0 8px}
+p{max-width:960px}
+.muted{color:#b7c4ca}
+.lead{font-size:19px}
+a{color:#efcd83}
+code{color:#b4dfeb;background:#0e161c;padding:1px 6px;border-radius:5px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-top:20px}
+.card{background:#1f2d36;border:1px solid #3a4c55;border-radius:12px;padding:20px}
+.card b{font-size:22px;color:#efcd83}
+.card .big{font-size:30px;color:#efcd83;display:block;margin-bottom:4px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.panel{background:#1f2d36;border:1px solid #3a4c55;border-radius:12px;padding:20px}
+.panel.good{border-color:#527a60}
+.panel.warn{border-color:#7a5a2c}
+.panel.bad{border-color:#7a3c3c}
+.badge{display:inline-block;padding:3px 10px;margin:2px 4px 2px 0;border-radius:20px;font-size:14px;background:#2c414e;border:1px solid #49606e}
+.badge.new{background:#2e4a33;border-color:#4f8a5c;color:#bde8c6}
+.badge.fix{background:#4a3d1f;border-color:#8a7435;color:#f0dcae}
+.badge.test{background:#23384d;border-color:#3f6b93;color:#bcdcf0}
+table{border-collapse:collapse;width:100%;margin:16px 0}
+td,th{padding:9px 11px;text-align:left;border-bottom:1px solid #3a4c55;font-size:15px}
+th{color:#efcd83;font-weight:600}
+tr.weak td{color:#e6a3a3}
+tr.strong td{color:#a8d8b8}
+/* bar chart */
+.bar-row{display:grid;grid-template-columns:170px 1fr 56px;gap:10px;align-items:center;margin:7px 0}
+.bar-label{font-size:15px;text-align:right;color:#d9d3c6}
+.bar-track{background:#111b20;border-radius:6px;height:22px;overflow:hidden}
+.bar-fill{height:100%;background:linear-gradient(90deg,#7a5a2c,#e9c46a);border-radius:6px}
+.bar-fill.red{background:linear-gradient(90deg,#5c2c2c,#d98c8c)}
+.bar-val{font-size:14px;color:#b7c4ca}
+/* mini round histogram */
+.histo{display:flex;align-items:flex-end;gap:6px;height:150px;margin:16px 0}
+.histo .col{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%}
+.histo .bar{width:100%;background:linear-gradient(180deg,#e9c46a,#7a5a2c);border-radius:5px 5px 0 0;min-height:3px}
+.histo .num{font-size:12px;color:#b7c4ca;margin-top:4px}
+.histo .lab{font-size:11px;color:#8fa3ad;margin-top:2px}
+.illustration{background:#0e161c;border:1px solid #2a3a43;border-radius:12px;padding:16px;text-align:center;margin:16px 0}
+.illustration svg{max-width:100%;height:auto}
+.caption{font-size:14px;color:#b7c4ca;margin-top:10px}
+.pill{display:inline-block;padding:2px 9px;border-radius:5px;background:#344b59;font-size:13px}
+.tick{color:#a8d8b8;font-weight:700}
+.cross{color:#d98c8c;font-weight:700}
+ul li{margin:6px 0}
+footer{font-size:14px;color:#b7c4ca;margin-top:50px;border-top:1px solid #2a3a43;padding-top:16px}
+@media(max-width:760px){.cards,.grid2{grid-template-columns:1fr}.bar-row{grid-template-columns:120px 1fr 46px}}
+</style>
+<main>
+
+<p class="muted">2 ноября 2026 · сессия «армия, герои, поле»</p>
+<h1>Армия оживает:<br>что сделано за сессию</h1>
+<p class="lead">Сначала — разбор слабых мест игры. Потом — первый шаг: в армию вернулись два готовых юнита, а у «летающих» появился смысл. Всё проверено тестами и ботами.</p>
+
+<div class="cards">
+  <div class="card"><b>🔍 Анализ</b><p>Прочитал код и данные: армию, героев, поле, экономику. Нашёл 9 слабых мест и составил план по приоритету.</p></div>
+  <div class="card"><b>⚔️ Армия + броня</b><p>Включил <b>нетопыря</b> и <b>колобка</b>; добавил <b>пробивание брони</b> — теперь броня не всесильна.</p></div>
+  <div class="card"><b>🃏 Герои</b><p>Починил <b>Бабу-Ягу</b> и <b>Скомороха</b>: механики стали честными, а не ловушкой для игрока.</p></div>
+  <div class="card"><b>✅ Проверки</b><p><span class="big">306/306</span>тестов прошли, все этапы полной проверки зелёные, бот-матчи прогнаны.</p></div>
+</div>
+
+<h2>1 · Что было не так (главное)</h2>
+<div class="grid2">
+  <div class="panel bad">
+    <h3>Армия — «мешок статов»</h3>
+    <p>6 особых юнитов — просто <i>HP + скорость + урон прорыва</i>, у каждого по одному трюку. Нет «юнит X силён против защиты Y», нет синергии внутри пачки (кроме лекаря).</p>
+  </div>
+  <div class="panel bad">
+    <h3>Броню ничем не пробить</h3>
+    <p>Броня вычитается из каждого удара, а <b>ни у одной башни нет пробивания</b>. Ответ всегда один — «больше урона». Это плоский камень-ножницы-бумага.</p>
+  </div>
+  <div class="panel warn">
+    <h3>Готовые юниты лежали мёртвым грузом</h3>
+    <p>Нетопырь, колобок, гонец, разбойник — уже нарисованы в данных, но <b>не включены</b> в лавку армии. И ни одна из 21 башни не пропускает летающих.</p>
+  </div>
+  <div class="panel warn">
+    <h3>Экономика тянет в армию</h3>
+    <p>Покупка армии даёт постоянный доход, а оборона — нет. Но боты показали: <b>чистая армия проигрывает</b> (см. ниже).</p>
+  </div>
+</div>
+
+<h2>2 · Что я изменил</h2>
+
+<h3>а) Включил двух готовых юнитов</h3>
+<div class="illustration">
+  <svg viewBox="0 0 860 220" width="860" role="img" aria-label="Армия до и после">
+    <!-- left: before -->
+    <rect x="8" y="8" width="400" height="204" rx="12" fill="#1f2d36" stroke="#3a4c55"/>
+    <text x="28" y="40" fill="#b7c4ca" font-size="16">Было — 9 улучшений</text>
+    <g font-size="14" fill="#d9d3c6">
+      <text x="28" y="72">＋ число · ＋ HP% · ＋ скорость%</text>
+      <text x="28" y="96">🐎 Разведчик (быстрый)</text>
+      <text x="28" y="120">🛡 Латник (броня)</text>
+      <text x="28" y="144">👑 Воевода (крепкий, 5 HP)</text>
+      <text x="28" y="168">💚 Лекарь · 🛡 Витязь · 🌫 Лазутчик</text>
+    </g>
+    <!-- right: after -->
+    <rect x="452" y="8" width="400" height="204" rx="12" fill="#1f2d36" stroke="#4f8a5c"/>
+    <text x="472" y="40" fill="#bde8c6" font-size="16">Стало — 11 улучшений</text>
+    <g font-size="14" fill="#d9d3c6">
+      <text x="472" y="72">＋ число · ＋ HP% · ＋ скорость%</text>
+      <text x="472" y="96">🐎 Разведчик · 🛡 Латник · 👑 Воевода</text>
+      <text x="472" y="120">💚 Лекарь · 🛡 Витязь · 🌫 Лазутчик</text>
+      <text x="472" y="144" fill="#efcd83">🦇 Нетопырь — летает (новый)</text>
+      <text x="472" y="168" fill="#efcd83">🥖 Колобок — делится на двух (новый)</text>
+    </g>
+  </svg>
+  <div class="caption">Два юнита уже были готовы в данных — их просто не хватало в лавке. Теперь армию можно собирать под защиту соперника.</div>
+</div>
+
+<h3>б) Дал смысл полёту</h3>
+<div class="illustration">
+  <svg viewBox="0 0 860 260" width="860" role="img" aria-label="Летающий нетопырь и башни">
+    <!-- ground -->
+    <line x1="20" y1="210" x2="840" y2="210" stroke="#3a4c55" stroke-width="3"/>
+    <text x="20" y="238" fill="#8fa3ad" font-size="13">земля</text>
+    <!-- bat (flying) -->
+    <g>
+      <ellipse cx="210" cy="130" rx="34" ry="20" fill="#5a4632" stroke="#e9c46a" stroke-width="2"/>
+      <path d="M184 122 Q150 96 176 108 Q150 116 186 130 Z" fill="#8a6d3f"/>
+      <path d="M236 122 Q270 96 244 108 Q270 116 234 130 Z" fill="#8a6d3f"/>
+      <circle cx="200" cy="126" r="2.5" fill="#141c22"/>
+      <circle cx="220" cy="126" r="2.5" fill="#141c22"/>
+      <text x="210" y="88" fill="#efcd83" font-size="15" text-anchor="middle">нетопырь (летит)</text>
+    </g>
+    <!-- war_engine: no hit -->
+    <g>
+      <rect x="430" y="150" width="120" height="60" rx="8" fill="#3a2c1c" stroke="#8a7435" stroke-width="2"/>
+      <rect x="452" y="124" width="40" height="28" rx="4" fill="#4a3d1f" stroke="#8a7435"/>
+      <text x="490" y="240" fill="#d9d3c6" font-size="14" text-anchor="middle">Осадный станок</text>
+      <text x="490" y="256" fill="#d98c8c" font-size="14" text-anchor="middle" class="cross">✗ не бьёт летающих</text>
+      <line x1="322" y1="136" x2="450" y2="160" stroke="#d98c8c" stroke-width="2" stroke-dasharray="6 5"/>
+    </g>
+    <!-- bolt: hits -->
+    <g>
+      <rect x="650" y="150" width="90" height="60" rx="8" fill="#23384d" stroke="#3f6b93" stroke-width="2"/>
+      <rect x="676" y="112" width="10" height="40" rx="3" fill="#3f6b93"/>
+      <text x="695" y="240" fill="#d9d3c6" font-size="14" text-anchor="middle">Самострел</text>
+      <text x="695" y="256" fill="#a8d8b8" font-size="14" text-anchor="middle" class="tick">✓ бьёт летающих</text>
+      <line x1="322" y1="136" x2="668" y2="150" stroke="#a8d8b8" stroke-width="2"/>
+    </g>
+  </svg>
+  <div class="caption">Раньше летающих били все 21 башня — полёт ничего не давал. Теперь осадный станок их пропускает: видишь у соперника станки — шли нетопыря.</div>
+</div>
+
+<h3>в) Починил раскладку</h3>
+<div class="illustration">
+  <svg viewBox="0 0 860 180" width="860" role="img" aria-label="Сетка армии 3 на 4 колонки">
+    <text x="100" y="30" fill="#b7c4ca" font-size="15" text-anchor="middle">Было — 3 колонки</text>
+    <text x="660" y="30" fill="#efcd83" font-size="15" text-anchor="middle">Стало — 4 колонки</text>
+    <!-- before 3 cols -->
+    <g fill="#2c414e" stroke="#49606e">
+      <rect x="30" y="44" width="140" height="34" rx="6"/><rect x="180" y="44" width="140" height="34" rx="6"/><rect x="330" y="44" width="140" height="34" rx="6"/>
+      <rect x="30" y="86" width="140" height="34" rx="6"/><rect x="180" y="86" width="140" height="34" rx="6"/><rect x="330" y="86" width="140" height="34" rx="6"/>
+      <rect x="30" y="128" width="140" height="34" rx="6"/><rect x="180" y="128" width="140" height="34" rx="6"/><rect x="330" y="128" width="140" height="34" rx="6"/>
+      <rect x="30" y="128" width="140" height="34" rx="6" fill="#7a3c3c" stroke="#7a3c3c" opacity="0.55"/>
+      <rect x="180" y="128" width="140" height="34" rx="6" fill="#7a3c3c" stroke="#7a3c3c" opacity="0.55"/>
+    </g>
+    <text x="200" y="176" fill="#d98c8c" font-size="13" text-anchor="middle">11 карточек → 4 ряда → резерв вылезал за экран</text>
+    <!-- after 4 cols -->
+    <g fill="#2e4a33" stroke="#4f8a5c">
+      <rect x="470" y="44" width="100" height="34" rx="6"/><rect x="578" y="44" width="100" height="34" rx="6"/><rect x="686" y="44" width="100" height="34" rx="6"/><rect x="794" y="44" width="100" height="34" rx="6"/>
+      <rect x="470" y="86" width="100" height="34" rx="6"/><rect x="578" y="86" width="100" height="34" rx="6"/><rect x="686" y="86" width="100" height="34" rx="6"/><rect x="794" y="86" width="100" height="34" rx="6"/>
+      <rect x="470" y="128" width="100" height="34" rx="6"/><rect x="578" y="128" width="100" height="34" rx="6"/><rect x="686" y="128" width="100" height="34" rx="6"/>
+    </g>
+    <text x="660" y="176" fill="#a8d8b8" font-size="13" text-anchor="middle">3 ряда — всё снова помещается</text>
+  </svg>
+  <div class="caption">Добавив двух юнитов, я не оставил вылезающую панель: просто сделал сетку армии компактнее (4 колонки вместо 3).</div>
+</div>
+
+<h3>г) Пробивание брони — броня перестала быть всесильной</h3>
+<div class="illustration">
+  <svg viewBox="0 0 860 240" width="860" role="img" aria-label="Пробивание брони">
+    <text x="430" y="24" fill="#efcd83" font-size="16" text-anchor="middle">Латник · броня 4 · 90 HP</text>
+    <!-- bolt -->
+    <g>
+      <rect x="30" y="60" width="230" height="120" rx="10" fill="#1f2d36" stroke="#3a4c55"/>
+      <text x="145" y="92" fill="#d9d3c6" font-size="15" text-anchor="middle">Самострел</text>
+      <text x="145" y="120" fill="#8fa3ad" font-size="14" text-anchor="middle">18 урона − 4 брони</text>
+      <text x="145" y="150" fill="#d98c8c" font-size="20" text-anchor="middle" font-weight="bold">= 14</text>
+    </g>
+    <!-- thunder -->
+    <g>
+      <rect x="315" y="60" width="230" height="120" rx="10" fill="#23384d" stroke="#3f6b93"/>
+      <text x="430" y="92" fill="#d9d3c6" font-size="15" text-anchor="middle">Грозовой столб · пробив. 3</text>
+      <text x="430" y="120" fill="#8fa3ad" font-size="14" text-anchor="middle">46 − (4 − 3) = 46 − 1</text>
+      <text x="430" y="150" fill="#a8d8b8" font-size="20" text-anchor="middle" font-weight="bold">= 45</text>
+    </g>
+    <!-- war_engine -->
+    <g>
+      <rect x="600" y="60" width="230" height="120" rx="10" fill="#2e4a33" stroke="#4f8a5c"/>
+      <text x="715" y="92" fill="#d9d3c6" font-size="15" text-anchor="middle">Осадный станок · пробив. 2</text>
+      <text x="715" y="120" fill="#8fa3ad" font-size="14" text-anchor="middle">28 − (4 − 2) = 28 − 2</text>
+      <text x="715" y="150" fill="#a8d8b8" font-size="20" text-anchor="middle" font-weight="bold">= 26</text>
+    </g>
+    <text x="430" y="210" fill="#b7c4ca" font-size="14" text-anchor="middle">Теперь против латника есть ответ: молния и тяжёлая осада пробивают доспех.</text>
+  </svg>
+  <div class="caption">Добавил поле <code>armor_pierce</code> в данные башен и учёл его в расчёте урона. Пробивание задаётся в <code>.tres</code>, не в коде.</div>
+</div>
+
+<h3>д) Починил героев</h3>
+<div class="grid2">
+  <div class="panel good">
+    <h3>Баба-Яга · «Варево»</h3>
+    <p><b>Было:</b> навык за 10 золота делал следующую башню 2-го уровня — но слияние двух копий стоило 12. Ты платил 10 + 6 = 16 за то, что обычным слиянием даётся за 12. Ловушка.</p>
+    <p><b>Стало:</b> цена 6. Итого 6 + 6 = 12 — <b>ровно как слияние, но без второй копии</b>. Любую башню можно «сварить» до 2-го уровня.</p>
+  </div>
+  <div class="panel good">
+    <h3>Скоморох · «Ярмарка»</h3>
+    <p><b>Было:</b> колесо с исходом «+2 золота» при цене 3+ — в 20% случаев ты терял деньги. Боты жали его бездумно (12 раз за матч) и сливали золото.</p>
+    <p><b>Стало:</b> все исходы в плюс: <b>+8 золота (40%), +1 юнит (25%), +1 доход (20%), +4 золота (15%)</b>. Бот больше не азартит на последние деньги.</p>
+  </div>
+</div>
+
+<h2>3 · Поле — всё в порядке</h2>
+<div class="illustration">
+  <svg viewBox="0 0 320 350" width="320" role="img" aria-label="Поле 9 на 10 с путём">
+    <!-- grid -->
+    <g stroke="#2a3a43" stroke-width="1">
+      <line x1="15" y1="15" x2="285" y2="15"/><line x1="15" y1="45" x2="285" y2="45"/><line x1="15" y1="75" x2="285" y2="75"/><line x1="15" y1="105" x2="285" y2="105"/><line x1="15" y1="135" x2="285" y2="135"/><line x1="15" y1="165" x2="285" y2="165"/><line x1="15" y1="195" x2="285" y2="195"/><line x1="15" y1="225" x2="285" y2="225"/><line x1="15" y1="255" x2="285" y2="255"/><line x1="15" y1="285" x2="285" y2="285"/><line x1="15" y1="315" x2="285" y2="315"/>
+      <line x1="15" y1="15" x2="15" y2="315"/><line x1="45" y1="15" x2="45" y2="315"/><line x1="75" y1="15" x2="75" y2="315"/><line x1="105" y1="15" x2="105" y2="315"/><line x1="135" y1="15" x2="135" y2="315"/><line x1="165" y1="15" x2="165" y2="315"/><line x1="195" y1="15" x2="195" y2="315"/><line x1="225" y1="15" x2="225" y2="315"/><line x1="255" y1="15" x2="255" y2="315"/><line x1="285" y1="15" x2="285" y2="315"/>
+    </g>
+    <!-- path -->
+    <polyline points="45,285 45,255 45,225 45,195 45,165 45,135 45,105 45,75 45,45 45,15 75,15 105,15 135,15 135,45 135,75 135,105 135,135 135,165 135,195 135,225 135,255 135,285 165,285 195,285 225,285 225,255 225,225 225,195 225,165 225,135 225,105 225,75 225,45 225,15" fill="none" stroke="#e9c46a" stroke-width="6" stroke-linejoin="round"/>
+    <text x="15" y="340" fill="#8fa3ad" font-size="12">9 × 10 клеток · путь до 34 клеток · стройки вокруг пути</text>
+  </svg>
+  <div class="caption">Посчитал клетки: под башни 28 → 56 клеток с ростом магазина, мёртвых зон нет. Поле расширять не нужно — проверяем бот-матчами, а не вслепую.</div>
+</div>
+
+<h2>4 · Что показали боты</h2>
+<p class="muted">31 матч по 6 ботов, одинаковые сиды. Боты — ориентир, а не истина, но тренды видны.</p>
+
+<div class="grid2">
+  <div class="panel">
+    <h3>Длина матча</h3>
+    <div class="bar-row"><span class="bar-label">среднее</span><div class="bar-track"><div class="bar-fill" style="width:73%"></div></div><span class="bar-val">17,3 р.</span></div>
+    <div class="bar-row"><span class="bar-label">медиана</span><div class="bar-track"><div class="bar-fill" style="width:75%"></div></div><span class="bar-val">18 р.</span></div>
+    <div class="bar-row"><span class="bar-label">мин…макс</span><div class="bar-track"><div class="bar-fill" style="width:88%"></div></div><span class="bar-val">13–21</span></div>
+    <div class="histo">
+      <div class="col"><div class="bar" style="height:25%"></div><div class="num">2</div><div class="lab">13</div></div>
+      <div class="col"><div class="bar" style="height:25%"></div><div class="num">2</div><div class="lab">14</div></div>
+      <div class="col"><div class="bar" style="height:12%"></div><div class="num">1</div><div class="lab">15</div></div>
+      <div class="col"><div class="bar" style="height:75%"></div><div class="num">6</div><div class="lab">16</div></div>
+      <div class="col"><div class="bar" style="height:38%"></div><div class="num">3</div><div class="lab">17</div></div>
+      <div class="col"><div class="bar" style="height:100%"></div><div class="num">8</div><div class="lab">18</div></div>
+      <div class="col"><div class="bar" style="height:25%"></div><div class="num">2</div><div class="lab">19</div></div>
+      <div class="col"><div class="bar" style="height:62%"></div><div class="num">5</div><div class="lab">20</div></div>
+      <div class="col"><div class="bar" style="height:12%"></div><div class="num">1</div><div class="lab">21</div></div>
+    </div>
+    <p class="muted" style="font-size:14px">Новинки боты берут активно: нетопырь и колобок в каждой партии.</p>
+  </div>
+  <div class="panel warn">
+    <h3>⚡ Проблема темпа сохраняется</h3>
+    <p>В этом прогоне <b>2 матча из 32</b> застряли на 23-м и 27-м раунде: все живы, поля забиты, армии огромны. Атака и защита растут одинаково — никто не умирает.</p>
+    <p>Это <b>не связано с моими правками</b>, но прямо бьёт по столпу «матч 15–20 минут». Нужен отдельный разбор: как гарантировать конец матча (например, рост урона прорыва или предел раундов).</p>
+  </div>
+</div>
+
+<h3>Вложение в армию не равно победе</h3>
+<div class="panel">
+  <div class="bar-row"><span class="bar-label">армия 0–19%</span><div class="bar-track"><div class="bar-fill" style="width:24%"></div></div><span class="bar-val">24% побед</span></div>
+  <div class="bar-row"><span class="bar-label">армия 20–39%</span><div class="bar-track"><div class="bar-fill" style="width:22%"></div></div><span class="bar-val">22% побед</span></div>
+  <div class="bar-row"><span class="bar-label">армия 40–59%</span><div class="bar-track"><div class="bar-fill" style="width:11%"></div></div><span class="bar-val">11% побед</span></div>
+  <div class="bar-row"><span class="bar-label">армия 60–79%</span><div class="bar-track"><div class="bar-fill red" style="width:3%"></div></div><span class="bar-val">3% побед</span></div>
+  <p class="muted" style="font-size:14px">Чем больше золота уходит в армию, тем хуже результат. Оборона + экономика выигрывают, чистая армия — проигрыш.</p>
+</div>
+
+<h2>5 · Герои: правка сработала</h2>
+<div class="panel">
+  <div class="bar-row"><span class="bar-label">Бабушка</span><div class="bar-track"><div class="bar-fill" style="width:38%"></div></div><span class="bar-val">38%</span></div>
+  <div class="bar-row"><span class="bar-label">Баба-Яга ✨</span><div class="bar-track"><div class="bar-fill" style="width:29%"></div></div><span class="bar-val">29%</span></div>
+  <div class="bar-row"><span class="bar-label">Космонавт</span><div class="bar-track"><div class="bar-fill" style="width:27%"></div></div><span class="bar-val">27%</span></div>
+  <div class="bar-row"><span class="bar-label">Василиса</span><div class="bar-track"><div class="bar-fill" style="width:25%"></div></div><span class="bar-val">25%</span></div>
+  <div class="bar-row"><span class="bar-label">Горыныч</span><div class="bar-track"><div class="bar-fill" style="width:25%"></div></div><span class="bar-val">25%</span></div>
+  <div class="bar-row"><span class="bar-label">Леший</span><div class="bar-track"><div class="bar-fill" style="width:12%"></div></div><span class="bar-val">12%</span></div>
+  <div class="bar-row"><span class="bar-label">Домовой</span><div class="bar-track"><div class="bar-fill" style="width:9%"></div></div><span class="bar-val">9%</span></div>
+  <div class="bar-row"><span class="bar-label">Скоморох ✨</span><div class="bar-track"><div class="bar-fill" style="width:8%"></div></div><span class="bar-val">8%</span></div>
+  <div class="bar-row"><span class="bar-label">Илья</span><div class="bar-track"><div class="bar-fill" style="width:8%"></div></div><span class="bar-val">8%</span></div>
+  <div class="bar-row"><span class="bar-label">Соловей</span><div class="bar-track"><div class="bar-fill" style="width:5%"></div></div><span class="bar-val">5%</span></div>
+  <div class="bar-row"><span class="bar-label">Кощей</span><div class="bar-track"><div class="bar-fill" style="width:2%"></div></div><span class="bar-val">0%</span></div>
+  <p class="muted" style="font-size:14px">Замер <b>после</b> правок (30 матчей). <b>Баба-Яга: 6% → 29%</b> — «Варево» за 6 работает. <b>Скоморох: 0% → 8%</b> — перестал быть ловушкой, но чистый азарт всё ещё слаб. Кощей и Соловей — следующие кандидаты.</p>
+</div>
+
+<h2>6 · Что дальше</h2>
+<div class="cards">
+  <div class="card"><b>✅ Шаг 2 · Пробивание брони</b><p>Сделано: <code>armor_pierce</code> у грозового столба (3) и осадного станка (2).</p></div>
+  <div class="card"><b>✅ Шаг 3 · Починить героев</b><p>Сделано: Баба-Яга и Скоморох стали честными. Дальше — проверить в живой партии.</p></div>
+  <div class="card"><b>Идеи на потом</b><p>Аура-юнит в пачке, доход за чистую волну (симметрия экономики), особая волна для обороны.</p></div>
+</div>
+
+<div class="panel" style="margin-top:18px">
+  <h3>Список изменений за сессию</h3>
+  <table>
+    <tr><th>Файл</th><th>Что</th></tr>
+    <tr><td><code>data/game_config.tres</code></td><td>Включил нетопыря и колобка в лавку армии</td></tr>
+    <tr><td><code>data/towers/war_engine.tres</code></td><td>Осадный станок не бьёт летающих и пробивает 2 брони</td></tr>
+    <tr><td><code>data/towers/thunder.tres</code></td><td>Грозовой столб пробивает 3 брони</td></tr>
+    <tr><td><code>src/sim/data/tower_data.gd</code></td><td>Новое поле <code>armor_pierce</code> у башен</td></tr>
+    <tr><td><code>src/sim/mob_state.gd</code></td><td>Урон учитывает пробивание брони</td></tr>
+    <tr><td><code>src/sim/field_state.gd</code>, <code>src/sim/divine_combat.gd</code></td><td>Передают пробивание в удар</td></tr>
+    <tr><td><code>data/heroes/baba_yaga.tres</code></td><td>«Варево» подешевело до 6</td></tr>
+    <tr><td><code>data/heroes/skomorokh.tres</code>, <code>fair_wheel_effect.gd</code></td><td>«Ярмарка» всегда в плюс + бот не азартит</td></tr>
+    <tr><td><code>src/ui/shop_panel.gd</code></td><td>Сетка армии 4 колонки — резерв в экране</td></tr>
+    <tr><td><code>tools/check_project.py</code></td><td>Не путать безвредное предупреждение шейдера со сбоем</td></tr>
+    <tr><td><code>tests/unit/</code></td><td>+7 тестов: лёт/деление, пробивание, герои</td></tr>
+    <tr><td><code>docs/CURRENT_RULES.md</code></td><td>Обновил правила армии и брони</td></tr>
+  </table>
+  <p class="muted" style="font-size:14px">Изменения не коммитил (по твоим правилам). Логи ботов в <code>logs/bots/2026-11-02_01-19-17/</code>.</p>
+</div>
+
+<footer>Локальная сборка · <a href="../CURRENT_RULES.md">актуальные правила</a> · <a href="../README.md">навигация по докам</a> · данные ботов — ориентир, финал — живая партия.</footer>
+</main>
+</html>

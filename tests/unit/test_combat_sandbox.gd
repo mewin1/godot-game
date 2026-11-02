@@ -33,7 +33,7 @@ func test_reset_restores_units_upgrades_and_rng_without_mutating_resources() -> 
 	assert_eq(mob.mob.hp, original_hp)
 	assert_eq(_sandbox.field.mobs[0].hp, 1000)
 	assert_eq(_sandbox.field.mobs[0].speed, 0)
-	assert_eq(_sandbox.field.towers[0].enchantment, int(RiteData.Effect.ENCHANT_DAMAGE))
+	assert_true(_sandbox.field.towers[0].has_enchantment(int(RiteData.Effect.ENCHANT_DAMAGE)))
 
 
 func test_manual_hits_and_time_without_auto_fire_transfer_curse_to_wet_neighbor() -> void:

@@ -26,7 +26,8 @@ func execute(command: SandboxCommand) -> String:
 				return "Фигура не помещается: выберите свободные клетки вне дороги"
 			var tower: TowerState = field.add_tower(command.tower, command.cell, command.rotation)
 			tower.level = clampi(command.level, 1, config.max_tower_level)
-			tower.enchantment = command.enchantment
+			if command.enchantment >= 0:
+				tower.enchantments.append(command.enchantment)
 			tower.awakening = command.awakening
 			_towers.append(_copy_tower(tower))
 			field.battle_report.register_tower(tower)
@@ -123,7 +124,7 @@ func _rebuild() -> void:
 	for saved: TowerState in _towers:
 		var tower: TowerState = field.add_tower(saved.data, saved.anchor, saved.rotation)
 		tower.level = saved.level
-		tower.enchantment = saved.enchantment
+		tower.enchantments = saved.enchantments.duplicate()
 		tower.awakening = saved.awakening
 	field.start_wave()
 	for saved: MobState in _mobs:
@@ -145,7 +146,7 @@ func _copy_tower(source: TowerState) -> TowerState:
 	tower.anchor = source.anchor
 	tower.rotation = source.rotation
 	tower.level = source.level
-	tower.enchantment = source.enchantment
+	tower.enchantments = source.enchantments.duplicate()
 	tower.awakening = source.awakening
 	return tower
 

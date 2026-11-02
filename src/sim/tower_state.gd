@@ -21,16 +21,26 @@ var invested_this_phase: int = 0
 var bonus_damage_percent: int = 0
 var bonus_fire_rate_percent: int = 0
 var bonus_range_milli: int = 0
-## Один заговор и одно пробуждение сохраняются при переносе и слиянии.
-var enchantment: int = -1
+## Чары и пробуждение сохраняются при переносе и слиянии.
+var enchantments: Array[int] = []
 var awakening: int = -1
+## Таймер импульса ветра: сколько тиков уже прошло в текущем цикле «дует/пауза».
+var wind_cycle_ticks: int = 0
+
+
+func has_enchantment(effect: int) -> bool:
+	return enchantments.has(effect)
 
 
 ## Постоянное состояние башни; одинаково для поля и резерва.
 func add_to_hash(hasher: StateHasher) -> void:
 	hasher.add_string(data.id)
 	hasher.add_many([id, anchor.x, anchor.y, rotation, level, cooldown_left,
-			invested_total, invested_this_phase, enchantment, awakening])
+			invested_total, invested_this_phase, awakening, wind_cycle_ticks])
+	hasher.add(enchantments.size())
+	var enchants: Array[int] = enchantments.duplicate()
+	enchants.sort()
+	hasher.add_many(enchants)
 
 
 ## Фигура, повёрнутая rotation раз на 90° и сдвинутая так, чтобы минимум x и y был 0.

@@ -18,6 +18,8 @@ extends Resource
 @export var tags: Array[StringName] = []
 ## Особенность одной фразой (для меню и презентации).
 @export_multiline var description: String = ""
+## Резист к стихии: меньше урона от башен этого бога (пусто — без резиста).
+@export var resist: StringName = &""
 ## Летает: постройки с can_hit_flying = false его не бьют.
 @export var is_flying: bool = false
 ## Невидимка: башни видят его только ближе этого расстояния (0 — видно всегда).

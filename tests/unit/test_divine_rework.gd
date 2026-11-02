@@ -47,12 +47,20 @@ func _mob(at_progress: int = 3000) -> MobState:
 
 
 func test_current_content_preserves_army_and_three_empty_idols() -> void:
-	assert_eq(_config.towers.size(), 21)
+	assert_eq(_config.towers.size(), 22)
 	assert_eq(_config.army_base_units, 5)
 	assert_true(_config.school_bonuses.is_empty())
 	assert_eq(_player.field.idols.size(), 3)
 	for idol: IdolState in _player.field.idols:
 		assert_eq(idol.god, &"")
+
+
+func test_neutral_beacon_gives_neighbors_range() -> void:
+	var beacon: TowerState = _player.field.add_tower(_tower(&"beacon"), Vector2i(2, 4), 0)
+	var shooter: TowerState = _player.field.add_tower(_tower(&"spark"), Vector2i(2, 3), 0)
+	_player.field.refresh_bonuses()
+	assert_gt(shooter.bonus_range_milli, 0, "маяк даёт соседям дальность")
+	assert_eq(beacon.bonus_range_milli, 0, "поддержка сама дальность не получает")
 
 
 func test_first_two_shop_slots_are_attackers_even_with_rites() -> void:
@@ -62,6 +70,14 @@ func test_first_two_shop_slots_are_attackers_even_with_rites() -> void:
 		assert_not_null(_player.shop.offers[1])
 		assert_true(_player.shop.offers[0].attacks)
 		assert_true(_player.shop.offers[1].attacks)
+
+
+func test_last_shop_slot_is_always_a_spell() -> void:
+	for i: int in 30:
+		_player.shop.roll(_player.rng)
+		var last: int = _player.shop.offers.size() - 1
+		assert_not_null(_player.shop.get_rite(last), "последний слот витрины — заклинание")
+		assert_null(_player.shop.offers[last])
 
 
 func test_reserve_purchase_pays_without_occupying_field() -> void:
@@ -89,12 +105,12 @@ func test_transfer_keeps_identity_level_and_paid_cost() -> void:
 	_player.buy_to_reserve(0)
 	var tower: TowerState = _player.reserve[0]
 	tower.level = 2
-	tower.enchantment = RiteData.Effect.ENCHANT_DAMAGE
+	tower.enchantments.append(int(RiteData.Effect.ENCHANT_DAMAGE))
 	assert_eq(_player.place_from_reserve(tower.id, Vector2i(2, 4), 0), "")
 	assert_eq(_player.store_tower(tower.id), "")
 	assert_same(_player.reserve[0], tower)
 	assert_eq(tower.level, 2)
-	assert_eq(tower.enchantment, int(RiteData.Effect.ENCHANT_DAMAGE))
+	assert_true(tower.has_enchantment(int(RiteData.Effect.ENCHANT_DAMAGE)))
 	assert_eq(_player.get_sell_price(tower), 6)
 	_player.end_prep()
 	assert_eq(_player.get_sell_price(tower), 2)
@@ -115,11 +131,11 @@ func test_merging_across_reserve_and_field_preserves_enchantment() -> void:
 	_offer(data)
 	_player.buy_to_reserve(0)
 	var source: TowerState = _player.reserve[0]
-	source.enchantment = RiteData.Effect.ENCHANT_RATE
+	source.enchantments.append(int(RiteData.Effect.ENCHANT_RATE))
 	assert_eq(_player.merge_towers(source.id, target.id), "")
 	assert_true(_player.reserve.is_empty())
 	assert_eq(target.level, 2)
-	assert_eq(target.enchantment, int(RiteData.Effect.ENCHANT_RATE))
+	assert_true(target.has_enchantment(int(RiteData.Effect.ENCHANT_RATE)))
 
 
 func test_idol_rite_dedicates_once_and_rejects_other_god() -> void:
@@ -151,7 +167,7 @@ func test_idol_chance_cannot_be_bought_past_cap() -> void:
 	assert_eq(_player.field.idols[0].chain_chance_bonus, 20)
 
 
-func test_tower_rite_can_enchant_reserved_tower_only_once() -> void:
+func test_tower_rite_stacks_different_charms_but_rejects_duplicate() -> void:
 	_offer(_tower(&"spark"))
 	_player.buy_to_reserve(0)
 	var tower: TowerState = _player.reserve[0]
@@ -159,8 +175,19 @@ func test_tower_rite_can_enchant_reserved_tower_only_once() -> void:
 	assert_eq(_player.buy_rite(2, tower.id), "")
 	assert_eq(tower.invested_total, 12)
 	_offer_rite(&"enchant_rate")
-	assert_ne(_player.buy_rite(2, tower.id), "")
-	assert_eq(tower.enchantment, int(RiteData.Effect.ENCHANT_DAMAGE))
+	assert_eq(_player.buy_rite(2, tower.id), "", "разные чары складываются")
+	assert_true(tower.has_enchantment(int(RiteData.Effect.ENCHANT_DAMAGE)))
+	assert_true(tower.has_enchantment(int(RiteData.Effect.ENCHANT_RATE)))
+	_offer_rite(&"enchant_damage")
+	assert_ne(_player.buy_rite(2, tower.id), "", "повторная чара отклоняется")
+
+
+func test_targets_charm_adds_one_target_to_attacker() -> void:
+	var tower: TowerState = _player.field.add_tower(_tower(&"spark"), Vector2i(2, 4), 0)
+	assert_eq(_player.field.get_tower_targets(tower), tower.data.targets_per_shot)
+	_offer_rite(&"enchant_targets")
+	assert_eq(_player.buy_rite(2, tower.id), "")
+	assert_eq(_player.field.get_tower_targets(tower), tower.data.targets_per_shot + 1)
 
 
 func test_awakening_requires_max_level_and_existing_enchantment() -> void:
@@ -168,7 +195,7 @@ func test_awakening_requires_max_level_and_existing_enchantment() -> void:
 	_offer_rite(&"awaken_focus")
 	assert_ne(_player.buy_rite(2, tower.id), "")
 	tower.level = 3
-	tower.enchantment = RiteData.Effect.ENCHANT_DAMAGE
+	tower.enchantments.append(int(RiteData.Effect.ENCHANT_DAMAGE))
 	assert_eq(_player.buy_rite(2, tower.id), "")
 	_offer_rite(&"awaken_wide")
 	assert_ne(_player.buy_rite(2, tower.id), "")
@@ -212,6 +239,16 @@ func test_wind_against_path_slows_and_along_path_speeds() -> void:
 	assert_gt(mob.current_speed(), mob.speed)
 
 
+func test_wind_pulses_off_after_on_ticks() -> void:
+	var tower: TowerState = _player.field.add_tower(_tower(&"wind"), Vector2i(2, 4), 2)
+	var mob: MobState = _mob(2000)
+	DivineCombat.apply_wind(_player.field, mob)
+	assert_gt(mob.wind_slow_percent, 0, "в начале цикла поток дует")
+	tower.wind_cycle_ticks = tower.data.wind_on_ticks
+	DivineCombat.apply_wind(_player.field, mob)
+	assert_eq(mob.wind_slow_percent, 0, "в паузе поток не действует")
+
+
 func test_wind_does_not_stack_with_same_direction() -> void:
 	_player.field.add_tower(_tower(&"wind"), Vector2i(2, 4), 2)
 	_player.field.add_tower(_tower(&"wind"), Vector2i(2, 3), 2)
@@ -235,10 +272,10 @@ func test_ghost_copies_idols_and_enchantments_independently() -> void:
 	_offer_rite(&"perun_charge")
 	_player.buy_rite(2, 0)
 	var tower: TowerState = _player.field.add_tower(_tower(&"spark"), Vector2i(2, 4), 0)
-	tower.enchantment = RiteData.Effect.ENCHANT_RATE
+	tower.enchantments.append(int(RiteData.Effect.ENCHANT_RATE))
 	var ghost: FieldState = FieldState.new(_config)
 	ghost.copy_towers_from(_player.field)
-	assert_eq(ghost.towers[0].enchantment, int(RiteData.Effect.ENCHANT_RATE))
+	assert_true(ghost.towers[0].has_enchantment(int(RiteData.Effect.ENCHANT_RATE)))
 	assert_eq(ghost.idols[0].chain_chance_bonus, 10)
 	ghost.idols[0].chain_chance_bonus = 0
 	assert_eq(_player.field.idols[0].chain_chance_bonus, 10)

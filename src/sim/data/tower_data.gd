@@ -25,6 +25,9 @@ enum TargetPriority { FRONT, REACTION }
 @export var wind_length_milli: int = 0
 @export var wind_half_width_milli: int = 1500
 @export var wind_power_percent: int = 30
+## Импульсный ветер: дует wind_on_ticks, затем wind_off_ticks перерыв. 0/0 — постоянный поток.
+@export var wind_on_ticks: int = 0
+@export var wind_off_ticks: int = 0
 ## Рост чистого контроля с обычным уровнем; у стреляющего столба эти прибавки нулевые.
 @export var wind_power_per_level: int = 0
 @export var wind_length_per_level_milli: int = 0
@@ -54,6 +57,8 @@ enum TargetPriority { FRONT, REACTION }
 @export var shop_weight: int = 10
 ## Достаёт ли летающих (капкан и богатырь — нет).
 @export var can_hit_flying: bool = true
+## Пробивание брони: сколько брони моба игнорирует каждый удар (0 — броня действует полностью).
+@export var armor_pierce: int = 0
 
 @export_group("Соседям и доход")
 ## Бонусы всем соседям (касаются стороной клетки). Растут с уровнем, как урон: ×1 / ×2 / ×4.

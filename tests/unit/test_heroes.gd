@@ -261,6 +261,28 @@ func test_skomorokh_wheel_changes_something_or_nothing() -> void:
 	assert_true(player.hero_message.begins_with("Ярмарка"))
 
 
+func test_baba_yaga_brew_cost_is_fair() -> void:
+	var hero: HeroData = SimFixtures.find_hero(_config, &"baba_yaga")
+	assert_eq(hero.skill.cost, 6, "варево по цене слияния, а не дороже")
+
+
+func test_skomorokh_wheel_worst_outcome_still_positive() -> void:
+	var hero: HeroData = SimFixtures.find_hero(_config, &"skomorokh")
+	var wheel: FairWheelEffect = hero.skill.effect as FairWheelEffect
+	assert_true(wheel.consolation_gold >= hero.skill.cost, "худший исход не в убыток")
+	assert_true(wheel.gold >= hero.skill.cost, "золотой исход не в убыток")
+
+
+func test_skomorokh_bot_skips_wheel_when_poor() -> void:
+	var sim: MatchSim = SimFixtures.make_hero_match(_config, &"skomorokh")
+	var player: PlayerState = sim.players[0]
+	var wheel: FairWheelEffect = player.hero.skill.effect as FairWheelEffect
+	player.gold = 10
+	assert_false(wheel.bot_wants_to_use(sim, player), "не азарт на последние деньги")
+	player.gold = 50
+	assert_true(wheel.bot_wants_to_use(sim, player), "с запасом можно")
+
+
 func test_hero_match_is_deterministic() -> void:
 	assert_eq(_run_bot_match(4242), _run_bot_match(4242))
 

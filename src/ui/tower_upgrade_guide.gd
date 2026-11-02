@@ -11,9 +11,12 @@ static func effect_name(config: GameConfig, effect: int) -> String:
 	return "нет"
 
 
-## Два слота видны и на поле, и в резерве.
+## Чары и пробуждение видны и на поле, и в резерве.
 static func slots(config: GameConfig, tower: TowerState) -> String:
-	return "Чары: %s · Пробуждение: %s" % [effect_name(config, tower.enchantment),
+	var names: PackedStringArray = []
+	for effect: int in tower.enchantments:
+		names.append(effect_name(config, effect))
+	return "Чары: %s · Пробуждение: %s" % [", ".join(names) if not names.is_empty() else "нет",
 			effect_name(config, tower.awakening)]
 
 
@@ -24,7 +27,7 @@ static func next_step(config: GameConfig, player: PlayerState, tower: TowerState
 	var missing: PackedStringArray = []
 	if tower.level < config.max_tower_level:
 		missing.append("слияние до ур.%d" % config.max_tower_level)
-	if tower.enchantment < 0:
+	if tower.enchantments.is_empty():
 		missing.append("чары" if player.shop.level >= 2 else "чары из магазина 2")
 	if player.shop.level < config.max_shop_level:
 		missing.append("магазин %d" % config.max_shop_level)

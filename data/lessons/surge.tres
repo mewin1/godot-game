@@ -6,8 +6,8 @@
 [resource]
 script = ExtResource("1")
 id = &"surge"
-title = "Разгон"
-explanation = "Мокрота в потоке: толчок вперёд и разнос мокроты. Попутный ветер ускоряет!"
+title = "Откат"
+explanation = "Мокрота в потоке: толчок назад и разнос мокроты. Вода отталкивает!"
 sources = Array[ExtResource("tower_type")]([ExtResource("source_0")])
 finisher = ExtResource("finisher")
 reaction_id = &"surge"

@@ -10,16 +10,13 @@ var _name_label: Label = Label.new()
 var _portrait: Texture2D
 var _price: int
 var _title: String
+var _damage: int = 0
 
 
-## Название берётся из действующего улучшения. Полное описание остаётся в подсказке.
-func setup(upgrade: ArmyUpgradeData) -> void:
-	_title = upgrade.display_name
-	if upgrade.mob != null:
-		_portrait = VisualCatalog.get_default().get_mob(upgrade.mob.id).texture
+## Настройка кнопки один раз; юнит подставляется позже через show_upgrade.
+func setup() -> void:
 	size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	focus_mode = Control.FOCUS_NONE
-	_name_label.text = _title
 	_name_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_name_label.max_lines_visible = 2
 	_name_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
@@ -29,6 +26,19 @@ func setup(upgrade: ArmyUpgradeData) -> void:
 	_name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_name_label)
 	resized.connect(_layout_name)
+
+
+## Обновляет карточку под конкретное улучшение армии (название и портрет).
+func show_upgrade(upgrade: ArmyUpgradeData) -> void:
+	_title = upgrade.display_name
+	_portrait = null
+	_damage = 0
+	if upgrade.mob != null:
+		_portrait = VisualCatalog.get_default().get_mob(upgrade.mob.id).texture
+		_damage = upgrade.mob.breach_damage
+	_name_label.text = _title
+	_layout_name()
+	queue_redraw()
 
 
 ## В плотной раскладке изображения уменьшаются, подписи по-прежнему переносятся.
@@ -50,7 +60,7 @@ func _layout_name() -> void:
 	var left: float = 7 + _art_width()
 	_name_label.position = Vector2(left, CONTENT_MARGIN)
 	_name_label.size = Vector2(maxf(1, size.x - left - CONTENT_MARGIN),
-			maxf(1, size.y - PRICE_HEIGHT - CONTENT_MARGIN))
+			maxf(1, size.y - PRICE_HEIGHT - CONTENT_MARGIN - 14))
 	_name_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 
 
@@ -63,6 +73,10 @@ func _draw() -> void:
 		draw_texture_rect(_portrait, Rect2(at, dims), false,
 				Color("c3cbd3") if disabled else Color.WHITE)
 	var x_pos: float = 7 + art_width
+	if _damage > 0:
+		draw_string(get_theme_default_font(), Vector2(x_pos, size.y - PRICE_HEIGHT - 2),
+				"Урон %d" % _damage, HORIZONTAL_ALIGNMENT_LEFT, size.x - x_pos - 6, 9,
+				Color("d8c8a8"))
 	draw_texture_rect(COIN, Rect2(x_pos, size.y - 20, 15, 15), false)
 	draw_string(get_theme_default_font(), Vector2(x_pos + 19, size.y - 7),
 			str(_price), HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color("e6cea1"))

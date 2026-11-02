@@ -608,7 +608,10 @@ func _draw_combo_coverage() -> void:
 	hasher.add(field.path_length)
 	for tower: TowerState in field.towers:
 		hasher.add_many([tower.id, tower.anchor.x, tower.anchor.y, tower.rotation,
-				tower.level, tower.enchantment, tower.awakening])
+				tower.level, tower.awakening, tower.enchantments.size()])
+		var enchants: Array[int] = tower.enchantments.duplicate()
+		enchants.sort()
+		hasher.add_many(enchants)
 	for idol: IdolState in field.idols:
 		idol.add_to_hash(hasher)
 	if hasher.value != _combo_cache_key:
