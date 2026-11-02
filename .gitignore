@@ -46,3 +46,6 @@ desktop.ini
 # --- Blender ---
 # Автобэкапы Blender при сохранении
 *.blend1
+
+# --- Python ---
+__pycache__/

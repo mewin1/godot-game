@@ -19,7 +19,9 @@ from mathutils import Vector, kdtree
 ROOT = Path('/home/d0nco/godot_game')
 sys.path.insert(0, str(ROOT / 'tools/blender'))
 import forest_dressing  # noqa: E402  (tree meshes shared with v1 work)
+import forest_ground_texture  # noqa: E402
 importlib.reload(forest_dressing)
+importlib.reload(forest_ground_texture)
 
 SCENE_NAME = 'Zastava_Forest_Arena'
 CELL = 2.0
@@ -91,14 +93,14 @@ COLOR_LAYER = 'Arena_Paint'
 terrain_mat = vertex_color_material('V2_Terrain_Paint', COLOR_LAYER)
 stone = [material('V2_Basalt_%02d' % i, c) for i, c in enumerate([
     (.15, .19, .25), (.19, .23, .29), (.23, .27, .32), (.26, .30, .34), (.17, .21, .27)])]
-valley_mat = material('V2_Valley_Peat', (.06, .115, .15))
+valley_mat = material('V2_Valley_Peat', (.03, .06, .075))
 wood = material('V2_Old_oak', (.17, .10, .055))
 bark = material('V2_Birch_bark', (.61, .64, .56))
 iron = material('V2_Forged_iron', (.095, .105, .105))
 flame = material('V2_Amber_glass', (1, .33, .045), 5)
 carving = material('V2_Idol_carvings', (.45, .32, .14))
 needles = [material('V2_Fir_%02d' % i, c) for i, c in enumerate([
-    (.022, .075, .08), (.03, .10, .10), (.045, .13, .12), (.06, .16, .14)])]
+    (.018, .062, .066), (.025, .085, .085), (.038, .11, .10), (.05, .135, .12)])]
 gold_leaves = [material('V2_Birch_leaf_%02d' % i, c) for i, c in enumerate([
     (.50, .30, .05), (.64, .41, .07), (.76, .52, .11)])]
 
@@ -198,13 +200,6 @@ class PaintBatch(Batch):
             flat.extend((c[0], c[1], c[2], 1.0))
         attr.data.foreach_set('color', flat)
         return obj
-
-
-def hash01(i, j, salt=0):
-    """Stable pseudo-random value in [0, 1) for integer grid coordinates."""
-    v = (i * 73856093) ^ (j * 19349663) ^ (salt * 83492791)
-    v = (v ^ (v >> 13)) * 1274126177
-    return ((v ^ (v >> 16)) & 0xFFFF) / 65536.0
 
 
 SLATE = [(.14, .17, .22), (.18, .21, .27), (.23, .26, .31), (.27, .30, .33), (.22, .21, .21)]
@@ -518,56 +513,52 @@ def noise2(x, y):
             + .24 * math.cos(x * 2.64 + y * 1.51))
 
 
-def turf(x, y, i=0, j=0):
-    pasture, lichen, dry = (.15, .235, .07), (.27, .34, .12), (.40, .37, .15)
-    hum = noise2(x, y)
-    base = mix(pasture, lichen, .45 + .5 * hum)
-    # Sparse sun-dried patches and dark clover, broken up per vertex.
-    base = mix(base, dry, .45 * smoothstep(.55, .95, noise2(x * .7 + 13, y * .7 - 5)))
-    base = mix(base, (.09, .16, .06), .35 * smoothstep(.5, .9, noise2(y * 1.3 - 2, x * 1.1 + 7)))
-    jitter = .9 + .2 * hash01(i, j, 3)
-    return tuple(c * jitter for c in base)
+KIND_CODES = {'valley': forest_ground_texture.KIND_VALLEY, 'road': forest_ground_texture.KIND_ROAD,
+              'top': forest_ground_texture.KIND_TOP, 'spur': forest_ground_texture.KIND_SPUR}
+GROUND_IMAGE = ROOT / 'assets/arenas/forest/ground_albedo.jpg'
+GROUND_SIZE = (2560, 4096)          # ~100 px per metre over the 26 x 40 m terrain grid
 
 
-def paint(i, j):
-    x, y = X0 + i * STEP, Y0 + j * STEP
-    z = zs[j][i]
+def grid_slope(i, j):
     gx = (zs[j][min(nx, i + 1)] - zs[j][max(0, i - 1)]) / (2 * STEP)
     gy = (zs[min(ny, j + 1)][i] - zs[max(0, j - 1)][i]) / (2 * STEP)
-    slope = math.hypot(gx, gy)
-    kind = kinds[j][i]
-    rock = mix(SLATE[0], SLATE[3], .5 + .3 * math.sin(z * 3.1 + x * .4) + .15 * math.sin(y * 1.9))
-    if kind == 'valley':
-        color = mix((.045, .09, .11), (.07, .12, .12), .5 + .5 * math.sin(x * .7 + y * .5))
-        color = mix(color, (.10, .14, .07), .4 * smoothstep(.3, .9, noise2(x * .4, y * .4)))
-    elif kind == 'road' or kind == 'spur':
-        _, d, _ = nearest(x, y)
-        if kind == 'spur' and d > half_width(0) + .1:
-            # Ramp banks: dark moss and peat, not bare rock.
-            return mix((.13, .17, .08), (.06, .10, .12), smoothstep(1.4, 3.4, d))
-        dirt = mix((.37, .275, .17), (.45, .34, .21), .5 + .5 * math.sin(x * 3.1 + y * 2.3))
-        # Two trodden ruts, compacted crown, and loose gravel speckles.
-        ruts = math.exp(-((abs(d) - .62) / .16) ** 2)
-        dirt = mix(dirt, (.25, .19, .13), .42 * ruts)
-        dirt = mix(dirt, (.45, .38, .27), .25 * math.exp(-(d / .25) ** 2))
-        speck = hash01(i, j, 1)
-        if speck > .86:
-            dirt = mix(dirt, (.48, .45, .40), .55)
-        elif speck < .1:
-            dirt = mix(dirt, (.20, .15, .10), .5)
-        verge = smoothstep(1.05, 1.42, d)
-        color = mix(dirt, turf(x, y, i, j), verge)
-        # A ragged strip of grass creeps onto the road edge.
-        if .9 < d < 1.3 and hash01(i, j, 2) > .55:
-            color = mix(color, turf(x, y, i, j), .7)
-    else:
-        color = turf(x, y, i, j)
-    color = mix(color, rock, smoothstep(.9, 2.2, slope))
-    occlusion = 1 - .5 * smoothstep(.05, 1.1, cavity[j][i])
-    return tuple(c * occlusion for c in color)
+    return math.hypot(gx, gy)
 
 
-tf = Batch('Arena_Terrain', [terrain_mat], terrain_c)
+# The albedo texture carries all ground detail; vertex colours keep only the occlusion.
+ground_pixels = forest_ground_texture.build_image(
+    GROUND_SIZE[0], GROUND_SIZE[1], (X0, X1, Y0, Y1),
+    [[KIND_CODES[k] for k in row] for row in kinds],
+    [[grid_slope(i, j) for i in range(nx + 1)] for j in range(ny + 1)], STEP)
+old_image = bpy.data.images.get('Arena_Ground_Albedo')
+if old_image:
+    bpy.data.images.remove(old_image)
+ground_image = bpy.data.images.new('Arena_Ground_Albedo', GROUND_SIZE[0], GROUND_SIZE[1], alpha=False)
+ground_image.pixels.foreach_set(ground_pixels.ravel())
+ground_image.filepath_raw = str(GROUND_IMAGE)
+ground_image.file_format = 'JPEG'
+ground_image.save(quality=92)
+ground_image.source = 'FILE'
+ground_image.reload()
+
+ground_mat = material('V2_Ground', (1, 1, 1))
+nodes, links = ground_mat.node_tree.nodes, ground_mat.node_tree.links
+ground_bsdf = next(n for n in nodes if n.type == 'BSDF_PRINCIPLED')
+ground_bsdf.inputs['Roughness'].default_value = .92
+tex_node = nodes.new('ShaderNodeTexImage')
+tex_node.image = ground_image
+tex_node.interpolation = 'Cubic'
+shade_node = nodes.new('ShaderNodeVertexColor')
+shade_node.layer_name = COLOR_LAYER
+multiply = nodes.new('ShaderNodeMix')
+multiply.data_type = 'RGBA'
+multiply.blend_type = 'MULTIPLY'
+multiply.inputs['Factor'].default_value = 1.0
+links.new(tex_node.outputs['Color'], multiply.inputs['A'])
+links.new(shade_node.outputs['Color'], multiply.inputs['B'])
+links.new(multiply.outputs['Result'], ground_bsdf.inputs['Base Color'])
+
+tf = Batch('Arena_Terrain', [ground_mat], terrain_c)
 tf.vertices = [(X0 + i * STEP, Y0 + j * STEP, zs[j][i]) for j in range(ny + 1) for i in range(nx + 1)]
 stride = nx + 1
 for j in range(ny):
@@ -585,8 +576,16 @@ attr = terrain_obj.data.color_attributes.new(name=COLOR_LAYER, type='BYTE_COLOR'
 colors = []
 for j in range(ny + 1):
     for i in range(nx + 1):
-        colors.extend((*paint(i, j), 1.0))
+        occlusion = 1 - .55 * smoothstep(.05, 1.1, cavity[j][i])
+        colors.extend((occlusion, occlusion, occlusion, 1.0))
 attr.data.foreach_set('color', colors)
+# Top-down UVs: the image covers the whole terrain grid.
+uv_layer = terrain_obj.data.uv_layers.new(name='UVMap')
+loop_uvs = []
+for loop in terrain_obj.data.loops:
+    vx, vy, _ = tf.vertices[loop.vertex_index]
+    loop_uvs.extend(((vx - X0) / (X1 - X0), (vy - Y0) / (Y1 - Y0)))
+uv_layer.data.foreach_set('uv', loop_uvs)
 for poly in terrain_obj.data.polygons:
     poly.use_smooth = poly.normal.z > .75
 
@@ -1034,7 +1033,7 @@ scene.render.image_settings.file_format = 'PNG'
 scene.render.filepath = str(ROOT / 'output/forest_arena/blender_preview.png')
 scene.view_settings.view_transform = 'AgX'
 scene.view_settings.look = 'AgX - Medium High Contrast'
-scene.eevee.use_raytracing = True
+scene.eevee.use_raytracing = False   # screen-space tracing leaves bright rectangles on the road
 scene.eevee.taa_render_samples = 96
 scene['reference'] = 'User image #3 + author markup, 2026-11-02. v2: solid plateau, climbing road.'
 scene['grid_mapping'] = 'Godot (x,z) = Blender (x,-y). Cell=2m; centre x=1+2*gx, y=19-2*gy.'

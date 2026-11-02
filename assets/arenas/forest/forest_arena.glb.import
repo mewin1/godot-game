@@ -41,6 +41,11 @@ materials/extract_format=0
 materials/extract_path=""
 _subresources={
 "materials": {
+"V2_Ground": {
+"use_external/enabled": true,
+"use_external/fallback_path": "res://assets/arenas/forest/terrain_ground.tres",
+"use_external/path": "res://assets/arenas/forest/terrain_ground.tres"
+},
 "V2_Terrain_Paint": {
 "use_external/enabled": true,
 "use_external/fallback_path": "res://assets/arenas/forest/terrain_paint.tres",
