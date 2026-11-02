@@ -85,11 +85,14 @@ func _build_post(paint: Color, accent: Color, height: float) -> void:
 				Vector3(side * 0.34, 0.38 + height * 0.3, 0), Vector3(0, 0, side * -0.38))
 	ArenaMaterials3D.part(_model, ArenaMaterials3D.box(Vector3(0.9, 0.1, 0.1)), wood,
 			Vector3(0, 0.38 + height * 0.72, 0))
-	ArenaMaterials3D.part(_model, ArenaMaterials3D.box(Vector3(0.5, 0.5, 0.04)),
-			ArenaMaterials3D.solid(paint), Vector3(0.0, 0.38 + height * 0.5, 0.18))
-	ArenaMaterials3D.part(_model, ArenaMaterials3D.cylinder(0.42, 0.0, 0.42, 6),
-			ArenaMaterials3D.solid(paint), Vector3(0, 0.38 + height + 0.12, 0))
-	_add_accent(ArenaMaterials3D.sphere(0.14, 8, 4), accent, 0.38 + height + 0.55)
+	# Флажок бога на перекладине и маленькая шапка — пост, а не домик.
+	ArenaMaterials3D.part(_model, ArenaMaterials3D.box(Vector3(0.36, 0.5, 0.04)),
+			ArenaMaterials3D.solid(paint), Vector3(0.26, 0.38 + height * 0.5, 0.0))
+	ArenaMaterials3D.part(_model, ArenaMaterials3D.cylinder(0.26, 0.0, 0.3, 6),
+			ArenaMaterials3D.solid(paint), Vector3(0, 0.38 + height + 0.1, 0))
+	ArenaMaterials3D.part(_model, ArenaMaterials3D.cylinder(0.2, 0.2, 0.08, 6),
+			ArenaMaterials3D.solid(ArenaMaterials3D.DARK_WOOD), Vector3(0, 0.38 + height - 0.05, 0))
+	_add_accent(ArenaMaterials3D.sphere(0.14, 8, 4), accent, 0.38 + height + 0.45)
 
 
 ## Тир 2: каменная башня с окрашенным поясом, зубцами и светящимся окном.
