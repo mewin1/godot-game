@@ -277,6 +277,9 @@ func _check_field_mapping(view: FieldView) -> void:
 	for y: int in view.field.layout.height:
 		for x: int in view.field.layout.width:
 			var grid_cell: Vector2i = Vector2i(x, y)
+			# На 3D-арене дорогу местами заслоняют площадки мест; ставить на неё нельзя.
+			if view.use_arena_3d and view.field.layout.path_cells.has(grid_cell):
+				continue
 			var screen_point: Vector2 = view._cell_rect(grid_cell).get_center()
 			assert(view._cell_at(screen_point) == grid_cell,
 					"Обратное преобразование клетки %s при окне %s" % [grid_cell, root.size])

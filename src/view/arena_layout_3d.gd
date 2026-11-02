@@ -6,12 +6,17 @@ extends RefCounted
 
 const LAYOUT_PATH: String = "res://assets/arenas/forest/arena_layout.json"
 const MILLI: float = 1000.0
+## Площадка ставится чуть выше самой высокой террасы своей полосы.
+const DECK_LIFT: float = 0.15
 
 static var _shared: ArenaLayout3D
 
 ## Метров на клетку.
 var cell_m: float = 2.0
 var _terraces: Dictionary[Vector2i, float] = {}
+## Ровная высота площадки: все места одной полосы между дорогами — на одном уровне,
+## чтобы фигура на 2+ клетки стояла ровно.
+var _decks: Dictionary[Vector2i, float] = {}
 ## Точки дороги в координатах Godot (y — высота) и длина вдоль дороги от входа на поле.
 var _road_points: PackedVector3Array = PackedVector3Array()
 var _road_lengths: PackedFloat32Array = PackedFloat32Array()
@@ -35,12 +40,24 @@ func cell_center(cell: Vector2i) -> Vector3:
 
 ## Высота верха клетки: терраса или дорога у центра клетки.
 func cell_height(cell: Vector2i) -> float:
-	if _terraces.has(cell):
-		return _terraces[cell]
+	if _decks.has(cell):
+		return _decks[cell]
 	var index: int = _path_cells.find(cell)
 	if index >= 0:
 		return road_point(_path_lengths[index]).y
 	return 0.0
+
+
+## Высота склона под площадкой (низ каменного основания).
+func terrain_height(cell: Vector2i) -> float:
+	return _terraces.get(cell, 0.0)
+
+
+## Все клетки мест (не дорога).
+func deck_cells() -> Array[Vector2i]:
+	var cells: Array[Vector2i] = []
+	cells.assign(_decks.keys())
+	return cells
 
 
 ## Точка поля (тысячные клетки) на поверхности арены.
@@ -119,6 +136,31 @@ func _load(board: BoardLayout) -> void:
 		_road_points.append(Vector3(x, z, -y))
 		_road_lengths.append(length)
 	_match_path_to_road()
+	_level_decks()
+
+
+## Связные группы мест (между дорогами) выравниваются по самой высокой террасе группы.
+func _level_decks() -> void:
+	var left: Dictionary[Vector2i, bool] = {}
+	for cell: Vector2i in _terraces:
+		left[cell] = true
+	while not left.is_empty():
+		var group: Array[Vector2i] = []
+		var first: Vector2i = left.keys()[0]
+		var stack: Array[Vector2i] = [first]
+		var top: float = -INF
+		while not stack.is_empty():
+			var cell: Vector2i = stack.pop_back()
+			if not left.has(cell):
+				continue
+			left.erase(cell)
+			group.append(cell)
+			top = maxf(top, _terraces[cell])
+			for step: Vector2i in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
+				if left.has(cell + step):
+					stack.append(cell + step)
+		for cell: Vector2i in group:
+			_decks[cell] = top + DECK_LIFT
 
 
 ## Центры клеток пути → ближайшие точки дороги, только вперёд (развороты не путают).

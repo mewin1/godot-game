@@ -12,6 +12,9 @@ const SKIN: Color = Color(0.86, 0.68, 0.52)
 static var _solid: Dictionary[Color, StandardMaterial3D] = {}
 static var _glow: Dictionary[Color, StandardMaterial3D] = {}
 static var _flat: Dictionary[Color, StandardMaterial3D] = {}
+static var _stone: Dictionary[Color, StandardMaterial3D] = {}
+static var _grain: NoiseTexture2D
+static var _relief: NoiseTexture2D
 
 
 ## Матовый материал (дерево, камень, окраска).
@@ -22,6 +25,48 @@ static func solid(color: Color, roughness: float = 0.85) -> StandardMaterial3D:
 		material.roughness = roughness
 		_solid[color] = material
 	return _solid[color]
+
+
+## Камень с фактурой: процедурный шум как зерно цвета и рельеф (трипланарно, без UV).
+static func stone(color: Color) -> StandardMaterial3D:
+	if not _stone.has(color):
+		if _grain == null:
+			_grain = _noise_texture(false)
+			_relief = _noise_texture(true)
+		var material: StandardMaterial3D = StandardMaterial3D.new()
+		material.albedo_color = color
+		material.albedo_texture = _grain
+		material.normal_enabled = true
+		material.normal_texture = _relief
+		material.normal_scale = 0.9
+		material.roughness = 0.92
+		material.uv1_triplanar = true
+		material.uv1_scale = Vector3.ONE * 0.55
+		_stone[color] = material
+	return _stone[color]
+
+
+static func _noise_texture(as_normal: bool) -> NoiseTexture2D:
+	var noise: FastNoiseLite = FastNoiseLite.new()
+	noise.noise_type = FastNoiseLite.TYPE_CELLULAR
+	noise.frequency = 0.035
+	noise.fractal_type = FastNoiseLite.FRACTAL_FBM
+	noise.fractal_octaves = 3
+	noise.seed = 7
+	var texture: NoiseTexture2D = NoiseTexture2D.new()
+	texture.width = 256
+	texture.height = 256
+	texture.seamless = true
+	texture.noise = noise
+	texture.as_normal_map = as_normal
+	texture.bump_strength = 6.0
+	if not as_normal:
+		# Светлое зерно: цвет плиты остаётся главным, шум только оживляет.
+		var ramp: Gradient = Gradient.new()
+		ramp.set_color(0, Color(0.72, 0.72, 0.72))
+		ramp.set_color(1, Color(1.05, 1.04, 1.02))
+		texture.color_ramp = ramp
+	return texture
 
 
 ## Светящийся акцент (кристалл, огонь, глаза). Яркость выше 1 даёт свечение (glow).

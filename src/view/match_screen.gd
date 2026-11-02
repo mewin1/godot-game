@@ -159,9 +159,14 @@ func _build_halves() -> void:
 	left_column.offset_right = -8
 	left_column.offset_bottom = -12
 	_shop_panel = ShopPanel.new()
-	_shop_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	# Лавка по содержимому, без пустой дыры; резерв прижат к низу.
+	_shop_panel.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	_shop_panel.command_requested.connect(_on_command_requested)
 	left_column.add_child(_shop_panel)
+	var left_gap: Control = Control.new()
+	left_gap.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	left_gap.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	left_column.add_child(left_gap)
 	_inventory = InventoryBar.new()
 	_inventory.command_requested.connect(_on_command_requested)
 	_inventory.tower_selected.connect(_on_reserve_tower_selected)
@@ -187,13 +192,35 @@ func _build_halves() -> void:
 	_my_view.command_requested.connect(_on_command_requested)
 	_my_view.tower_tapped.connect(_on_my_view_tower_tapped)
 	_my_view.sound_requested.connect(_on_view_sound_requested)
+	# Нижний ряд под полем: стеклянный блок идолов слева и карточка героя справа.
+	var bottom_margin: MarginContainer = MarginContainer.new()
+	for side: String in ["margin_left", "margin_right", "margin_bottom"]:
+		bottom_margin.add_theme_constant_override(side, 12)
+	right.add_child(bottom_margin)
 	var bottom_row: HBoxContainer = HBoxContainer.new()
-	right.add_child(bottom_row)
+	bottom_row.add_theme_constant_override("separation", 12)
+	bottom_margin.add_child(bottom_row)
+	var idol_dock: PanelContainer = PanelContainer.new()
+	idol_dock.add_theme_stylebox_override("panel", DuskTheme.glass(0.62, 6))
+	bottom_row.add_child(idol_dock)
+	var idol_row: HBoxContainer = HBoxContainer.new()
+	idol_row.add_theme_constant_override("separation", 8)
+	idol_dock.add_child(idol_row)
+	var idol_title: Label = Label.new()
+	idol_title.text = "ИДОЛЫ"
+	idol_title.add_theme_font_size_override("font_size", 13)
+	idol_title.add_theme_color_override("font_color", Color("c9b48a"))
+	idol_title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	idol_title.custom_minimum_size.x = 58
+	idol_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	idol_row.add_child(idol_title)
 	var idols: HBoxContainer = HBoxContainer.new()
-	idols.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	idols.alignment = BoxContainer.ALIGNMENT_CENTER
 	idols.add_theme_constant_override("separation", 8)
-	bottom_row.add_child(idols)
+	idol_row.add_child(idols)
+	var spacer: Control = Control.new()
+	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bottom_row.add_child(spacer)
 	for i: int in 3:
 		var slot: IdolSlot = IdolSlot.new()
 		slot.slot_index = i
@@ -207,7 +234,7 @@ func _build_halves() -> void:
 	hero_dock.custom_minimum_size.x = 310
 	bottom_row.add_child(hero_dock)
 	var hero_row: HBoxContainer = HBoxContainer.new()
-	hero_row.add_theme_constant_override("separation", 5)
+	hero_row.add_theme_constant_override("separation", 10)
 	hero_dock.add_child(hero_row)
 	_hud.move_hero_controls(hero_row)
 

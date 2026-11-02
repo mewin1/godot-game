@@ -7,8 +7,9 @@ background_mode = 1
 background_color = Color(0.03, 0.055, 0.1, 1)
 ambient_light_source = 2
 ambient_light_color = Color(0.46, 0.5, 0.6, 1)
-ambient_light_energy = 1.15
+ambient_light_energy = 1.3
 tonemap_mode = 4
+tonemap_exposure = 1.12
 fog_enabled = true
 fog_light_color = Color(0.07, 0.11, 0.19, 1)
 fog_light_energy = 1.0
@@ -19,6 +20,13 @@ glow_enabled = true
 glow_intensity = 0.6
 glow_bloom = 0.0
 glow_hdr_threshold = 1.2
+ssao_enabled = true
+ssao_radius = 1.6
+ssao_intensity = 2.2
+ssao_power = 1.4
+ssil_enabled = true
+ssil_radius = 4.0
+ssil_intensity = 0.8
 
 [node name="MatchArena3D" type="Node3D"]
 

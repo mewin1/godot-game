@@ -105,13 +105,17 @@ func _init() -> void:
 	_offer_grid.add_theme_constant_override("h_separation", 5)
 	_offer_grid.add_theme_constant_override("v_separation", 5)
 	box.add_child(_offer_grid)
+	# Заголовок армии и реролл — одной строкой, как у лавки построек.
+	var army_heading: HBoxContainer = HBoxContainer.new()
+	box.add_child(army_heading)
 	_army_title = _heading(18)
-	box.add_child(_army_title)
+	_army_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	army_heading.add_child(_army_title)
 	_army_reroll = _button("Обновить", _on_army_reroll)
 	_army_reroll.size_flags_horizontal = Control.SIZE_SHRINK_END
 	_army_reroll.autowrap_mode = TextServer.AUTOWRAP_OFF
 	_army_reroll.add_theme_font_size_override("font_size", 13)
-	box.add_child(_army_reroll)
+	army_heading.add_child(_army_reroll)
 	_army_grid = GridContainer.new()
 	_army_grid.columns = 4
 	_army_grid.add_theme_constant_override("h_separation", 5)
@@ -221,7 +225,7 @@ func refresh(selected_tower: TowerState) -> void:
 				or not _player.discover_offers.is_empty()
 		card.custom_minimum_size.x = 94
 		card.custom_minimum_size.y = (112 if has_choices else 134) \
-				if _player.shop.offers.size() > 3 else 216
+				if _player.shop.offers.size() > 3 else 150
 		var rite: RiteData = _player.shop.get_rite(i)
 		card.is_active = _player.gold >= (rite.cost if rite != null else _sim.config.tower_cost)
 		card.show_offer(_player.shop.get_offer(i))
@@ -238,6 +242,7 @@ func refresh(selected_tower: TowerState) -> void:
 	_army_title.text = "Армия   ·   %d бойцов" % _player.army.get_unit_count()
 	_army_reroll.text = "Обновить · %d" % _sim.config.army_reroll_cost
 	_army_reroll.disabled = _player.gold < _sim.config.army_reroll_cost
+	_army_grid.columns = clampi(_player.army.offers.size(), 2, 4)
 	for i: int in _army_buttons.size():
 		var army: ArmyState = _player.army
 		_army_buttons[i].visible = i < army.offers.size()

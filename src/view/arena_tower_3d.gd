@@ -97,8 +97,8 @@ func _build_post(paint: Color, accent: Color, height: float) -> void:
 
 ## Тир 2: каменная башня с окрашенным поясом, зубцами и светящимся окном.
 func _build_stone(paint: Color, accent: Color, height: float) -> void:
-	var stone: StandardMaterial3D = ArenaMaterials3D.solid(ArenaMaterials3D.STONE)
-	var dark: StandardMaterial3D = ArenaMaterials3D.solid(ArenaMaterials3D.DARK_STONE)
+	var stone: StandardMaterial3D = ArenaMaterials3D.stone(ArenaMaterials3D.STONE)
+	var dark: StandardMaterial3D = ArenaMaterials3D.stone(ArenaMaterials3D.DARK_STONE)
 	ArenaMaterials3D.part(_model, ArenaMaterials3D.cylinder(0.78, 0.7, 0.32, 8), dark,
 			Vector3(0, 0.3, 0))
 	ArenaMaterials3D.part(_model, ArenaMaterials3D.cylinder(0.58, 0.46, height, 8), stone,
@@ -122,8 +122,8 @@ func _build_stone(paint: Color, accent: Color, height: float) -> void:
 
 ## Тир 3: высокая резная башня — гранёный ствол, окрашенные кольца, балкон, шпиль и кристалл.
 func _build_carved(paint: Color, accent: Color, height: float) -> void:
-	var stone: StandardMaterial3D = ArenaMaterials3D.solid(ArenaMaterials3D.STONE)
-	var dark: StandardMaterial3D = ArenaMaterials3D.solid(ArenaMaterials3D.DARK_STONE)
+	var stone: StandardMaterial3D = ArenaMaterials3D.stone(ArenaMaterials3D.STONE)
+	var dark: StandardMaterial3D = ArenaMaterials3D.stone(ArenaMaterials3D.DARK_STONE)
 	var painted: StandardMaterial3D = ArenaMaterials3D.solid(paint)
 	ArenaMaterials3D.part(_model, ArenaMaterials3D.cylinder(0.86, 0.76, 0.36, 8), dark,
 			Vector3(0, 0.32, 0))

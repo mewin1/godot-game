@@ -58,6 +58,7 @@ func show_field(field: FieldState, player_colors: Callable) -> void:
 	_player_colors = player_colors
 	if layout == null:
 		layout = ArenaLayout3D.get_shared(field.layout)
+		_build_platforms()
 	if _field == field:
 		return
 	_field = field
@@ -294,6 +295,29 @@ func _sync_fog() -> void:
 		_fog.add_child(_road_ribbon(start, layout.road_end_length(), fog))
 		_add_barricade(start)
 		_add_totem(layout.path_length_at(_field.path_length - 1) + 0.4)
+
+
+## Ровные каменные плиты под каждым местом; основание уходит вниз до склона.
+func _build_platforms() -> void:
+	var holder: Node3D = Node3D.new()
+	_world.add_child(holder)
+	var side: StandardMaterial3D = ArenaMaterials3D.stone(STYLE.platform_side)
+	for cell: Vector2i in layout.deck_cells():
+		var shade: float = (float(absi(cell.x * 73 + cell.y * 151) % 7) / 6.0 - 0.5) \
+				* 2.0 * STYLE.platform_variation
+		var top: StandardMaterial3D = ArenaMaterials3D.stone(
+				STYLE.platform_top.lightened(maxf(shade, 0.0)).darkened(maxf(-shade, 0.0)))
+		var inlay: StandardMaterial3D = ArenaMaterials3D.stone(
+				STYLE.platform_inlay.lightened(maxf(shade, 0.0)).darkened(maxf(-shade, 0.0)))
+		var center: Vector3 = layout.cell_center(cell)
+		var bottom: float = layout.terrain_height(cell) - 0.4
+		var height: float = center.y - bottom
+		ArenaMaterials3D.part(holder, ArenaMaterials3D.box(Vector3(2.0, height, 2.0)), side,
+				Vector3(center.x, bottom + height * 0.5 - 0.06, center.z))
+		ArenaMaterials3D.part(holder, ArenaMaterials3D.box(Vector3(1.9, 0.1, 1.9)), top,
+				center - Vector3(0, 0.05, 0))
+		ArenaMaterials3D.part(holder, ArenaMaterials3D.box(Vector3(1.6, 0.02, 1.6)), inlay,
+				center + Vector3(0, 0.005, 0))
 
 
 func _plane(extent: Vector2) -> PlaneMesh:

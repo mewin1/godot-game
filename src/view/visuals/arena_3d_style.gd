@@ -39,6 +39,13 @@ extends Resource
 ## Огонь тотема героя в конце короткого пути.
 @export var totem_fire: Color = Color(1.0, 0.55, 0.18)
 
+## Каменные площадки мест: бока, плита и светлая кромка шва.
+@export var platform_side: Color = Color(0.2, 0.2, 0.22)
+@export var platform_top: Color = Color(0.34, 0.33, 0.31)
+@export var platform_inlay: Color = Color(0.4, 0.38, 0.35)
+## Разброс яркости плит, чтобы площадка не выглядела пластиковой.
+@export var platform_variation: float = 0.035
+
 ## Закрытые клетки и ещё не открытая дорога.
 @export var fog_color: Color = Color(0.02, 0.04, 0.08, 0.66)
 @export var fog_edge_color: Color = Color(0.45, 0.6, 0.8, 0.25)
