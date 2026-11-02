@@ -174,7 +174,9 @@ func _draw() -> void:
 				HORIZONTAL_ALIGNMENT_LEFT, size.x - 16, 15, TEXT_COLOR)
 		return
 	if data == null:
-		draw_rect(rect.grow(-2), Color(0.35, 0.29, 0.22), false, 1)
+		# Пустое место резерва — тёмное стекло со светлой кромкой, как остальные панели.
+		draw_rect(rect.grow(-3), Color(0.03, 0.07, 0.12, 0.45))
+		draw_rect(rect.grow(-3), DuskTheme.GLASS_EDGE, false, 1)
 		return
 	var visual: TowerVisual = VisualCatalog.get_default().get_tower(data.id)
 	draw_line(Vector2(10, 2), Vector2(size.x - 10, 2), visual.plate_edge_color, 2, true)
