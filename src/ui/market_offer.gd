@@ -86,7 +86,8 @@ func _draw() -> void:
 	var price: int = rite.cost if rite != null else tower_cost
 	var font: Font = get_theme_default_font()
 	# Мягкий ореол стихии за картинкой.
-	var art_top: float = BADGE_SIZE.y + 8
+	# Бейдж тира и символ стихии лежат поверх углов картинки — картинке больше места.
+	var art_top: float = 8.0
 	var art_bottom: float = size.y - FOOTER_HEIGHT - NAME_HEIGHT - 2
 	var room: Vector2 = Vector2(size.x - 16, maxf(1.0, art_bottom - art_top))
 	var center: Vector2 = Vector2(size.x * 0.5, art_top + room.y * 0.5)
