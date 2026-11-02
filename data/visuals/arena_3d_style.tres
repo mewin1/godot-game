@@ -35,21 +35,21 @@ mob_models = Dictionary[StringName, StringName]({
 &"kolobok_small": &"blob"
 })
 mob_tints = Dictionary[StringName, Color]({
-&"basic": Color(0.78, 0.36, 0.26, 1),
-&"fast": Color(0.4, 0.72, 0.34, 1),
-&"courier": Color(0.92, 0.74, 0.3, 1),
-&"healer": Color(0.92, 0.92, 0.86, 1),
-&"robber": Color(0.42, 0.36, 0.32, 1),
-&"send_unit": Color(0.8, 0.42, 0.3, 1),
-&"stealth": Color(0.38, 0.42, 0.58, 1),
-&"spirit": Color(0.6, 0.88, 0.98, 1),
-&"training_dummy": Color(0.78, 0.66, 0.44, 1),
-&"armored": Color(0.58, 0.62, 0.68, 1),
-&"knight": Color(0.85, 0.78, 0.5, 1),
-&"bat": Color(0.42, 0.3, 0.46, 1),
-&"boss": Color(0.62, 0.2, 0.16, 1),
-&"kolobok": Color(0.95, 0.72, 0.32, 1),
-&"kolobok_small": Color(0.96, 0.78, 0.42, 1)
+&"basic": Color(0.62, 0.29, 0.21, 1),
+&"fast": Color(0.32, 0.58, 0.27, 1),
+&"courier": Color(0.74, 0.59, 0.24, 1),
+&"healer": Color(0.74, 0.74, 0.69, 1),
+&"robber": Color(0.34, 0.29, 0.26, 1),
+&"send_unit": Color(0.64, 0.34, 0.24, 1),
+&"stealth": Color(0.3, 0.34, 0.46, 1),
+&"spirit": Color(0.48, 0.7, 0.78, 1),
+&"training_dummy": Color(0.62, 0.53, 0.35, 1),
+&"armored": Color(0.46, 0.5, 0.54, 1),
+&"knight": Color(0.68, 0.62, 0.4, 1),
+&"bat": Color(0.34, 0.24, 0.37, 1),
+&"boss": Color(0.5, 0.16, 0.13, 1),
+&"kolobok": Color(0.76, 0.58, 0.26, 1),
+&"kolobok_small": Color(0.77, 0.62, 0.34, 1)
 })
 mob_heights = Dictionary[StringName, float]({
 &"fast": 0.85,
