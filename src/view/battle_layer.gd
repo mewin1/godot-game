@@ -367,8 +367,14 @@ func _draw_hero_hp(center: Vector2) -> void:
 	var icon_size: float = font_size * 1.1
 	var plate_size: Vector2 = Vector2(icon_size + text_width + 14.0, font_size * 1.45)
 	var plate: Rect2 = Rect2(center - plate_size * 0.5, plate_size)
-	draw_rect(plate.grow(2.0), Color(0.07, 0.05, 0.04, 0.9))
-	draw_rect(plate, Color(0.2, 0.14, 0.1, 0.95))
+	if bodies_3d:
+		var glass: StyleBoxFlat = DuskTheme.glass(0.85, 0)
+		glass.set_corner_radius_all(6)
+		glass.shadow_size = 5
+		draw_style_box(glass, plate.grow(2.0))
+	else:
+		draw_rect(plate.grow(2.0), Color(0.07, 0.05, 0.04, 0.9))
+		draw_rect(plate, Color(0.2, 0.14, 0.1, 0.95))
 	draw_texture_rect(_style.heart_icon, Rect2(plate.position + Vector2(4.0,
 			(plate_size.y - icon_size) * 0.5), Vector2.ONE * icon_size), false)
 	draw_string(font, Vector2(plate.position.x + icon_size + 8.0, center.y + font_size * 0.36),
