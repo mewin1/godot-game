@@ -7,7 +7,8 @@
 травинки, цветы. В Godot — `terrain_ground.tres`; свет превью перебалансирован
 (рассеянный сильнее, прожектор слабее), долина и ели темнее. Финальные рендеры 2× —
 `output/forest_arena/final_*.png`, кадр Godot — `godot_preview.png`.
-Push из среды Claude не работает (нет SSH-ключа) — автор пушит сам.
+Push починен: в `.git/config` был `core.sshCommand` на старый ключ `.git/id_ed25519`
+(не зарегистрирован на GitHub) — настройка убрана, git берёт `~/.ssh/id_ed25519`. Всё запушено.
 Скрипт сцены `tools/blender/build_forest_arena_v2.py`; Blender — порт аддона 127.0.0.1:9876.
 Следующий шаг — оценка автором; затем высоты/путь для FieldState. Матч не заменён.
 Подробности — `assets/arenas/forest/README.md`.
