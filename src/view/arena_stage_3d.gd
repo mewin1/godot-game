@@ -154,6 +154,12 @@ func tower_top(tower_id: int) -> Vector2:
 	return project_milli(Vector2(tower.center_milli()), 1.5) if tower != null else Vector2.ZERO
 
 
+## Точка над тотемом героя в конце открытой дороги (для таблички HP).
+func hero_point(lift: float) -> Vector2:
+	var length: float = layout.path_length_at(_field.path_length - 1) + 0.4
+	return project(layout.road_point(length) + Vector3(0, lift, 0))
+
+
 ## Высота головы моба над дорогой (для полоски HP поверх сцены).
 func mob_head(mob: MobState, interpolation: float) -> Vector2:
 	var world: Vector3 = _mob_world(mob, interpolation)

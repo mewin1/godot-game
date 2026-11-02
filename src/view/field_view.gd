@@ -21,6 +21,8 @@ const TAP_SLOP: float = 12.0
 const FIRE_PULSE_SECONDS: float = TowerPainter.FIRE_PULSE_SECONDS
 const HERO_SHAKE_SECONDS: float = 0.4
 const HERO_SHAKE_PIXELS: float = 6.0
+## Табличка HP героя на 3D-арене — над тотемом в конце пути (метры).
+const HERO_PLATE_LIFT: float = 3.4
 ## «Пружинка» башни после покупки или слияния.
 const POP_SECONDS: float = TowerPainter.POP_SECONDS
 const SIEGE_PULSE_SPEED: float = 5.0
@@ -565,6 +567,8 @@ func _update_hero_plate() -> void:
 	_battle.hero_shake = Vector2(sin(_time * 50.0), cos(_time * 41.0)) * strength
 	_battle.hero_hp = hero_hp
 	_battle.hero_plate_center = Vector2(rect.get_center().x, rect.end.y - _cell_size * 0.1)
+	if _stage != null:
+		_battle.hero_plate_center = _stage.hero_point(HERO_PLATE_LIFT) + _stage_offset()
 
 
 #endregion
