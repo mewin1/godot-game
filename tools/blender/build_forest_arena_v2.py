@@ -91,8 +91,6 @@ COLOR_LAYER = 'Arena_Paint'
 terrain_mat = vertex_color_material('V2_Terrain_Paint', COLOR_LAYER)
 stone = [material('V2_Basalt_%02d' % i, c) for i, c in enumerate([
     (.15, .19, .25), (.19, .23, .29), (.23, .27, .32), (.26, .30, .34), (.17, .21, .27)])]
-moss = [material('V2_Moss_%02d' % i, c) for i, c in enumerate([
-    (.19, .25, .14), (.23, .29, .17), (.27, .32, .19), (.21, .27, .17)])]
 valley_mat = material('V2_Valley_Peat', (.06, .115, .15))
 wood = material('V2_Old_oak', (.17, .10, .055))
 bark = material('V2_Birch_bark', (.61, .64, .56))
@@ -100,9 +98,9 @@ iron = material('V2_Forged_iron', (.095, .105, .105))
 flame = material('V2_Amber_glass', (1, .33, .045), 5)
 carving = material('V2_Idol_carvings', (.45, .32, .14))
 needles = [material('V2_Fir_%02d' % i, c) for i, c in enumerate([
-    (.025, .105, .13), (.035, .145, .16), (.055, .19, .19), (.07, .22, .21)])]
+    (.022, .075, .08), (.03, .10, .10), (.045, .13, .12), (.06, .16, .14)])]
 gold_leaves = [material('V2_Birch_leaf_%02d' % i, c) for i, c in enumerate([
-    (.47, .38, .11), (.61, .47, .15), (.70, .55, .19)])]
+    (.50, .30, .05), (.64, .41, .07), (.76, .52, .11)])]
 
 
 class Batch:
@@ -178,6 +176,95 @@ def beam(batch, start, end, radius, index=0, sides=7):
     faces = [tuple(reversed(range(sides))), tuple(range(sides, 2 * sides))]
     faces += [(i, (i + 1) % sides, (i + 1) % sides + sides, i + sides) for i in range(sides)]
     batch.add(vertices, faces, index)
+
+
+class PaintBatch(Batch):
+    """One vertex-coloured material: the paint survives glTF and Godot (unlike Blender nodes)."""
+
+    def __init__(self, name, coll):
+        super().__init__(name, [terrain_mat], coll)
+        self.colors = []
+        self.shade = lambda v: (.5, .5, .5)
+
+    def add(self, vertices, faces, index=0, colors=None):
+        super().add(vertices, faces, 0)
+        self.colors.extend(colors if colors is not None else [self.shade(v) for v in vertices])
+
+    def finish(self):
+        obj = super().finish()
+        attr = obj.data.color_attributes.new(name=COLOR_LAYER, type='BYTE_COLOR', domain='POINT')
+        flat = []
+        for c in self.colors:
+            flat.extend((c[0], c[1], c[2], 1.0))
+        attr.data.foreach_set('color', flat)
+        return obj
+
+
+def hash01(i, j, salt=0):
+    """Stable pseudo-random value in [0, 1) for integer grid coordinates."""
+    v = (i * 73856093) ^ (j * 19349663) ^ (salt * 83492791)
+    v = (v ^ (v >> 13)) * 1274126177
+    return ((v ^ (v >> 16)) & 0xFFFF) / 65536.0
+
+
+SLATE = [(.14, .17, .22), (.18, .21, .27), (.23, .26, .31), (.27, .30, .33), (.22, .21, .21)]
+MOSS = [(.15, .23, .07), (.21, .29, .10), (.27, .32, .12)]
+
+
+def rock_chunk(batch, x, y, z, rx, ry, h, ground=None, tilt=(0.0, 0.0), sides=None,
+               moss=.8, tint=None):
+    """Chunky basalt block: chamfered top, mossy cap, darker toward the ground (fake AO)."""
+    sides = sides or rng.choice((5, 6, 6, 7))
+    ground = z if ground is None else ground
+    phase = rng.uniform(0, math.tau)
+    radii = [rng.uniform(.82, 1.14) for _ in range(sides)]
+    base = tint or rng.choice(SLATE)
+    base = mix(base, (.30, .32, .34), rng.uniform(-.1, .25))
+    moss_col = rng.choice(MOSS)
+    cap_drop = rng.uniform(.02, .09) * min(1.0, h)
+    vertices, colors = [], []
+    for level, scale in [(0, 1.0), (.82, .97), (1, .74)]:
+        for i in range(sides):
+            angle = phase + i * math.tau / sides
+            vz = z + h * level - (cap_drop * (1 if i % 2 else -.4) if level == 1 else 0)
+            if level == .82:
+                vz -= rng.uniform(0, .06)
+            vertices.append((x + math.cos(angle) * rx * radii[i] * scale + level * tilt[0],
+                             y + math.sin(angle) * ry * radii[i] * scale + level * tilt[1], vz))
+            occlusion = .5 + .5 * smoothstep(ground - .1, ground + .9, vz)
+            strata = .92 + .1 * math.sin(vz * 4.7 + x * .9)
+            c = tuple(v * occlusion * strata for v in base)
+            if level == 1:
+                c = mix(c, moss_col, moss * rng.uniform(.6, 1.0))
+            elif level == .82 and rng.random() < moss * .45:
+                c = mix(c, moss_col, rng.uniform(.25, .55))
+            colors.append(c)
+    faces = []                               # no bottom face: it always sits in the ground
+    for ring in range(2):
+        for i in range(sides):
+            j = (i + 1) % sides
+            faces.append((ring * sides + i, ring * sides + j, (ring + 1) * sides + j,
+                          (ring + 1) * sides + i))
+    faces.append(tuple(range(2 * sides, 3 * sides)))
+    batch.add(vertices, faces, colors=colors)
+
+
+def rock_stack(batch, x, y, z0, z1, r, ground=None, out=(0.0, 0.0), moss=.8):
+    """A cliff pillar of 1-4 stacked blocks with small ledges, like broken basalt."""
+    z = z0
+    tint = rng.choice(SLATE)
+    while z1 - z > .15:
+        h = min(z1 - z, rng.uniform(1.0, 2.2) if z1 - z > 2.6 else rng.uniform(.6, 1.4))
+        if z1 - z - h < .35:
+            h = z1 - z
+        rr = r * rng.uniform(.86, 1.06)
+        sx, sy = rng.uniform(-.06, .06), rng.uniform(-.06, .06)
+        top = z + h if z + h < z1 - .01 else z1 + rng.uniform(-.12, .08)
+        rock_chunk(batch, x + sx + out[0] * rng.uniform(-.08, .05), y + sy + out[1] * rng.uniform(-.08, .05),
+                   z, rr, rr * rng.uniform(.85, 1.1), top - z, ground=ground,
+                   tilt=(out[0] * .05, out[1] * .05), moss=moss if top >= z1 - .2 else .35,
+                   tint=mix(tint, rng.choice(SLATE), .3))
+        z = top - .04
 
 
 def smoothstep(a, b, x):
@@ -406,12 +493,40 @@ for j in range(ny + 1):
     kinds.append(row_k)
 
 
-def turf(x, y):
-    pasture, lichen, shale = (.16, .24, .075), (.29, .34, .13), (.22, .26, .20)
-    hum = (.45 * math.sin(1.32 * x + .62 * y) + .31 * math.sin(.86 * x - 1.04 * y)
-           + .24 * math.cos(x * 2.64 + y * 1.51))
+# Cavity: how far the surrounding ground rises above a vertex (0.6 m around).
+# Darkening wall feet and hairpin insides gives depth without baked lighting.
+cavity = []
+R_CAV = 3
+for j in range(ny + 1):
+    row = []
+    for i in range(nx + 1):
+        z = zs[j][i]
+        best = 0.0
+        for dj in range(-R_CAV, R_CAV + 1, 1):
+            jj = min(ny, max(0, j + dj))
+            for di in range(-R_CAV, R_CAV + 1, 1):
+                ii = min(nx, max(0, i + di))
+                rise = (zs[jj][ii] - z) / (1 + .6 * math.hypot(di, dj) * STEP)
+                if rise > best:
+                    best = rise
+        row.append(best)
+    cavity.append(row)
+
+
+def noise2(x, y):
+    return (.45 * math.sin(1.32 * x + .62 * y) + .31 * math.sin(.86 * x - 1.04 * y)
+            + .24 * math.cos(x * 2.64 + y * 1.51))
+
+
+def turf(x, y, i=0, j=0):
+    pasture, lichen, dry = (.15, .235, .07), (.27, .34, .12), (.40, .37, .15)
+    hum = noise2(x, y)
     base = mix(pasture, lichen, .45 + .5 * hum)
-    return mix(base, shale, .25 * abs(math.sin(.63 * x + 1.1 * y)))
+    # Sparse sun-dried patches and dark clover, broken up per vertex.
+    base = mix(base, dry, .45 * smoothstep(.55, .95, noise2(x * .7 + 13, y * .7 - 5)))
+    base = mix(base, (.09, .16, .06), .35 * smoothstep(.5, .9, noise2(y * 1.3 - 2, x * 1.1 + 7)))
+    jitter = .9 + .2 * hash01(i, j, 3)
+    return tuple(c * jitter for c in base)
 
 
 def paint(i, j):
@@ -421,21 +536,35 @@ def paint(i, j):
     gy = (zs[min(ny, j + 1)][i] - zs[max(0, j - 1)][i]) / (2 * STEP)
     slope = math.hypot(gx, gy)
     kind = kinds[j][i]
-    rock = mix((.11, .135, .18), (.25, .275, .30), .5 + .3 * math.sin(z * 3.1 + x * .4)
-               + .15 * math.sin(y * 1.9))
+    rock = mix(SLATE[0], SLATE[3], .5 + .3 * math.sin(z * 3.1 + x * .4) + .15 * math.sin(y * 1.9))
     if kind == 'valley':
-        color = mix((.05, .10, .13), (.07, .13, .15), .5 + .5 * math.sin(x * .7 + y * .5))
+        color = mix((.045, .09, .11), (.07, .12, .12), .5 + .5 * math.sin(x * .7 + y * .5))
+        color = mix(color, (.10, .14, .07), .4 * smoothstep(.3, .9, noise2(x * .4, y * .4)))
     elif kind == 'road' or kind == 'spur':
         _, d, _ = nearest(x, y)
-        if kind == 'spur' and d > 1.0:
+        if kind == 'spur' and d > half_width(0) + .1:
             # Ramp banks: dark moss and peat, not bare rock.
-            return mix((.13, .17, .08), (.06, .10, .12), smoothstep(1.0, 3.0, d))
-        dirt = mix((.33, .26, .18), (.38, .30, .21), .5 + .5 * math.sin(x * 3.1 + y * 2.3))
-        dirt = mix(dirt, (.29, .225, .16), .35 * math.exp(-((abs(d) - .55) / .14) ** 2))
-        color = mix(dirt, turf(x, y), smoothstep(.95, 1.32, d))
+            return mix((.13, .17, .08), (.06, .10, .12), smoothstep(1.4, 3.4, d))
+        dirt = mix((.37, .275, .17), (.45, .34, .21), .5 + .5 * math.sin(x * 3.1 + y * 2.3))
+        # Two trodden ruts, compacted crown, and loose gravel speckles.
+        ruts = math.exp(-((abs(d) - .62) / .16) ** 2)
+        dirt = mix(dirt, (.25, .19, .13), .42 * ruts)
+        dirt = mix(dirt, (.45, .38, .27), .25 * math.exp(-(d / .25) ** 2))
+        speck = hash01(i, j, 1)
+        if speck > .86:
+            dirt = mix(dirt, (.48, .45, .40), .55)
+        elif speck < .1:
+            dirt = mix(dirt, (.20, .15, .10), .5)
+        verge = smoothstep(1.05, 1.42, d)
+        color = mix(dirt, turf(x, y, i, j), verge)
+        # A ragged strip of grass creeps onto the road edge.
+        if .9 < d < 1.3 and hash01(i, j, 2) > .55:
+            color = mix(color, turf(x, y, i, j), .7)
     else:
-        color = turf(x, y)
-    return mix(color, rock, smoothstep(.9, 2.2, slope))
+        color = turf(x, y, i, j)
+    color = mix(color, rock, smoothstep(.9, 2.2, slope))
+    occlusion = 1 - .5 * smoothstep(.05, 1.1, cavity[j][i])
+    return tuple(c * occlusion for c in color)
 
 
 tf = Batch('Arena_Terrain', [terrain_mat], terrain_c)
@@ -474,16 +603,21 @@ valley_obj = vb.finish()
 for poly in valley_obj.data.polygons:
     poly.use_smooth = True
 
-# ---------------------------------------------------------------- basalt columns
-rocks = Batch('Basalt_Columns', stone + moss, cliffs_c)
-scree = Batch('Scree_and_Road_Edges', stone + moss, cliffs_c)
+# ---------------------------------------------------------------- basalt walls and cliffs
+rocks = PaintBatch('Basalt_Cliffs', cliffs_c)
+scree = PaintBatch('Scree_and_Boulders', cliffs_c)
 
 
 def top_at(x, y):
     return height(x, y)[0]
 
 
-# Road walls: a dense row of columns along both edges wherever the terrace stands above.
+def pebble(x, y, z, size, moss=.2):
+    rock_chunk(scree, x, y, z - size * .25, size, size * rng.uniform(.7, 1.0),
+               size * rng.uniform(.5, 1.0), ground=z, moss=moss, sides=rng.choice((5, 6)))
+
+
+# Road walls: stacked blocks along both edges. Uphill: cut face; downhill: retaining wall.
 for side in (-1, 1):
     travelled, prev = 0.0, None
     for i, (cx, cy) in enumerate(line):
@@ -493,49 +627,47 @@ for side in (-1, 1):
         t = tangents[i]
         n = Vector((-t.y, t.x)) * side
         hw = half_width(l)
-        p = Vector((cx, cy)) + n * (hw + .2)
+        p = Vector((cx, cy)) + n * (hw + .22)
         if prev is not None:
             travelled += (p - prev).length
         prev = p
-        if travelled < rng.uniform(.42, .55):
+        if travelled < rng.uniform(.36, .48):
             continue
         travelled = 0.0
         rz = road_z(l)
         beyond = Vector((cx, cy)) + n * (hw + .75)
         zt = top_at(beyond.x, beyond.y)
-        if inside_distance(beyond.x, beyond.y) <= 0 or abs(zt - rz) < .22:
+        if inside_distance(beyond.x, beyond.y) <= 0:
             continue
-        r = rng.uniform(.28, .36)
-        if zt > rz:      # cut wall on the uphill side
-            column(rocks, p.x, p.y, rz - .3, r, r * rng.uniform(.85, 1.1),
-                   zt - rz + .3 + rng.uniform(-.2, .12), index=rng.randrange(5),
-                   top=5 + rng.randrange(4), tilt=(n.x * -.06, n.y * -.06))
-        else:            # retaining wall under the road on the downhill side
-            column(rocks, p.x, p.y, zt - .3, r, r * rng.uniform(.85, 1.1),
-                   rz - zt + .3 + rng.uniform(-.06, .04), index=rng.randrange(5),
-                   top=5 + rng.randrange(4))
-        if rng.random() < .55:
-            q = Vector((cx, cy)) + n * (hw - .12 + rng.uniform(-.05, .08))
-            column(scree, q.x, q.y, rz - .02, rng.uniform(.08, .2), rng.uniform(.08, .18),
-                   rng.uniform(.07, .2), index=rng.randrange(9))
+        if abs(zt - rz) >= .2:
+            r = rng.uniform(.27, .36)
+            if zt > rz:
+                rock_stack(rocks, p.x, p.y, rz - .3, zt, r, ground=rz, out=(-n.x, -n.y))
+            else:
+                rock_stack(rocks, p.x, p.y, zt - .3, rz + rng.uniform(.0, .1), r, ground=zt,
+                           out=(n.x, n.y), moss=.5)
+        # Kerb stones and pebbles along the road edge.
+        if rng.random() < .7:
+            q = Vector((cx, cy)) + n * (hw - .14 + rng.uniform(-.06, .08))
+            pebble(q.x, q.y, rz, rng.uniform(.07, .17), moss=.3)
 
 
-# Outer cliff: tall columns all around the plateau, down into the valley.
+# Outer cliff: stacked pillars all around the plateau, down into the valley.
 def outline_points():
     x0, x1, y0, y1 = FOOT
     px0, px1, py0, py1 = IDOL_PAD
     edges = []
-    for x in [x0 + k * .5 for k in range(int((x1 - x0) / .5) + 1)]:
-        if not 1.6 < x < 4.4:                       # entry ramp gap
+    for x in [x0 + k * .45 for k in range(int((x1 - x0) / .45) + 1)]:
+        if not 1.4 < x < 4.6:                       # entry ramp gap
             edges.append((x, y0 + foot_noise(x, 3), (0, -1)))
         if not px0 + .2 < x < px1 - .2:
             edges.append((x, y1 + foot_noise(x, 4), (0, 1)))
-    for y in [y0 + k * .5 for k in range(int((y1 - y0) / .5) + 1)]:
+    for y in [y0 + k * .45 for k in range(int((y1 - y0) / .45) + 1)]:
         edges.append((x0 + foot_noise(y, 1), y, (-1, 0)))
         edges.append((x1 + foot_noise(y, 2), y, (1, 0)))
-    for x in [px0 + .3 + k * .5 for k in range(int((px1 - px0 - .3) / .5))]:
+    for x in [px0 + .3 + k * .45 for k in range(int((px1 - px0 - .3) / .45))]:
         edges.append((x, py1, (0, 1)))
-    for y in [py0 + 1.3 + k * .5 for k in range(int((py1 - py0 - 1.3) / .5) + 1)]:
+    for y in [py0 + 1.3 + k * .45 for k in range(int((py1 - py0 - 1.3) / .45) + 1)]:
         edges.append((px0, y, (-1, 0)))
         edges.append((px1, y, (1, 0)))
     return edges
@@ -546,62 +678,124 @@ for x, y, (ox, oy) in outline_points():
     zb = valley(x, y) - .7
     if zt - zb < 1:
         continue
-    r = rng.uniform(.42, .58)
+    r = rng.uniform(.4, .58)
     px, py = x + ox * .18 + rng.uniform(-.06, .06), y + oy * .18 + rng.uniform(-.06, .06)
-    column(rocks, px, py, zb, r, r * rng.uniform(.85, 1.1),
-           zt - zb + rng.uniform(-.28, .06), index=rng.randrange(5),
-           top=5 + rng.randrange(4), tilt=(ox * .12, oy * .12))
-    # A second, shorter ring gives the foot of the cliff its broken talus.
-    if rng.random() < .6:
-        r2 = rng.uniform(.4, .7)
-        column(rocks, px + ox * .55, py + oy * .55, zb, r2, r2,
-               rng.uniform(1.2, 3.2), index=rng.randrange(5), top=5 + rng.randrange(4))
+    rock_stack(rocks, px, py, zb, zt, r, ground=zb + .7, out=(ox, oy))
+    # Talus: a lower ring of tumbled blocks, then loose boulders on the slope below.
+    if rng.random() < .65:
+        r2 = rng.uniform(.4, .75)
+        rock_stack(rocks, px + ox * .6, py + oy * .6, zb, zb + .7 + rng.uniform(.6, 2.2), r2,
+                   ground=zb + .7, out=(ox, oy), moss=.6)
+    if rng.random() < .3:
+        bx, by = px + ox * rng.uniform(1.2, 2.2), py + oy * rng.uniform(1.2, 2.2)
+        pebble(bx + rng.uniform(-.3, .3), by + rng.uniform(-.3, .3), valley(bx, by),
+               rng.uniform(.25, .55), moss=.6)
 
-# Low steps between terraces of different heights get a few loose blocks.
+# Steps between terraces of different heights: a continuous low wall of blocks.
 for x0, y0, x1, y1, h, s, gx, gy in cells:
-    for dgx, dgy in [(1, 0), (0, 1)]:
+    for dgx, dgy in [(1, 0), (0, 1), (-1, 0), (0, -1)]:
         other = heights.get((gx + dgx, gy + dgy))
-        if other is None or abs(other - h) < .05:
-            continue
-        for k in range(2):
-            if rng.random() < .55:
-                continue
-            t = rng.uniform(.15, .85)
+        if other is None or other >= h - .05:
+            continue                       # only the higher cell builds the wall
+        t = rng.uniform(.05, .25)
+        while t < .98:
             if dgx:
-                x, y = x1, y0 + 2 * t
+                x, y = (x1 if dgx > 0 else x0), y0 + 2 * t
             else:
-                x, y = x0 + 2 * t, y0
-            low = min(h, other)
-            column(rocks, x + rng.uniform(-.1, .1), y + rng.uniform(-.1, .1), low - .2,
-                   .3, .28, abs(other - h) + .15, index=rng.randrange(5),
-                   top=5 + rng.randrange(4))
+                x, y = x0 + 2 * t, (y0 if dgy > 0 else y1)
+            # Skip the stretch that the road channel already cut away.
+            if nearest(x, y)[1] > half_width(0) + .25:
+                r = rng.uniform(.27, .35)
+                rock_stack(rocks, x + rng.uniform(-.06, .06), y + rng.uniform(-.06, .06),
+                           other - .2, h + rng.uniform(-.06, .05), r, ground=other)
+            t += rng.uniform(.24, .32)
+
+# A few boulders on terrace rims (never in the cell centres where towers stand).
+for (gx, gy), h in heights.items():
+    cx, cy = cell_centre(gx, gy)
+    for _ in range(rng.randint(0, 2)):
+        angle = rng.uniform(0, math.tau)
+        rad = rng.uniform(.72, .9)
+        bx, by = cx + math.cos(angle) * rad, cy + math.sin(angle) * rad
+        if height(bx, by)[1] == 'top':
+            pebble(bx, by, top_at(bx, by), rng.uniform(.1, .22), moss=.7)
 
 rocks.finish()
 scree.finish()
 
-# Low shrubs along terrace rims and grass tufts on the tops (towers stand in cell centres).
-shrub_mats = [material('V2_Shrub_%02d' % i, c) for i, c in enumerate([
-    (.07, .16, .07), (.11, .21, .08), (.20, .25, .07)])]
-greens = Batch('Rim_Shrubs_and_Grass', shrub_mats, cliffs_c)
-for _ in range(1400):
+# ---------------------------------------------------------------- vegetation on the terraces
+greens = PaintBatch('Shrubs_Grass_Flowers', cliffs_c)
+
+
+def bush(x, y, z, radius):
+    dark, light = rng.choice([((.04, .10, .04), (.13, .24, .07)), ((.05, .11, .05), (.20, .27, .08)),
+                              ((.07, .10, .04), (.30, .28, .09))])
+    greens.shade = lambda v: mix(dark, light, smoothstep(z - .05, z + radius * 1.6, v[2]))
+    forest_dressing.leaf_cluster(greens, rng, (x, y, z + radius * .55), radius, 0)
+
+
+def tuft(x, y, z, dry=False):
+    tip = (.42, .40, .17) if dry else rng.choice([(.27, .37, .11), (.33, .40, .14)])
+    for _blade in range(rng.randint(4, 7)):
+        bx, by = x + rng.uniform(-.1, .1), y + rng.uniform(-.1, .1)
+        lean = (rng.uniform(-.1, .1), rng.uniform(-.1, .1))
+        a = rng.uniform(0, math.pi)
+        w = .025
+        greens.add([(bx - math.cos(a) * w, by - math.sin(a) * w, z - .02),
+                    (bx + math.cos(a) * w, by + math.sin(a) * w, z - .02),
+                    (bx + lean[0], by + lean[1], z + rng.uniform(.13, .3))],
+                   [(0, 1, 2)], colors=[(.05, .09, .03), (.05, .09, .03), tip])
+
+
+def flower_patch(x, y, z):
+    petal = rng.choice([(.85, .80, .55), (.60, .66, .90), (.90, .62, .45)])
+    for _ in range(rng.randint(3, 6)):
+        fx, fy = x + rng.uniform(-.2, .2), y + rng.uniform(-.2, .2)
+        fz = z + rng.uniform(.06, .14)
+        s = .035
+        greens.add([(fx - s, fy, fz), (fx + s * .5, fy - s, fz), (fx + s * .5, fy + s, fz),
+                    (fx, fy, fz - .1)], [(0, 1, 2), (0, 3, 1), (1, 3, 2), (2, 3, 0)],
+                   colors=[petal, petal, petal, (.08, .14, .05)])
+
+
+for _ in range(2400):
     x, y = rng.uniform(FOOT[0], FOOT[1]), rng.uniform(FOOT[2], FOOT[3])
     z, kind = height(x, y)
-    if kind != 'top' or inside_distance(x, y) < .35:
+    if kind != 'top' or inside_distance(x, y) < .4:
         continue
-    _, d, _ = nearest(x, y)
-    fx, fy = (x - 1) / 2 % 1, (19 - y) / 2 % 1 if y < 20 else .0
-    rim = min(fx, 1 - fx, fy, 1 - fy) if y < 20 else 0
-    near_wall = d - half_width(lengths[nearest(x, y)[0]]) < .9
-    if near_wall and rng.random() < .55:
-        forest_dressing.leaf_cluster(greens, rng, (x, y, z + .12), rng.uniform(.18, .3),
-                                     rng.randrange(3))
-    elif rim < .3 or rng.random() < .25:
-        for _blade in range(rng.randint(3, 6)):
-            bx, by = x + rng.uniform(-.12, .12), y + rng.uniform(-.12, .12)
-            lean = (rng.uniform(-.08, .08), rng.uniform(-.08, .08))
-            greens.add([(bx - .03, by, z - .02), (bx + .03, by, z - .02),
-                        (bx + lean[0], by + lean[1], z + rng.uniform(.14, .28))],
-                       [(0, 1, 2)], rng.randrange(3))
+    i_near, d, _ = nearest(x, y)
+    from_wall = d - half_width(lengths[i_near])
+    fx = (x - 1) / 2 % 1 if 0 < x < 18 else 0.0
+    fy = (19 - y) / 2 % 1 if 0 < y < 20 else 0.0
+    rim = min(fx, 1 - fx, fy, 1 - fy)            # 0 at a cell border, .5 in the centre
+    roll = rng.random()
+    if from_wall < .8 and roll < .5:
+        bush(x, y, z, rng.uniform(.16, .3))
+    elif rim < .22 and roll < .35:
+        bush(x, y, z, rng.uniform(.12, .22))
+    elif roll < .75:
+        tuft(x, y, z, dry=noise2(x * .7 + 13, y * .7 - 5) > .55)
+    elif roll < .83:
+        flower_patch(x, y, z)
+
+# Ferns and undergrowth at the cliff foot, under the first row of trees.
+for _ in range(260):
+    x, y = rng.uniform(-6.5, 24.5), rng.uniform(-14, 28)
+    if inside_distance(x, y) > -.6 or inside_distance(x, y) < -4.5:
+        continue
+    if abs(x - 3) < 2.2 and y < 0:
+        continue
+    z = valley(x, y)
+    for frond in range(rng.randint(5, 8)):
+        a = frond * math.tau / 7 + rng.uniform(-.3, .3)
+        length = rng.uniform(.35, .6)
+        tip = (x + math.cos(a) * length, y + math.sin(a) * length, z + .12)
+        mid = (x + math.cos(a) * length * .5, y + math.sin(a) * length * .5, z + .3)
+        side = (-math.sin(a) * .09, math.cos(a) * .09)
+        greens.add([(x, y, z), (mid[0] + side[0], mid[1] + side[1], mid[2]), tip,
+                    (mid[0] - side[0], mid[1] - side[1], mid[2])],
+                   [(0, 1, 2), (0, 2, 3)],
+                   colors=[(.03, .07, .04), (.09, .19, .08), (.15, .25, .09), (.09, .19, .08)])
 greens_obj = greens.finish()
 
 # ---------------------------------------------------------------- lanterns, idol, lights
@@ -612,7 +806,7 @@ def point_light(name, position, color, energy, radius):
     data.energy = energy
     data.color = color
     data.shadow_soft_size = radius
-    data.use_shadow = False
+    data.use_shadow = True
     obj = bpy.data.objects.new(name, data)
     stage_c.objects.link(obj)
     obj.location = position
@@ -648,8 +842,10 @@ def lantern(u, side):
                                       (1, .41, .10), 230, .6))
 
 
-for u, side in [(2.5, 1), (11.5, -1), (16 + 3 * math.pi / 2, 1), (31.4, 1),
-                (16 + 3 * math.pi + 12 + 3 * math.pi / 2, -1), (54.0, 1)]:
+TOP_APEX = 16 + 3 * math.pi / 2
+BOTTOM_APEX = 16 + 3 * math.pi + 12 + 3 * math.pi / 2
+for u, side in [(-1.6, -1), (6.0, 1), (13.5, -1), (TOP_APEX, 1), (29.0, 1), (36.5, -1),
+                (BOTTOM_APEX, -1), (51.5, 1), (59.0, -1)]:
     lantern(u, side)
 timber.finish()
 metal.finish()
@@ -673,12 +869,25 @@ for zz in [.8, 1.18, 1.48]:
              .025, 5)
 idol.finish()
 brazier = Batch('Offering_Brazier', [stone[2], iron, flame], props_c)
-bx, by = 13.9, 22.6
-column(brazier, bx, by, iz + .02, .42, .42, .24, index=0)
-column(brazier, bx, by, iz + .25, .3, .3, .20, index=1)
-column(brazier, bx, by, iz + .45, .18, .17, .5, index=2)
+fire_lights = []
+for bx, by in [(13.75, 22.55), (16.25, 22.55)]:
+    column(brazier, bx, by, iz + .02, .36, .36, .24, index=0)
+    column(brazier, bx, by, iz + .25, .26, .26, .18, index=1)
+    for k in range(5):                      # tongues of flame
+        a = k * math.tau / 5
+        column(brazier, bx + math.cos(a) * .08, by + math.sin(a) * .08, iz + .4, .07, .06,
+               rng.uniform(.25, .45), index=2)
+    fire_lights.append(point_light('Idol_Fire', (bx, by, iz + .9), (1, .35, .06), 300, .5))
 brazier.finish()
-idol_light = point_light('Idol_Fire', (bx, by, iz + .9), (1, .35, .06), 380, .5)
+idol_light = fire_lights[0]
+# Worn flagstones in front of the idol, where the road ends.
+flags = PaintBatch('Idol_Flagstones', props_c)
+for fx in [-1.1, -.4, .3, 1.0]:
+    for fy in [-1.3, -.6, .1]:
+        x, y = ix + fx + rng.uniform(-.06, .06), iy + fy + rng.uniform(-.06, .06)
+        rock_chunk(flags, x, y, iz - .12, .3, .28, .15, ground=iz - .2, moss=.25,
+                   sides=rng.choice((5, 6)), tint=SLATE[3])
+flags.finish()
 
 # ---------------------------------------------------------------- forest (outside the plateau only)
 api = SimpleNamespace(Batch=Batch, beam=beam, material=material, wood=wood, bark=bark,
@@ -687,7 +896,7 @@ spruce = [forest_dressing.fir_mesh(api, rng, k) for k in range(3)]
 birch = [forest_dressing.birch_mesh(api, rng, k) for k in range(2)]
 
 
-def plant(x, y, scale, birch_chance=.14, z=None):
+def plant(x, y, scale, birch_chance=.2, z=None):
     mesh = rng.choice(birch) if rng.random() < birch_chance else rng.choice(spruce)
     obj = bpy.data.objects.new('Birch' if mesh in birch else 'Spruce', mesh)
     forest_c.objects.link(obj)
@@ -740,6 +949,49 @@ for row in range(34):
             forest_dressing.distant_fir(far, rng, x, y, valley(x, y) - .1, rng.uniform(2.8, 5.4))
 far.finish()
 
+
+# ---------------------------------------------------------------- fireflies and valley mist
+firefly_mat = material('V2_Firefly', (.95, .85, .35), 9)
+flies = Batch('Fireflies', [firefly_mat], props_c)
+for _ in range(36):
+    x, y = rng.uniform(-4, 22), rng.uniform(-6, 25)
+    z = top_at(x, y) if inside_distance(x, y) > 0 else valley(x, y)
+    z += rng.uniform(.5, 1.8)
+    s = rng.uniform(.022, .034)
+    flies.add([(x + s, y, z), (x - s, y, z), (x, y + s, z), (x, y - s, z), (x, y, z + s), (x, y, z - s)],
+              [(0, 2, 4), (2, 1, 4), (1, 3, 4), (3, 0, 4), (2, 0, 5), (1, 2, 5), (3, 1, 5), (0, 3, 5)])
+flies.finish()
+
+mist_mat = material('V2_Valley_Mist', (.40, .50, .70), .18)
+mist_shader = next(n for n in mist_mat.node_tree.nodes if n.type == 'BSDF_PRINCIPLED')
+mist_shader.inputs['Alpha'].default_value = .042
+mist_mat.surface_render_method = 'BLENDED'
+mist_mat.use_backface_culling = False
+mist = Batch('Valley_Mist', [mist_mat], forest_c)
+placed = 0
+while placed < 34:
+    x, y = rng.uniform(-14, 32), rng.uniform(-16, 34)
+    radius = rng.uniform(3.0, 6.0)
+    aspect = rng.uniform(1.3, 1.9)
+    # Keep every wisp in the valley: its whole ellipse stays clear of the plateau.
+    if inside_distance(x, y) > -(radius * aspect * .75 + 1.0):
+        continue
+    placed += 1
+    turn = rng.uniform(0, math.pi)
+    z = valley(x, y) + rng.uniform(.8, 1.9)
+    for layer, (scale, lift) in enumerate([(1.0, 0), (.84, .18), (.68, .36), (.52, .54), (.36, .72)]):
+        ring = []
+        for k in range(18):
+            a = k * math.tau / 18
+            wob = 1 + .14 * math.sin(a * 3 + turn * 5)
+            px = math.cos(a) * radius * scale * aspect * wob
+            py = math.sin(a) * radius * scale * wob
+            ring.append((x + px * math.cos(turn) - py * math.sin(turn),
+                         y + px * math.sin(turn) + py * math.cos(turn), z + lift))
+        mist.add(ring + [(x, y, z + lift)], [(k, (k + 1) % 18, 18) for k in range(18)])
+mist_obj = mist.finish()
+mist_obj.visible_shadow = False
+
 # ---------------------------------------------------------------- light, camera
 world = bpy.data.worlds.new('V2_Blue_Hour')
 scene.world = world
@@ -781,6 +1033,9 @@ scene.render.resolution_x, scene.render.resolution_y = 1600, 1000
 scene.render.image_settings.file_format = 'PNG'
 scene.render.filepath = str(ROOT / 'output/forest_arena/blender_preview.png')
 scene.view_settings.view_transform = 'AgX'
+scene.view_settings.look = 'AgX - Medium High Contrast'
+scene.eevee.use_raytracing = True
+scene.eevee.taa_render_samples = 96
 scene['reference'] = 'User image #3 + author markup, 2026-11-02. v2: solid plateau, climbing road.'
 scene['grid_mapping'] = 'Godot (x,z) = Blender (x,-y). Cell=2m; centre x=1+2*gx, y=19-2*gy.'
 scene['terrace_heights'] = {'%d,%d' % k: round(v, 2) for k, v in heights.items()}
@@ -790,7 +1045,7 @@ for area_ui in bpy.context.screen.areas:
         area_ui.spaces.active.region_3d.view_perspective = 'CAMERA'
 
 ARENA_INFO = {
-    'lights': [(o.name, tuple(round(c, 2) for c in o.location)) for o in lantern_lights + [idol_light]],
+    'lights': [(o.name, tuple(round(c, 2) for c in o.location)) for o in lantern_lights + fire_lights],
     'camera': (tuple(round(c, 2) for c in camera.location), CAM_PITCH, CAM_YAW, camera_data.ortho_scale),
 }
 print('PLANE', round(PA,2), round(PB,3), round(PC,3))
