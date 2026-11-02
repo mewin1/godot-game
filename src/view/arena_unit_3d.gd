@@ -34,9 +34,9 @@ func build(model: StringName, tint: Color, height: float, sender_color: Color) -
 		_:
 			_build_walker(tint)
 	_body.scale = Vector3.ONE * height
-	var shadow: CylinderMesh = ArenaMaterials3D.cylinder(0.32 * height, 0.32 * height, 0.02, 12)
+	var shadow: CylinderMesh = ArenaMaterials3D.cylinder(0.24 * height, 0.24 * height, 0.02, 12)
 	var blot: MeshInstance3D = ArenaMaterials3D.part(self, shadow,
-			ArenaMaterials3D.flat(Color(0.0, 0.0, 0.02, 0.5)), Vector3(0, 0.03, 0))
+			ArenaMaterials3D.flat(Color(0.0, 0.0, 0.02, 0.3)), Vector3(0, 0.03, 0))
 	blot.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	if sender_color.a > 0.0:
 		var ring: TorusMesh = TorusMesh.new()

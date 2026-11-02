@@ -96,7 +96,7 @@ func _build_stone(paint: Color, accent: Color, height: float) -> void:
 		var angle: float = TAU * i / 6.0
 		ArenaMaterials3D.part(_model, ArenaMaterials3D.box(Vector3(0.2, 0.22, 0.2)), stone,
 				Vector3(cos(angle) * 0.5, top + 0.22, sin(angle) * 0.5), Vector3(0, -angle, 0))
-	ArenaMaterials3D.part(_model, ArenaMaterials3D.box(Vector3(0.18, 0.3, 0.08)), ArenaMaterials3D.glow(accent, 2.0),
+	ArenaMaterials3D.part(_model, ArenaMaterials3D.box(Vector3(0.18, 0.3, 0.08)), ArenaMaterials3D.glow(accent, 1.2),
 			Vector3(0, 0.46 + height * 0.7, 0.5))
 	ArenaMaterials3D.part(_model, ArenaMaterials3D.cylinder(0.5, 0.0, 0.7, 8),
 			ArenaMaterials3D.solid(paint), Vector3(0, top + 0.5, 0))
@@ -125,13 +125,13 @@ func _build_carved(paint: Color, accent: Color, height: float) -> void:
 	var top: float = 0.5 + height
 	ArenaMaterials3D.part(_model, ArenaMaterials3D.cylinder(0.62, 0.5, 0.16, 8), dark, Vector3(0, top, 0))
 	ArenaMaterials3D.part(_model, ArenaMaterials3D.cylinder(0.34, 0.0, 0.7, 8), painted, Vector3(0, top + 0.43, 0))
-	ArenaMaterials3D.part(_model, ArenaMaterials3D.cylinder(0.66, 0.66, 0.05, 8), ArenaMaterials3D.glow(accent, 1.4), Vector3(0, top - 0.1, 0))
+	ArenaMaterials3D.part(_model, ArenaMaterials3D.cylinder(0.66, 0.66, 0.05, 8), ArenaMaterials3D.glow(accent, 0.9), Vector3(0, top - 0.1, 0))
 	var crystal: SphereMesh = ArenaMaterials3D.sphere(0.22, 4, 2)
 	_add_accent(crystal, accent, top + 1.2, Vector3(1.0, 1.9, 1.0))
 
 
 func _add_accent(mesh: Mesh, color: Color, height: float, scale_factor: Vector3 = Vector3.ONE) -> void:
-	_accent = ArenaMaterials3D.part(_model, mesh, ArenaMaterials3D.glow(color, 3.0), Vector3(0, height, 0), Vector3.ZERO,
+	_accent = ArenaMaterials3D.part(_model, mesh, ArenaMaterials3D.glow(color, 1.3), Vector3(0, height, 0), Vector3.ZERO,
 			scale_factor)
 	_accent.set_meta(&"rest_y", height)
 	_accent.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
@@ -141,8 +141,9 @@ func _add_accent(mesh: Mesh, color: Color, height: float, scale_factor: Vector3 
 func _add_level_rings(level: int) -> void:
 	for i: int in range(1, clampi(level, 1, 3)):
 		var ring: TorusMesh = TorusMesh.new()
-		ring.inner_radius = 0.72 + i * 0.12
-		ring.outer_radius = 0.8 + i * 0.12
+		ring.inner_radius = 0.5 + i * 0.1
+		ring.outer_radius = 0.55 + i * 0.1
 		ring.rings = 24
 		ring.ring_segments = 4
-		ArenaMaterials3D.part(_model, ring, ArenaMaterials3D.glow(ArenaMaterials3D.GOLD, 1.6), Vector3(0, 0.2 + i * 0.07, 0))
+		ArenaMaterials3D.part(_model, ring, ArenaMaterials3D.glow(ArenaMaterials3D.GOLD, 0.8),
+				Vector3(0, 0.46 + i * 0.05, 0))

@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="ru">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Застава · 3D-MVP: лесная арена в матче</title>
+<style>
+:root{color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:#141c22;color:#ece8df;font:17px/1.6 system-ui,sans-serif}
+main{max-width:1080px;margin:auto;padding:44px 22px 80px}
+h1{font-size:clamp(32px,5vw,54px);line-height:1.12;color:#efcd83;margin:6px 0 8px}
+h2{margin-top:44px;color:#efcd83;font-size:26px}
+h3{color:#f4eee0;margin:0 0 8px}
+p{max-width:960px}
+.muted{color:#b7c4ca}
+.lead{font-size:19px}
+a{color:#efcd83}
+code{color:#b4dfeb;background:#0e161c;padding:1px 6px;border-radius:5px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-top:20px}
+.card{background:#1f2d36;border:1px solid #3a4c55;border-radius:12px;padding:20px}
+.card b{font-size:22px;color:#efcd83}
+.card .big{font-size:30px;color:#efcd83;display:block;margin-bottom:4px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.panel{background:#1f2d36;border:1px solid #3a4c55;border-radius:12px;padding:20px}
+.panel.good{border-color:#527a60}
+.panel.warn{border-color:#7a5c2c}
+.panel.bad{border-color:#7a3c3c}
+.badge{display:inline-block;padding:3px 10px;margin:2px 4px 2px 0;border-radius:20px;font-size:14px;background:#2c414e;border:1px solid #49606e}
+.badge.new{background:#2e4a33;border-color:#4f8a5c;color:#bde8c6}
+.badge.fix{background:#4a3d1f;border-color:#8a7435;color:#f0dcae}
+.badge.plan{background:#23384d;border-color:#3f6b93;color:#bcdcf0}
+table{border-collapse:collapse;width:100%;margin:16px 0}
+td,th{padding:9px 11px;text-align:left;border-bottom:1px solid #3a4c55;font-size:15px}
+th{color:#efcd83;font-weight:600}
+tr.weak td{color:#e6a3a3}
+tr.strong td{color:#a8d8b8}
+.bar-row{display:grid;grid-template-columns:170px 1fr 56px;gap:10px;align-items:center;margin:7px 0}
+.bar-label{font-size:15px;text-align:right;color:#d9d3c6}
+.bar-track{background:#111b20;border-radius:6px;height:22px;overflow:hidden}
+.bar-fill{height:100%;background:linear-gradient(90deg,#7a5a2c,#e9c46a);border-radius:6px}
+.bar-val{font-size:14px;color:#b7c4ca}
+.illustration{background:#0e161c;border:1px solid #2a3a43;border-radius:12px;padding:16px;text-align:center;margin:16px 0}
+.illustration svg{max-width:100%;height:auto}
+.caption{font-size:14px;color:#b7c4ca;margin-top:10px}
+.tick{color:#a8d8b8;font-weight:700}
+.cross{color:#d98c8c;font-weight:700}
+ul li{margin:6px 0}
+footer{font-size:14px;color:#b7c4ca;margin-top:50px;border-top:1px solid #2a3a43;padding-top:16px}
+@media(max-width:760px){.cards,.grid2{grid-template-columns:1fr}.bar-row{grid-template-columns:120px 1fr 46px}}
+.shot{width:100%;border-radius:10px;border:1px solid #2a3a43;display:block}
+.pair{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:14px 0}
+.pair figure,.solo{margin:0}
+figcaption{font-size:14px;color:#b7c4ca;margin-top:6px}
+ol.rounds li{margin:10px 0}
+@media(max-width:760px){.pair{grid-template-columns:1fr}}
+</style>
+<main>
+
+<p class="muted">2–3 ноября 2026 · автономная ночная сессия «3D-MVP»</p>
+<h1>Матч переехал на 3D-лесную арену:<br>3D-башни, 3D-юниты, стеклянный интерфейс</h1>
+<p class="lead">Настоящий матч теперь идёт на склоне горы из Blender: мобы шагают по серпантину вверх, башни стоят на террасах своих клеток, закрытые места спрятаны в тумане. Симуляция не тронута — 3D только читает состояние поля.</p>
+
+<div class="cards">
+  <div class="card"><b>🌲 Арена в матче</b><p>Лесная арена в SubViewport под 2D-слоем эффектов. Высоты террас и дороги выгружены из Blender в <code>arena_layout.json</code>.</p></div>
+  <div class="card"><b>🏰 3 модели башен</b><p>Пост → каменная башня → резная башня с кристаллом. 7 богов — перекраска. Уровень слияния — золотые кольца.</p></div>
+  <div class="card"><b>🚶 5 силуэтов юнитов</b><p>Пеший, тяжёлый, нетопырь, босс, колобок. Темп шага — от настоящей скорости моба.</p></div>
+  <div class="card"><b>✅ Проверки</b><p><span class="big">314/314</span>тестов GUT, полная проверка зелёная перед каждым коммитом. FPS в бою (две арены, 2560×1440): 87–90.</p></div>
+</div>
+
+<h2>Было → стало</h2>
+<div class="pair"><figure><img class="shot" src="2026-11-03-3d-mvp/before_prep.jpg" alt="Было: 2.5D-двор, подготовка" loading="lazy"><figcaption>Было: 2.5D-двор, подготовка</figcaption></figure><figure><img class="shot" src="2026-11-03-3d-mvp/after_prep.jpg" alt="Стало: 3D-арена, лес за стеклянной лавкой" loading="lazy"><figcaption>Стало: 3D-арена, лес за стеклянной лавкой</figcaption></figure></div>
+<div class="pair"><figure><img class="shot" src="2026-11-03-3d-mvp/before_wave.jpg" alt="Было: бой на двух каменных дворах" loading="lazy"><figcaption>Было: бой на двух каменных дворах</figcaption></figure><figure><img class="shot" src="2026-11-03-3d-mvp/after_wave.jpg" alt="Стало: бой — две арены, соперник в «окне» слева" loading="lazy"><figcaption>Стало: бой — две арены, соперник в «окне» слева</figcaption></figure></div>
+
+<h2>1 · Лесная 3D-арена в матче</h2>
+<ul>
+<li><b>Как устроено.</b> <code>ArenaStage3D</code> — SubViewport с <code>forest_arena.glb</code>, светом и туманом превью и ортокамерой, которая сама кадрирует поле под свой прямоугольник экрана. Своё поле в подготовке рисуется во весь экран (поле справа, слева сквозь лавку виден лес). В бою поле соперника — своя сцена в левой половине.</li>
+<li><b>Высоты.</b> В <code>build_forest_arena_v2.py</code> добавлена запись <code>arena_layout.json</code> (модуль <code>arena_layout.py</code>): высота каждой из 56 террас и 203 точки линии дороги через 0.25 м с длиной вдоль пути. Сгенерировано в Blender без пересборки сцены.</li>
+<li><b>Мобы.</b> Прогресс из симуляции → длина вдоль гладкой линии дороги (центры клеток пути сопоставлены с ближайшими точками линии, только вперёд — развороты не путают) → точка с высотой дороги. Плавно между тиками, поворот по ходу, лёгкий разброс поперёк дороги, чтобы толпа не сливалась.</li>
+<li><b>Ввод.</b> Клетка под курсором — луч против плоскостей террас, берётся ближайшее попадание (без физики). Проверка: центры всех 90 клеток определяются верно; расхождения только в 6 угловых точках, где клетку перекрывает более высокий сосед.</li>
+<li><b>Рост пути.</b> Закрытые террасы — тёмный туман с рамкой «места», неоткрытая дорога — тёмная полоса, конец открытой дороги — деревянный завал.</li>
+</ul>
+<div class="pair"><figure><img class="shot" src="2026-11-03-3d-mvp/after_first.jpg" alt="Раунд 1: открыто 10 клеток пути, остальное в тумане" loading="lazy"><figcaption>Раунд 1: открыто 10 клеток пути, остальное в тумане</figcaption></figure><figure><img class="shot" src="2026-11-03-3d-mvp/hover_crop.jpg" alt="Перетаскивание: рамки всех свободных мест, выбранная башня с радиусом" loading="lazy"><figcaption>Перетаскивание: рамки всех свободных мест, выбранная башня с радиусом</figcaption></figure></div>
+
+<h2>2 · Интерфейс глазами игрока — 4 круга</h2>
+<ol class="rounds">
+<li><b>«Хватает ли золота?»</b> Золото было только в углу у героя. → Монета и сумма в шапке лавки; цена на карточке становится <span style="color:#ff8a72">красной</span>, если не хватает, карточка заметно темнеет; цены крупнее (17 px), «Урон · Тир» 10→12 px. Панели лавки, резерва и героя — «стекло»: тёмно-синие полупрозрачные, светлая кромка, тень (<code>DuskTheme.glass()</code>). Первая попытка сломала шапку (золото переносилось по буквам) — исправлено.</li>
+<li><b>«Куда ставить?»</b> На 3D-поле открытые и закрытые места видны, но при перетаскивании не было понятно, куда можно. → Пока тащим постройку, все свободные открытые места обведены зелёной рамкой; фигура и радиус — на высоте террасы.</li>
+<li><b>«Что сейчас происходит в бою?»</b> Юниты были мелкие и бурые на буром — почти не видны; у окна соперника был жёсткий шов. → Юниты крупнее (×1.9) и светлее, тень-подложка; окно соперника обрамлено стеклянной кромкой.</li>
+<li><b>Полировка моделей.</b> Кристаллы выгорали в белый — цвет бога терялся; кольца уровня вылезали за плитку; босс великоват. → Мягче свечение, аккуратные кольца, босс ниже, плитки ближе к камню.</li>
+</ol>
+<div class="pair"><figure><img class="shot" src="2026-11-03-3d-mvp/ui1_prep.jpg" alt="Круг 1 до исправления: шапка лавки сломана" loading="lazy"><figcaption>Круг 1 до исправления: шапка лавки сломана</figcaption></figure><figure><img class="shot" src="2026-11-03-3d-mvp/ui2_first.jpg" alt="После круга 1: золото в шапке, стеклянные панели" loading="lazy"><figcaption>После круга 1: золото в шапке, стеклянные панели</figcaption></figure></div>
+<div class="pair"><figure><img class="shot" src="2026-11-03-3d-mvp/ui3_wave.jpg" alt="Круг 3 до: юниты почти не видны" loading="lazy"><figcaption>Круг 3 до: юниты почти не видны</figcaption></figure><figure><img class="shot" src="2026-11-03-3d-mvp/units_crop.jpg" alt="Юниты крупно"><figcaption>После: юниты на серпантине читаются</figcaption></figure></div>
+
+<h2>3 · 3D-башни и 4 · 3D-юниты</h2>
+<p>Модели собраны в коде из примитивов Godot (<code>ArenaTower3D</code>, <code>ArenaUnit3D</code>, общие материалы — <code>ArenaMaterials3D</code>). Все цвета, высоты и размеры — в <code>data/visuals/arena_3d_style.tres</code>: бог → цвет и свечение, моб → модель, цвет, рост.</p>
+<div class="solo"><figure><img class="shot" src="2026-11-03-3d-mvp/gallery.jpg" alt="7 богов × 3 тира (снизу вверх: пост, каменная, резная) и юниты: пеший, быстрый, тяжёлые, нетопырь, босс, колобок, лекарь" loading="lazy"><figcaption>7 богов × 3 тира (снизу вверх: пост, каменная, резная) и юниты: пеший, быстрый, тяжёлые, нетопырь, босс, колобок, лекарь</figcaption></figure></div>
+<ul>
+<li>Под каждой клеткой фигуры — плитка цвета бога: форма «рюкзака» видна сразу.</li>
+<li>Выстрел — модель вздрагивает; покупка/слияние — вырастает из земли.</li>
+<li>Юниты: шаг и покачивание в темпе реальной скорости (замедление — медленнее шаг), нетопырь машет крыльями над дорогой, колобок катится. Смерть — вспышка и исчезновение. HP — полоска над головой, статусы — кольца вокруг тела.</li>
+</ul>
+
+<h2>Решения (проверить утром)</h2>
+<div class="panel warn">
+<ul>
+<li><b>Модели — из примитивов Godot, а не Blender GLB.</b> Быстрее, перекраска без импорта. Если нужен «рукотворный» вид — заменить на GLB с теми же окрашиваемыми частями.</li>
+<li><b>Поле подготовки во весь экран</b> — лес за лавкой; в бою соперник — отдельное окно.</li>
+<li><b>Удалён мёртвый код:</b> 2.5D-«двор подготовки» (<code>PreparationCourt</code>) и старый неиспользуемый <code>Arena3D</code> со сценами. Старые 2D-рисовальщики остались — ими пользуются песочница и лаборатория реакций.</li>
+</ul>
+</div>
+
+<h2>Не успел / известные проблемы</h2>
+<div class="panel bad">
+<ul>
+<li>В 3D нет оттенка «ярости» и полупрозрачности скрытых мобов (в 2D были). Замедление, горение, мокрота и др. показываются кольцами.</li>
+<li>Герой/идол в конце короткого пути — только 2D-табличка HP и завал, без 3D-фигуры.</li>
+<li>Снаряды и попадания остались плоскими 2D-эффектами поверх сцены; точка вылета — условная высота над башней.</li>
+<li>Настоящее перетаскивание мышью не проверено (курсор автора не трогал) — проверено прямыми вызовами наведения.</li>
+<li>FPS измерен на старте волны (87–90, вероятно упор в ограничение); с сотнями мобов не замерен.</li>
+<li>Цвета юнитов после осветления пастельные; кольцо цвета игрока у армии в 3D не проверено глазами.</li>
+</ul>
+</div>
+
+<h2>Что проверить утром</h2>
+<ol>
+<li>Запустить матч (F5): поставить башню перетаскиванием, повернуть ПКМ, продать сбросом на лавку — совпадает ли подсветка с террасой под курсором.</li>
+<li>Посмотреть бой целиком на ×1 и ×2: читаются ли юниты и HP, нравится ли темп шага.</li>
+<li>Оценить модели башен: оставить примитивы или делать в Blender.</li>
+<li>Поднять магазин до IV: туман и завал исчезают, дорога открывается до идола.</li>
+</ol>
+
+<footer>Коммиты: 0a32d8c (арена, модели), f487dcd (интерфейс, чистка) и финальный. Скриншоты — уменьшенные JPG в <code>docs/presentation/2026-11-03-3d-mvp/</code>.</footer>
+</main>

@@ -58,7 +58,7 @@ mob_heights = Dictionary[StringName, float]({
 &"armored": 1.15,
 &"knight": 1.25,
 &"bat": 0.7,
-&"boss": 2.1,
+&"boss": 1.6,
 &"kolobok": 0.75,
 &"kolobok_small": 0.5,
 &"training_dummy": 1.1
