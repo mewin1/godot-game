@@ -39,7 +39,6 @@ var _was_enraged: bool = false
 ## В каком раунде выбыл каждый игрок (индекс → раунд) — для таблицы итогов.
 var _elimination_rounds: Dictionary[int, int] = {}
 
-var _court: PreparationCourt
 ## Лесная 3D-арена своего поля во весь экран: за лавкой виден лес, поле — справа.
 var _back_stage: ArenaStage3D
 var _hud: MatchHud
@@ -100,9 +99,6 @@ func _build_ui() -> void:
 	var background: ColorRect = ColorRect.new()
 	background.color = COLOR_BACKGROUND
 	_add_full_rect(self, background)
-	_court = PreparationCourt.new()
-	_court.visible = false
-	_add_full_rect(self, _court)
 	_back_stage = ArenaStage3D.new()
 	_add_full_rect(self, _back_stage)
 	var root_box: VBoxContainer = VBoxContainer.new()
@@ -207,8 +203,7 @@ func _build_halves() -> void:
 		idols.add_child(slot)
 		_idol_slots.append(slot)
 	var hero_dock: PanelContainer = PanelContainer.new()
-	hero_dock.add_theme_stylebox_override("panel", DuskTheme.panel(
-			Color("0c1823c9"), Color("71634e99"), 5))
+	hero_dock.add_theme_stylebox_override("panel", DuskTheme.glass(0.66, 6))
 	hero_dock.custom_minimum_size.x = 310
 	bottom_row.add_child(hero_dock)
 	var hero_row: HBoxContainer = HBoxContainer.new()

@@ -11,6 +11,7 @@ var _cards: Array[OfferCard] = []
 var _army_grid: GridContainer
 var _army_buttons: Array[ArmyOfferButton] = []
 var _level_title: Label
+var _gold_label: Label
 var _army_title: Label
 var _army_reroll: Button
 var _selection_panel: PanelContainer
@@ -40,13 +41,7 @@ var _spirit_choice_index: int = -1
 
 
 func _init() -> void:
-	var panel_style: StyleBoxFlat = StyleBoxFlat.new()
-	panel_style.bg_color = Color(0.035, 0.063, 0.083, 0.79)
-	panel_style.border_color = Color(0.42, 0.35, 0.25)
-	panel_style.set_border_width_all(1)
-	panel_style.set_corner_radius_all(4)
-	panel_style.set_content_margin_all(11)
-	add_theme_stylebox_override("panel", panel_style)
+	add_theme_stylebox_override("panel", DuskTheme.glass(0.62, 12))
 	var box: VBoxContainer = VBoxContainer.new()
 	box.add_theme_constant_override("separation", 3)
 	add_child(box)
@@ -55,6 +50,21 @@ func _init() -> void:
 	_level_title = _heading(23)
 	_level_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	heading.add_child(_level_title)
+	var coin: TextureRect = TextureRect.new()
+	coin.texture = MarketOffer.COIN
+	coin.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	coin.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	coin.custom_minimum_size = Vector2(22, 22)
+	heading.add_child(coin)
+	_gold_label = _label("", 20)
+	_gold_label.autowrap_mode = TextServer.AUTOWRAP_OFF
+	_gold_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_gold_label.tooltip_text = "Ваше золото: на что хватает — цена светлая, не хватает — красная"
+	_gold_label.mouse_filter = Control.MOUSE_FILTER_STOP
+	_gold_label.add_theme_color_override("font_color", Color("ffd98a"))
+	_gold_label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.7))
+	_gold_label.add_theme_constant_override("outline_size", 4)
+	heading.add_child(_gold_label)
 	_reroll = _button("Обновить", _on_reroll)
 	_upgrade = _button("Развитие", _on_upgrade)
 	heading.add_child(_reroll)
@@ -178,6 +188,7 @@ func refresh(selected_tower: TowerState) -> void:
 		_last_reaction_report = ""
 		_restore_battle_report()
 	_trial_button.disabled = _sim.phase != MatchSim.Phase.PREP
+	_gold_label.text = "%d  " % _player.gold
 	var report: String = ReactionGuide.battle_report(_sim.config, _player.field.reaction_counts)
 	if _sim.phase == MatchSim.Phase.WAVE:
 		if _has_trial_report:

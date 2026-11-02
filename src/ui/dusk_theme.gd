@@ -6,6 +6,10 @@ const INK: Color = Color("0b141e")
 const GOLD: Color = Color("b7955d")
 const TEXT: Color = Color("eee3cd")
 const MUTED: Color = Color("a8b5c5")
+const GLASS: Color = Color("0a1626")
+const GLASS_EDGE: Color = Color(0.62, 0.74, 0.9, 0.32)
+## Цена, на которую не хватает золота.
+const SHORT: Color = Color("ff8a72")
 
 
 ## Копия базовой темы: прежние экраны и авторский ресурс остаются самостоятельными.
@@ -30,6 +34,21 @@ static func create() -> Theme:
 	result.set_stylebox(&"panel", &"TooltipPanel", panel(Color("071019"), GOLD, 12))
 	result.set_color(&"font_color", &"TooltipLabel", TEXT)
 	return result
+
+
+## «Стеклянная» панель поверх 3D-сцены: тёмно-синяя с прозрачностью, светлая кромка, тень.
+static func glass(alpha: float = 0.66, margin: int = 10) -> StyleBoxFlat:
+	var style: StyleBoxFlat = StyleBoxFlat.new()
+	style.bg_color = Color(GLASS, alpha)
+	style.border_color = GLASS_EDGE
+	style.set_border_width_all(1)
+	style.border_width_top = 2
+	style.set_corner_radius_all(9)
+	style.set_content_margin_all(margin)
+	style.shadow_color = Color(0, 0, 0, 0.38)
+	style.shadow_size = 12
+	style.shadow_offset = Vector2(0, 3)
+	return style
 
 
 ## Панель с тонкой латунной кромкой вместо тяжёлой объёмной рамки.

@@ -31,12 +31,10 @@ const SCORCH_SHADE: Color = Color(0.05, 0.03, 0.02, 0.55)
 const SCORCH_EMBER: Color = Color(1.0, 0.5, 0.2)
 const GRID_ASPECT: float = CourtyardPainter.GRID_ASPECT
 
-var preparation_court: PreparationCourt
 ## Поле рисуется лесной 3D-ареной (ArenaStage3D) — 2D-слой остаётся для эффектов и подсветки.
 var use_arena_3d: bool = false
 var _stage: ArenaStage3D
 var has_atmosphere: bool = false
-var _floor: CourtyardPainter.FloorLayer = CourtyardPainter.FloorLayer.new()
 var _air_bounds: Vector4
 var _air: ColorRect
 var _air_material: ShaderMaterial
@@ -95,8 +93,6 @@ var _known_centers: Dictionary[int, Vector2i] = {}
 
 func _init() -> void:
 	_style = VisualCatalog.get_default().field
-	_floor.show_behind_parent = true
-	add_child(_floor)
 	clip_contents = true
 	_battle = BattleLayer.new()
 	_battle.draw_world_towers = true
@@ -322,27 +318,16 @@ func _draw() -> void:
 	if _stage != null:
 		_draw_3d()
 		return
-	var in_court: bool = preparation_court != null and preparation_court.visible
-	_battle.is_preparation_court = in_court and not preparation_court.split
 	_battle.has_atmosphere = has_atmosphere
 	_air.visible = has_atmosphere
-	_floor.visible = in_court and field != null
-	if not in_court:
-		draw_rect(Rect2(Vector2.ZERO, size), Color(0.055, 0.09, 0.14))
+	draw_rect(Rect2(Vector2.ZERO, size), Color(0.055, 0.09, 0.14))
 	if field == null:
 		return
 	_update_layout()
 	_battle.set_layout(_origin, _cell_size)
 	_battle.point_projector = Callable(self, "_to_screen")
-	if in_court:
-		_floor.sync(field, _origin, _cell_size)
-		CourtyardPainter.draw_gate_mark(self, _origin, Vector2(1, GRID_ASPECT) * _cell_size,
-				field.layout.path_cells, _time)
-		if preparation_court.split:
-			_draw_title()
-	else:
-		CourtyardPainter.draw_field(self, field, _origin, _cell_size, _time, has_atmosphere)
-		_draw_title()
+	CourtyardPainter.draw_field(self, field, _origin, _cell_size, _time, has_atmosphere)
+	_draw_title()
 	_draw_footprints()
 	_draw_court_lights()
 	_draw_combo_coverage()
@@ -357,16 +342,17 @@ func _draw() -> void:
 
 ## Поле на 3D-арене: сама арена, башни и мобы — в сцене; здесь подсветка и эффекты.
 func _draw_3d() -> void:
-	_battle.is_preparation_court = false
 	_battle.has_atmosphere = has_atmosphere
 	_air.visible = false
-	_floor.visible = false
 	if field == null:
 		return
 	_update_layout()
 	_battle.set_layout(_origin, _cell_size)
 	_battle.point_projector = Callable(self, "_to_screen")
 	_draw_title()
+	if not is_own_field:
+		# Поле соперника — отдельное «окно» поверх общей сцены: стеклянная кромка.
+		draw_rect(Rect2(Vector2.ZERO, size).grow(-1.0), DuskTheme.GLASS_EDGE, false, 2.0)
 	_draw_combo_coverage()
 	_draw_knockback_mark()
 	_draw_wind()
@@ -388,21 +374,12 @@ func _update_layout() -> void:
 		_cell_size = _stage.pixels_per_meter * _stage.layout.cell_m * 0.8
 		_origin = _to_screen(Vector2.ZERO)
 		return
-	if preparation_court != null and preparation_court.visible and not preparation_court.split:
-		var floor_rect: Rect2 = preparation_court.floor_for(board)
-		_cell_size = floor_rect.size.x / board.width
-		_origin = floor_rect.position - global_position
-		_update_air(board)
-		return
 	var available: Vector2 = size - Vector2(0, TITLE_HEIGHT)
 	var board_units: Vector2 = Vector2(board.width, board.height * GRID_ASPECT)
 	var frame_units: Vector2 = Vector2(2.4, 2.1)
 	_cell_size = maxf(1.0, floorf(minf(available.x / (board_units.x + frame_units.x),
 			available.y / (board_units.y + frame_units.y))))
 	_origin = Vector2(0, TITLE_HEIGHT) + (available - board_units * _cell_size) * 0.5
-	if preparation_court != null and preparation_court.visible:
-		preparation_court.fit_duel(Rect2(global_position + _origin, board_units * _cell_size),
-				is_own_field)
 	_update_air(board)
 
 
@@ -538,6 +515,8 @@ func _draw_hover() -> void:
 		for cell: Vector2i in _hover_merge_target.cells():
 			_outline_cell(cell, _style.selected_color, 5.0, 0.0)
 		return
+	if _stage != null:
+		_draw_free_places(_hover.tower_id)
 	var cells: Array[Vector2i] = TowerState.shape_cells_at(_hover.data.shape, _hover_anchor,
 			_hover.rotation)
 	var color: Color = _style.valid_color if _hover_valid else _style.invalid_color
@@ -546,6 +525,14 @@ func _draw_hover() -> void:
 		if _stage != null:
 			_outline_cell(cell, Color(color, 1.0), 2.0)
 	_draw_range(TowerState.center_of(cells), _hover.data.range_milli, Color(color, 1.0))
+
+
+## Пока тащим постройку: все свободные открытые места тонкой рамкой — «куда можно ставить».
+func _draw_free_places(ignore_tower_id: int) -> void:
+	for cell: Vector2i in field.get_buildable_cells():
+		var owner: TowerState = field.get_tower_at(cell)
+		if owner == null or owner.id == ignore_tower_id:
+			_outline_cell(cell, Color(_style.valid_color, 0.55), 1.5, 0.1)
 
 
 func _draw_range(center_milli: Vector2i, range_milli: int, color: Color) -> void:

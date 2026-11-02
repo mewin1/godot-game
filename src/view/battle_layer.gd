@@ -50,7 +50,6 @@ var bodies_3d: bool = false
 ## mob -> Vector2: точка ног / над головой 3D-юнита на экране (задаёт FieldView).
 var mob_feet_projector: Callable
 var mob_head_projector: Callable
-var is_preparation_court: bool = false
 var has_atmosphere: bool = false
 var tower_pulses: Dictionary[int, float] = {}
 var tower_pops: Dictionary[int, float] = {}
@@ -161,8 +160,7 @@ func _draw() -> void:
 		_draw_projectile(projectile)
 	for impact: Impact in _impacts:
 		_draw_impact(impact)
-	if not is_preparation_court:
-		_draw_hero_hp(hero_plate_center)
+	_draw_hero_hp(hero_plate_center)
 	for flash: ReactionFlash in _flashes:
 		flash.draw(self, _milli_to_screen(Vector2(flash.position_milli)), _cell_size)
 	for text: FloatText in _texts:

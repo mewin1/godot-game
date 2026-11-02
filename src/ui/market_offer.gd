@@ -22,7 +22,11 @@ func _init() -> void:
 	for caption: Label in [_tower_label, _rite_label]:
 		caption.clip_text = true
 		caption.add_theme_constant_override("line_spacing", -2)
-	_normal_style.bg_color = Color("111c27d4")
+	_normal_style.bg_color = Color(0.06, 0.11, 0.18, 0.78)
+	_normal_style.border_color = Color(0.62, 0.74, 0.9, 0.22)
+	_normal_style.set_corner_radius_all(7)
+	_hover_style.set_corner_radius_all(7)
+	_hover_style.bg_color = Color(0.1, 0.18, 0.27, 0.92)
 
 
 ## Подсказка сохраняет описание ресурса и явно называет стихию предложения.
@@ -94,17 +98,19 @@ func _draw() -> void:
 	draw_texture_rect(GodSymbols.get_icon(god),
 			Rect2(Vector2(6, HEADER_TOP), Vector2.ONE * SYMBOL_SIZE), false)
 	draw_texture_rect(COIN, Rect2(left, HEADER_TOP + 1, 16, 16), false)
+	draw_string_outline(font, Vector2(left + 19, HEADER_TOP + 14), str(price),
+			HORIZONTAL_ALIGNMENT_LEFT, -1, 17, 4, Color(0, 0, 0, 0.6))
 	draw_string(font, Vector2(left + 19, HEADER_TOP + 14), str(price), HORIZONTAL_ALIGNMENT_LEFT,
-			-1, 15, Color("f3dbab"))
+			-1, 17, Color("ffe2a8") if is_active else DuskTheme.SHORT)
 	draw_line(Vector2(8, size.y - CAPTION_HEIGHT),
 			Vector2(size.x - 8, size.y - CAPTION_HEIGHT),
 			Color(0.69, 0.61, 0.45, 0.24))
 	# Урон и тир — сразу на карточке; остальное — в подсказке.
 	if data != null:
-		draw_string(get_theme_default_font(), Vector2(size.x * 0.5, size.y - 3),
+		draw_string(get_theme_default_font(), Vector2(0, size.y - 3),
 				"Урон %d · Тир %d" % [data.damage, data.tier],
-				HORIZONTAL_ALIGNMENT_CENTER, size.x - 8, 10, Color("cfd8dd"))
+				HORIZONTAL_ALIGNMENT_CENTER, size.x, 12, Color("d6e0e6"))
 	if not is_active:
-		draw_rect(rect, Color(0.03, 0.05, 0.08, 0.24))
+		draw_rect(rect, Color(0.02, 0.03, 0.06, 0.42))
 	# Стихия остаётся видна и при нехватке золота, независимо от оттенка картинки.
 	draw_rect(Rect2(Vector2(2, 2), Vector2(size.x - 4, STRIPE_HEIGHT)), hue)

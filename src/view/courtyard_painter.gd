@@ -2,6 +2,7 @@ class_name CourtyardPainter
 extends RefCounted
 ## Модульный каменный двор: каждая клетка и дорога берутся из настоящего FieldState.
 
+const COURT_PAINTING: Texture2D = preload("res://assets/dusk/preparation.png")
 const ENVIRONMENT: Texture2D = preload("res://assets/dusk/environment.png")
 const MATERIALS: Texture2D = preload("res://assets/dusk/materials.png")
 const EXIT_WEAPON: Texture2D = preload("res://assets/visual_slice/cannon.png")
@@ -21,7 +22,7 @@ static func draw_field(canvas: CanvasItem, field: FieldState, origin: Vector2,
 			Rect2(origin - backdrop_size * FLOOR_AREA.position, backdrop_size), false)
 	if match_court:
 		# Общий фрагмент двора даёт непрерывный свет под всей сеткой двух арен.
-		var painting: Texture2D = PreparationCourt.PAINTING
+		var painting: Texture2D = COURT_PAINTING
 		var region: Rect2 = Rect2(Vector2(painting.get_size()) * Vector2(0.445, 0.23),
 				Vector2(painting.get_size()) * Vector2(0.40, 0.39))
 		canvas.draw_texture_rect_region(painting, board, region)
@@ -195,22 +196,3 @@ static func draw_gate_mark(canvas: CanvasItem, origin: Vector2, step: Vector2,
 		canvas.draw_polyline(PackedVector2Array([heel - flank * step, tip, heel + flank * step]),
 				color, 2, true)
 		tip -= travel * step * 0.18
-
-## Команды статичного слоя хранятся в CanvasItem между кадрами движения.
-class FloorLayer extends Node2D:
-	var field: FieldState
-	var path_length: int = -1
-	var cell_size: float
-
-	func sync(source: FieldState, origin: Vector2, cell: float) -> void:
-		position = origin
-		if source == field and cell == cell_size and path_length == source.path_length:
-			return
-		field = source
-		path_length = source.path_length
-		cell_size = cell
-		queue_redraw()
-
-	func _draw() -> void:
-		if field != null:
-			CourtyardPainter.draw_preparation(self, field, Vector2.ZERO, cell_size)

@@ -75,8 +75,9 @@ func _draw() -> void:
 	var x_pos: float = 7 + art_width
 	if _damage > 0:
 		draw_string(get_theme_default_font(), Vector2(x_pos, size.y - PRICE_HEIGHT - 2),
-				"Урон %d" % _damage, HORIZONTAL_ALIGNMENT_LEFT, size.x - x_pos - 6, 9,
+				"Урон %d" % _damage, HORIZONTAL_ALIGNMENT_LEFT, size.x - x_pos - 6, 11,
 				Color("d8c8a8"))
 	draw_texture_rect(COIN, Rect2(x_pos, size.y - 20, 15, 15), false)
 	draw_string(get_theme_default_font(), Vector2(x_pos + 19, size.y - 7),
-			str(_price), HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color("e6cea1"))
+			str(_price), HORIZONTAL_ALIGNMENT_LEFT, -1, 15,
+			DuskTheme.SHORT if disabled else Color("ffe2a8"))
