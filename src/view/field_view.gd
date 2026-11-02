@@ -32,6 +32,9 @@ const SCORCH_EMBER: Color = Color(1.0, 0.5, 0.2)
 const GRID_ASPECT: float = CourtyardPainter.GRID_ASPECT
 
 var preparation_court: PreparationCourt
+## Поле рисуется лесной 3D-ареной (ArenaStage3D) — 2D-слой остаётся для эффектов и подсветки.
+var use_arena_3d: bool = false
+var _stage: ArenaStage3D
 var has_atmosphere: bool = false
 var _floor: CourtyardPainter.FloorLayer = CourtyardPainter.FloorLayer.new()
 var _air_bounds: Vector4
@@ -133,6 +136,8 @@ func _process(delta: float) -> void:
 		_track_tower_changes()
 	_battle.tower_pulses = _fire_pulses
 	_battle.tower_pops = _pops
+	if _stage != null and field != null and is_visible_in_tree():
+		_stage.sync(delta, interpolation)
 	queue_redraw()
 
 
@@ -179,6 +184,43 @@ func show_field(field_state: FieldState, game_config: GameConfig, caption: Strin
 	field.tower_fired.connect(_on_field_tower_fired)
 	field.mob_breached.connect(_on_field_mob_breached)
 	_battle.set_field(field)
+	if use_arena_3d:
+		_ensure_stage()
+		_stage.show_field(field, Callable(_style, "get_player_color"))
+
+
+## Подключает общую 3D-сцену (например, во весь экран за лавкой). Своя сцена тогда не нужна.
+func attach_stage(stage: ArenaStage3D) -> void:
+	use_arena_3d = true
+	_stage = stage
+	_setup_battle_3d()
+	if field != null:
+		_stage.show_field(field, Callable(_style, "get_player_color"))
+
+
+func _ensure_stage() -> void:
+	if _stage != null:
+		return
+	_stage = ArenaStage3D.new()
+	_stage.show_behind_parent = true
+	add_child(_stage)
+	move_child(_stage, 0)
+	_stage.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_setup_battle_3d()
+
+
+func _setup_battle_3d() -> void:
+	_battle.draw_world_towers = false
+	_battle.bodies_3d = true
+	_battle.mob_feet_projector = func(mob: MobState) -> Vector2:
+		return _stage.mob_feet(mob, interpolation) + _stage_offset()
+	_battle.mob_head_projector = func(mob: MobState) -> Vector2:
+		return _stage.mob_head(mob, interpolation) + _stage_offset()
+
+
+## Сдвиг от координат 3D-сцены к координатам этого поля.
+func _stage_offset() -> Vector2:
+	return _stage.global_position - global_position
 
 
 ## Экранная точка центра башни — для эффектов покупки и слияния.
@@ -277,6 +319,9 @@ func _make_drop_command(payload: DragPayload) -> SimCommand:
 #region Рисование
 
 func _draw() -> void:
+	if _stage != null:
+		_draw_3d()
+		return
 	var in_court: bool = preparation_court != null and preparation_court.visible
 	_battle.is_preparation_court = in_court and not preparation_court.split
 	_battle.has_atmosphere = has_atmosphere
@@ -310,8 +355,39 @@ func _draw() -> void:
 	_draw_siege_frame()
 
 
+## Поле на 3D-арене: сама арена, башни и мобы — в сцене; здесь подсветка и эффекты.
+func _draw_3d() -> void:
+	_battle.is_preparation_court = false
+	_battle.has_atmosphere = has_atmosphere
+	_air.visible = false
+	_floor.visible = false
+	if field == null:
+		return
+	_update_layout()
+	_battle.set_layout(_origin, _cell_size)
+	_battle.point_projector = Callable(self, "_to_screen")
+	_draw_title()
+	_draw_combo_coverage()
+	_draw_knockback_mark()
+	_draw_wind()
+	_draw_tower_marks()
+	_draw_rite_targets()
+	_draw_hover()
+	_update_hero_plate()
+	_draw_siege_frame()
+
+
 func _update_layout() -> void:
 	var board: BoardLayout = field.layout
+	if use_arena_3d:
+		_ensure_stage()
+		_stage.show_field(field, Callable(_style, "get_player_color"))
+		var target: Rect2 = Rect2(global_position - _stage.global_position
+				+ Vector2(0, TITLE_HEIGHT), size - Vector2(0, TITLE_HEIGHT))
+		_stage.frame_board(target)
+		_cell_size = _stage.pixels_per_meter * _stage.layout.cell_m * 0.8
+		_origin = _to_screen(Vector2.ZERO)
+		return
 	if preparation_court != null and preparation_court.visible and not preparation_court.split:
 		var floor_rect: Rect2 = preparation_court.floor_for(board)
 		_cell_size = floor_rect.size.x / board.width
@@ -392,7 +468,7 @@ func _draw_tower_marks() -> void:
 		_draw_boost_mark(tower)
 		if tower.id == selected_tower_id:
 			for cell: Vector2i in tower.cells():
-				draw_rect(_cell_rect(cell).grow(-1.0), _style.selected_color, false, 3.0)
+				_outline_cell(cell, _style.selected_color, 3.0, 0.02)
 			if tower.data.attacks:
 				_draw_range(tower.center_milli(), field.get_tower_range(tower),
 						_style.selected_color)
@@ -443,7 +519,7 @@ func _draw_neighbor_links(tower: TowerState) -> void:
 func _draw_scorched(tower: TowerState) -> void:
 	for cell: Vector2i in tower.cells():
 		var rect: Rect2 = _cell_rect(cell)
-		draw_rect(rect.grow(-2.0), SCORCH_SHADE)
+		_fill_cell(cell, SCORCH_SHADE)
 		var flicker: float = 0.5 + 0.5 * sin(_time * 9.0 + cell.x * 3.0 + cell.y)
 		draw_circle(rect.get_center() + Vector2(0, -_cell_size * 0.15 * flicker),
 				_cell_size * 0.12, Color(SCORCH_EMBER, 0.4 + 0.5 * flicker))
@@ -456,21 +532,35 @@ func _draw_hover() -> void:
 		if _hover_merge_target != null:
 			for cell: Vector2i in _hover_merge_target.cells():
 				var tint: Color = _style.valid_color if _hover_valid else _style.invalid_color
-				draw_rect(_cell_rect(cell).grow(-2), Color(tint, 0.4))
+				_fill_cell(cell, Color(tint, 0.4))
 		return
 	if _hover_merge_target != null:
 		for cell: Vector2i in _hover_merge_target.cells():
-			draw_rect(_cell_rect(cell), _style.selected_color, false, 5.0)
+			_outline_cell(cell, _style.selected_color, 5.0, 0.0)
 		return
 	var cells: Array[Vector2i] = TowerState.shape_cells_at(_hover.data.shape, _hover_anchor,
 			_hover.rotation)
 	var color: Color = _style.valid_color if _hover_valid else _style.invalid_color
 	for cell: Vector2i in cells:
-		draw_rect(_cell_rect(cell).grow(-2.0), color)
+		_fill_cell(cell, color)
+		if _stage != null:
+			_outline_cell(cell, Color(color, 1.0), 2.0)
 	_draw_range(TowerState.center_of(cells), _hover.data.range_milli, Color(color, 1.0))
 
 
 func _draw_range(center_milli: Vector2i, range_milli: int, color: Color) -> void:
+	if _stage != null:
+		var ring: PackedVector2Array = PackedVector2Array()
+		var center_world: Vector2 = Vector2(center_milli)
+		var height: float = _stage.layout.milli_to_world(center_world).y + 0.25
+		for i: int in 49:
+			var angle: float = TAU * i / 48.0
+			var flat: Vector2 = _stage.layout.corner_xz(center_world
+					+ Vector2.from_angle(angle) * range_milli)
+			ring.append(_stage.project(Vector3(flat.x, height, flat.y)) + _stage_offset())
+		draw_colored_polygon(ring, Color(color, 0.1))
+		draw_polyline(ring, Color(color, 0.6), 2.0, true)
+		return
 	var radius: float = range_milli / MILLI * _cell_size
 	var center: Vector2 = _to_screen(Vector2(center_milli))
 	draw_set_transform(center, 0, Vector2(1, GRID_ASPECT))
@@ -532,22 +622,60 @@ func _remember_towers() -> void:
 
 
 func _to_screen(milli: Vector2) -> Vector2:
+	if _stage != null:
+		return _stage.project_milli(milli) + _stage_offset()
 	return _origin + milli / MILLI * Vector2(_cell_size, _cell_size * GRID_ASPECT)
 
 
 func _cell_rect(cell: Vector2i) -> Rect2:
+	if _stage != null:
+		var quad: PackedVector2Array = _cell_quad(cell, 0.0)
+		var bounds: Rect2 = Rect2(quad[0], Vector2.ZERO)
+		for point: Vector2 in quad:
+			bounds = bounds.expand(point)
+		return bounds
 	var first: Vector2 = _to_screen(Vector2(cell) * MILLI)
 	var last: Vector2 = _to_screen((Vector2(cell) + Vector2.ONE) * MILLI)
 	return Rect2(first, last - first).abs()
 
 
 func _cell_at(screen_position: Vector2) -> Vector2i:
+	if _stage != null:
+		return _stage.cell_at(screen_position - _stage_offset())
 	var local: Vector2 = (screen_position - _origin) \
 			/ Vector2(_cell_size, _cell_size * GRID_ASPECT)
 	return Vector2i(floori(local.x), floori(local.y))
 
 
+## Четыре угла клетки на экране (с высотой террасы); inset — отступ внутрь в долях клетки.
+func _cell_quad(cell: Vector2i, inset: float) -> PackedVector2Array:
+	if _stage == null:
+		var rect: Rect2 = _cell_rect(cell).grow(-inset * _cell_size)
+		return PackedVector2Array([rect.position, Vector2(rect.end.x, rect.position.y), rect.end,
+				Vector2(rect.position.x, rect.end.y)])
+	var offset: Vector2 = _stage_offset()
+	var low: float = inset
+	var high: float = 1.0 - inset
+	return PackedVector2Array([
+		_stage.project_cell_corner(cell, Vector2(low, low), 0.2) + offset,
+		_stage.project_cell_corner(cell, Vector2(high, low), 0.2) + offset,
+		_stage.project_cell_corner(cell, Vector2(high, high), 0.2) + offset,
+		_stage.project_cell_corner(cell, Vector2(low, high), 0.2) + offset])
+
+
+func _fill_cell(cell: Vector2i, color: Color, inset: float = 0.03) -> void:
+	draw_colored_polygon(_cell_quad(cell, inset), color)
+
+
+func _outline_cell(cell: Vector2i, color: Color, width: float, inset: float = 0.03) -> void:
+	var quad: PackedVector2Array = _cell_quad(cell, inset)
+	quad.append(quad[0])
+	draw_polyline(quad, color, width, true)
+
+
 func _on_field_tower_fired(tower: TowerState, _mob: MobState) -> void:
+	if _stage != null:
+		_stage.pulse_tower(tower.id)
 	_fire_pulses[tower.id] = FIRE_PULSE_SECONDS
 
 
@@ -596,7 +724,7 @@ func _draw_wind_tower(tower: TowerState, show_area: bool) -> void:
 		var alignment: int = movement.x * direction.x + movement.y * direction.y
 		var tint: Color = Color(0.85, 0.3, 0.2, 0.35) if alignment > 0 \
 				else Color(0.3, 0.85, 0.65, 0.3)
-		draw_rect(_cell_rect(path[i]).grow(-2), tint)
+		_fill_cell(path[i], tint)
 
 
 func _draw_combo_coverage() -> void:
@@ -618,9 +746,8 @@ func _draw_combo_coverage() -> void:
 		_combo_cache_key = hasher.value
 		_combo_cells = CombatCoverage.reaction_cells(field, selected)
 	for cell: Vector2i in _combo_cells:
-		var rect: Rect2 = _cell_rect(cell).grow(-_cell_size * 0.18)
-		draw_rect(rect, Color(1.0, 0.78, 0.25, 0.28))
-		draw_rect(rect, Color(1.0, 0.78, 0.25, 0.8), false, 2.0)
+		_fill_cell(cell, Color(1.0, 0.78, 0.25, 0.28), 0.18)
+		_outline_cell(cell, Color(1.0, 0.78, 0.25, 0.8), 2.0, 0.18)
 
 
 func _draw_rite_targets() -> void:
@@ -636,12 +763,17 @@ func _draw_rite_targets() -> void:
 		var reason: String = TowerUpgradeGuide.rejection(editing_player, payload.rite, tower.id)
 		var tint: Color = _style.valid_color if reason == "" else _style.invalid_color
 		for cell: Vector2i in tower.cells():
-			draw_rect(_cell_rect(cell).grow(-2), tint, false, 3)
+			_outline_cell(cell, tint, 3.0)
 
 
 ## Осада остаётся заметной и после смены рисовальщика поля.
 func _draw_siege_frame() -> void:
 	if not is_under_siege:
+		return
+	if _stage != null:
+		var glow: float = 0.5 + 0.5 * sin(_time * SIEGE_PULSE_SPEED)
+		draw_rect(Rect2(Vector2.ZERO, size).grow(-3), Color(1.0, 0.3, 0.16, 0.4 + glow * 0.4),
+				false, 2 + glow * 2)
 		return
 	var board_size: Vector2 = Vector2(field.layout.width,
 			field.layout.height * GRID_ASPECT) * _cell_size

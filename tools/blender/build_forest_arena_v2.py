@@ -20,8 +20,10 @@ ROOT = Path('/home/d0nco/godot_game')
 sys.path.insert(0, str(ROOT / 'tools/blender'))
 import forest_dressing  # noqa: E402  (tree meshes shared with v1 work)
 import forest_ground_texture  # noqa: E402
+import arena_layout  # noqa: E402
 importlib.reload(forest_dressing)
 importlib.reload(forest_ground_texture)
+importlib.reload(arena_layout)
 
 SCENE_NAME = 'Zastava_Forest_Arena'
 CELL = 2.0
@@ -408,6 +410,10 @@ for gy in range(BOARD_H):
     for gx in range(BOARD_W):
         if (gx, gy) not in PATH_SET:
             heights[(gx, gy)] = math.ceil(raw_cell_height(gx, gy) / TERRACE_STEP) * TERRACE_STEP
+
+# Heights for the match view (towers on terraces, mobs on the road) — see arena_layout.py.
+arena_layout.write(ROOT / 'assets/arenas/forest/arena_layout.json', line, lengths, road_z, heights,
+                   L_ENTRY, L_EXIT, CELL)
 
 cells = []
 for (gx, gy), h in heights.items():

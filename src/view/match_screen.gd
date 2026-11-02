@@ -40,6 +40,8 @@ var _was_enraged: bool = false
 var _elimination_rounds: Dictionary[int, int] = {}
 
 var _court: PreparationCourt
+## Лесная 3D-арена своего поля во весь экран: за лавкой виден лес, поле — справа.
+var _back_stage: ArenaStage3D
 var _hud: MatchHud
 var _halves: BoxContainer
 var _menu_slot: Control
@@ -101,6 +103,8 @@ func _build_ui() -> void:
 	_court = PreparationCourt.new()
 	_court.visible = false
 	_add_full_rect(self, _court)
+	_back_stage = ArenaStage3D.new()
+	_add_full_rect(self, _back_stage)
 	var root_box: VBoxContainer = VBoxContainer.new()
 	root_box.add_theme_constant_override("separation", 6)
 	_add_full_rect(self, root_box)
@@ -168,7 +172,7 @@ func _build_halves() -> void:
 	left_column.add_child(_inventory)
 	_opponent_view = FieldView.new()
 	_opponent_view.has_atmosphere = true
-	_opponent_view.preparation_court = _court
+	_opponent_view.use_arena_3d = true
 	_opponent_view.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_opponent_view.sound_requested.connect(_on_view_sound_requested)
 	_menu_slot.add_child(_opponent_view)
@@ -179,7 +183,7 @@ func _build_halves() -> void:
 	_my_view = FieldView.new()
 	_my_view.has_atmosphere = true
 	_my_view.is_own_field = true
-	_my_view.preparation_court = _court
+	_my_view.attach_stage(_back_stage)
 	_my_view.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_my_view.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	right.add_child(_my_view)
@@ -307,9 +311,7 @@ func _refresh_views() -> void:
 		_refresh_hero_select(me)
 		return
 	var is_prep: bool = _sim.phase == MatchSim.Phase.PREP
-	_court.visible = true
-	_court.split = not (is_prep and me.is_alive)
-	_hud.set_preparation(_court.visible)
+	_hud.set_preparation(true)
 	_menu_slot.size_flags_stretch_ratio = 0.64 if is_prep else 1.0
 	_right_column.size_flags_stretch_ratio = 1.36 if is_prep else 1.0
 	_opponent_view.offset_bottom = -(_right_column.size.y - _my_view.size.y)

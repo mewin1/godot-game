@@ -1,0 +1,128 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="PackedScene" path="res://assets/arenas/forest/forest_arena.glb" id="1_arena"]
+
+[sub_resource type="Environment" id="Environment_dusk"]
+background_mode = 1
+background_color = Color(0.03, 0.055, 0.1, 1)
+ambient_light_source = 2
+ambient_light_color = Color(0.46, 0.5, 0.6, 1)
+ambient_light_energy = 1.15
+tonemap_mode = 4
+fog_enabled = true
+fog_light_color = Color(0.07, 0.11, 0.19, 1)
+fog_light_energy = 1.0
+fog_density = 0.0015
+fog_height = -2.0
+fog_height_density = 0.12
+glow_enabled = true
+glow_intensity = 0.6
+glow_bloom = 0.0
+glow_hdr_threshold = 1.2
+
+[node name="MatchArena3D" type="Node3D"]
+
+[node name="Arena" parent="." instance=ExtResource("1_arena")]
+
+[node name="Environment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_dusk")
+
+[node name="Camera" type="Camera3D" parent="."]
+position = Vector3(15.12, 51.54, 23.93)
+rotation = Vector3(-0.94248, 0.17453, 0)
+projection = 1
+size = 25.625
+far = 200.0
+current = true
+
+[node name="Moon" type="DirectionalLight3D" parent="."]
+rotation_degrees = Vector3(-55, -30, 0)
+light_color = Color(0.7, 0.76, 0.92, 1)
+light_energy = 0.3
+shadow_enabled = true
+directional_shadow_max_distance = 90.0
+
+[node name="SoftSky" type="SpotLight3D" parent="."]
+position = Vector3(11, 26, 8)
+rotation = Vector3(-0.98, 0.12, 0)
+light_color = Color(0.8, 0.85, 0.96, 1)
+light_energy = 2.2
+spot_range = 60.0
+spot_attenuation = 0.5
+spot_angle = 40.0
+spot_angle_attenuation = 1.6
+
+[node name="Lantern1" type="OmniLight3D" parent="."]
+position = Vector3(3.55, 1.72, 1.6)
+light_color = Color(1, 0.48, 0.13, 1)
+light_energy = 4.0
+omni_range = 6.5
+omni_attenuation = 1.4
+
+[node name="Lantern2" type="OmniLight3D" parent="."]
+position = Vector3(2.42, 2.77, -6)
+light_color = Color(1, 0.48, 0.13, 1)
+light_energy = 4.0
+omni_range = 6.5
+omni_attenuation = 1.4
+
+[node name="Lantern3" type="OmniLight3D" parent="."]
+position = Vector3(3.43, 3.49, -13.52)
+light_color = Color(1, 0.48, 0.13, 1)
+light_energy = 4.0
+omni_range = 6.5
+omni_attenuation = 1.4
+
+[node name="Lantern4" type="OmniLight3D" parent="."]
+position = Vector3(6, 4.18, -19.62)
+light_color = Color(1, 0.48, 0.13, 1)
+light_energy = 4.0
+omni_range = 6.5
+omni_attenuation = 1.4
+
+[node name="Lantern5" type="OmniLight3D" parent="."]
+position = Vector3(9.52, 4.97, -12.4)
+light_color = Color(1, 0.48, 0.13, 1)
+light_energy = 4.0
+omni_range = 6.5
+omni_attenuation = 1.4
+
+[node name="Lantern6" type="OmniLight3D" parent="."]
+position = Vector3(8.43, 5.68, -4.96)
+light_color = Color(1, 0.48, 0.13, 1)
+light_energy = 4.0
+omni_range = 6.5
+omni_attenuation = 1.4
+
+[node name="Lantern7" type="OmniLight3D" parent="."]
+position = Vector3(12, 6.22, -0.54)
+light_color = Color(1, 0.48, 0.13, 1)
+light_energy = 4.0
+omni_range = 6.5
+omni_attenuation = 1.4
+
+[node name="Lantern8" type="OmniLight3D" parent="."]
+position = Vector3(14.48, 7.11, -8.63)
+light_color = Color(1, 0.48, 0.13, 1)
+light_energy = 4.0
+omni_range = 6.5
+omni_attenuation = 1.4
+
+[node name="Lantern9" type="OmniLight3D" parent="."]
+position = Vector3(15.6, 7.83, -16.13)
+light_color = Color(1, 0.48, 0.13, 1)
+light_energy = 4.0
+omni_range = 6.5
+omni_attenuation = 1.4
+
+[node name="IdolFire1" type="OmniLight3D" parent="."]
+position = Vector3(13.75, 7.48, -22.55)
+light_color = Color(1, 0.4, 0.07, 1)
+light_energy = 3.0
+omni_range = 4.5
+
+[node name="IdolFire2" type="OmniLight3D" parent="."]
+position = Vector3(16.25, 7.48, -22.55)
+light_color = Color(1, 0.4, 0.07, 1)
+light_energy = 3.0
+omni_range = 4.5

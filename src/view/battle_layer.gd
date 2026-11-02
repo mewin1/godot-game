@@ -45,6 +45,11 @@ var _field: FieldState
 var show_target_labels: bool = false
 var selected_mob_id: int = 0
 var draw_world_towers: bool = false
+## Тела мобов и башен рисует 3D-арена; здесь — только статусы, HP и эффекты поверх.
+var bodies_3d: bool = false
+## mob -> Vector2: точка ног / над головой 3D-юнита на экране (задаёт FieldView).
+var mob_feet_projector: Callable
+var mob_head_projector: Callable
 var is_preparation_court: bool = false
 var has_atmosphere: bool = false
 var tower_pulses: Dictionary[int, float] = {}
@@ -170,6 +175,10 @@ func _draw() -> void:
 
 
 func _draw_mobs() -> void:
+	if bodies_3d:
+		for mob: MobState in _field.mobs:
+			_draw_mob_overlay(mob)
+		return
 	if not draw_world_towers:
 		for mob: MobState in _field.mobs:
 			_draw_mob(mob)
@@ -229,6 +238,41 @@ func _draw_tower_embers(tower: TowerState, pulse: float, pop: float) -> void:
 	draw_texture_rect(_living_flame.get_texture(),
 			Rect2(source - flame_size * Vector2(0.5, 0.90), flame_size), false)
 	CourtAtmosphere.draw_embers(self, source, height, _time, float(tower.id))
+
+
+## 3D-моб: статусы кольцами вокруг тела и полоска HP над головой.
+func _draw_mob_overlay(mob: MobState) -> void:
+	var feet: Vector2 = mob_feet_projector.call(mob)
+	var head: Vector2 = mob_head_projector.call(mob)
+	var middle: Vector2 = feet.lerp(head, 0.45)
+	var radius: float = maxf(8.0, (feet.y - head.y) * 0.42)
+	if mob.is_angry:
+		draw_circle(feet, radius * 0.9, Color(ANGRY_COLOR, 0.22))
+	if mob.slow_percent > 0 or mob.wind_slow_percent > 0 or mob.cold_ticks_left > 0:
+		draw_arc(middle, radius, 0.0, TAU, 24, _style.slow_tint, 2.5, true)
+	if mob.shield_left > 0:
+		draw_arc(middle, radius * 1.15, -2.4, -0.7, 16, SHIELD_COLOR, 3.0, true)
+	if mob.burn_ticks_left > 0:
+		draw_circle(middle, radius * 0.35, Color(1, 0.4, 0.08, 0.55))
+	if mob.wet_ticks_left > 0:
+		draw_arc(middle, radius * 1.05, 0, TAU, 16, Color(0.2, 0.85, 0.95, 0.9), 2.0, true)
+	if mob.charge_ticks_left > 0:
+		draw_arc(middle, radius * 0.95, 0, TAU, 16, Color(0.55, 0.85, 1),
+				float(maxi(2, mob.charges + 1)), true)
+	if mob.freeze_ticks_left > 0:
+		draw_circle(middle, radius, Color(0.5, 0.85, 1, 0.3))
+	if mob.curse_ticks_left > 0:
+		draw_arc(middle, radius * 1.1, 0, TAU, 16, Color(0.8, 0.3, 0.9), 3.0, true)
+	var width: float = clampf(radius * 2.2, 26.0, 70.0)
+	if mob.hp < mob.max_hp:
+		_draw_hp_bar(head, width, float(mob.hp) / mob.max_hp)
+	if show_target_labels:
+		var font: Font = get_theme_default_font()
+		var caption: String = "#%d · %d" % [mob.id, maxi(0, mob.hp)]
+		draw_string_outline(font, head - Vector2(width * 0.5, 10), caption,
+				HORIZONTAL_ALIGNMENT_LEFT, -1, 12, 3, Color(0.08, 0.05, 0.1))
+		draw_string(font, head - Vector2(width * 0.5, 10), caption, HORIZONTAL_ALIGNMENT_LEFT,
+				-1, 12, Color.WHITE)
 
 
 ## Моб: тень, картинка с покачиванием (повёрнута по ходу), синий оттенок под замедлением, HP.
@@ -346,6 +390,8 @@ func _draw_projectile(projectile: Projectile) -> void:
 	var from: Vector2 = _milli_to_screen(projectile.from_milli)
 	if draw_world_towers:
 		from.y -= _cell_size * 0.6
+	elif bodies_3d:
+		from.y -= _cell_size * 1.3
 	var to: Vector2 = _projectile_target(projectile)
 	var point: Vector2 = from.lerp(to, t)
 	var direction: Vector2 = (to - from).normalized()
@@ -439,6 +485,10 @@ func _add_impact(projectile: Projectile) -> void:
 
 
 func _projectile_target(projectile: Projectile) -> Vector2:
+	if bodies_3d and projectile.target != null and projectile.target.is_alive():
+		var feet: Vector2 = mob_feet_projector.call(projectile.target)
+		var head: Vector2 = mob_head_projector.call(projectile.target)
+		return feet.lerp(head, 0.5)
 	var lift: float = 0.35 if draw_world_towers else 0.15
 	return _milli_to_screen(projectile.target_milli) - Vector2(0, _cell_size * lift)
 
@@ -495,6 +545,8 @@ func _add_text(at: Vector2, text: String, color: Color) -> void:
 
 
 func _mob_screen_position(mob: MobState) -> Vector2:
+	if bodies_3d:
+		return mob_feet_projector.call(mob)
 	var previous: Vector2 = Vector2(_field.get_path_point(mob.previous_progress))
 	var current: Vector2 = Vector2(_field.get_path_point(mob.progress))
 	return _milli_to_screen(previous.lerp(current, interpolation))
@@ -526,6 +578,8 @@ func _on_field_tower_fired(tower: TowerState, mob: MobState) -> void:
 
 func _on_field_mob_killed(mob: MobState) -> void:
 	var at: Vector2 = _milli_to_screen(Vector2(_field.get_mob_position(mob)))
+	if bodies_3d:
+		at = mob_feet_projector.call(mob)
 	_spawn_puff(at - Vector2(0, _cell_size * 0.2), _catalog.get_mob(mob.data.id).death_color)
 	if is_own_field and mob.kill_reward > 0:
 		_add_text(at, "+%d" % mob.kill_reward, _style.gold_text_color)
