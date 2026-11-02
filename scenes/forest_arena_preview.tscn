@@ -1,0 +1,87 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="PackedScene" path="res://assets/arenas/forest/forest_arena.glb" id="1_arena"]
+
+[sub_resource type="Environment" id="Environment_dusk"]
+background_mode = 1
+background_color = Color(0.035, 0.065, 0.115, 1)
+ambient_light_source = 3
+ambient_light_color = Color(0.42, 0.47, 0.58, 1)
+ambient_light_energy = 0.55
+tonemap_mode = 4
+fog_enabled = true
+fog_light_color = Color(0.2, 0.28, 0.42, 1)
+fog_light_energy = 0.8
+fog_density = 0.003
+fog_height = -1.0
+fog_height_density = 0.3
+
+[node name="ForestArenaPreview" type="Node3D"]
+
+[node name="Arena" parent="." instance=ExtResource("1_arena")]
+
+[node name="Environment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_dusk")
+
+[node name="Camera" type="Camera3D" parent="."]
+position = Vector3(15.12, 51.54, 23.93)
+rotation = Vector3(-0.94248, 0.17453, 0)
+projection = 1
+size = 25.625
+far = 200.0
+current = true
+
+[node name="Moon" type="DirectionalLight3D" parent="."]
+rotation_degrees = Vector3(-55, -30, 0)
+light_color = Color(0.66, 0.74, 0.95, 1)
+light_energy = 0.75
+shadow_enabled = true
+directional_shadow_max_distance = 90.0
+
+[node name="LanternEntry" type="OmniLight3D" parent="."]
+position = Vector3(2.4, 2.44, -2.48)
+light_color = Color(1, 0.48, 0.13, 1)
+light_energy = 4.5
+omni_range = 7.0
+omni_attenuation = 1.4
+
+[node name="LanternLeft" type="OmniLight3D" parent="."]
+position = Vector3(3.55, 3.3, -11.52)
+light_color = Color(1, 0.48, 0.13, 1)
+light_energy = 4.5
+omni_range = 7.0
+omni_attenuation = 1.4
+
+[node name="LanternTop" type="OmniLight3D" parent="."]
+position = Vector3(6, 4.18, -19.62)
+light_color = Color(1, 0.48, 0.13, 1)
+light_energy = 4.5
+omni_range = 7.0
+omni_attenuation = 1.4
+
+[node name="LanternMiddle" type="OmniLight3D" parent="."]
+position = Vector3(9.55, 5.2, -10)
+light_color = Color(1, 0.48, 0.13, 1)
+light_energy = 4.5
+omni_range = 7.0
+omni_attenuation = 1.4
+
+[node name="LanternBottom" type="OmniLight3D" parent="."]
+position = Vector3(12, 6.22, -0.54)
+light_color = Color(1, 0.48, 0.13, 1)
+light_energy = 4.5
+omni_range = 7.0
+omni_attenuation = 1.4
+
+[node name="LanternRight" type="OmniLight3D" parent="."]
+position = Vector3(14.48, 7.35, -11.18)
+light_color = Color(1, 0.48, 0.13, 1)
+light_energy = 4.5
+omni_range = 7.0
+omni_attenuation = 1.4
+
+[node name="IdolFire" type="OmniLight3D" parent="."]
+position = Vector3(13.9, 7.48, -22.6)
+light_color = Color(1, 0.4, 0.07, 1)
+light_energy = 2.8
+omni_range = 4.0
