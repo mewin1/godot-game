@@ -46,6 +46,11 @@ extends Resource
 ## Разброс яркости плит, чтобы площадка не выглядела пластиковой.
 @export var platform_variation: float = 0.035
 
+## Жаровни по углам площадок: огонь и тёплый свет.
+@export var brazier_fire: Color = Color(1.0, 0.5, 0.15)
+@export var brazier_light_energy: float = 2.2
+@export var brazier_light_range: float = 5.5
+
 ## Закрытые клетки и ещё не открытая дорога.
 @export var fog_color: Color = Color(0.02, 0.04, 0.08, 0.66)
 @export var fog_edge_color: Color = Color(0.45, 0.6, 0.8, 0.25)

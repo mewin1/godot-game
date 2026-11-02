@@ -318,6 +318,34 @@ func _build_platforms() -> void:
 				center - Vector3(0, 0.05, 0))
 		ArenaMaterials3D.part(holder, ArenaMaterials3D.box(Vector3(1.6, 0.02, 1.6)), inlay,
 				center + Vector3(0, 0.005, 0))
+	for bounds: Rect2i in layout.deck_bounds:
+		var corners: Array[Vector2i] = [bounds.position, Vector2i(bounds.end.x, bounds.position.y),
+				Vector2i(bounds.position.x, bounds.end.y), bounds.end]
+		var any_cell: Vector2i = bounds.position
+		var height: float = layout.cell_height(any_cell)
+		for corner: Vector2i in corners:
+			var flat: Vector2 = layout.corner_xz(Vector2(corner) * MILLI)
+			_add_brazier(holder, Vector3(flat.x, height, flat.y))
+
+
+## Каменная чаша с огнём и тёплым светом на углу площадки.
+func _add_brazier(parent: Node3D, at: Vector3) -> void:
+	var stone: StandardMaterial3D = ArenaMaterials3D.stone(ArenaMaterials3D.DARK_STONE)
+	ArenaMaterials3D.part(parent, ArenaMaterials3D.cylinder(0.16, 0.2, 0.5, 6), stone,
+			at + Vector3(0, 0.25, 0))
+	ArenaMaterials3D.part(parent, ArenaMaterials3D.cylinder(0.3, 0.18, 0.18, 8), stone,
+			at + Vector3(0, 0.58, 0))
+	var flame: MeshInstance3D = ArenaMaterials3D.part(parent, ArenaMaterials3D.sphere(0.18, 6, 3),
+			ArenaMaterials3D.glow(STYLE.brazier_fire, 3.0), at + Vector3(0, 0.78, 0), Vector3.ZERO,
+			Vector3(1.0, 1.5, 1.0))
+	flame.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	var light: OmniLight3D = OmniLight3D.new()
+	light.light_color = STYLE.brazier_fire
+	light.light_energy = STYLE.brazier_light_energy
+	light.omni_range = STYLE.brazier_light_range
+	light.omni_attenuation = 1.3
+	light.position = at + Vector3(0, 1.1, 0)
+	parent.add_child(light)
 
 
 func _plane(extent: Vector2) -> PlaneMesh:

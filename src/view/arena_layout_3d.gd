@@ -17,6 +17,8 @@ var _terraces: Dictionary[Vector2i, float] = {}
 ## Ровная высота площадки: все места одной полосы между дорогами — на одном уровне,
 ## чтобы фигура на 2+ клетки стояла ровно.
 var _decks: Dictionary[Vector2i, float] = {}
+## Границы каждой площадки в клетках (для жаровен по углам).
+var deck_bounds: Array[Rect2i] = []
 ## Точки дороги в координатах Godot (y — высота) и длина вдоль дороги от входа на поле.
 var _road_points: PackedVector3Array = PackedVector3Array()
 var _road_lengths: PackedFloat32Array = PackedFloat32Array()
@@ -159,8 +161,11 @@ func _level_decks() -> void:
 			for step: Vector2i in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
 				if left.has(cell + step):
 					stack.append(cell + step)
+		var bounds: Rect2i = Rect2i(group[0], Vector2i.ONE)
 		for cell: Vector2i in group:
 			_decks[cell] = top + DECK_LIFT
+			bounds = bounds.expand(cell).merge(Rect2i(cell, Vector2i.ONE))
+		deck_bounds.append(bounds)
 
 
 ## Центры клеток пути → ближайшие точки дороги, только вперёд (развороты не путают).
