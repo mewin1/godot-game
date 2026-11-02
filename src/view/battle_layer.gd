@@ -50,6 +50,8 @@ var bodies_3d: bool = false
 ## mob -> Vector2: точка ног / над головой 3D-юнита на экране (задаёт FieldView).
 var mob_feet_projector: Callable
 var mob_head_projector: Callable
+## tower_id -> Vector2: навершие 3D-башни на экране (откуда вылетает снаряд).
+var tower_top_projector: Callable
 var has_atmosphere: bool = false
 var tower_pulses: Dictionary[int, float] = {}
 var tower_pops: Dictionary[int, float] = {}
@@ -244,8 +246,6 @@ func _draw_mob_overlay(mob: MobState) -> void:
 	var head: Vector2 = mob_head_projector.call(mob)
 	var middle: Vector2 = feet.lerp(head, 0.45)
 	var radius: float = maxf(8.0, (feet.y - head.y) * 0.42)
-	if mob.is_angry:
-		draw_circle(feet, radius * 0.9, Color(ANGRY_COLOR, 0.22))
 	if mob.slow_percent > 0 or mob.wind_slow_percent > 0 or mob.cold_ticks_left > 0:
 		draw_arc(middle, radius, 0.0, TAU, 24, _style.slow_tint, 2.5, true)
 	if mob.shield_left > 0:
@@ -388,8 +388,8 @@ func _draw_projectile(projectile: Projectile) -> void:
 	var from: Vector2 = _milli_to_screen(projectile.from_milli)
 	if draw_world_towers:
 		from.y -= _cell_size * 0.6
-	elif bodies_3d:
-		from.y -= _cell_size * 1.3
+	elif bodies_3d and _field.get_tower(projectile.tower_id) != null:
+		from = tower_top_projector.call(projectile.tower_id)
 	var to: Vector2 = _projectile_target(projectile)
 	var point: Vector2 = from.lerp(to, t)
 	var direction: Vector2 = (to - from).normalized()
@@ -567,6 +567,7 @@ func _on_field_tower_fired(tower: TowerState, mob: MobState) -> void:
 	var projectile: Projectile = Projectile.new()
 	projectile.visual = _catalog.get_tower(tower.data.id)
 	projectile.from_milli = Vector2(tower.center_milli()) - Vector2(0, MILLI * 0.25)
+	projectile.tower_id = tower.id
 	projectile.target = mob
 	projectile.target_milli = Vector2(_field.get_mob_position(mob))
 	projectile.splash_radius_milli = _field.get_tower_splash_radius(tower)
@@ -648,6 +649,7 @@ func _on_field_tower_pulsed(tower: TowerState) -> void:
 class Projectile:
 	var visual: TowerVisual
 	var from_milli: Vector2
+	var tower_id: int = 0
 	var target: MobState
 	var target_milli: Vector2
 	var splash_radius_milli: int = 0

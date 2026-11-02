@@ -32,6 +32,13 @@ extends Resource
 ## Шагов на метр пути: темп анимации берётся из настоящей скорости моба в симуляции.
 @export var steps_per_meter: float = 0.9
 
+## Скрытные мобы (как в 2D): непрозрачность модели.
+@export var stealth_alpha: float = 0.45
+## Кольцо ярости поля / злой армии под юнитом.
+@export var rage_color: Color = Color(1.0, 0.25, 0.12)
+## Огонь тотема героя в конце короткого пути.
+@export var totem_fire: Color = Color(1.0, 0.55, 0.18)
+
 ## Закрытые клетки и ещё не открытая дорога.
 @export var fog_color: Color = Color(0.02, 0.04, 0.08, 0.66)
 @export var fog_edge_color: Color = Color(0.45, 0.6, 0.8, 0.25)

@@ -14,6 +14,7 @@ var _limbs: Array[Node3D] = []
 var _phase: float = 0.0
 var _height: float = 1.0
 var _flash: MeshInstance3D
+var _rage_ring: MeshInstance3D
 
 
 ## Собирает модель. height — рост в метрах, tint — основной цвет.
@@ -44,7 +45,28 @@ func build(model: StringName, tint: Color, height: float, sender_color: Color) -
 		ring.outer_radius = 0.42 * height
 		ring.ring_segments = 4
 		ring.rings = 20
-		ArenaMaterials3D.part(self, ring, ArenaMaterials3D.glow(sender_color, 1.2), Vector3(0, 0.04, 0))
+		ArenaMaterials3D.part(self, ring, ArenaMaterials3D.glow(sender_color, 1.2),
+				Vector3(0, 0.04, 0))
+
+
+## Скрытный моб полупрозрачен (как в 2D), чтобы было видно: башням его не достать.
+func set_ghost(alpha: float) -> void:
+	for child: Node in find_children("*", "MeshInstance3D", true, false):
+		(child as MeshInstance3D).transparency = 1.0 - alpha
+
+
+## Ярость поля: красное кольцо под юнитом.
+func set_enraged(enabled: bool, color: Color) -> void:
+	if enabled and _rage_ring == null:
+		var ring: TorusMesh = TorusMesh.new()
+		ring.inner_radius = 0.3 * _height
+		ring.outer_radius = 0.38 * _height
+		ring.ring_segments = 4
+		ring.rings = 18
+		_rage_ring = ArenaMaterials3D.part(self, ring, ArenaMaterials3D.glow(color, 1.6),
+				Vector3(0, 0.06, 0))
+	if _rage_ring != null:
+		_rage_ring.visible = enabled
 
 
 ## Шаг анимации. speed — метры в секунду (0 — стоит), flight — высота полёта.
@@ -70,7 +92,8 @@ func animate(delta: float, speed: float, steps_per_meter: float) -> void:
 ## Смерть: короткая вспышка и исчезновение. Возвращает true, когда пора удалить.
 func update_death(delta: float) -> bool:
 	if _flash == null:
-		_flash = ArenaMaterials3D.part(self, ArenaMaterials3D.sphere(0.45 * _height, 8, 4), ArenaMaterials3D.glow(Color(1, 0.9, 0.7), 4.0),
+		_flash = ArenaMaterials3D.part(self, ArenaMaterials3D.sphere(0.45 * _height, 8, 4),
+				ArenaMaterials3D.glow(Color(1, 0.9, 0.7), 4.0),
 				Vector3(0, 0.5 * _height, 0))
 		_flash.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	dying_left -= delta
@@ -84,7 +107,8 @@ func _leg(parent: Node3D, x: float, length: float, width: float, material: Mater
 	var hip: Node3D = Node3D.new()
 	hip.position = Vector3(x, length, 0)
 	parent.add_child(hip)
-	ArenaMaterials3D.part(hip, ArenaMaterials3D.box(Vector3(width, length, width)), material, Vector3(0, -length * 0.5, 0))
+	ArenaMaterials3D.part(hip, ArenaMaterials3D.box(Vector3(width, length, width)), material,
+			Vector3(0, -length * 0.5, 0))
 	_limbs.append(hip)
 
 
@@ -94,10 +118,14 @@ func _build_walker(tint: Color) -> void:
 	var dark: StandardMaterial3D = ArenaMaterials3D.solid(tint.darkened(0.45))
 	_leg(_body, -0.08, 0.36, 0.1, dark)
 	_leg(_body, 0.08, 0.36, 0.1, dark)
-	ArenaMaterials3D.part(_body, ArenaMaterials3D.cylinder(0.2, 0.15, 0.38, 6), cloth, Vector3(0, 0.55, 0))
-	ArenaMaterials3D.part(_body, ArenaMaterials3D.sphere(0.12, 8, 5), ArenaMaterials3D.solid(ArenaMaterials3D.SKIN), Vector3(0, 0.84, 0))
-	ArenaMaterials3D.part(_body, ArenaMaterials3D.cylinder(0.14, 0.0, 0.16, 6), dark, Vector3(0, 0.96, 0))
-	ArenaMaterials3D.part(_body, ArenaMaterials3D.cylinder(0.02, 0.02, 0.9, 4), ArenaMaterials3D.solid(ArenaMaterials3D.WOOD), Vector3(0.22, 0.6, 0.05))
+	ArenaMaterials3D.part(_body, ArenaMaterials3D.cylinder(0.2, 0.15, 0.38, 6), cloth,
+			Vector3(0, 0.55, 0))
+	ArenaMaterials3D.part(_body, ArenaMaterials3D.sphere(0.12, 8, 5),
+			ArenaMaterials3D.solid(ArenaMaterials3D.SKIN), Vector3(0, 0.84, 0))
+	ArenaMaterials3D.part(_body, ArenaMaterials3D.cylinder(0.14, 0.0, 0.16, 6), dark,
+			Vector3(0, 0.96, 0))
+	ArenaMaterials3D.part(_body, ArenaMaterials3D.cylinder(0.02, 0.02, 0.9, 4),
+			ArenaMaterials3D.solid(ArenaMaterials3D.WOOD), Vector3(0.22, 0.6, 0.05))
 
 
 ## Тяжёлый: широкий корпус в броне, шлем, щит.
@@ -106,26 +134,34 @@ func _build_heavy(tint: Color) -> void:
 	var dark: StandardMaterial3D = ArenaMaterials3D.solid(tint.darkened(0.5), 0.6)
 	_leg(_body, -0.11, 0.34, 0.13, dark)
 	_leg(_body, 0.11, 0.34, 0.13, dark)
-	ArenaMaterials3D.part(_body, ArenaMaterials3D.cylinder(0.28, 0.22, 0.42, 6), metal, Vector3(0, 0.55, 0))
-	ArenaMaterials3D.part(_body, ArenaMaterials3D.cylinder(0.15, 0.13, 0.2, 6), metal, Vector3(0, 0.86, 0))
-	ArenaMaterials3D.part(_body, ArenaMaterials3D.cylinder(0.07, 0.0, 0.14, 6), ArenaMaterials3D.solid(ArenaMaterials3D.GOLD, 0.4), Vector3(0, 1.02, 0))
-	ArenaMaterials3D.part(_body, ArenaMaterials3D.box(Vector3(0.06, 0.42, 0.34)), ArenaMaterials3D.solid(Color(0.45, 0.16, 0.12)),
+	ArenaMaterials3D.part(_body, ArenaMaterials3D.cylinder(0.28, 0.22, 0.42, 6), metal,
+			Vector3(0, 0.55, 0))
+	ArenaMaterials3D.part(_body, ArenaMaterials3D.cylinder(0.15, 0.13, 0.2, 6), metal,
+			Vector3(0, 0.86, 0))
+	ArenaMaterials3D.part(_body, ArenaMaterials3D.cylinder(0.07, 0.0, 0.14, 6),
+			ArenaMaterials3D.solid(ArenaMaterials3D.GOLD, 0.4), Vector3(0, 1.02, 0))
+	ArenaMaterials3D.part(_body, ArenaMaterials3D.box(Vector3(0.06, 0.42, 0.34)),
+			ArenaMaterials3D.solid(Color(0.45, 0.16, 0.12)),
 			Vector3(-0.3, 0.55, 0.05))
 
 
 ## Летающий нетопырь: тело и два машущих крыла.
 func _build_flyer(tint: Color) -> void:
 	var skin: StandardMaterial3D = ArenaMaterials3D.solid(tint)
-	ArenaMaterials3D.part(_body, ArenaMaterials3D.sphere(0.2, 8, 5), skin, Vector3.ZERO, Vector3.ZERO, Vector3(0.9, 1.0, 1.2))
-	ArenaMaterials3D.part(_body, ArenaMaterials3D.sphere(0.04, 6, 3), ArenaMaterials3D.glow(Color(1, 0.3, 0.2), 3.0), Vector3(-0.07, 0.07, 0.19))
-	ArenaMaterials3D.part(_body, ArenaMaterials3D.sphere(0.04, 6, 3), ArenaMaterials3D.glow(Color(1, 0.3, 0.2), 3.0), Vector3(0.07, 0.07, 0.19))
+	ArenaMaterials3D.part(_body, ArenaMaterials3D.sphere(0.2, 8, 5), skin, Vector3.ZERO,
+			Vector3.ZERO, Vector3(0.9, 1.0, 1.2))
+	ArenaMaterials3D.part(_body, ArenaMaterials3D.sphere(0.04, 6, 3),
+			ArenaMaterials3D.glow(Color(1, 0.3, 0.2), 3.0), Vector3(-0.07, 0.07, 0.19))
+	ArenaMaterials3D.part(_body, ArenaMaterials3D.sphere(0.04, 6, 3),
+			ArenaMaterials3D.glow(Color(1, 0.3, 0.2), 3.0), Vector3(0.07, 0.07, 0.19))
 	for side: float in [-1.0, 1.0]:
 		var shoulder: Node3D = Node3D.new()
 		shoulder.position = Vector3(side * 0.15, 0.05, 0)
 		_body.add_child(shoulder)
 		var wing: PrismMesh = PrismMesh.new()
 		wing.size = Vector3(0.6, 0.36, 0.03)
-		ArenaMaterials3D.part(shoulder, wing, ArenaMaterials3D.solid(tint.darkened(0.35)), Vector3(side * 0.3, 0, 0),
+		ArenaMaterials3D.part(shoulder, wing, ArenaMaterials3D.solid(tint.darkened(0.35)),
+				Vector3(side * 0.3, 0, 0),
 				Vector3(PI * 0.5, 0, 0))
 		_limbs.append(shoulder)
 
@@ -136,14 +172,18 @@ func _build_boss(tint: Color) -> void:
 	var dark: StandardMaterial3D = ArenaMaterials3D.solid(tint.darkened(0.5))
 	_leg(_body, -0.14, 0.3, 0.15, dark)
 	_leg(_body, 0.14, 0.3, 0.15, dark)
-	ArenaMaterials3D.part(_body, ArenaMaterials3D.cylinder(0.34, 0.26, 0.42, 7), hide, Vector3(0, 0.5, 0))
+	ArenaMaterials3D.part(_body, ArenaMaterials3D.cylinder(0.34, 0.26, 0.42, 7), hide,
+			Vector3(0, 0.5, 0))
 	ArenaMaterials3D.part(_body, ArenaMaterials3D.sphere(0.2, 8, 5), hide, Vector3(0, 0.82, 0.04))
 	for side: float in [-1.0, 1.0]:
-		ArenaMaterials3D.part(_body, ArenaMaterials3D.cylinder(0.05, 0.0, 0.26, 5), ArenaMaterials3D.solid(Color(0.88, 0.82, 0.68)),
+		ArenaMaterials3D.part(_body, ArenaMaterials3D.cylinder(0.05, 0.0, 0.26, 5),
+				ArenaMaterials3D.solid(Color(0.88, 0.82, 0.68)),
 				Vector3(side * 0.15, 1.0, 0), Vector3(0, 0, side * -0.5))
-		ArenaMaterials3D.part(_body, ArenaMaterials3D.sphere(0.035, 6, 3), ArenaMaterials3D.glow(Color(1, 0.55, 0.1), 4.0),
+		ArenaMaterials3D.part(_body, ArenaMaterials3D.sphere(0.035, 6, 3),
+				ArenaMaterials3D.glow(Color(1, 0.55, 0.1), 4.0),
 				Vector3(side * 0.07, 0.85, 0.21))
-	ArenaMaterials3D.part(_body, ArenaMaterials3D.cylinder(0.03, 0.03, 0.9, 4), ArenaMaterials3D.solid(ArenaMaterials3D.DARK_WOOD), Vector3(0.36, 0.55, 0.1))
+	ArenaMaterials3D.part(_body, ArenaMaterials3D.cylinder(0.03, 0.03, 0.9, 4),
+			ArenaMaterials3D.solid(ArenaMaterials3D.DARK_WOOD), Vector3(0.36, 0.55, 0.1))
 
 
 ## Колобок: катящийся шар с глазами.
@@ -151,8 +191,10 @@ func _build_blob(tint: Color) -> void:
 	var holder: Node3D = Node3D.new()
 	holder.position = Vector3(0, 0.36, 0)
 	_body.add_child(holder)
-	ArenaMaterials3D.part(holder, ArenaMaterials3D.sphere(0.36, 10, 6), ArenaMaterials3D.solid(tint), Vector3.ZERO)
+	ArenaMaterials3D.part(holder, ArenaMaterials3D.sphere(0.36, 10, 6),
+			ArenaMaterials3D.solid(tint), Vector3.ZERO)
 	for side: float in [-1.0, 1.0]:
-		ArenaMaterials3D.part(holder, ArenaMaterials3D.sphere(0.05, 6, 3), ArenaMaterials3D.solid(Color(0.08, 0.06, 0.05)),
+		ArenaMaterials3D.part(holder, ArenaMaterials3D.sphere(0.05, 6, 3),
+				ArenaMaterials3D.solid(Color(0.08, 0.06, 0.05)),
 				Vector3(side * 0.12, 0.08, 0.32))
 	_roller = holder

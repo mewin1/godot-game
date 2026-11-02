@@ -146,6 +146,14 @@ func pulse_tower(tower_id: int) -> void:
 		_towers[tower_id].pulse()
 
 
+## Навершие башни на экране; если модели ещё нет — центр её основания.
+func tower_top(tower_id: int) -> Vector2:
+	if _towers.has(tower_id):
+		return project(_towers[tower_id].get_top())
+	var tower: TowerState = _field.get_tower(tower_id)
+	return project_milli(Vector2(tower.center_milli()), 1.5) if tower != null else Vector2.ZERO
+
+
 ## Высота головы моба над дорогой (для полоски HP поверх сцены).
 func mob_head(mob: MobState, interpolation: float) -> Vector2:
 	var world: Vector3 = _mob_world(mob, interpolation)
@@ -221,6 +229,8 @@ func _sync_units(delta: float, interpolation: float) -> void:
 				sender = _player_colors.call(mob.sender_index)
 			unit.build(STYLE.get_mob_model(mob.data.id), STYLE.get_mob_tint(mob.data.id),
 					STYLE.get_mob_height(mob.data.id), sender)
+			if mob.data.reveal_radius_milli > 0:
+				unit.set_ghost(STYLE.stealth_alpha)
 			_units[mob.id] = unit
 		var world: Vector3 = _mob_world(mob, interpolation)
 		var previous: Vector3 = _unit_positions.get(mob.id, world)
@@ -237,6 +247,7 @@ func _sync_units(delta: float, interpolation: float) -> void:
 			unit.rotation.y = lerp_angle(unit.rotation.y, atan2(moved.x, moved.z),
 					clampf(delta * 10.0, 0.0, 1.0))
 		unit.animate(delta, smoothed, STYLE.steps_per_meter)
+		unit.set_enraged(_field.is_enraged or mob.is_angry, STYLE.rage_color)
 	for mob_id: int in _units.keys():
 		if not seen.has(mob_id):
 			var unit: ArenaUnit3D = _units[mob_id]
@@ -268,12 +279,15 @@ func _sync_fog() -> void:
 			if path.has(cell) or _field.is_buildable(cell):
 				continue
 			var center: Vector3 = layout.cell_center(cell)
-			ArenaMaterials3D.part(_fog, _plane(Vector2(1.96, 1.96)), fog, center + Vector3(0, 0.04, 0))
-			ArenaMaterials3D.part(_fog, _plane(Vector2(1.5, 1.5)), edge, center + Vector3(0, 0.05, 0))
+			ArenaMaterials3D.part(_fog, _plane(Vector2(1.96, 1.96)), fog,
+					center + Vector3(0, 0.04, 0))
+			ArenaMaterials3D.part(_fog, _plane(Vector2(1.5, 1.5)), edge,
+					center + Vector3(0, 0.05, 0))
 	var start: float = layout.path_length_at(_field.path_length - 1) + layout.cell_m * 0.5
 	if _field.path_length < path.size():
 		_fog.add_child(_road_ribbon(start, layout.road_end_length(), fog))
 		_add_barricade(start)
+		_add_totem(layout.path_length_at(_field.path_length - 1) + 0.4)
 
 
 func _plane(extent: Vector2) -> PlaneMesh:
@@ -328,6 +342,27 @@ func _add_barricade(length: float) -> void:
 				Vector3(0, 0.6, 0.05 * side), Vector3(0, 0, PI * 0.5 + side * 0.32))
 	ArenaMaterials3D.part(holder, ArenaMaterials3D.cylinder(0.1, 0.1, 2.7, 6), wood,
 			Vector3(0, 1.05, 0), Vector3(0, 0, PI * 0.5))
+
+
+## Тотем героя в конце короткого пути: сюда идут мобы (в полном пути его роль — идол арены).
+func _add_totem(length: float) -> void:
+	var holder: Node3D = Node3D.new()
+	_fog.add_child(holder)
+	holder.position = layout.road_point(length)
+	var stone: StandardMaterial3D = ArenaMaterials3D.solid(ArenaMaterials3D.DARK_STONE)
+	var wood: StandardMaterial3D = ArenaMaterials3D.solid(ArenaMaterials3D.WOOD)
+	ArenaMaterials3D.part(holder, ArenaMaterials3D.cylinder(0.55, 0.62, 0.3, 8), stone,
+			Vector3(0, 0.15, 0))
+	ArenaMaterials3D.part(holder, ArenaMaterials3D.cylinder(0.2, 0.16, 1.9, 6), wood,
+			Vector3(0, 1.25, 0))
+	ArenaMaterials3D.part(holder, ArenaMaterials3D.box(Vector3(0.9, 0.12, 0.14)), wood,
+			Vector3(0, 1.85, 0))
+	ArenaMaterials3D.part(holder, ArenaMaterials3D.cylinder(0.3, 0.18, 0.22, 6),
+			ArenaMaterials3D.solid(ArenaMaterials3D.GOLD, 0.4), Vector3(0, 2.25, 0))
+	var flame: MeshInstance3D = ArenaMaterials3D.part(holder, ArenaMaterials3D.sphere(0.2, 6, 3),
+			ArenaMaterials3D.glow(STYLE.totem_fire, 2.0), Vector3(0, 2.5, 0), Vector3.ZERO,
+			Vector3(1.0, 1.6, 1.0))
+	flame.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 
 
 func _clear_dict_nodes() -> void:

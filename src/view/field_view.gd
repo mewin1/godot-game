@@ -212,6 +212,8 @@ func _setup_battle_3d() -> void:
 		return _stage.mob_feet(mob, interpolation) + _stage_offset()
 	_battle.mob_head_projector = func(mob: MobState) -> Vector2:
 		return _stage.mob_head(mob, interpolation) + _stage_offset()
+	_battle.tower_top_projector = func(tower_id: int) -> Vector2:
+		return _stage.tower_top(tower_id) + _stage_offset()
 
 
 ## Сдвиг от координат 3D-сцены к координатам этого поля.
