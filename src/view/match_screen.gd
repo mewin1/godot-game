@@ -248,7 +248,7 @@ func _make_half(half: Control) -> void:
 
 func _build_toast() -> void:
 	_toast_panel = PanelContainer.new()
-	_toast_panel.theme_type_variation = &"CardPanelActive"
+	_toast_panel.add_theme_stylebox_override("panel", DuskTheme.glass(0.82, 14))
 	_toast_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_toast_panel.modulate.a = 0.0
 	_overlay.add_child(_toast_panel)
@@ -428,8 +428,10 @@ func _update_toast() -> void:
 func _show_toast(text: String, seconds: float = TOAST_SECONDS) -> void:
 	_toast_label.text = text
 	_toast_panel.reset_size()
-	_toast_panel.position = Vector2((size.x - _toast_panel.size.x) / 2.0,
-			size.y - _toast_panel.size.y - 40.0)
+	# Над нижним рядом (идолы, герой), по центру своего поля — ничего не перекрывает.
+	var field_rect: Rect2 = _my_view.get_global_rect()
+	_toast_panel.position = Vector2(field_rect.get_center().x - _toast_panel.size.x / 2.0,
+			field_rect.end.y - _toast_panel.size.y - 24.0)
 	_toast_time_left = seconds
 
 
