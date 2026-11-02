@@ -358,6 +358,7 @@ func _draw_3d() -> void:
 	if not is_own_field:
 		# Поле соперника — отдельное «окно» поверх общей сцены: стеклянная кромка.
 		draw_rect(Rect2(Vector2.ZERO, size).grow(-1.0), DuskTheme.GLASS_EDGE, false, 2.0)
+	_draw_closed_locks()
 	_draw_combo_coverage()
 	_draw_knockback_mark()
 	_draw_wind()
@@ -366,6 +367,20 @@ func _draw_3d() -> void:
 	_draw_hover()
 	_update_hero_plate()
 	_draw_siege_frame()
+
+
+## Закрытые места (откроются с развитием лавки): маленький замок на плите.
+func _draw_closed_locks() -> void:
+	var radius: float = maxf(4.0, _cell_size * 0.11)
+	var color: Color = Color(0.72, 0.8, 0.92, 0.5)
+	for cell: Vector2i in _stage.layout.deck_cells():
+		if field.is_buildable(cell):
+			continue
+		var quad: PackedVector2Array = _cell_quad(cell, 0.0)
+		var center: Vector2 = (quad[0] + quad[2]) * 0.5
+		draw_arc(center - Vector2(0, radius * 0.55), radius * 0.62, PI, TAU, 12, color, 2.0, true)
+		draw_rect(Rect2(center - Vector2(radius, radius * 0.45), Vector2(radius * 2.0, radius * 1.5)),
+				color)
 
 
 func _update_layout() -> void:
