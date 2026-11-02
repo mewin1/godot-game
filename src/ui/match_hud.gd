@@ -138,10 +138,15 @@ func _build_prep_header() -> void:
 	_prep_header.visible = false
 	_prep_header.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_prep_header)
+	# Раунд и фаза — на стеклянной плашке поверх сцены, как остальные панели.
+	var chip: PanelContainer = PanelContainer.new()
+	chip.position = Vector2(12, 8)
+	chip.add_theme_stylebox_override("panel", DuskTheme.glass(0.55, 9))
+	chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_prep_header.add_child(chip)
 	_prep_info = VBoxContainer.new()
-	_prep_info.position = Vector2(22, 12)
 	_prep_info.add_theme_constant_override("separation", 0)
-	_prep_header.add_child(_prep_info)
+	chip.add_child(_prep_info)
 	_prep_phase = HBoxContainer.new()
 	_prep_phase.add_theme_constant_override("separation", 12)
 	_prep_info.add_child(_prep_phase)

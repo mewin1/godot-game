@@ -36,6 +36,7 @@ const GRID_ASPECT: float = CourtyardPainter.GRID_ASPECT
 ## Поле рисуется лесной 3D-ареной (ArenaStage3D) — 2D-слой остаётся для эффектов и подсветки.
 var use_arena_3d: bool = false
 var _stage: ArenaStage3D
+var _title_style: StyleBoxFlat
 var has_atmosphere: bool = false
 var _air_bounds: Vector4
 var _air: ColorRect
@@ -412,6 +413,13 @@ func _draw_court_lights() -> void:
 func _draw_title() -> void:
 	var font: Font = get_theme_default_font()
 	var baseline: Vector2 = Vector2(12, TITLE_HEIGHT - 9)
+	if _stage != null and title != "":
+		if _title_style == null:
+			_title_style = DuskTheme.glass(0.55, 0)
+			_title_style.shadow_size = 6
+		var width: float = minf(size.x - 12, font.get_string_size(title,
+				HORIZONTAL_ALIGNMENT_LEFT, -1, TITLE_FONT_SIZE).x + 24)
+		draw_style_box(_title_style, Rect2(Vector2(4, 3), Vector2(width, TITLE_HEIGHT - 2)))
 	draw_string_outline(font, baseline, title, HORIZONTAL_ALIGNMENT_LEFT, size.x - 24,
 			TITLE_FONT_SIZE, 4, Color(0, 0, 0, 0.6))
 	draw_string(font, baseline, title, HORIZONTAL_ALIGNMENT_LEFT, size.x - 24, TITLE_FONT_SIZE,
