@@ -36,9 +36,11 @@ func build(model: StringName, tint: Color, height: float, sender_color: Color) -
 			_build_walker(tint)
 	_body.scale = Vector3.ONE * height
 	var shadow: CylinderMesh = ArenaMaterials3D.cylinder(0.24 * height, 0.24 * height, 0.02, 12)
-	var blot: MeshInstance3D = ArenaMaterials3D.part(self, shadow,
+	ArenaMaterials3D.part(self, shadow,
 			ArenaMaterials3D.flat(Color(0.0, 0.0, 0.02, 0.3)), Vector3(0, 0.03, 0))
-	blot.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	# Тень луны от десятков мелких деталей удваивает отрисовку; хватает тени-подложки.
+	for child: Node in find_children("*", "MeshInstance3D", true, false):
+		(child as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	if sender_color.a > 0.0:
 		var ring: TorusMesh = TorusMesh.new()
 		ring.inner_radius = 0.34 * height
