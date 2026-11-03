@@ -54,9 +54,16 @@ func _build_noir(tower: TowerState, style: Arena3DStyle, cell_offsets: Array[Vec
 		return false
 	var tier: int = clampi(tower.data.tier, 1, 3)
 	var plate: PackedScene = NoirModels.plate(tier, tower.data.god)
-	for offset: Vector3 in cell_offsets:
-		if plate != null:
-			var tile: Node3D = plate.instantiate() as Node3D
+	var own_plate: PackedScene = NoirModels.tower_plate(tower.data.id)
+	var center_index: int = 0
+	for i: int in cell_offsets.size():
+		if cell_offsets[i].length() < cell_offsets[center_index].length():
+			center_index = i
+	for i: int in cell_offsets.size():
+		var offset: Vector3 = cell_offsets[i]
+		var scene_for_cell: PackedScene = own_plate if i == center_index and own_plate != null else plate
+		if scene_for_cell != null:
+			var tile: Node3D = scene_for_cell.instantiate() as Node3D
 			add_child(tile)
 			tile.position = offset
 	_model = Node3D.new()

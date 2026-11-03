@@ -15,6 +15,11 @@ static func tower(id: StringName) -> PackedScene:
 	return _load("towers/%s.glb" % id)
 
 
+## Своя плита постройки (с рисунком концепта) — под центральную клетку фигуры.
+static func tower_plate(id: StringName) -> PackedScene:
+	return _load("towers/%s_plate.glb" % id)
+
+
 static func unit(id: StringName) -> PackedScene:
 	return _load("units/%s.glb" % id)
 

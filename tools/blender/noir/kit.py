@@ -450,9 +450,9 @@ def setup_render(res=(600, 800), elevation: float = 35.0, azimuth: float = -38.0
     cam.rotation_euler = (look - cam.location).to_track_quat("-Z", "Y").to_euler()
     sc.camera = cam
     # свет: тёплый ключевой сбоку-спереди, лунный бирюзовый заполняющий, цветной контровой
-    _light("key", "SUN", 3.4, (1.0, 0.7, 0.42), (math.radians(50), 0, math.radians(-60)))
-    _light("fill", "SUN", 0.45, (0.3, 0.62, 0.75), (math.radians(60), 0, math.radians(70)))
-    _light("rim", "SUN", 3.0, (0.45, 0.62, 1.0), (math.radians(-55), 0, math.radians(30)))
+    _light("key", "SUN", 2.2, (1.0, 0.7, 0.42), (math.radians(50), 0, math.radians(-60)))
+    _light("fill", "SUN", 0.3, (0.3, 0.62, 0.75), (math.radians(60), 0, math.radians(70)))
+    _light("rim", "SUN", 2.2, (0.45, 0.62, 1.0), (math.radians(-55), 0, math.radians(30)))
 
 
 def _light(name, kind, energy, color, rot):

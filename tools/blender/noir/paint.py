@@ -60,8 +60,18 @@ def _base_color(material):
 def _bake_tree(material, image, kind):
     """Пересобрать дерево узлов материала: цвет с фактурой -> Emission (для запекания EMIT)."""
     base = _base_color(material)
-    big, fine, fine_scale, edge_k, ao_k = RECIPE.get(kind, RECIPE["cloth"])
     nt = material.node_tree
+    if kind == "glow":  # светящееся — ровный цвет свечения (сам блеск даёт маска свечения)
+        nt.nodes.clear()
+        em = nt.nodes.new("ShaderNodeEmission")
+        em.inputs["Color"].default_value = (*[min(1.0, c * 1.2) for c in base], 1.0)
+        out = nt.nodes.new("ShaderNodeOutputMaterial")
+        nt.links.new(em.outputs[0], out.inputs["Surface"])
+        tex = nt.nodes.new("ShaderNodeTexImage")
+        tex.image = image
+        nt.nodes.active = tex
+        return
+    big, fine, fine_scale, edge_k, ao_k = RECIPE.get(kind, RECIPE["cloth"])
     nt.nodes.clear()
     N = nt.nodes.new
     L = nt.links.new
@@ -174,14 +184,15 @@ def _bake_tree(material, image, kind):
 def bake(ob, size: int = 1024, path=None):
     """Запечь все незаметные (не светящиеся) материалы объекта в одну текстуру <имя>_paint."""
     mats = list(ob.data.materials)
-    painted = [m for m in mats if kind_of(m) not in ("glow", "keep")]
+    painted = [m for m in mats if kind_of(m) != "keep"]
     if not painted:
         return
     sc = bpy.context.scene
     prev_engine = sc.render.engine
     sc.render.engine = "CYCLES"
     sc.cycles.samples = 12
-    sc.cycles.device = "CPU"
+    import project
+    project.use_gpu()
     # развёртка
     bpy.ops.object.select_all(action="DESELECT")
     ob.select_set(True)
@@ -205,6 +216,23 @@ def bake(ob, size: int = 1024, path=None):
     sc.render.bake.margin = 4
     sc.render.bake.use_clear = True
     bpy.ops.object.bake(type="EMIT")
+    # маска свечения: белое там, где материал светится
+    mask = bpy.data.images.new(f"{ob.name}_glowmask", size, size)
+    for i, t in temp.items():
+        glow = kind_of(mats[i]) == "glow"
+        nt = t.node_tree
+        nt.nodes.clear()
+        em = nt.nodes.new("ShaderNodeEmission")
+        em.inputs["Color"].default_value = (1, 1, 1, 1) if glow else (0, 0, 0, 1)
+        out = nt.nodes.new("ShaderNodeOutputMaterial")
+        nt.links.new(em.outputs[0], out.inputs["Surface"])
+        tn = nt.nodes.new("ShaderNodeTexImage")
+        tn.image = mask
+        nt.nodes.active = tn
+    sc.cycles.samples = 1
+    bpy.ops.object.bake(type="EMIT")
+    ob["glow_mask"] = mask.name
+    emission = emission_image(image, mask, f"{ob.name}_emit")
     if path is not None:
         path.parent.mkdir(parents=True, exist_ok=True)
         image.filepath_raw = str(path)
@@ -217,6 +245,10 @@ def bake(ob, size: int = 1024, path=None):
     t = paint.node_tree.nodes.new("ShaderNodeTexImage")
     t.image = image
     paint.node_tree.links.new(t.outputs["Color"], p.inputs["Base Color"])
+    te = paint.node_tree.nodes.new("ShaderNodeTexImage")
+    te.image = emission
+    paint.node_tree.links.new(te.outputs["Color"], p.inputs["Emission Color"])
+    p.inputs["Emission Strength"].default_value = GLOW_STRENGTH
     p.inputs["Roughness"].default_value = 0.78
     p.inputs["Metallic"].default_value = 0.0
     keep = [m for m in mats if m not in painted]
@@ -232,3 +264,25 @@ def bake(ob, size: int = 1024, path=None):
     for t in temp.values():
         bpy.data.materials.remove(t)
     sc.render.engine = prev_engine
+
+
+GLOW_STRENGTH = 3.0
+BASE_GLOW = 0.13  # доля свечения у несветящихся мест: 0,13 × 3 ≈ 0,4 — рисунок читается в темноте
+
+
+def emission_image(color_img, mask_img, name: str):
+    """Текстура свечения: цвет × (0,13 + 0,87 × маска); в материале сила 3 — светится нарисованное."""
+    import numpy as np
+    w, h = color_img.size
+    c = np.array(color_img.pixels[:], dtype=np.float32).reshape(h, w, 4)
+    mw, mh = mask_img.size
+    m = np.array(mask_img.pixels[:], dtype=np.float32).reshape(mh, mw, 4)[..., :1]
+    if (mw, mh) != (w, h):
+        m = np.zeros((h, w, 1), dtype=np.float32)
+    out = c.copy()
+    out[..., :3] = c[..., :3] * (BASE_GLOW + (1 - BASE_GLOW) * m)
+    out[..., 3] = 1.0
+    img = bpy.data.images.new(name, w, h)
+    img.pixels[:] = out.ravel()
+    img.pack()
+    return img

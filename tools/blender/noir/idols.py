@@ -6,6 +6,9 @@ idol_runes (желобки-руны на стволе), idol_band (обручи)
 import math
 import random
 
+import bpy
+from mathutils import Matrix
+
 import kit
 from kit import M, box, cyl, plate, prism, sphere, tube, mat, join_all, TIER_HEIGHT
 
@@ -54,7 +57,7 @@ def idol(variant: str = "empty"):
         r = 0.46
         sphere(f"ring_{k}", 0.13, (0.55 * math.cos(a), 0.55 * math.sin(a), top + 0.05), rnd.choice([M("stone_c"), M("stone_c"), M("stone")]),
                7, 5, (1.0, 0.8, 0.6), (0, 0, a))
-    h = TIER_HEIGHT[2] - top
+    h = IDOL_HEIGHT - top
     z0 = top
     # ствол: заметно шире книзу, плоская круглая шапка с годичными кольцами
     cyl("trunk_foot", 0.5, 0.38, 0.32, (0, 0, z0 + 0.16), S["idol_wood"], 16)
@@ -109,10 +112,18 @@ def idol(variant: str = "empty"):
     for k in range(6):  # мох у подножия
         a = rnd.uniform(0, 2 * math.pi)
         sphere(f"imoss_{k}", 0.06, (0.33 * math.cos(a), 0.33 * math.sin(a), z0 + 0.06), M("moss"), 6, 4, (1.4, 1, 0.5))
+    # лицо концепта смотрит в камеру, а плита стоит ромбом: ствол повёрнут относительно плиты на 40°
+    bpy.context.view_layer.update()
+    for o in bpy.context.scene.objects:
+        if o.type == "MESH" and o.parent is None and not o.name.startswith(kit.PLATE_PREFIXES) \
+                and not o.name.startswith("ring_"):
+            o.matrix_world = Matrix.Rotation(math.radians(FACE_YAW), 4, "Z") @ o.matrix_world
     return join_all(f"idol_{variant}" if variant != "empty" else "idol")
 
 
-VIEW = dict(res=(600, 760), elevation=30.0, azimuth=0.0, ortho=4.0, look_z=1.35)
+FACE_YAW = -40.0
+IDOL_HEIGHT = 3.4  # по силуэту концепта: идол выше башни II
+VIEW = dict(res=(600, 760), elevation=30.0, azimuth=-40.0, ortho=4.0, look_z=1.35)
 
 
 def _builder(variant):
