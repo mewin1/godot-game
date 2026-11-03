@@ -169,16 +169,16 @@ def spark():
     """Искровик (Перун, I): дубовый пень с корнями, серебряная катушка-штырь сверху."""
     top = plate(1, "perun")
     cyl("stump_foot", 0.58, 0.4, 0.3, (0, 0, top + 0.15), M("oak_warm"), 12)
-    cyl("stump", 0.4, 0.36, 0.75, (0, 0, top + 0.3 + 0.375), M("oak_warm"), 12)
+    cyl("stump", 0.4, 0.36, 1.0, (0, 0, top + 0.3 + 0.5), M("oak_warm"), 12)
     for k in range(5):  # корни
         a = 2 * math.pi * k / 5 + 0.3
         tube(f"root_{k}", [(0.3 * math.cos(a), 0.3 * math.sin(a), top + 0.35),
                            (0.55 * math.cos(a), 0.55 * math.sin(a), top + 0.03)], 0.08, M("oak_warm"), 6, 0.5)
-    cyl("stump_cap", 0.5, 0.46, 0.18, (0, 0, top + 1.14), M("oak_warm"), 14)
-    cyl("rod", 0.035, 0.035, 0.85, (0, 0, top + 1.6), M("silver"), 8)
+    cyl("stump_cap", 0.5, 0.46, 0.18, (0, 0, top + 1.39), M("oak_warm"), 14)
+    cyl("rod", 0.035, 0.035, 0.85, (0, 0, top + 1.85), M("silver"), 8)
     for k in range(6):
-        cyl(f"coil_{k}", 0.08, 0.08, 0.035, (0, 0, top + 1.3 + k * 0.07), M("silver"), 10)
-    sphere("rod_tip", 0.05, (0, 0, top + 2.03), M("silver"), 8, 6)
+        cyl(f"coil_{k}", 0.08, 0.08, 0.035, (0, 0, top + 1.55 + k * 0.07), M("silver"), 10)
+    sphere("rod_tip", 0.05, (0, 0, top + 2.28), M("silver"), 8, 6)
     return join_all("spark")
 
 
@@ -251,11 +251,11 @@ def wind():
     top = plate(1, "stribog", sign=False)
     glow_ring("w_ring", 0.42, top + 0.01, "stribog")
     glow_ring("w_ring2", 0.26, top + 0.01, "stribog", 0.02)
-    cyl("w_pole", 0.08, 0.07, 1.7, (0, 0, top + 0.85), M("birch"), 10)
-    cyl("w_hub", 0.08, 0.08, 0.14, (0, -0.1, top + 1.55), M("oak"), 10, (math.pi / 2, 0, 0))
+    cyl("w_pole", 0.08, 0.07, 1.95, (0, 0, top + 0.975), M("birch"), 10)
+    cyl("w_hub", 0.08, 0.08, 0.14, (0, -0.1, top + 1.8), M("oak"), 10, (math.pi / 2, 0, 0))
     for k in range(4):
         a = math.pi / 4 + k * math.pi / 2
-        b = box(f"w_blade_{k}", (0.2, 0.025, 0.75), (0.4 * math.sin(a), -0.16, top + 1.55 + 0.4 * math.cos(a)),
+        b = box(f"w_blade_{k}", (0.24, 0.025, 1.0), (0.52 * math.sin(a), -0.16, top + 1.8 + 0.52 * math.cos(a)),
                 M("cloth_white"), 0.01)
         b.rotation_euler = (0, a, 0)
     return join_all("wind")
@@ -266,9 +266,9 @@ def gale():
     top = plate(2, "stribog", sign=False)
     glow_ring("g_ring", 0.45, top + 0.01, "stribog")
     glow_ring("g_ring2", 0.28, top + 0.01, "stribog", 0.02)
-    cyl("g_pole", 0.08, 0.06, 2.5, (0, 0, top + 1.25), M("birch"), 10)
+    cyl("g_pole", 0.08, 0.06, 2.95, (0, 0, top + 1.475), M("birch"), 10)
     for k in range(5):
-        z = top + 0.8 + k * 0.38
+        z = top + 1.0 + k * 0.42
         box(f"g_whistle_{k}", (0.32, 0.04, 0.04), (0, 0, z), M("cloth_white"), 0.01, (0, 0, k * 0.9))
         a = k * 1.3
         tube(f"g_ribbon_{k}", [(0, 0, z), (0.25 * math.cos(a), 0.25 * math.sin(a), z + 0.05),
@@ -284,11 +284,11 @@ def vortex():
     glow_ring("v_ring2", 0.35, top + 0.01, "stribog", 0.02)
     kit_loft = __import__("kit").loft
     kit_loft("v_funnel", [(top + 0.05, 0.1, 0.1), (top + 0.6, 0.2, 0.2), (top + 1.2, 0.38, 0.38),
-                          (top + 1.7, 0.62, 0.62), (top + 1.9, 0.72, 0.72)], M("glow_stribog"), 24,
+                          (top + 2.1, 0.72, 0.72), (top + 2.35, 0.85, 0.85)], M("glow_stribog"), 24,
              cap_top=False, cap_bottom=False)
     for k in range(6):
         a = 2 * math.pi * k / 6
-        box(f"v_feather_{k}", (0.06, 0.02, 0.3), (0.74 * math.cos(a), 0.74 * math.sin(a), top + 1.9),
+        box(f"v_feather_{k}", (0.06, 0.02, 0.3), (0.88 * math.cos(a), 0.88 * math.sin(a), top + 2.35),
             M("cloth_white"), 0.01, (0.4, 0, a))
     return join_all("vortex")
 
@@ -297,16 +297,16 @@ def dew():
     """Росник (Вода, I): мокрый камень на корягах, стеклянная кувшинка с росой."""
     top = plate(1, "water", sign=False)
     glow_ring("d_ring", 0.48, top + 0.01, "water")
-    cyl("d_stone", 0.36, 0.3, 0.75, (0, 0, top + 0.375), M("stone_wet"), 12, bev=0.03)
-    cyl("d_stone_top", 0.4, 0.4, 0.12, (0, 0, top + 0.8), M("stone_wet"), 12, bev=0.03)
+    cyl("d_stone", 0.36, 0.3, 1.2, (0, 0, top + 0.6), M("stone_wet"), 12, bev=0.03)
+    cyl("d_stone_top", 0.42, 0.42, 0.14, (0, 0, top + 1.25), M("stone_wet"), 12, bev=0.03)
     for k in range(4):
         a = 2 * math.pi * k / 4 + 0.4
-        tube(f"d_root_{k}", [(0.28 * math.cos(a), 0.28 * math.sin(a), top + 0.7),
-                             (0.42 * math.cos(a), 0.42 * math.sin(a), top + 0.3),
+        tube(f"d_root_{k}", [(0.28 * math.cos(a), 0.28 * math.sin(a), top + 1.1),
+                             (0.42 * math.cos(a), 0.42 * math.sin(a), top + 0.5),
                              (0.5 * math.cos(a), 0.5 * math.sin(a), top + 0.02)], 0.07, M("oak_warm"), 6, 0.6)
     for k in range(8):
         a = 2 * math.pi * k / 8
-        cyl(f"d_petal_{k}", 0.08, 0.0, 0.3, (0.14 * math.cos(a), 0.14 * math.sin(a), top + 0.98), M("glow_water"),
+        cyl(f"d_petal_{k}", 0.08, 0.0, 0.3, (0.14 * math.cos(a), 0.14 * math.sin(a), top + 1.45), M("glow_water"),
             6, (math.cos(a) * 0.7, math.sin(a) * -0.7, 0))
     return join_all("dew")
 
@@ -348,12 +348,12 @@ def rain():
 def rime():
     """Иней (Лёд, I): придорожная божница под снегом, сосульки, светящаяся ниша."""
     top = plate(1, "ice")
-    box("rm_post", (0.5, 0.5, 1.15), (0, 0, top + 0.575), M("birch"), 0.02)
-    box("rm_niche", (0.3, 0.04, 0.35), (0, -0.26, top + 0.85), M("glow_ice"))
-    gable_wall("rm_gw", 0.62, 0.3, 0.62, (0, 0, top + 1.15), M("birch"))
-    gable("rm_roof", 0.66, 0.32, 0.72, (0, 0, top + 1.15), M("snow"), math.pi / 2, 0.08, 0.08)
+    box("rm_post", (0.5, 0.5, 1.45), (0, 0, top + 0.725), M("birch"), 0.02)
+    box("rm_niche", (0.3, 0.04, 0.4), (0, -0.26, top + 1.1), M("glow_ice"))
+    gable_wall("rm_gw", 0.62, 0.3, 0.62, (0, 0, top + 1.45), M("birch"))
+    gable("rm_roof", 0.7, 0.34, 0.76, (0, 0, top + 1.45), M("snow"), math.pi / 2, 0.08, 0.08)
     for k in range(5):
-        cyl(f"rm_icicle_{k}", 0.025, 0.0, 0.16, (-0.24 + k * 0.12, -0.36, top + 1.07), M("glow_ice"), 5,
+        cyl(f"rm_icicle_{k}", 0.025, 0.0, 0.16, (-0.24 + k * 0.12, -0.36, top + 1.37), M("glow_ice"), 5,
             (math.pi, 0, 0))
     return join_all("rime")
 
@@ -389,11 +389,11 @@ for _id, _fn in (("wind", wind), ("gale", gale), ("vortex", vortex), ("dew", dew
 def bolt():
     """Самострел (Война, I): арбалет на поворотной колоде, багровые флажки."""
     top = plate(1, "war")
-    cyl("b_log", 0.13, 0.15, 0.75, (0, 0, top + 0.375), M("oak"), 10)
-    box("b_stock", (0.18, 1.0, 0.12), (0, 0, top + 0.82), M("oak_warm"), 0.02, (0, 0, math.radians(-35)))
-    box("b_bow", (1.1, 0.08, 0.08), (0.17, -0.25, top + 0.86), M("iron"), 0.01, (0, 0, math.radians(-35)))
+    cyl("b_log", 0.13, 0.15, 1.0, (0, 0, top + 0.5), M("oak"), 10)
+    box("b_stock", (0.18, 1.0, 0.12), (0, 0, top + 1.07), M("oak_warm"), 0.02, (0, 0, math.radians(-35)))
+    box("b_bow", (1.1, 0.08, 0.08), (0.17, -0.25, top + 1.11), M("iron"), 0.01, (0, 0, math.radians(-35)))
     for sx in (-1, 1):
-        box(f"b_flag_{sx}", (0.04, 0.2, 0.3), (0.17 + sx * 0.45 * 0.82, -0.25 + sx * 0.45 * -0.57, top + 0.76),
+        box(f"b_flag_{sx}", (0.04, 0.2, 0.3), (0.17 + sx * 0.45 * 0.82, -0.25 + sx * 0.45 * -0.57, top + 1.01),
             M("cloth_red"), 0.005, (0, 0, math.radians(-35)))
     return join_all("bolt")
 
@@ -435,9 +435,9 @@ def war_rocket():
 def hex_post():
     """Чёрная метка (Порча, I): кривой мёртвый столб, костяная маска, вороньи перья, шипы у подножия."""
     top = plate(1, "curse")
-    tube("h_post", [(0, 0, top), (0.05, 0.02, top + 0.7), (-0.03, 0.0, top + 1.4), (0.02, 0.0, top + 1.85)], 0.17,
+    tube("h_post", [(0, 0, top), (0.05, 0.02, top + 0.85), (-0.03, 0.0, top + 1.7), (0.02, 0.0, top + 2.3)], 0.17,
          M("oak_dark"), 8, 0.75)
-    sphere("h_skull", 0.17, (0.0, -0.15, top + 1.45), M("cloth_white"), 12, 8, (1, 0.8, 1.1))
+    sphere("h_skull", 0.19, (0.0, -0.16, top + 1.8), M("cloth_white"), 12, 8, (1, 0.8, 1.1))
     for k in range(6):
         a = 2 * math.pi * k / 6
         cyl(f"h_thorn_{k}", 0.05, 0.0, 0.4, (0.22 * math.cos(a), 0.22 * math.sin(a), top + 0.18), M("glow_curse"), 5,
@@ -448,9 +448,9 @@ def hex_post():
 def plague():
     """Моровой колокол (Порча, II): кривая виселица из мёртвого дерева с треснутым колоколом."""
     top = plate(2, "curse")
-    tube("p_post", [(0.1, 0.1, top), (0.12, 0.1, top + 1.2), (0.08, 0.1, top + 2.2)], 0.12, M("oak_dark"), 8, 0.8)
-    box("p_beam", (0.7, 0.12, 0.12), (-0.15, 0.1, top + 2.15), M("oak_dark"), 0.02)
-    cyl("p_bell", 0.07, 0.15, 0.22, (-0.4, 0.1, top + 1.92), M("brass"), 12)
+    tube("p_post", [(0.1, 0.1, top), (0.12, 0.1, top + 1.4), (0.08, 0.1, top + 2.6)], 0.12, M("oak_dark"), 8, 0.8)
+    box("p_beam", (0.7, 0.12, 0.12), (-0.15, 0.1, top + 2.55), M("oak_dark"), 0.02)
+    cyl("p_bell", 0.07, 0.15, 0.22, (-0.4, 0.1, top + 2.32), M("brass"), 12)
     for k in range(7):
         a = 2 * math.pi * k / 7
         cyl(f"p_thorn_{k}", 0.05, 0.0, 0.45, (0.1 + 0.25 * math.cos(a), 0.1 + 0.25 * math.sin(a), top + 0.2),
@@ -478,15 +478,15 @@ def beacon():
     top = plate(1, "neutral", sign=False)
     for sx in (-1, 1):
         for sy in (-1, 1):
-            tube(f"bc_leg_{sx}_{sy}", [(sx * 0.42, sy * 0.42, top), (sx * 0.16, sy * 0.16, top + 1.6)], 0.045, M("oak"), 6)
-    for z, r in ((0.5, 0.33), (1.0, 0.25)):
+            tube(f"bc_leg_{sx}_{sy}", [(sx * 0.45, sy * 0.45, top), (sx * 0.17, sy * 0.17, top + 2.0)], 0.05, M("oak"), 6)
+    for z, r in ((0.6, 0.36), (1.25, 0.27)):
         for k in range(4):
             a = math.pi / 4 + k * math.pi / 2
             box(f"bc_rail_{z}_{k}", (r * 1.45, 0.04, 0.04), (r * math.cos(a) * 0.7, r * math.sin(a) * 0.7, top + z),
                 M("oak"), 0, (0, 0, a + math.pi / 2))
-    box("bc_deck", (0.42, 0.42, 0.08), (0, 0, top + 1.62), M("oak"), 0.01)
-    cyl("bc_lamp", 0.17, 0.2, 0.55, (0.05, -0.05, top + 1.85), M("brass"), 14, (math.radians(70), 0, math.radians(-40)))
-    cyl("bc_lens", 0.18, 0.18, 0.03, (0.18, -0.2, top + 1.95), M("glow_neutral"), 14, (math.radians(70), 0, math.radians(-40)))
+    box("bc_deck", (0.46, 0.46, 0.08), (0, 0, top + 2.02), M("oak"), 0.01)
+    cyl("bc_lamp", 0.2, 0.24, 0.65, (0.05, -0.05, top + 2.3), M("brass"), 14, (math.radians(70), 0, math.radians(-40)))
+    cyl("bc_lens", 0.22, 0.22, 0.03, (0.2, -0.24, top + 2.42), M("glow_neutral"), 14, (math.radians(70), 0, math.radians(-40)))
     return join_all("beacon")
 
 

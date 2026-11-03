@@ -20,6 +20,9 @@ from mathutils.bvhtree import BVHTree
 import kit
 
 W, H = 768, 1024
+ERODE_PX = 4  # сужение маски концепта (пиксели) против ореолов фона
+# проекция только на грани, смотрящие на камеру: косые грани растягивают рисунок
+FACING_MIN, FACING_MAX = 0.3, 0.6
 
 
 def _load_pixels(path: Path) -> np.ndarray:
@@ -190,7 +193,16 @@ def project_bake(objects, concept: Path, cmask: np.ndarray, mirror_back: bool = 
     cam = sc.camera
     d = (cam.matrix_world.to_3x3() @ Vector((0, 0, -1))).normalized()
     concept_img = bpy.data.images.load(str(concept), check_existing=True)
-    mask_img = _mask_image(cmask, "_cmask")
+    # сузить маску: по краю силуэта на концепте смешан фон — его не проецировать (ореолы)
+    inner = cmask.copy()
+    for _ in range(ERODE_PX):
+        shrunk = inner.copy()
+        shrunk[1:] &= inner[:-1]
+        shrunk[:-1] &= inner[1:]
+        shrunk[:, 1:] &= inner[:, :-1]
+        shrunk[:, :-1] &= inner[:, 1:]
+        inner = shrunk
+    mask_img = _mask_image(inner, "_cmask")
     for ob in objects:
         _proj_uv(ob, cam, "proj")
         if mirror_back:
@@ -237,7 +249,7 @@ def project_bake(objects, concept: Path, cmask: np.ndarray, mirror_back: bool = 
             dot.inputs[1].default_value = tuple(-d * sign)
             mr = N("ShaderNodeMapRange")
             L(dot.outputs["Value"], mr.inputs["Value"])
-            mr.inputs["From Min"].default_value, mr.inputs["From Max"].default_value = 0.05, 0.35
+            mr.inputs["From Min"].default_value, mr.inputs["From Max"].default_value = FACING_MIN, FACING_MAX
             return mr.outputs["Result"]
 
         def mul(a, b):
