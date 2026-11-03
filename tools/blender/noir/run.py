@@ -9,6 +9,8 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 import kit  # noqa: E402
+import paint  # noqa: E402
+import bpy  # noqa: E402
 
 MODULES = ["buildings", "idols", "units"]
 
@@ -34,6 +36,11 @@ def main() -> None:
         kit.reset()
         ob = spec["build"]()
         print(f"[noir] {model_id}: {kit.tri_count(ob)} треугольников, габарит {tuple(round(v, 2) for v in ob.dimensions)}")
+        if not spec.get("flat"):
+            size = spec.get("tex", 1024)
+            for o in [o for o in bpy.context.scene.objects if o.type == "MESH"]:
+                keep = None if spec["kind"] == "plates" else kit.ROOT / "source_art" / "noir" / spec["kind"] / f"{o.name}_paint.png"
+                paint.bake(o, size, keep)
         if spec.get("no_render"):
             kit.export(ob, spec["kind"], spec.get("file", model_id))
             continue

@@ -135,7 +135,8 @@ def torso_bone(z: float) -> str:
 
 
 def coat(name, rings, material, **kw):
-    return kit.loft(name, rings, material, 20, weight=torso_bone, cap_bottom=False, **kw)
+    sides = kw.pop("sides", 36 if kw.get("folds") else 20)
+    return kit.loft(name, rings, material, sides, weight=torso_bone, cap_bottom=False, **kw)
 
 
 def arms(j, sleeve, cuff, hand, r=(0.062, 0.052, 0.045)):
@@ -150,7 +151,7 @@ def arms(j, sleeve, cuff, hand, r=(0.062, 0.052, 0.045)):
         P(sphere(f"hand_{side}", 0.046, hc, hand, 8, 6, (0.75, 1.0, 1.3)), f"hand.{side}")
 
 
-def legs(j, trousers, boots, boot_top: float = 0.34, r=(0.08, 0.062, 0.055)):
+def legs(j, trousers, boots, boot_top: float = 0.4, r=(0.095, 0.075, 0.058)):
     for side in ("L", "R"):
         hip, knee, ank = j[f"thigh.{side}"], j[f"shin.{side}"], j[f"foot.{side}"]
         P(kit.limb_tube(f"thigh_{side}", [hip, hip.lerp(knee, 0.5), knee], [r[0], r[0] * 0.95, r[1]], trousers), f"thigh.{side}")
@@ -177,10 +178,12 @@ def spearman():
     j = skeleton()
     red, red_d, white = M("cloth_red"), M("cloth_red_dark"), M("cloth_white")
     legs(j, M("cloth_dark"), M("leather"))
-    coat("caftan", [(0.44, 0.27, 0.2, 0, 0.01), (0.56, 0.245, 0.185), (0.7, 0.21, 0.16), (0.85, 0.175, 0.13),
-                    (0.95, 0.165, 0.12), (1.08, 0.172, 0.122), (1.22, 0.19, 0.125), (1.33, 0.2, 0.12),
-                    (1.4, 0.15, 0.095), (1.44, 0.065, 0.06)], red)
-    coat("hem", [(0.43, 0.275, 0.205, 0, 0.01), (0.5, 0.262, 0.197, 0, 0.01)], white, cap_top=False)
+    coat("caftan", [(0.44, 0.27, 0.2, 0, 0.01, 1.0), (0.56, 0.245, 0.185, 0, 0.0, 0.85), (0.7, 0.21, 0.16, 0, 0, 0.6),
+                    (0.85, 0.175, 0.13, 0, 0, 0.25), (0.95, 0.165, 0.12, 0, 0, 0.0), (1.08, 0.172, 0.122, 0, 0, 0.1),
+                    (1.22, 0.19, 0.125, 0, 0, 0.1), (1.33, 0.2, 0.12, 0, 0, 0.0),
+                    (1.4, 0.15, 0.095, 0, 0, 0.0), (1.44, 0.065, 0.06, 0, 0, 0.0)], red, folds=9, fold_amp=0.06)
+    coat("hem", [(0.43, 0.29, 0.215, 0, 0.01, 1.0), (0.49, 0.272, 0.203, 0, 0.01, 0.95)], white, cap_top=False,
+         folds=9, fold_amp=0.06)
     for k in range(12):  # узор каймы
         a = 2 * math.pi * k / 12
         P(box(f"hem_dot_{k}", (0.03, 0.01, 0.03), (0.272 * math.cos(a), 0.01 + 0.205 * math.sin(a), 0.465), red_d, 0,
@@ -200,11 +203,14 @@ def spearman():
     c = j["head"] + Vector((0, 0, 0.1))
     face(c, M("skin"), M("hair_brown"))
     P(kit.loft("helm", [(c.z + 0.045, 0.106, 0.112), (c.z + 0.1, 0.104, 0.11), (c.z + 0.17, 0.068, 0.072),
-                        (c.z + 0.24, 0.02, 0.02), (c.z + 0.27, 0.004, 0.004)], M("steel"), 16), "head")
+                        (c.z + 0.24, 0.02, 0.02), (c.z + 0.27, 0.004, 0.004)], M("helm_steel"), 16), "head")
     P(kit.loft("helm_rim", [(c.z + 0.035, 0.11, 0.116), (c.z + 0.07, 0.11, 0.116)], M("iron"), 16), "head")
     P(box("nasal", (0.014, 0.014, 0.05), c + Vector((0, -0.118, 0.03)), M("iron")), "head")
-    P(kit.loft("aventail", [(c.z - 0.22, 0.2, 0.15, 0, 0.0), (c.z - 0.12, 0.14, 0.13, 0, 0.01),
+    P(kit.loft("aventail", [(c.z - 0.26, 0.25, 0.17, 0, 0.0), (c.z - 0.14, 0.15, 0.135, 0, 0.01),
                             (c.z + 0.045, 0.108, 0.114, 0, 0.005)], M("chainmail"), 14, arc=(-25, 205)), "neck")
+    # кольчужная накидка на плечи (как у концепта): от шеи до плеч
+    P(kit.loft("mantle", [(1.24, 0.27, 0.16, 0, 0.0), (1.33, 0.25, 0.155), (1.4, 0.19, 0.13), (1.45, 0.1, 0.09)],
+               M("chainmail"), 20, cap_top=False, cap_bottom=False), "chest")
     P(kit.loft("collar", [(1.38, 0.09, 0.08), (1.43, 0.075, 0.07)], white, 14, cap_top=False, cap_bottom=False), "chest")
     # копьё в правой руке (вертикально), щит на левом предплечье
     hr = j["hand.R"].lerp(j["hand_end.R"], 0.45)
@@ -216,19 +222,19 @@ def spearman():
     sc = j["forearm.L"].lerp(j["hand.L"], 0.45) + Vector((0.06, -0.08, 0.0))
     nrm = Vector((math.sin(yaw), -math.cos(yaw), 0))
     rot = (math.radians(90), 0, yaw)
-    P(cyl("shield", 0.28, 0.28, 0.035, sc, M("oak_warm"), 24, rot), "forearm.L")
-    P(cyl("shield_rim", 0.29, 0.29, 0.028, sc, M("iron"), 24, rot), "forearm.L")
+    P(cyl("shield", 0.32, 0.32, 0.035, sc, M("oak_warm"), 24, rot), "forearm.L")
+    P(cyl("shield_rim", 0.33, 0.33, 0.028, sc, M("iron"), 24, rot), "forearm.L")
     front = sc + nrm * 0.021
-    P(cyl("shield_sun", 0.11, 0.11, 0.01, front, M("cloth_dark"), 16, rot), "forearm.L")
+    P(cyl("shield_sun", 0.12, 0.12, 0.01, front, M("cloth_dark"), 16, rot), "forearm.L")
     side = Vector((math.cos(yaw), math.sin(yaw), 0))
     for k in range(8):  # изогнутые лучи чёрного солнца
         a = 2 * math.pi * k / 8
         pts = []
         for t in range(4):
-            rr = 0.1 + 0.05 * t
+            rr = 0.11 + 0.06 * t
             aa = a + 0.18 * t
             pts.append(front + side * (rr * math.cos(aa)) + Vector((0, 0, rr * math.sin(aa))))
-        P(tube(f"sun_ray_{k}", pts, 0.02, M("cloth_dark"), 5, 0.3), "forearm.L")
+        P(tube(f"sun_ray_{k}", pts, 0.032, M("cloth_dark"), 5, 0.25), "forearm.L")
     P(sphere("shield_boss", 0.055, front + nrm * 0.01, M("steel"), 12, 6, (1, 1, 1)), "forearm.L")
     ob = join_all("send_unit")
     rig(ob)

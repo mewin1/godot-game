@@ -1,7 +1,8 @@
 """Постройки: башни школ, маяк, терем."""
 import math
+import random
 
-from kit import M, gable, gable_wall, box, cyl, plate, prism, sphere, tube, zigzag, join_all, TIER_HEIGHT, PLATE_H
+from kit import M, point_light, gable, gable_wall, box, cyl, plate, prism, sphere, tube, zigzag, join_all, TIER_HEIGHT, PLATE_H
 
 BUILD_VIEW = dict(res=(600, 760), elevation=34.0, azimuth=-40.0, ortho=4.3, look_z=1.25)
 
@@ -27,8 +28,10 @@ def thunder():
     pillar_h = 1.25
     z0 = top + 0.3
     box("pillar", (0.48, 0.48, pillar_h), (0, 0, z0 + pillar_h / 2), M("oak_warm"), 0.04)
-    for k in range(5):  # тёмные волокна-пазы на фасаде
-        box(f"groove_{k}", (0.02, 0.012, pillar_h * 0.8), (-0.16 + k * 0.08, -0.242, z0 + pillar_h / 2), M("oak_warm_dark"))
+    zig = [(0.0, 0.0), (0.05, 0.0), (0.0, 0.07), (0.05, 0.07), (-0.02, 0.17), (0.0, 0.09), (-0.05, 0.09)]
+    for k, zz in enumerate((z0 + pillar_h * 0.72, z0 + pillar_h * 0.12)):  # золотые громовые знаки
+        prism(f"zig_{k}", [(x * 1.3, y * 1.3) for x, y in zig], 0.025, (0.0, -0.235, zz), M("gold"),
+              (math.pi / 2, 0, 0), 0.004)
     # железный оголовок с проёмом
     cap_z = z0 + pillar_h
     box("cap", (0.74, 0.74, 0.3), (0, 0, cap_z + 0.15), M("steel"), 0.03)
@@ -36,10 +39,10 @@ def thunder():
     rivets("cap_rv", (0, 0), 0.37, cap_z + 0.15, 3, M("iron"))
     # серебряная молния-громоотвод: остаток высоты до TIER_HEIGHT
     bolt_h = h_total - (cap_z + 0.3)
-    bolt = [(-0.05, 0.0), (0.16, 0.0), (0.02, 0.38), (0.2, 0.38), (-0.12, 1.0), (-0.02, 0.52), (-0.18, 0.52)]
-    bolt_h = max(bolt_h, 0.7)
-    prism("bolt", [(x * 1.5, y * bolt_h) for x, y in bolt], 0.08, (0.0, 0.04, cap_z + 0.2), M("silver"),
-          (math.pi / 2, 0, math.radians(-40)), 0.015)
+    bolt_h = max(bolt_h, 0.75)
+    from kit import sign_shapes
+    bolt = [(x * 0.62, (y + 0.5) * bolt_h) for x, y in sign_shapes("perun")[0]]
+    prism("bolt", bolt, 0.12, (0.0, 0.06, cap_z + 0.22), M("silver"), (math.pi / 2, 0, math.radians(-30)), 0.02)
     # громовое колесо на фасаде
     wz = z0 + pillar_h * 0.45
     cyl("wheel_rim", 0.17, 0.17, 0.04, (0, -0.26, wz), M("gold"), 16, (math.pi / 2, 0, 0))
@@ -50,12 +53,15 @@ def thunder():
     cyl("wheel_hub", 0.04, 0.04, 0.06, (0, -0.28, wz), M("gold"), 8, (math.pi / 2, 0, 0))
     # разряды: по фасаду столба и по плите
     glow = M("glow_perun")
-    tube("arc_front", zigzag((0.15, -0.255, cap_z - 0.05), (0.12, -0.255, z0 + 0.1), 9, 0.05, 3), 0.014, glow)
-    tube("arc_side", zigzag((-0.255, 0.1, cap_z - 0.2), (-0.255, -0.05, z0 + 0.2), 8, 0.05, 5), 0.012, glow)
-    for k, (ex, ey) in enumerate([(-0.85, -0.55), (0.8, -0.6), (-0.7, 0.75), (0.75, 0.55)]):
+    tube("arc_front", zigzag((0.15, -0.255, cap_z - 0.05), (0.12, -0.255, z0 + 0.1), 9, 0.05, 3), 0.022, glow)
+    tube("arc_side", zigzag((-0.255, 0.1, cap_z - 0.2), (-0.255, -0.05, z0 + 0.2), 8, 0.05, 5), 0.02, glow)
+    for k, (ex, ey) in enumerate([(-0.85, -0.55), (0.8, -0.6), (-0.7, 0.75), (0.75, 0.55), (0.1, -0.9), (-0.9, 0.05)]):
         tube(f"arc_floor_{k}", zigzag((ex * 0.38, ey * 0.38, top + 0.02), (ex, ey, top + 0.02), 6, 0.08, 10 + k),
-             0.016, glow)
+             0.022, glow)
     return join_all("thunder")
+
+
+TEREM_LIGHTS = [(0.0, -0.75, 0.55), (0.0, -0.75, 1.55), (-0.85, 0.15, 1.2)]
 
 
 def terem():
@@ -78,7 +84,9 @@ def terem():
         for (wx,) in wins:
             wz = z + h * 0.52
             box(f"win_{i}_{wx}", (0.2, 0.03, 0.28), (wx, 0.05 - d / 2 - 0.02, wz), M("window"))
-            box(f"winbar_{i}_{wx}", (0.02, 0.04, 0.28), (wx, 0.05 - d / 2 - 0.035, wz), M("oak_dark"))
+            box(f"wincore_{i}_{wx}", (0.12, 0.03, 0.18), (wx, 0.05 - d / 2 - 0.028, wz), M("window_core"))
+            box(f"winbar_{i}_{wx}", (0.025, 0.04, 0.28), (wx, 0.05 - d / 2 - 0.035, wz), M("oak_dark"))
+            box(f"winbarh_{i}_{wx}", (0.2, 0.04, 0.025), (wx, 0.05 - d / 2 - 0.035, wz + 0.02), M("oak_dark"))
             box(f"frame_t_{i}_{wx}", (0.3, 0.06, 0.06), (wx, 0.05 - d / 2 - 0.035, wz + 0.17), M("oak"), 0.01)
             box(f"frame_b_{i}_{wx}", (0.28, 0.07, 0.04), (wx, 0.05 - d / 2 - 0.04, wz - 0.16), M("oak"), 0.01)
             prism(f"kokoshnik_{i}_{wx}", [(-0.15, 0), (0.15, 0), (0, 0.12)], 0.04,
@@ -106,6 +114,21 @@ def terem():
     box("gable_win", (0.2, 0.03, 0.26), (0, 0.05 - (w + 0.2) / 2 - 0.02, z + 0.3), M("window"))
     box("gable_win_bar", (0.02, 0.04, 0.26), (0, 0.05 - (w + 0.2) / 2 - 0.035, z + 0.3), M("oak_dark"))
     box("gable_win_l", (0.03, 0.2, 0.26), (-(w + 0.2) / 2 - 0.02, 0.05, z + 0.3), M("window"))
+    for rz in (0.0, math.pi / 2):  # резные причелины: красноватые доски по кромке фронтонов
+        for end in (-1, 1):
+            for sgn in (-1, 1):
+                ex = (w + 0.3) / 2 * end
+                a0 = (sgn * (w / 2 + 0.1), ex, z - 0.06)
+                a1 = (0.0, ex, z + roof_h + 0.04)
+                pts = [a0, a1] if rz == 0.0 else [(a0[1], a0[0], a0[2]), (a1[1], a1[0], a1[2])]
+                pts = [(px, 0.05 + py, pz) for px, py, pz in pts]
+                tube(f"barge_{rz}_{end}_{sgn}", pts, 0.035, M("oak"), 4)
+    rnd = random.Random(3)
+    for k in range(6):  # мох на скатах
+        a = rnd.uniform(0, 2 * math.pi)
+        rr = rnd.uniform(0.25, 0.5)
+        sphere(f"roof_moss_{k}", 0.06, (rr * math.cos(a), 0.05 + rr * math.sin(a), z + roof_h * (1 - rr / 0.62) + 0.04),
+               M("moss"), 6, 4, (1.5, 1.2, 0.45))
     cyl("tent", 0.22, 0.04, 0.8, (0, 0.05, z + roof_h + 0.25), M("shingle"), 8)
     cyl("tent_base", 0.3, 0.3, 0.1, (0, 0.05, z + roof_h - 0.12), M("oak_dark"), 8)
     sphere("onion", 0.13, (0, 0.05, z + roof_h + 0.72), M("shingle"), 10, 8, (1, 1, 1.4))
@@ -122,7 +145,10 @@ def terem():
     for k in range(3):  # ступени крыльца
         box(f"step_{k}", (0.36, 0.14, 0.11), (0.0, -0.5 - 0.12 * (3 - k), top + 0.055 + 0.11 * k), M("oak"), 0.01)
     # знак-кокошник на фронтоне (фиолетовая искра — в концепте)
-        return join_all("terem")
+        # тёплый свет из окон и двери на плиту (в игре — OmniLight3D в тех же точках, см. NoirModels.TEREM_LIGHTS)
+    for k, loc in enumerate(TEREM_LIGHTS):
+        point_light(f"terem_light_{k}", loc, (1.0, 0.45, 0.12), 25.0)
+    return join_all("terem")
 
 
 def _plate_builder(tier, school):
@@ -134,11 +160,11 @@ def _plate_builder(tier, school):
 
 MODELS = {
     "thunder": dict(build=thunder, kind="towers", concept="buildings/thunder_16.png", view=BUILD_VIEW),
-    "terem": dict(build=terem, kind="base", concept="buildings/terem_5.png",
+    "terem": dict(build=terem, kind="base", concept="buildings/terem_5.png", tex=2048,
                   view=dict(res=(600, 760), elevation=34.0, azimuth=-40.0, ortho=5.6, look_z=1.7)),
 }
 
 for _tier in (1, 2, 3):
     for _school in ("perun", "svarog", "stribog", "water", "ice", "war", "curse", "neutral"):
         MODELS[f"plate_{_tier}_{_school}"] = dict(build=_plate_builder(_tier, _school), kind="plates",
-                                                  concept="buildings/thunder_16.png", view=BUILD_VIEW, no_render=True)
+                                                  concept="buildings/thunder_16.png", view=BUILD_VIEW, no_render=True, tex=512)
