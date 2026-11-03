@@ -1,0 +1,144 @@
+"""Постройки: башни школ, маяк, терем."""
+import math
+
+from kit import M, gable, gable_wall, box, cyl, plate, prism, sphere, tube, zigzag, join_all, TIER_HEIGHT, PLATE_H
+
+BUILD_VIEW = dict(res=(600, 760), elevation=34.0, azimuth=-40.0, ortho=4.3, look_z=1.25)
+
+
+def rivets(prefix, center, half, z, count, material, r=0.035):
+    """Заклёпки по передней и боковой граням квадратного блока."""
+    cx, cy = center
+    for k in range(count):
+        t = -half + 2 * half * (k + 0.5) / count
+        sphere(f"{prefix}_f{k}", r, (cx + t, cy - half - 0.005, z), material, 6, 4)
+        sphere(f"{prefix}_s{k}", r, (cx - half - 0.005, cy + t, z), material, 6, 4)
+        sphere(f"{prefix}_r{k}", r, (cx + half + 0.005, cy + t, z), material, 6, 4)
+
+
+def thunder():
+    """Грозовой столб (Перун, II): дубовый столб в железной оковке, громовое колесо, серебряная молния."""
+    top = plate(2, "perun")
+    h_total = TIER_HEIGHT[2]
+    # железное основание
+    box("base", (0.68, 0.68, 0.3), (0, 0, top + 0.15), M("steel"), 0.03)
+    rivets("base_rv", (0, 0), 0.34, top + 0.16, 3, M("steel"))
+    # дубовый столб с гранями
+    pillar_h = 1.25
+    z0 = top + 0.3
+    box("pillar", (0.48, 0.48, pillar_h), (0, 0, z0 + pillar_h / 2), M("oak_warm"), 0.04)
+    for k in range(5):  # тёмные волокна-пазы на фасаде
+        box(f"groove_{k}", (0.02, 0.012, pillar_h * 0.8), (-0.16 + k * 0.08, -0.242, z0 + pillar_h / 2), M("oak_warm_dark"))
+    # железный оголовок с проёмом
+    cap_z = z0 + pillar_h
+    box("cap", (0.74, 0.74, 0.3), (0, 0, cap_z + 0.15), M("steel"), 0.03)
+    cyl("cap_hole", 0.2, 0.2, 0.05, (0, 0, cap_z + 0.29), M("glow_perun"), 12)
+    rivets("cap_rv", (0, 0), 0.37, cap_z + 0.15, 3, M("iron"))
+    # серебряная молния-громоотвод: остаток высоты до TIER_HEIGHT
+    bolt_h = h_total - (cap_z + 0.3)
+    bolt = [(-0.05, 0.0), (0.16, 0.0), (0.02, 0.38), (0.2, 0.38), (-0.12, 1.0), (-0.02, 0.52), (-0.18, 0.52)]
+    bolt_h = max(bolt_h, 0.7)
+    prism("bolt", [(x * 1.5, y * bolt_h) for x, y in bolt], 0.08, (0.0, 0.04, cap_z + 0.2), M("silver"),
+          (math.pi / 2, 0, math.radians(-40)), 0.015)
+    # громовое колесо на фасаде
+    wz = z0 + pillar_h * 0.45
+    cyl("wheel_rim", 0.17, 0.17, 0.04, (0, -0.26, wz), M("gold"), 16, (math.pi / 2, 0, 0))
+    cyl("wheel_in", 0.13, 0.13, 0.05, (0, -0.26, wz), M("oak_warm_dark"), 16, (math.pi / 2, 0, 0))
+    for k in range(6):
+        a = math.pi * k / 3
+        box(f"spoke_{k}", (0.025, 0.03, 0.26), (0, -0.275, wz), M("gold"), 0, (0, a, 0))
+    cyl("wheel_hub", 0.04, 0.04, 0.06, (0, -0.28, wz), M("gold"), 8, (math.pi / 2, 0, 0))
+    # разряды: по фасаду столба и по плите
+    glow = M("glow_perun")
+    tube("arc_front", zigzag((0.15, -0.255, cap_z - 0.05), (0.12, -0.255, z0 + 0.1), 9, 0.05, 3), 0.014, glow)
+    tube("arc_side", zigzag((-0.255, 0.1, cap_z - 0.2), (-0.255, -0.05, z0 + 0.2), 8, 0.05, 5), 0.012, glow)
+    for k, (ex, ey) in enumerate([(-0.85, -0.55), (0.8, -0.6), (-0.7, 0.75), (0.75, 0.55)]):
+        tube(f"arc_floor_{k}", zigzag((ex * 0.38, ey * 0.38, top + 0.02), (ex, ey, top + 0.02), 6, 0.08, 10 + k),
+             0.016, glow)
+    return join_all("thunder")
+
+
+def terem():
+    """Терем (база, тёмный): резной дом-башня на каменном цоколе, тёплые окна, крутые тёмные кровли."""
+    plate(1, "neutral", sign=False)
+    top = PLATE_H
+    # каменный цоколь
+    box("plinth", (1.2, 1.1, 0.35), (0, 0.05, top + 0.175), M("stone_b"), 0.04)
+    # сруб: этажи сужаются кверху
+    floors = [(1.06, 0.96, 1.0), (1.0, 0.92, 0.95)]
+    z = top + 0.35
+    for i, (w, d, h) in enumerate(floors):
+        box(f"floor_{i}", (w, d, h), (0, 0.05, z + h / 2), M("oak_dark"), 0.03)
+        for k in range(int(h / 0.12)):  # бревенчатые венцы
+            box(f"log_{i}_{k}", (w + 0.03, 0.04, 0.035), (0, 0.05 - d / 2 - 0.01, z + 0.06 + k * 0.12), M("oak"), 0.012)
+        for sx in (-1, 1):  # угловые столбы
+            box(f"corner_{i}_{sx}", (0.08, 0.08, h), (sx * (w / 2), 0.05 - d / 2, z + h / 2), M("oak"), 0.015)
+        # окна с наличниками
+        wins = [(-0.22,), (0.22,)]
+        for (wx,) in wins:
+            wz = z + h * 0.52
+            box(f"win_{i}_{wx}", (0.2, 0.03, 0.28), (wx, 0.05 - d / 2 - 0.02, wz), M("window"))
+            box(f"winbar_{i}_{wx}", (0.02, 0.04, 0.28), (wx, 0.05 - d / 2 - 0.035, wz), M("oak_dark"))
+            box(f"frame_t_{i}_{wx}", (0.3, 0.06, 0.06), (wx, 0.05 - d / 2 - 0.035, wz + 0.17), M("oak"), 0.01)
+            box(f"frame_b_{i}_{wx}", (0.28, 0.07, 0.04), (wx, 0.05 - d / 2 - 0.04, wz - 0.16), M("oak"), 0.01)
+            prism(f"kokoshnik_{i}_{wx}", [(-0.15, 0), (0.15, 0), (0, 0.12)], 0.04,
+                  (wx, 0.05 - d / 2 - 0.05, wz + 0.2), M("oak"), (math.pi / 2, 0, 0))
+        # боковое окно
+        box(f"winside_{i}", (0.03, 0.18, 0.24), (-w / 2 - 0.03, 0.1, z + h * 0.5), M("window"))
+        # навес-кровля над этажом (полица)
+        if i < 1:
+            for sx in (-1, 1):
+                box(f"eave_{i}_{sx}", (w * 0.62, d + 0.36, 0.06), (sx * w * 0.26, 0.05, z + h + 0.07), M("shingle"),
+                    0.01, (0, sx * math.radians(-28), 0))
+        z += h + (0.12 if i < 1 else 0.0)
+    # кровля: два перекрещённых крутых фронтона, над ними шатёр с луковкой
+    roof_h = 1.0
+    w = 1.04
+    for rz in (0.0, math.pi / 2):
+        gable_wall(f"gw_{rz}", w * 0.92, roof_h * 0.92, w + 0.2, (0, 0.05, z), M("oak_dark"), rz)
+        gable(f"gr_{rz}", w, roof_h, w + 0.3, (0, 0.05, z), M("shingle"), rz, 0.12)
+        # ромбы-обереги на фронтонах
+        for sgn in (-1, 1):
+            off = (0, sgn * (w * 0.45 + 0.03)) if rz == 0.0 else (sgn * (w * 0.45 + 0.03), 0)
+            box(f"rhomb_{rz}_{sgn}", (0.08, 0.08, 0.08), (off[0] * 1.25, 0.05 + off[1] * 1.25, z + 0.62), M("glow_curse"), 0,
+                (0, math.pi / 4, rz))
+    # окно во фронтоне (фасад и левый бок)
+    box("gable_win", (0.2, 0.03, 0.26), (0, 0.05 - (w + 0.2) / 2 - 0.02, z + 0.3), M("window"))
+    box("gable_win_bar", (0.02, 0.04, 0.26), (0, 0.05 - (w + 0.2) / 2 - 0.035, z + 0.3), M("oak_dark"))
+    box("gable_win_l", (0.03, 0.2, 0.26), (-(w + 0.2) / 2 - 0.02, 0.05, z + 0.3), M("window"))
+    cyl("tent", 0.22, 0.04, 0.8, (0, 0.05, z + roof_h + 0.25), M("shingle"), 8)
+    cyl("tent_base", 0.3, 0.3, 0.1, (0, 0.05, z + roof_h - 0.12), M("oak_dark"), 8)
+    sphere("onion", 0.13, (0, 0.05, z + roof_h + 0.72), M("shingle"), 10, 8, (1, 1, 1.4))
+    cyl("spire", 0.035, 0.0, 0.45, (0, 0.05, z + roof_h + 1.04), M("iron"), 6)
+    z_roof_top = z
+    # боковой прируб с двускатной кровлей (слева) и крыльцо (справа спереди)
+    for sx in (-1, 1):  # крылечки с маленькими фронтонами по бокам фасада
+        px = sx * 0.42
+        for k in range(2):
+            box(f"porch_post_{sx}_{k}", (0.06, 0.06, 0.7), (px + (k - 0.5) * 0.3, -0.62, top + 0.35), M("oak"), 0.01)
+        gable_wall(f"porch_gw_{sx}", 0.4, 0.22, 0.3, (px, -0.55, top + 0.72), M("oak_dark"), math.pi / 2 * 0)
+        gable(f"porch_gr_{sx}", 0.4, 0.24, 0.42, (px, -0.55, top + 0.72), M("shingle"), math.pi / 2, 0.06)
+    box("door", (0.26, 0.04, 0.42), (0.0, 0.05 - 0.48 - 0.02, top + 0.35 + 0.22), M("oak"), 0.01)
+    for k in range(3):  # ступени крыльца
+        box(f"step_{k}", (0.36, 0.14, 0.11), (0.0, -0.5 - 0.12 * (3 - k), top + 0.055 + 0.11 * k), M("oak"), 0.01)
+    # знак-кокошник на фронтоне (фиолетовая искра — в концепте)
+        return join_all("terem")
+
+
+def _plate_builder(tier, school):
+    def build():
+        plate(tier, school, sign=school != "neutral")
+        return join_all(f"plate_{tier}_{school}", split_plate=False)
+    return build
+
+
+MODELS = {
+    "thunder": dict(build=thunder, kind="towers", concept="buildings/thunder_16.png", view=BUILD_VIEW),
+    "terem": dict(build=terem, kind="base", concept="buildings/terem_5.png",
+                  view=dict(res=(600, 760), elevation=34.0, azimuth=-40.0, ortho=5.6, look_z=1.7)),
+}
+
+for _tier in (1, 2, 3):
+    for _school in ("perun", "svarog", "stribog", "water", "ice", "war", "curse", "neutral"):
+        MODELS[f"plate_{_tier}_{_school}"] = dict(build=_plate_builder(_tier, _school), kind="plates",
+                                                  concept="buildings/thunder_16.png", view=BUILD_VIEW, no_render=True)

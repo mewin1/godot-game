@@ -15,14 +15,23 @@ var _phase: float = 0.0
 var _height: float = 1.0
 var _flash: MeshInstance3D
 var _rage_ring: MeshInstance3D
+var _skeleton: Skeleton3D
 
 
 ## Собирает модель. height — рост в метрах, tint — основной цвет.
-func build(model: StringName, tint: Color, height: float, sender_color: Color) -> void:
+func build(model: StringName, tint: Color, height: float, sender_color: Color, mob_id: StringName = &"") -> void:
 	kind = model
 	_height = height
 	_body = Node3D.new()
 	add_child(_body)
+	if _build_noir(mob_id):
+		pass
+	else:
+		_build_procedural(model, tint)
+	_finish_build(height, sender_color)
+
+
+func _build_procedural(model: StringName, tint: Color) -> void:
 	match model:
 		&"heavy":
 			_build_heavy(tint)
@@ -34,6 +43,25 @@ func build(model: StringName, tint: Color, height: float, sender_color: Color) -
 			_build_blob(tint)
 		_:
 			_build_walker(tint)
+
+
+## Модель «славянского нуара» (GLB со скелетом): рост приводится к height (тело масштабируется на height).
+func _build_noir(mob_id: StringName) -> bool:
+	var scene: PackedScene = NoirModels.unit(mob_id)
+	if scene == null:
+		return false
+	var holder: Node3D = Node3D.new()
+	holder.scale = Vector3.ONE / NoirModels.HUMAN_HEIGHT
+	_body.add_child(holder)
+	holder.add_child(scene.instantiate())
+	var found: Array[Node] = holder.find_children("*", "Skeleton3D", true, false)
+	if not found.is_empty():
+		_skeleton = found[0] as Skeleton3D
+	kind = &"noir"
+	return true
+
+
+func _finish_build(height: float, sender_color: Color) -> void:
 	_body.scale = Vector3.ONE * height
 	var shadow: CylinderMesh = ArenaMaterials3D.cylinder(0.24 * height, 0.24 * height, 0.02, 12)
 	ArenaMaterials3D.part(self, shadow,
@@ -76,6 +104,9 @@ func animate(delta: float, speed: float, steps_per_meter: float) -> void:
 	_phase += delta * maxf(speed * steps_per_meter, 0.6 if kind == &"flyer" else 0.0) * TAU
 	var swing: float = sin(_phase)
 	match kind:
+		&"noir":
+			_walk_bones(swing, 0.5 if speed > 0.05 else 0.0)
+			_body.position.y = absf(swing) * 0.03 * _height * float(speed > 0.05)
 		&"flyer":
 			for i: int in _limbs.size():
 				_limbs[i].rotation.z = (1.0 if i == 0 else -1.0) * (0.25 + swing * 0.6)
@@ -89,6 +120,25 @@ func animate(delta: float, speed: float, steps_per_meter: float) -> void:
 				_limbs[i].rotation.x = swing * stride * (1.0 if i % 2 == 0 else -1.0)
 			_body.position.y = absf(swing) * 0.05 * _height * float(speed > 0.05)
 			_body.rotation.z = swing * 0.05 * float(speed > 0.05)
+
+
+## Походка костями общего скелета: бёдра и руки качаются навстречу, колено сгибается.
+func _walk_bones(swing: float, stride: float) -> void:
+	if _skeleton == null:
+		return
+	for side: String in ["L", "R"]:
+		var sign: float = 1.0 if side == "L" else -1.0
+		_rotate_bone("thigh." + side, Vector3.RIGHT, swing * stride * sign)
+		_rotate_bone("shin." + side, Vector3.RIGHT, -maxf(0.0, -swing * sign) * stride * 0.9)
+		_rotate_bone("upper_arm." + side, Vector3.RIGHT, -swing * stride * 0.4 * sign)
+
+
+func _rotate_bone(bone_name: String, axis: Vector3, angle: float) -> void:
+	var bone: int = _skeleton.find_bone(bone_name)
+	if bone < 0:
+		return
+	var rest: Quaternion = _skeleton.get_bone_rest(bone).basis.get_rotation_quaternion()
+	_skeleton.set_bone_pose_rotation(bone, rest * Quaternion(axis, angle))
 
 
 ## Смерть: короткая вспышка и исчезновение. Возвращает true, когда пора удалить.

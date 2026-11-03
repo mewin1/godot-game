@@ -13,10 +13,13 @@ var _pulse_left: float = 0.0
 var _pop_left: float = 0.0
 var _time: float = 0.0
 var _base_scale: float = 1.0
+var _noir_height: float = 0.0
 
 
 ## Собирает постройку. cell_offsets — центры клеток фигуры относительно центра модели.
 func build(tower: TowerState, style: Arena3DStyle, cell_offsets: Array[Vector3]) -> void:
+	if _build_noir(tower, style, cell_offsets):
+		return
 	var paint: Color = style.get_god_color(tower.data.god)
 	var accent: Color = style.get_god_glow(tower.data.god)
 	var tile_color: Color = paint.lerp(ArenaMaterials3D.STONE, style.tile_stone_mix)
@@ -43,10 +46,33 @@ func build(tower: TowerState, style: Arena3DStyle, cell_offsets: Array[Vector3])
 	_model.scale = Vector3.ONE * _base_scale
 
 
+## Модель «славянского нуара»: плита уровня под каждой клеткой фигуры + модель в центре.
+## Нет GLB для этой постройки — false, строится прежняя процедурная.
+func _build_noir(tower: TowerState, style: Arena3DStyle, cell_offsets: Array[Vector3]) -> bool:
+	var scene: PackedScene = NoirModels.tower(tower.data.id)
+	if scene == null:
+		return false
+	var tier: int = clampi(tower.data.tier, 1, 3)
+	var plate: PackedScene = NoirModels.plate(tier, tower.data.god)
+	for offset: Vector3 in cell_offsets:
+		if plate != null:
+			var tile: Node3D = plate.instantiate() as Node3D
+			add_child(tile)
+			tile.position = offset
+	_model = Node3D.new()
+	add_child(_model)
+	_model.add_child(scene.instantiate())
+	_noir_height = NoirModels.TIER_HEIGHT[tier - 1]
+	_add_level_rings(tower.level)
+	_base_scale = 1.0 + style.level_scale_step * (tower.level - 1)
+	_model.scale = Vector3.ONE * _base_scale
+	return true
+
+
 ## Точка навершия (кристалл/огонь) в координатах сцены — отсюда летят снаряды.
 func get_top() -> Vector3:
 	if _accent == null:
-		return global_position + Vector3.UP * 2.0
+		return global_position + Vector3.UP * (_noir_height * 0.92 * _base_scale if _noir_height > 0.0 else 2.0)
 	return _accent.global_position
 
 

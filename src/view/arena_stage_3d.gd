@@ -235,7 +235,7 @@ func _sync_units(delta: float, interpolation: float) -> void:
 			if mob.sender_index >= 0 and _player_colors.is_valid():
 				sender = _player_colors.call(mob.sender_index)
 			unit.build(STYLE.get_mob_model(mob.data.id), STYLE.get_mob_tint(mob.data.id),
-					STYLE.get_mob_height(mob.data.id), sender)
+					STYLE.get_mob_height(mob.data.id), sender, mob.data.id)
 			if mob.data.reveal_radius_milli > 0:
 				unit.set_ghost(STYLE.stealth_alpha)
 			_units[mob.id] = unit
@@ -407,6 +407,14 @@ func _add_totem(length: float) -> void:
 	var holder: Node3D = Node3D.new()
 	_fog.add_child(holder)
 	holder.position = layout.road_point(length)
+	var terem: PackedScene = NoirModels.base()
+	if terem != null:
+		# Терем-база «славянского нуара» смотрит навстречу дороге.
+		var house: Node3D = terem.instantiate() as Node3D
+		holder.add_child(house)
+		var toward: Vector3 = -layout.road_direction(length)
+		house.rotation.y = atan2(toward.x, toward.z)
+		return
 	var stone: StandardMaterial3D = ArenaMaterials3D.solid(ArenaMaterials3D.DARK_STONE)
 	var wood: StandardMaterial3D = ArenaMaterials3D.solid(ArenaMaterials3D.WOOD)
 	ArenaMaterials3D.part(holder, ArenaMaterials3D.cylinder(0.55, 0.62, 0.3, 8), stone,
