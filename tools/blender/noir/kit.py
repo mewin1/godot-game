@@ -14,7 +14,7 @@ from mathutils import Euler, Matrix, Vector
 
 ROOT = Path(__file__).resolve().parents[3]
 CELL = 2.0
-PLATE_H = 0.26
+PLATE_H = 0.45  # по концептам плита толстая: ~0,45 м при клетке 2 м
 # Высота постройки (от земли до макушки) по уровню: I ≈ 1 клетка, II ≈ 1,4, III ≈ 1,8.
 TIER_HEIGHT = {1: 2.0, 2: 2.8, 3: 3.6}
 HUMAN_H = 1.7   # рост юнита-человека
@@ -89,6 +89,9 @@ def M(key: str):
         "cloth_white": dict(color=(0.36, 0.31, 0.24), rough=0.9),
         "chainmail": dict(color=(0.13, 0.13, 0.14), rough=0.5, metal=0.5),
         "helm_steel": dict(color=(0.45, 0.45, 0.5), rough=0.28, metal=0.85),
+        "snow": dict(color=(0.75, 0.8, 0.86), rough=0.9),
+        "stone_wet": dict(color=(0.05, 0.07, 0.075), rough=0.4),
+        "cloud": dict(color=(0.06, 0.065, 0.075), rough=0.9),
         "window": dict(color=(1.0, 0.45, 0.1), rough=0.5, emit=(1.0, 0.32, 0.03), strength=0.75),
         "window_core": dict(color=(1.0, 0.6, 0.2), rough=0.5, emit=(1.0, 0.55, 0.12), strength=1.3),
         "ember": dict(color=(1.0, 0.3, 0.05), rough=0.5, emit=(1.0, 0.3, 0.05), strength=8.0),

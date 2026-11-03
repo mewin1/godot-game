@@ -266,8 +266,8 @@ def bake(ob, size: int = 1024, path=None):
     sc.render.engine = prev_engine
 
 
-GLOW_STRENGTH = 3.0
-BASE_GLOW = 0.13  # доля свечения у несветящихся мест: 0,13 × 3 ≈ 0,4 — рисунок читается в темноте
+GLOW_STRENGTH = 1.6
+BASE_GLOW = 0.25  # доля свечения у несветящихся мест: 0,25 × 1,6 = 0,4 — рисунок читается в темноте
 
 
 def emission_image(color_img, mask_img, name: str):
