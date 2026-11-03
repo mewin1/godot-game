@@ -22,8 +22,11 @@
 *.dmg
 *.app/
 
-# --- Claude Code ---
-.claude/
+# --- Claude Code --- (общие скиллы, хуки и настройки — в Git; личное — нет)
+.claude/*
+!.claude/skills/
+!.claude/hooks/
+!.claude/settings.json
 CLAUDE.local.md
 .mcp.json
 
@@ -49,3 +52,7 @@ desktop.ini
 
 # --- Python ---
 __pycache__/
+
+# Godot MCP: временная автозагрузка сервера (на время запуска игры)
+mcp_interaction_server.gd
+mcp_interaction_server.gd.uid
