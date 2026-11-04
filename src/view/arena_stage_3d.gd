@@ -10,7 +10,7 @@ const STYLE: Arena3DStyle = preload("res://data/visuals/arena_3d_style.tres")
 const MILLI: float = 1000.0
 ## Наклон и поворот камеры — как в превью арены (вид сверху-спереди, чуть справа).
 ## Ракурс как на концепте арены: ниже и с угла.
-const CAMERA_PITCH: float = -0.8
+const CAMERA_PITCH: float = -0.72
 const CAMERA_YAW: float = 0.45
 const CAMERA_DISTANCE: float = 70.0
 ## Объём поля для кадрирования: x 0..18, z −20..0, высоты 0..6.5 м.

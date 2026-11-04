@@ -12,13 +12,16 @@ const WALL_MARGIN: float = 1.3
 const GATE_WIDTH: float = 3.2
 const FIRE_COLOR: Color = Color(1.0, 0.52, 0.18)
 const ROAD_HALF_WIDTH: float = 1.0
+## Стена и жаровни крупнее, как на концепте арены (стена выше человека, жаровни — по пояс-грудь).
+const WALL_SCALE: float = 1.25
+const FIRE_SCALE: float = 1.6
 const ROAD_EDGE: Color = Color(0.42, 0.4, 0.42)
 
 var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
 var _built_road: bool = false
 var _terem_at: Vector3 = Vector3(INF, 0, INF)
-const TEREM_OFFSET: float = 3.4
-const TEREM_SCALE: float = 1.7
+const TEREM_OFFSET: float = 4.2
+const TEREM_SCALE: float = 2.3
 
 
 func _ready() -> void:
@@ -201,7 +204,7 @@ func _build_walls(entry: Vector2) -> void:
 				continue
 			var at: Vector3 = Vector3(center.x, 0, center.y)
 			# фасадом внутрь двора: у дальних и боковых стен разворот на 180° для разнообразия не нужен
-			_place("palisade", at, yaw, step / segment * 1.02)
+			_place("palisade", at, yaw, step / segment * 1.02 * WALL_SCALE)
 			if k % 3 == 0:
 				_place("palisade_post", Vector3(a.x + direction.x * step * k, 0, a.y + direction.y * step * k),
 						yaw + PI)
@@ -242,14 +245,14 @@ func _build_fires() -> void:
 	var hi: Vector2 = BOARD_MAX + Vector2(WALL_MARGIN, WALL_MARGIN) * 0.55
 	for corner: Vector2 in [lo, Vector2(hi.x, lo.y), hi, Vector2(lo.x, hi.y)]:
 		var at: Vector3 = Vector3(corner.x, 0, corner.y)
-		_place("fire_bowl", at, _rng.randf() * TAU)
+		_place("fire_bowl", at, _rng.randf() * TAU, FIRE_SCALE)
 		var light: OmniLight3D = OmniLight3D.new()
 		light.light_color = FIRE_COLOR
 		light.light_energy = 5.0
 		light.omni_range = 11.0
 		light.omni_attenuation = 1.4
 		light.shadow_enabled = true
-		light.position = at + Vector3(0, 1.9, 0)
+		light.position = at + Vector3(0, 1.9 * FIRE_SCALE, 0)
 		add_child(light)
 
 
