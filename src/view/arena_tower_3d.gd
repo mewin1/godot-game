@@ -46,6 +46,11 @@ func build(tower: TowerState, style: Arena3DStyle, cell_offsets: Array[Vector3])
 	_model.scale = Vector3.ONE * _base_scale
 
 
+## Свет стихии вокруг постройки «нуар».
+const AURA_ENERGY: float = 2.4
+const AURA_RANGE: float = 5.5
+
+
 ## Модель «славянского нуара»: плита уровня под каждой клеткой фигуры + модель в центре.
 ## Нет GLB для этой постройки — false, строится прежняя процедурная.
 func _build_noir(tower: TowerState, style: Arena3DStyle, cell_offsets: Array[Vector3]) -> bool:
@@ -66,6 +71,15 @@ func _build_noir(tower: TowerState, style: Arena3DStyle, cell_offsets: Array[Vec
 	_model = Node3D.new()
 	add_child(_model)
 	_model.add_child(scene.instantiate())
+	# цветное пятно света стихии на брусчатке вокруг постройки (как на концепте арены)
+	if tower.data.god != &"":
+		var aura: OmniLight3D = OmniLight3D.new()
+		aura.light_color = GodSymbols.get_color(tower.data.god)
+		aura.light_energy = AURA_ENERGY
+		aura.omni_range = AURA_RANGE
+		aura.omni_attenuation = 1.6
+		aura.position = Vector3(0, 1.4, 0)
+		add_child(aura)
 	_noir_height = NoirModels.TIER_HEIGHT[tier - 1]
 	_add_level_rings(tower.level)
 	_base_scale = 1.0 + style.level_scale_step * (tower.level - 1)
