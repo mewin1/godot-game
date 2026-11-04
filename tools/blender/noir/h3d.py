@@ -657,6 +657,29 @@ def add_rig(ob, mid: str, group: str):
         j[f"hand.{side}"] = sh + d * 0.55
         j[f"hand_end.{side}"] = sh + d * 0.66
     arm = units.rig(ob, s=s, name="rig", joints=j)
+    # плавные веса тепловой диффузией Blender (жёсткие «по близости» рвали полы одежды в «простыни»)
+    for mod in list(ob.modifiers):
+        ob.modifiers.remove(mod)
+    ob.parent = None
+    for vg in list(ob.vertex_groups):
+        ob.vertex_groups.remove(vg)
+    bpy.ops.object.select_all(action="DESELECT")
+    ob.select_set(True)
+    arm.select_set(True)
+    bpy.context.view_layer.objects.active = arm
+    try:
+        bpy.ops.object.parent_set(type="ARMATURE_AUTO")
+    except RuntimeError as error:
+        print("[h3d] веса тепла не вышли:", error)
+    weighted = sum(1 for v in ob.data.vertices if v.groups)
+    if weighted > 0.95 * len(ob.data.vertices):
+        print(f"[h3d] скелет: веса тепловой диффузией ({weighted}/{len(ob.data.vertices)} вершин)")
+        _legs_off_weapons(ob, arm, s)
+        return arm
+    print("[h3d] скелет: запасные веса по близости")
+    if not ob.modifiers:
+        ob.parent = arm
+        ob.modifiers.new("rig", "ARMATURE").object = arm
     # веса по близости: каждая вершина — двум ближайшим костям (по расстоянию до отрезка кости)
     bones = [(b.name, Vector(b.head_local), Vector(b.tail_local)) for b in arm.data.bones]
     for vg in list(ob.vertex_groups):
@@ -674,11 +697,90 @@ def add_rig(ob, mid: str, group: str):
     for vi in range(len(co)):
         a, b = order[vi]
         da, db = dist[vi, a], dist[vi, b]
-        wa = 1.0 if db - da > 0.06 * s else 0.5 + 0.5 * (db - da) / (0.06 * s)
+        wa = 1.0 if db - da > 0.2 * s else 0.5 + 0.5 * (db - da) / (0.2 * s)
         groups[bones[a][0]].add([vi], wa, "REPLACE")
         if wa < 1.0:
             groups[bones[b][0]].add([vi], 1.0 - wa, "REPLACE")
     return arm
+
+
+def _legs_off_weapons(ob, arm, s: float):
+    """Вершины далеко в стороне от ноги (копьё, посох, щит у земли) не должны идти за ногой — их вес ног → таз."""
+    legs = {}
+    for side in ("L", "R"):
+        a = arm.data.bones[f"thigh.{side}"].head_local
+        b = arm.data.bones[f"foot.{side}"].head_local
+        c = arm.data.bones[f"foot.{side}"].tail_local  # носок
+        legs[side] = ((np.array(a[:2]), np.array(b[:2])), (np.array(b[:2]), np.array(c[:2])))
+    names = {g.index: g.name for g in ob.vertex_groups}
+    hips = ob.vertex_groups["hips"]
+    moved = 0
+    for v in ob.data.vertices:
+        leg_w = 0.0
+        far = True
+        for g in v.groups:
+            name = names[g.group]
+            if name.split(".")[0] in ("thigh", "shin", "foot") and g.weight > 0:
+                side = name.split(".")[1]
+                p = np.array(v.co[:2])
+                dist = 1e9
+                for a, b in legs[side]:
+                    d = b - a
+                    t = np.clip(np.dot(p - a, d) / max(np.dot(d, d), 1e-9), 0, 1)
+                    dist = min(dist, float(np.linalg.norm(p - (a + t * d))))
+                # у земли стопа узкая: копьё рядом с сапогом не должно идти за ногой
+                limit = 0.12 * s if v.co.z < 0.3 * s else 0.22 * s
+                if dist < limit:
+                    far = False
+                leg_w += g.weight
+        if leg_w > 0 and far:
+            for g in list(v.groups):
+                if names[g.group].split(".")[0] in ("thigh", "shin", "foot"):
+                    ob.vertex_groups[names[g.group]].remove([v.index])
+            hips.add([v.index], leg_w, "ADD")
+            moved += 1
+    print(f"[h3d] скелет: {moved} вершин оружия/посохов сняты с ног")
+    _rigid_islands(ob)
+
+
+def _rigid_islands(ob):
+    """Отдельные куски сетки (копьё, щит, посох) — целиком на одной кости (рука/таз), без изгиба."""
+    n = len(ob.data.vertices)
+    parent = np.arange(n)
+
+    def find(x):
+        while parent[x] != x:
+            parent[x] = parent[parent[x]]
+            x = parent[x]
+        return x
+
+    for e in ob.data.edges:
+        a, b = find(e.vertices[0]), find(e.vertices[1])
+        if a != b:
+            parent[a] = b
+    roots = np.array([find(i) for i in range(n)])
+    ids, counts = np.unique(roots, return_counts=True)
+    main = ids[np.argmax(counts)]
+    names = {g.index: g.name for g in ob.vertex_groups}
+    fixed = 0
+    for root, count in zip(ids, counts):
+        if root == main or count < 30:
+            continue
+        members = np.nonzero(roots == root)[0]
+        totals = {}
+        for vi in members:
+            for g in ob.data.vertices[vi].groups:
+                name = names[g.group]
+                if name.split(".")[0] in ("thigh", "shin", "foot"):
+                    continue
+                totals[name] = totals.get(name, 0.0) + g.weight
+        bone = max(totals, key=totals.get) if totals else "hips"
+        idx = [int(v) for v in members]
+        for vg in ob.vertex_groups:
+            vg.remove(idx)
+        ob.vertex_groups[bone].add(idx, 1.0, "REPLACE")
+        fixed += 1
+    print(f"[h3d] скелет: {fixed} отдельных кусков (оружие и т. п.) — жёстко на одной кости")
 
 
 # ---------- выход ----------

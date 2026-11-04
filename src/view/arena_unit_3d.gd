@@ -100,13 +100,19 @@ func set_enraged(enabled: bool, color: Color) -> void:
 
 
 ## Шаг анимации. speed — метры в секунду (0 — стоит), flight — высота полёта.
+## Размах шага костями у моделей «нуар» (рад).
+const NOIR_STRIDE: float = 0.24
+
+
 func animate(delta: float, speed: float, steps_per_meter: float) -> void:
 	_phase += delta * maxf(speed * steps_per_meter, 0.6 if kind == &"flyer" else 0.0) * TAU
 	var swing: float = sin(_phase)
 	match kind:
 		&"noir":
-			_walk_bones(swing, 0.5 if speed > 0.05 else 0.0)
-			_body.position.y = absf(swing) * 0.03 * _height * float(speed > 0.05)
+			# малый шаг: у моделей по концептам длинные полы, широкий шаг их растягивает
+			_walk_bones(swing, NOIR_STRIDE if speed > 0.05 else 0.0)
+			_body.position.y = absf(swing) * 0.04 * _height * float(speed > 0.05)
+			_body.rotation.z = swing * 0.04 * float(speed > 0.05)
 		&"flyer":
 			for i: int in _limbs.size():
 				_limbs[i].rotation.z = (1.0 if i == 0 else -1.0) * (0.25 + swing * 0.6)
