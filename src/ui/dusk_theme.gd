@@ -2,12 +2,14 @@ class_name DuskTheme
 extends RefCounted
 ## Общие панели сумеречной заставы; не меняет данные и размеры игровых механик.
 
-const INK: Color = Color("0b141e")
-const GOLD: Color = Color("b7955d")
+const INK: Color = Color("0e1215")
+## Янтарный акцент интерфейса «нуар» (new_concept/06_battle_ui.jpg).
+const GOLD: Color = Color("dca253")
 const TEXT: Color = Color("eee3cd")
-const MUTED: Color = Color("a8b5c5")
-const GLASS: Color = Color("0a1626")
-const GLASS_EDGE: Color = Color(0.62, 0.74, 0.9, 0.32)
+const MUTED: Color = Color("a9b1b5")
+## Дымчатое стекло: почти чёрное с лёгкой бирюзой.
+const GLASS: Color = Color("0a0f12")
+const GLASS_EDGE: Color = Color(1.0, 0.96, 0.9, 0.14)
 ## Цена, на которую не хватает золота.
 const SHORT: Color = Color("ff8a72")
 
@@ -22,28 +24,31 @@ static func create() -> Theme:
 	result.set_color(&"font_disabled_color", &"Button", Color("76818d"))
 	result.set_color(&"font_hover_color", &"Button", Color("fff0cf"))
 	for type: StringName in [&"PanelContainer", &"HudPanel", &"CardPanel"]:
-		result.set_stylebox(&"panel", type, panel(INK, GOLD.darkened(0.48), 8))
-	result.set_stylebox(&"panel", &"CardPanelActive", panel(INK.lightened(0.04), GOLD, 8))
-	result.set_stylebox(&"normal", &"Button", panel(INK.lightened(0.025), GOLD.darkened(0.5)))
-	result.set_stylebox(&"hover", &"Button", panel(Color("1d303d"), GOLD))
-	result.set_stylebox(&"pressed", &"Button", panel(Color("263a43"), TEXT))
-	result.set_stylebox(&"disabled", &"Button", panel(Color("101821"), Color("34404a")))
-	result.set_stylebox(&"normal", &"AccentButton", panel(Color("3a2a17"), GOLD))
-	result.set_stylebox(&"hover", &"AccentButton", panel(Color("574022"), GOLD.lightened(0.2)))
-	result.set_stylebox(&"pressed", &"AccentButton", panel(Color("291e12"), GOLD))
-	result.set_stylebox(&"panel", &"TooltipPanel", panel(Color("071019"), GOLD, 12))
+		result.set_stylebox(&"panel", type, panel(Color(INK, 0.84), GLASS_EDGE, 8))
+	result.set_stylebox(&"panel", &"CardPanelActive", panel(Color(INK.lightened(0.05), 0.9), GOLD, 8))
+	result.set_stylebox(&"normal", &"Button", panel(Color("161b1f", 0.88), GLASS_EDGE))
+	result.set_stylebox(&"hover", &"Button", panel(Color("20272b", 0.92), GOLD))
+	result.set_stylebox(&"pressed", &"Button", panel(Color("2b2217"), GOLD.lightened(0.15)))
+	result.set_stylebox(&"disabled", &"Button", panel(Color("101417", 0.8), Color(1, 1, 1, 0.06)))
+	# янтарная кнопка действия (как «Варево · Q» на концепте): заливка янтарём, тёмный текст
+	result.set_stylebox(&"normal", &"AccentButton", panel(GOLD.darkened(0.08), GOLD.lightened(0.25)))
+	result.set_stylebox(&"hover", &"AccentButton", panel(GOLD.lightened(0.1), Color("ffe2ad")))
+	result.set_stylebox(&"pressed", &"AccentButton", panel(GOLD.darkened(0.25), GOLD))
+	result.set_color(&"font_color", &"AccentButton", Color("1d1307"))
+	result.set_color(&"font_hover_color", &"AccentButton", Color("120b03"))
+	result.set_color(&"font_pressed_color", &"AccentButton", Color("120b03"))
+	result.set_stylebox(&"panel", &"TooltipPanel", panel(Color(GLASS, 0.94), GLASS_EDGE.lightened(0.2), 12))
 	result.set_color(&"font_color", &"TooltipLabel", TEXT)
 	return result
 
 
-## «Стеклянная» панель поверх 3D-сцены: тёмно-синяя с прозрачностью, светлая кромка, тень.
+## «Стеклянная» панель поверх 3D-сцены: дымчатая почти чёрная, тонкая светлая кромка, тень.
 static func glass(alpha: float = 0.66, margin: int = 10) -> StyleBoxFlat:
 	var style: StyleBoxFlat = StyleBoxFlat.new()
 	style.bg_color = Color(GLASS, alpha)
 	style.border_color = GLASS_EDGE
 	style.set_border_width_all(1)
-	style.border_width_top = 2
-	style.set_corner_radius_all(9)
+	style.set_corner_radius_all(11)
 	style.set_content_margin_all(margin)
 	style.shadow_color = Color(0, 0, 0, 0.38)
 	style.shadow_size = 12
@@ -58,7 +63,7 @@ static func panel(background: Color = INK, border: Color = GOLD,
 	style.bg_color = background
 	style.border_color = border
 	style.set_border_width_all(1)
-	style.set_corner_radius_all(5)
+	style.set_corner_radius_all(8)
 	style.set_content_margin_all(margin)
 	style.shadow_color = Color(0, 0, 0, 0.25)
 	style.shadow_size = 4

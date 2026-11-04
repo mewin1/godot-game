@@ -56,3 +56,7 @@ __pycache__/
 # Godot MCP: временная автозагрузка сервера (на время запуска игры)
 mcp_interaction_server.gd
 mcp_interaction_server.gd.uid
+
+# --- Hunyuan3D: исходники моделей пересобирает tools/blender/noir/h3d.sh (raw-сетки — в Git) ---
+source_art/noir_h3d/*
+!source_art/noir_h3d/raw/

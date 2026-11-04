@@ -1,15 +1,17 @@
 class_name ArenaStage3D
-extends SubViewportContainer
+extends Control
 ## Лесная 3D-арена под полем матча: своя SubViewport с ареной, светом и камерой.
 ## Только показывает состояние FieldState (башни, мобы, закрытые места) и переводит
 ## точки поля в экран и обратно (с учётом высот террас и дороги).
 
-const ARENA_SCENE: PackedScene = preload("res://scenes/match_arena_3d.tscn")
+## Арена «нуар» (двор за частоколом, src/view/noir_arena_3d.gd); прежняя лесная — scenes/match_arena_3d.tscn.
+const ARENA_SCENE: PackedScene = preload("res://scenes/match_arena_noir.tscn")
 const STYLE: Arena3DStyle = preload("res://data/visuals/arena_3d_style.tres")
 const MILLI: float = 1000.0
 ## Наклон и поворот камеры — как в превью арены (вид сверху-спереди, чуть справа).
-const CAMERA_PITCH: float = -0.94
-const CAMERA_YAW: float = 0.1745
+## Ракурс как на концепте арены: ниже и с угла.
+const CAMERA_PITCH: float = -0.8
+const CAMERA_YAW: float = 0.45
 const CAMERA_DISTANCE: float = 70.0
 ## Объём поля для кадрирования: x 0..18, z −20..0, высоты 0..6.5 м.
 const BOARD_MIN: Vector3 = Vector3(0.0, 0.3, -20.0)
@@ -38,19 +40,49 @@ var _player_colors: Callable
 
 
 func _init() -> void:
-	stretch = true
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_viewport = SubViewport.new()
 	_viewport.own_world_3d = true
-	_viewport.msaa_3d = Viewport.MSAA_2X
+	_viewport.msaa_3d = Viewport.MSAA_4X
 	_viewport.render_target_update_mode = SubViewport.UPDATE_WHEN_VISIBLE
 	add_child(_viewport)
+	resized.connect(_fit_viewport)
 	_world = ARENA_SCENE.instantiate() as Node3D
 	_viewport.add_child(_world)
 	_camera = _world.get_node("Camera") as Camera3D
 	_camera.rotation = Vector3(CAMERA_PITCH, CAMERA_YAW, 0.0)
 	_fog = Node3D.new()
 	_world.add_child(_fog)
+
+
+## 3D рисуется в родном разрешении экрана: окно растягивает интерфейс (canvas_items) с 1600×900,
+## а SubViewport логического размера на 2K-мониторе выходил мыльным.
+func _pixel_scale() -> float:
+	if not is_inside_tree():
+		return 1.0
+	return maxf(get_global_transform_with_canvas().get_scale().x * get_viewport().get_final_transform().get_scale().x, 0.25)
+
+
+func _fit_viewport() -> void:
+	var pixels: Vector2i = Vector2i((size * _pixel_scale()).round())
+	if pixels.x > 0 and pixels.y > 0 and _viewport.size != pixels:
+		_viewport.size = pixels
+	queue_redraw()
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_ENTER_TREE or what == NOTIFICATION_VISIBILITY_CHANGED:
+		_fit_viewport.call_deferred()
+
+
+func _draw() -> void:
+	draw_texture_rect(_viewport.get_texture(), Rect2(Vector2.ZERO, size), false)
+
+
+func _process(_delta: float) -> void:
+	# масштаб окна мог смениться без изменения размера узла (полноэкранный режим, другой монитор)
+	if _viewport.size != Vector2i((size * _pixel_scale()).round()):
+		_fit_viewport()
 
 
 ## Подключает поле. player_colors(index) -> Color — цвет кольца армии игрока.
@@ -90,7 +122,7 @@ func frame_board(target: Rect2) -> void:
 
 ## Точка сцены → координаты этого узла.
 func project(world: Vector3) -> Vector2:
-	return _camera.unproject_position(world)
+	return _camera.unproject_position(world) / _pixel_scale()
 
 
 ## Точка поля (тысячные клетки) на поверхности, поднятая на lift метров.
@@ -106,8 +138,8 @@ func project_cell_corner(cell: Vector2i, corner: Vector2, lift: float = 0.0) -> 
 
 ## Клетка под точкой экрана: луч против плоскостей террас, берётся ближайшее попадание.
 func cell_at(point: Vector2) -> Vector2i:
-	var origin: Vector3 = _camera.project_ray_origin(point)
-	var direction: Vector3 = _camera.project_ray_normal(point)
+	var origin: Vector3 = _camera.project_ray_origin(point * _pixel_scale())
+	var direction: Vector3 = _camera.project_ray_normal(point * _pixel_scale())
 	if absf(direction.y) < 0.0001 or _field == null:
 		return Vector2i(-1, -1)
 	var best: Vector2i = Vector2i(-1, -1)
@@ -299,6 +331,11 @@ func _sync_fog() -> void:
 
 ## Ровные каменные плиты под каждым местом; основание уходит вниз до склона.
 func _build_platforms() -> void:
+	var noir: NoirArena3D = _world.get_node_or_null("Arena") as NoirArena3D
+	if noir != null:
+		# нуар: места — плиты двора, жаровни по углам двора; площадок-террас нет
+		noir.build_for_layout(layout)
+		return
 	var holder: Node3D = Node3D.new()
 	_world.add_child(holder)
 	var side: StandardMaterial3D = ArenaMaterials3D.stone(STYLE.platform_side)

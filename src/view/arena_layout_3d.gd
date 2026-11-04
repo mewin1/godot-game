@@ -5,6 +5,8 @@ extends RefCounted
 ## Только для вида: симуляция по-прежнему ходит по центрам клеток.
 
 const LAYOUT_PATH: String = "res://assets/arenas/forest/arena_layout.json"
+## Арена «нуар» — ровный мощёный двор (tools/blender/noir/arena_layout.py); есть файл — берётся он.
+const NOIR_LAYOUT_PATH: String = "res://assets/noir/arena/arena_layout.json"
 const MILLI: float = 1000.0
 ## Площадка ставится чуть выше самой высокой террасы своей полосы.
 const DECK_LIFT: float = 0.15
@@ -116,10 +118,11 @@ func _road_index(length: float) -> int:
 
 func _load(board: BoardLayout) -> void:
 	_path_cells = board.path_cells
-	var text: String = FileAccess.get_file_as_string(LAYOUT_PATH)
+	var path: String = NOIR_LAYOUT_PATH if FileAccess.file_exists(NOIR_LAYOUT_PATH) else LAYOUT_PATH
+	var text: String = FileAccess.get_file_as_string(path)
 	var parsed: Variant = JSON.parse_string(text)
 	if not (parsed is Dictionary):
-		push_error("Нет таблицы высот арены: %s" % LAYOUT_PATH)
+		push_error("Нет таблицы высот арены: %s" % path)
 		return
 	var data: Dictionary = parsed
 	var cell_value: float = data.get("cell_m", 2.0)

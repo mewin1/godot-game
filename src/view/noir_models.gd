@@ -4,6 +4,9 @@ extends RefCounted
 ## строит прежнюю процедурную. Масштаб моделей: 1 м = 1 единица, клетка 2 м, рост человека 1,7 м.
 
 const ROOT: String = "res://assets/noir/"
+## Модели из сеток Hunyuan3D (tools/blender/noir/h3d.py): если файл есть, берётся он, иначе прежний из ROOT.
+## Старые модели не удаляются — какой вариант оставить, решает автор (сравнения в new_concept/final/).
+const ROOT_H3D: String = "res://assets/noir_h3d/"
 const HUMAN_HEIGHT: float = 1.7
 ## Высота постройки по уровню (как в Blender: I ≈ 1 клетка, II ≈ 1,4, III ≈ 1,8).
 const TIER_HEIGHT: PackedFloat32Array = [2.0, 2.8, 3.6]
@@ -41,7 +44,9 @@ static func idol() -> PackedScene:
 
 
 static func _load(path: String) -> PackedScene:
-	var full: String = ROOT + path
+	var full: String = ROOT_H3D + path
+	if not ResourceLoader.exists(full):
+		full = ROOT + path
 	if _cache.has(full):
 		return _cache[full]
 	var scene: PackedScene = null

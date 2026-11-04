@@ -1,0 +1,57 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://src/view/noir_arena_3d.gd" id="1_noir"]
+
+[sub_resource type="Environment" id="Environment_noir"]
+background_mode = 1
+background_color = Color(0.012, 0.022, 0.03, 1)
+ambient_light_source = 2
+ambient_light_color = Color(0.32, 0.46, 0.52, 1)
+ambient_light_energy = 0.75
+tonemap_mode = 4
+tonemap_exposure = 1.05
+fog_enabled = true
+fog_light_color = Color(0.05, 0.09, 0.11, 1)
+fog_light_energy = 1.0
+fog_density = 0.006
+fog_sky_affect = 0.0
+fog_height = 0.6
+fog_height_density = 0.06
+glow_enabled = true
+glow_intensity = 0.7
+glow_bloom = 0.04
+glow_hdr_threshold = 1.0
+ssao_enabled = true
+ssao_radius = 1.2
+ssao_intensity = 1.8
+ssao_power = 1.4
+adjustment_enabled = true
+adjustment_saturation = 1.08
+
+[node name="MatchArena3D" type="Node3D"]
+
+[node name="Arena" type="Node3D" parent="."]
+script = ExtResource("1_noir")
+
+[node name="Environment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_noir")
+
+[node name="Camera" type="Camera3D" parent="."]
+position = Vector3(15.12, 51.54, 23.93)
+rotation = Vector3(-0.8, 0.45, 0)
+projection = 1
+size = 25.625
+far = 220.0
+current = true
+
+[node name="Moon" type="DirectionalLight3D" parent="."]
+rotation_degrees = Vector3(-50, 145, 0)
+light_color = Color(0.55, 0.8, 0.86, 1)
+light_energy = 0.9
+shadow_enabled = true
+directional_shadow_max_distance = 90.0
+
+[node name="WarmKey" type="DirectionalLight3D" parent="."]
+rotation_degrees = Vector3(-35, -60, 0)
+light_color = Color(1, 0.62, 0.32, 1)
+light_energy = 0.45
