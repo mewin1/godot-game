@@ -19,6 +19,10 @@ const BOARD_MIN: Vector3 = Vector3(0.0, 0.3, -27.5)
 ## Верх рамки — постройки двора «нуар» (≈3,6 м); у лесных террас было 6,5.
 const BOARD_MAX: Vector3 = Vector3(18.0, 4.0, 1.0)
 const FILL: float = 0.97
+## Кадр двора: запас под частокол и чаши (м), охват терема от конца дороги (м), наименьший размер кадра (м).
+const FRAME_YARD_PAD: float = 0.8
+const FRAME_TEREM_REACH: float = 5.0
+const FRAME_MIN_SIZE: float = 12.0
 ## Доля кадра над полем под лес и небо (перспективная камера «нуар»).
 const SKY_SHARE: float = 0.15
 const SPEED_SMOOTHING: float = 8.0
@@ -43,6 +47,9 @@ var _fog_key: int = -1
 var _player_colors: Callable
 var _camera_goal: Vector3 = Vector3.ZERO
 var _camera_goal_size: float = 1.0
+var _frame_min: Vector3 = BOARD_MIN
+var _frame_max: Vector3 = BOARD_MAX
+var _frame_key: int = -1
 
 
 func _init() -> void:
@@ -112,14 +119,15 @@ func show_field(field: FieldState, player_colors: Callable) -> void:
 
 ## Кадрирует камеру, чтобы поле заняло прямоугольник target (координаты этого узла).
 func frame_board(target: Rect2) -> void:
+	_update_frame_bounds()  # до проверки размера: у скрытого поля ключ тоже запоминается
 	if target.size.x < 4.0 or size.y < 4.0:
 		return
 	var basis: Basis = _camera.transform.basis
 	var low: Vector2 = Vector2(INF, INF)
 	var high: Vector2 = Vector2(-INF, -INF)
 	for i: int in 8:
-		var corner: Vector3 = Vector3(BOARD_MAX.x if i & 1 else BOARD_MIN.x,
-				BOARD_MAX.y if i & 2 else BOARD_MIN.y, BOARD_MAX.z if i & 4 else BOARD_MIN.z)
+		var corner: Vector3 = Vector3(_frame_max.x if i & 1 else _frame_min.x,
+				_frame_max.y if i & 2 else _frame_min.y, _frame_max.z if i & 4 else _frame_min.z)
 		var local: Vector3 = basis.inverse() * corner
 		low = low.min(Vector2(local.x, local.y))
 		high = high.max(Vector2(local.x, local.y))
@@ -144,7 +152,7 @@ func _frame_perspective(target: Rect2, basis: Basis) -> void:
 		return
 	# сверху кадра — полоса под лес и лунную дымку (как на концепте), поле чуть ниже
 	target = Rect2(target.position + Vector2(0, target.size.y * SKY_SHARE), target.size * Vector2(1, 1.0 - SKY_SHARE))
-	var center: Vector3 = (BOARD_MIN + BOARD_MAX) * 0.5
+	var center: Vector3 = (_frame_min + _frame_max) * 0.5
 	var shift: Vector2 = Vector2.ZERO
 	var distance: float = CAMERA_DISTANCE
 	var half_tan: float = tan(deg_to_rad(_camera.fov) * 0.5)
@@ -153,8 +161,8 @@ func _frame_perspective(target: Rect2, basis: Basis) -> void:
 		var low: Vector2 = Vector2(INF, INF)
 		var high: Vector2 = Vector2(-INF, -INF)
 		for i: int in 8:
-			var corner: Vector3 = Vector3(BOARD_MAX.x if i & 1 else BOARD_MIN.x,
-					BOARD_MAX.y if i & 2 else BOARD_MIN.y, BOARD_MAX.z if i & 4 else BOARD_MIN.z)
+			var corner: Vector3 = Vector3(_frame_max.x if i & 1 else _frame_min.x,
+					_frame_max.y if i & 2 else _frame_min.y, _frame_max.z if i & 4 else _frame_min.z)
 			var point: Vector2 = project(corner)
 			low = low.min(point)
 			high = high.max(point)
@@ -168,6 +176,52 @@ func _frame_perspective(target: Rect2, basis: Basis) -> void:
 	_camera_goal = _camera.position
 	_camera_goal_size = _camera.size
 	pixels_per_meter = size.y / (2.0 * distance * half_tan)
+
+
+## Кадр — открытая часть двора (дорога и клетки вокруг неё, терем в конце), а не всё поле:
+## на первых уровнях лавки двор маленький, и камера подъезжает ближе. Растёт двор — камера отъезжает.
+func _update_frame_bounds() -> void:
+	_frame_min = BOARD_MIN
+	_frame_max = BOARD_MAX
+	if _field == null or layout == null:
+		return
+	var path: Array[Vector2i] = _field.get_active_path()
+	if path.is_empty():
+		return
+	var radius: int = _field.config.build_radius
+	var half: float = layout.cell_m * 0.5
+	var low: Vector2 = Vector2(INF, INF)
+	var high: Vector2 = Vector2(-INF, -INF)
+	for cell: Vector2i in path:
+		for dy: int in range(-radius, radius + 1):
+			for dx: int in range(-radius, radius + 1):
+				var near: Vector2i = cell + Vector2i(dx, dy)
+				if not _field.layout.is_inside(near):
+					continue
+				var center: Vector3 = layout.cell_center(near)
+				low = low.min(Vector2(center.x - half, center.z - half))
+				high = high.max(Vector2(center.x + half, center.z + half))
+	var finish: Vector3 = layout.road_point(layout.path_length_at(path.size() - 1))
+	low = low.min(Vector2(finish.x, finish.z) - Vector2.ONE * FRAME_TEREM_REACH)
+	high = high.max(Vector2(finish.x, finish.z) + Vector2.ONE * FRAME_TEREM_REACH)
+	low -= Vector2.ONE * FRAME_YARD_PAD
+	high += Vector2.ONE * FRAME_YARD_PAD
+	# совсем маленький двор не раздувать на весь экран
+	var grow: Vector2 = (Vector2.ONE * FRAME_MIN_SIZE - (high - low)).max(Vector2.ZERO) * 0.5
+	low -= grow
+	high += grow
+	_frame_min = Vector3(low.x, BOARD_MIN.y, low.y)
+	_frame_max = Vector3(high.x, BOARD_MAX.y, high.y)
+	_frame_key = _open_key()
+
+
+func _open_key() -> int:
+	return _field.get_active_path().size() * 64 + _field.config.build_radius if _field != null else -1
+
+
+## Двор вырос (новый уровень лавки) — пора перекадрировать (вызывает FieldView).
+func needs_reframe() -> bool:
+	return _field != null and layout != null and _open_key() != _frame_key
 
 
 ## Точка сцены → координаты этого узла.

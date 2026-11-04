@@ -21,13 +21,11 @@ const ROAD_HALF_WIDTH: float = 1.0
 ## Стена и жаровни крупнее, как на концепте арены (стена выше человека, жаровни — по пояс-грудь).
 const WALL_SCALE: float = 1.25
 const FIRE_SCALE: float = 2.2
-const TORCH_STEP: float = 7.0
+const TORCH_STEP: float = 12.0
 const ROAD_EDGE: Color = Color(0.42, 0.4, 0.42)
 const TEREM_OFFSET: float = 4.4
 ## Сторона, откуда смотрит камера матча (ArenaStage3D: поворот ≈ 83°, камера над краем поля x = 18).
 const VIEW_FROM: Vector3 = Vector3(1.0, 0.0, 0.0)
-## Насколько терем довернуть к камере от направления дороги (1 — пополам).
-const TEREM_TURN: float = 1.0
 const TEREM_SCALE: float = 2.3
 ## Лес: россыпь с интервалами (как на концепте — стволы стоят порознь, между ними дымка).
 ## Камера перспективная и пологая — дальний лес уходит к горизонту в дымку.
@@ -39,12 +37,17 @@ const CLEAR_FAR: float = 7.5
 const CLEAR_SIDE: float = 4.5
 const CLEAR_NEAR: float = 9.0
 ## Луна (как на концепте — над лесом в дымке): место на экране в долях кадра; верх кадра занят лесом,
-## поэтому луна рисуется поверх крон, её ореол высветляет дымку вокруг.
-const MOON_SCREEN: Vector2 = Vector2(0.47, 0.1)  # над задним левым углом двора (как на концепте), левее портретов игроков
-const MOON_DEPTH: float = 30.0
+## луна стоит за ближними кронами (см. MOON_DEPTH), её ореол высветляет дымку вокруг.
+const MOON_SCREEN: Vector2 = Vector2(0.47, 0.05)  # над задним левым углом двора (как на концепте), левее портретов игроков
+## Луна стоит за ближним лесом (дальше ближних елей, но выше земли под этим лучом — камера смотрит вниз),
+## и кроны перед ней её заслоняют: луна светит из-за деревьев, а не висит перед ними.
+const MOON_DEPTH: float = 46.0
+const MOON_SIZE: float = 19.0
+## Высота луны над землёй (м): ниже крон старых елей (20–28 м), выше дымки.
+const MOON_HEIGHT: float = 5.0
 const MOON_SHADER: String = """
 shader_type spatial;
-render_mode unshaded, blend_premul_alpha, depth_draw_never, depth_test_disabled, cull_disabled, fog_disabled;
+render_mode unshaded, blend_premul_alpha, depth_draw_never, cull_disabled, fog_disabled;
 uniform vec3 disc_color = vec3(0.86, 0.92, 0.95);
 uniform vec3 halo_color = vec3(0.32, 0.46, 0.52);
 void fragment() {
@@ -56,8 +59,8 @@ void fragment() {
 			* smoothstep(0.005, 0.035, length(p - vec2(-0.045, 0.04)));
 	float halo = (exp(-r * r * 18.0) * 0.45 + exp(-r * 2.4) * 0.14) * smoothstep(1.0, 0.6, r);  // круглый, без кромки карточки
 	// диск закрывает то, что за ним (ствол не просвечивает), ореол добавляется к фону и кроны не прячет
-	ALBEDO = disc_color * disc * seas + halo_color * halo * (1.0 - disc);
-	ALPHA = disc;
+	ALBEDO = disc_color * disc * seas * DISC_PART + halo_color * halo * HALO_PART * 1.8;
+	ALPHA = disc * DISC_PART + HALO_PART;
 }
 """
 ## Деревья под луной: лунный контур отделяет кроны от тёмной земли (как на концепте).
@@ -67,6 +70,13 @@ const TREE_BRIGHT: float = 1.0
 const PAVING_SHADER: Shader = preload("res://assets/shaders/noir_paving.gdshader")
 const FLAME_SHADER: Shader = preload("res://assets/shaders/noir_flame.gdshader")
 const MIST_SHADER: Shader = preload("res://assets/shaders/noir_mist.gdshader")
+const STREAM_SHADER: Shader = preload("res://assets/shaders/noir_stream.gdshader")
+## Ручей через лес слева от двора (точки русла в координатах вида, см. _w): из глубины леса к переднему краю.
+const STREAM_POINTS: Array[Vector2] = [Vector2(-30.0, -90.0), Vector2(-17.0, -55.0), Vector2(-9.0, -32.0),
+		Vector2(-6.4, -17.0), Vector2(-7.2, -6.0), Vector2(-5.5, 3.0), Vector2(-9.0, 12.0), Vector2(-18.0, 20.0)]
+const STREAM_WIDTH: float = 2.0
+## Деревья и кусты не ближе этого к оси ручья (м).
+const STREAM_CLEAR: float = 2.8
 const GROUND_MIST_SHADER: Shader = preload("res://assets/shaders/noir_ground_mist.gdshader")
 ## Как рисуется туман в лесу: CARDS — прежние полотна + объём; LAYER — слой у земли шейдером
 ## по глубине сцены; LAYER_VOLUME — слой + прежний объёмный FogVolume.
@@ -145,7 +155,7 @@ const GRASS_SCALE: float = 0.9
 ## Старые ели у ближних углов поля (рамка кадра), в метрах мира.
 const FRAME_SPRUCES: Array[Vector2] = [Vector2(-5.0, 7.0)]  # справа камера ближе — там плоская картинка бросается в глаза
 ## Справа старые деревья не ближе этого (м от полосы у поля).
-const NEAR_RIGHT_GAP: float = 9.0
+const NEAR_RIGHT_GAP: float = 2.0
 ## Двор в координатах вида (см. _w): 20 м поперёк кадра, 18 м в глубину.
 const VIEW_MIN: Vector2 = Vector2(0.0, -18.0)
 const VIEW_MAX: Vector2 = Vector2(20.0, 0.0)
@@ -166,11 +176,15 @@ const MIST_SIDES: float = 0.05
 const PROP_TINTS: Dictionary[String, Color] = {"q/Rock": Color(0.45, 0.5, 0.52)}
 const ROCK_IDS: Array[String] = ["q/Rock_Medium_1", "q/Rock_Medium_2", "q/Rock_Medium_3"]
 ## Факелы вдоль частокола: на концепте стена тёмная, тёплые пятна — у жаровен.
-const TORCH_ENERGY: float = 2.2
-## Чаша-жаровня в середине каждой стены.
+const TORCH_ENERGY: float = 1.4
+## Чаша-жаровня в середине каждой стены (выключено: вместе с угловыми чашами двор был в огнях).
+const WALL_BOWLS: bool = false
 const WALL_BOWL_SCALE: float = 1.3
-const BOWL_ENERGY: float = 6.0
+const BOWL_ENERGY: float = 4.0
 const BOWL_REACH: float = 7.5
+## Большие чаши в углах двора: тёплое пятно, но не заливать двор оранжевым.
+const CORNER_FIRE_ENERGY: float = 6.0
+const CORNER_FIRE_REACH: float = 9.0
 const TORCH_REACH: float = 6.5
 
 var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
@@ -195,21 +209,41 @@ func _process(_delta: float) -> void:
 	if camera == null or _moon == null:
 		return
 	var screen: Vector2 = get_viewport().get_visible_rect().size * MOON_SCREEN
-	_moon.global_transform = Transform3D(camera.global_basis, camera.project_position(screen, MOON_DEPTH))
+	# по лучу камеры — до высоты MOON_HEIGHT над землёй: при любом наезде камеры луна за ближними кронами
+	var origin: Vector3 = camera.project_ray_origin(screen)
+	var direction: Vector3 = camera.project_ray_normal(screen)
+	var depth: float = MOON_DEPTH
+	if direction.y < -0.05 and origin.y > MOON_HEIGHT:
+		depth = (origin.y - MOON_HEIGHT) / -direction.y
+	var spot: Vector3 = origin + direction * depth
+	_moon.global_transform = Transform3D(camera.global_basis.scaled(Vector3.ONE * depth / MOON_DEPTH), spot)
 
 
 func _build_moon() -> void:
 	var quad: QuadMesh = QuadMesh.new()
-	quad.size = Vector2(12.0, 12.0)
-	var shader: Shader = Shader.new()
-	shader.code = MOON_SHADER
-	var material: ShaderMaterial = ShaderMaterial.new()
-	material.shader = shader
-	quad.material = material
+	quad.size = Vector2(MOON_SIZE, MOON_SIZE)
+	# диск — с проверкой глубины (ближние кроны его заслоняют); ореол — отдельной картинкой поверх крон,
+	# поэтому свет «пробивается» из-за деревьев
+	var disc: Shader = Shader.new()
+	disc.code = MOON_SHADER.replace("DISC_PART", "1.0").replace("HALO_PART", "0.0")
+	var halo: Shader = Shader.new()
+	halo.code = MOON_SHADER.replace("depth_draw_never,", "depth_draw_never, depth_test_disabled,") \
+			.replace("blend_premul_alpha", "blend_add").replace("DISC_PART", "0.0").replace("HALO_PART", "1.0")
+	var disc_material: ShaderMaterial = ShaderMaterial.new()
+	disc_material.shader = disc
+	var halo_material: ShaderMaterial = ShaderMaterial.new()
+	halo_material.shader = halo
+	halo_material.render_priority = 10  # после слоя тумана (-50), иначе туман его гасит
+	quad.material = disc_material
 	_moon = MeshInstance3D.new()
 	_moon.mesh = quad
 	_moon.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(_moon)
+	var glow: MeshInstance3D = MeshInstance3D.new()
+	glow.mesh = quad
+	glow.material_override = halo_material
+	glow.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_moon.add_child(glow)
 
 
 ## Неизменная часть (земля леса, лес, дымка) — один раз, когда ArenaStage3D получит раскладку.
@@ -218,11 +252,16 @@ func build_for_layout(layout: ArenaLayout3D) -> void:
 		return
 	_layout = layout
 	_terem_scene = NoirModels.base()
+	_build_stream()
 	_build_forest()
 	if MIST_MODE != MistMode.LAYER:
 		_build_mist()
 	if MIST_MODE == MistMode.CARDS:
 		_build_mist_cards()
+	# объёмный туман движка нужен только FogVolume; без них он лишь даёт ореолы вокруг огней и стоит кадров
+	var world_env: WorldEnvironment = get_parent().get_node_or_null("Environment") as WorldEnvironment
+	if world_env != null:
+		world_env.environment.volumetric_fog_enabled = MIST_MODE != MistMode.LAYER
 	if MIST_MODE != MistMode.CARDS:
 		_build_ground_mist()
 
@@ -505,9 +544,8 @@ func _build_terem(at: Vector3, out3: Vector3) -> void:
 	var house: Node3D = _terem_scene.instantiate() as Node3D
 	_yard.add_child(house)
 	house.position = Vector3(at.x, 0, at.z)
-	# лицом между дорогой и камерой: прямо к дороге камера видела бы только глухой бок
-	var face: Vector3 = (-out3 + VIEW_FROM * TEREM_TURN).normalized()
-	house.rotation.y = atan2(face.x, face.z)
+	# лицом к камере (к дороге камера видела бы глухой бок); поворот кратен 90° — плита вровень с двором
+	house.rotation.y = atan2(VIEW_FROM.x, VIEW_FROM.z)
 	house.scale = Vector3.ONE * TEREM_SCALE  # на концепте арены терем — самый большой дом двора
 	_warm_light(house.position - out3 * 2.2 + Vector3(0, 2.4, 0), 4.0, 9.0)
 	var plate_scene: PackedScene = NoirModels.base_plate()
@@ -607,8 +645,8 @@ func _build_walls(fine: Dictionary[Vector2i, bool], entry: Vector2, door: Vector
 			var p: Vector2 = run.a.lerp(run.b, (k + 0.5) / torches) - run.out * 0.55
 			if p.distance_to(gate_point) < GATE_WIDTH or p.distance_to(door) < 3.0:
 				continue
-			# середина стены — чаша-жаровня с большим тёплым пятном (на концепте огонь — в чашах у частокола)
-			var bowl: bool = k == torches / 2
+			# чаша посреди стены — только если так задано: огня во дворе хватает от угловых чаш
+			var bowl: bool = WALL_BOWLS and k == torches / 2
 			var prop: Node3D = _place("fire_bowl" if bowl else "torch_post", Vector3(p.x, 0, p.y), _rng.randf() * TAU,
 					WALL_BOWL_SCALE if bowl else 1.0)
 			if bowl:
@@ -702,8 +740,8 @@ func _build_fires(fine: Dictionary[Vector2i, bool], terem: Vector2) -> void:
 		_add_flame(_place("fire_bowl", at, _rng.randf() * TAU, FIRE_SCALE), FLAME_HEIGHT * FIRE_SCALE)
 		var light: OmniLight3D = OmniLight3D.new()
 		light.light_color = FIRE_COLOR
-		light.light_energy = 11.0
-		light.omni_range = 12.0
+		light.light_energy = CORNER_FIRE_ENERGY
+		light.omni_range = CORNER_FIRE_REACH
 		light.omni_attenuation = 1.5
 		light.shadow_enabled = true
 		light.position = at + Vector3(0, 1.3, 0) + Vector3(inward.x, 0, inward.y) * 0.8  # у пола, внутрь двора
@@ -772,7 +810,7 @@ func _build_forest() -> void:
 	var low: Array[Vector2] = []
 	for p: Vector2 in points:
 		var clear: float = _clearance(p)
-		if clear < 0.0:
+		if clear < 0.0 or _stream_distance(p) < STREAM_CLEAR:
 			continue
 		if p.y > VIEW_MAX.y and clear < CLEAR_NEAR + 8.0:
 			low.append(p)
@@ -836,6 +874,8 @@ func _fence_spruces(into: Dictionary[String, Array]) -> void:
 	var lo: Vector2 = VIEW_MIN - Vector2(FENCE_BELT.y, FENCE_BELT.y)
 	var hi: Vector2 = VIEW_MAX + Vector2(FENCE_BELT.y, FENCE_BELT.y)
 	for p: Vector2 in _scatter(lo, hi, 2.6):
+		if _stream_distance(p) < STREAM_CLEAR:
+			continue
 		var outside: Vector2 = Vector2(maxf(VIEW_MIN.x - p.x, p.x - VIEW_MAX.x), maxf(VIEW_MIN.y - p.y, p.y - VIEW_MAX.y))
 		var gap: float = maxf(outside.x, outside.y)
 		var front_corner: bool = p.y > VIEW_MAX.y - 2.0 and outside.x > FENCE_BELT.x and p.x < VIEW_MIN.x
@@ -873,6 +913,8 @@ func _ground_grass(grass: Dictionary[String, Array]) -> void:
 			var p: Vector2 = Vector2(x, y) + Vector2(_rng.randf(), _rng.randf()) * step
 			x += step
 			if p.x > VIEW_MIN.x - 1.2 and p.x < VIEW_MAX.x + 1.2 and p.y > VIEW_MIN.y - 1.2 and p.y < VIEW_MAX.y + 1.2:
+				continue
+			if _stream_distance(p) < STREAM_WIDTH * 0.5:
 				continue
 			if _clearance(p) > 4.0:
 				continue  # кусты — только у частокола, дальше чистая тёмная земля под елями
@@ -947,6 +989,84 @@ func _billboards(name: String, transforms: Array[Transform3D], parent: Node3D) -
 func _place_rock(at: Vector3, parent: Node3D = null) -> void:
 	_place(ROCK_IDS[_rng.randi() % ROCK_IDS.size()], at, _rng.randf() * TAU, _rng.randf_range(0.18, 0.4), parent)
 
+
+
+## Ручей: лента по сглаженному руслу (Catmull-Rom), по берегам — камни и папоротник.
+func _build_stream() -> void:
+	var line: Array[Vector2] = _stream_line()
+	var tool: SurfaceTool = SurfaceTool.new()
+	tool.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var along: float = 0.0
+	for i: int in line.size():
+		var ahead: Vector2 = line[mini(i + 1, line.size() - 1)] - line[maxi(i - 1, 0)]
+		var side: Vector2 = Vector2(-ahead.y, ahead.x).normalized() * STREAM_WIDTH * 0.5
+		if i > 0:
+			along += line[i].distance_to(line[i - 1])
+		for k: int in 2:
+			var edge: Vector2 = line[i] + side * (1.0 if k == 0 else -1.0)
+			tool.set_uv(Vector2(along, float(k)))
+			tool.set_normal(Vector3.UP)
+			tool.add_vertex(_w3(edge) + Vector3(0, 0.05, 0))
+	for i: int in line.size() - 1:
+		var a: int = i * 2
+		tool.add_index(a)
+		tool.add_index(a + 1)
+		tool.add_index(a + 2)
+		tool.add_index(a + 1)
+		tool.add_index(a + 3)
+		tool.add_index(a + 2)
+	tool.generate_tangents()
+	var material: ShaderMaterial = ShaderMaterial.new()
+	material.shader = STREAM_SHADER
+	var water: MeshInstance3D = MeshInstance3D.new()
+	water.name = "Stream"
+	water.mesh = tool.commit()
+	water.material_override = material
+	water.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(water)
+	# берега: камни и папоротник вперемешку, чтобы лента не лежала на голой земле
+	var banks: Dictionary[String, Array] = {}
+	for i: int in range(0, line.size(), 3):
+		for k: int in 2:
+			if _rng.randf() < 0.35:
+				continue
+			var ahead: Vector2 = line[mini(i + 1, line.size() - 1)] - line[maxi(i - 1, 0)]
+			var side: Vector2 = Vector2(-ahead.y, ahead.x).normalized() * (1.0 if k == 0 else -1.0)
+			var bank: Vector2 = line[i] + side * (STREAM_WIDTH * 0.5 + _rng.randf_range(0.1, 0.9))
+			if _clearance(bank) < 0.5:
+				continue
+			if _rng.randf() < 0.45:
+				_place_rock(_w3(bank), self)
+			else:
+				_collect(banks, FERN_IDS[_rng.randi() % FERN_IDS.size()], _w(bank), _rng.randf_range(0.9, 1.4))
+	_build_collected(banks, self)
+
+
+## Русло ручья точками через ~0,7 м (координаты вида).
+func _stream_line() -> Array[Vector2]:
+	var line: Array[Vector2] = []
+	var points: Array[Vector2] = STREAM_POINTS
+	for i: int in points.size() - 1:
+		var p0: Vector2 = points[maxi(i - 1, 0)]
+		var p1: Vector2 = points[i]
+		var p2: Vector2 = points[i + 1]
+		var p3: Vector2 = points[mini(i + 2, points.size() - 1)]
+		var steps: int = maxi(2, ceili(p1.distance_to(p2) / 0.7))
+		for k: int in steps:
+			line.append(p1.cubic_interpolate(p2, p0, p3, float(k) / steps))
+	line.append(points[points.size() - 1])
+	return line
+
+
+## Расстояние от точки (координаты вида) до оси ручья по ломаной опорных точек.
+static func _stream_distance(v: Vector2) -> float:
+	var best: float = INF
+	for i: int in STREAM_POINTS.size() - 1:
+		var a: Vector2 = STREAM_POINTS[i]
+		var b: Vector2 = STREAM_POINTS[i + 1]
+		var t: float = clampf((v - a).dot(b - a) / (b - a).length_squared(), 0.0, 1.0)
+		best = minf(best, v.distance_to(a + (b - a) * t))
+	return best
 
 ## Лес и дымка расставляются в «координатах вида»: x — поперёк кадра (слева направо), y — к камере
 ## (дальний край двора — VIEW_MIN.y, ближний — VIEW_MAX.y). Камера матча смотрит с края поля x = 18,

@@ -136,6 +136,8 @@ func _process(delta: float) -> void:
 	_battle.tower_pulses = _fire_pulses
 	_battle.tower_pops = _pops
 	if _stage != null and field != null and is_visible_in_tree():
+		if _stage.needs_reframe():
+			_update_layout()
 		_stage.sync(delta, interpolation)
 	queue_redraw()
 

@@ -23,12 +23,17 @@ extends Resource
 @export var noir_plate_glow: float = 0.0
 @export var noir_plate_tone: float = 0.32
 ## Свечение самой постройки (1,6 — как в модели).
-@export var noir_model_glow: float = 1.0
+@export var noir_model_glow: float = 0.9
+## Яркость фактуры постройки (1 — как в модели; ночные фактуры тёмные) и лунный контур силуэта.
+@export var noir_model_tone: float = 1.3
+@export var noir_model_rim: float = 0.35
 ## Масштаб модели постройки «нуар» (плита не меняется).
-@export var noir_model_scale: float = 1.45
+@export var noir_model_scale: float = 1.7
 ## Цветной свет стихии вокруг постройки.
-@export var noir_aura_energy: float = 1.2
+@export var noir_aura_energy: float = 2.4
 @export var noir_aura_range: float = 5.5
+## Яркость рамки цвета стихии вокруг постройки (различать соседей в тесноте).
+@export var noir_frame_energy: float = 0.6
 ## Сдвиг уровня мип-карт картинки арены: меньше нуля — фактуры резче (слишком мало — рябь).
 @export var mipmap_bias: float = -0.5
 

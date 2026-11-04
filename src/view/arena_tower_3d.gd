@@ -6,6 +6,15 @@ extends Node3D
 
 const PULSE_SECONDS: float = 0.18
 const POP_SECONDS: float = 0.35
+## Клетка поля (м) и рамка стихии вокруг постройки: отступ от края клетки, ширина, высота над плитой.
+const CELL: float = 2.0
+const FRAME_INSET: float = 0.2
+const FRAME_WIDTH: float = 0.1
+const FRAME_HEIGHT: float = 0.47
+## Насколько модель может выступать за рамку (ветви, лопасти): 1 — ровно по рамке.
+const FIT_SLACK: float = 1.35
+## Ниже этой доли общего масштаба модель не сжимается (длинные стрелы и ветви — пусть выступают).
+const FIT_FLOOR: float = 0.8
 
 var _model: Node3D
 var _accent: MeshInstance3D
@@ -67,7 +76,7 @@ func _build_noir(tower: TowerState, style: Arena3DStyle, cell_offsets: Array[Vec
 	_model = Node3D.new()
 	add_child(_model)
 	var body: Node3D = scene.instantiate() as Node3D
-	_tune_materials(body, style.noir_model_glow, 1.0)
+	_tune_materials(body, style.noir_model_glow, style.noir_model_tone, style.noir_model_rim)
 	_model.add_child(body)
 	# цветное пятно света стихии на брусчатке вокруг постройки (как на концепте арены)
 	if tower.data.god != &"":
@@ -79,15 +88,19 @@ func _build_noir(tower: TowerState, style: Arena3DStyle, cell_offsets: Array[Vec
 		aura.position = Vector3(0, 1.4, 0)
 		add_child(aura)
 	_noir_height = NoirModels.TIER_HEIGHT[tier - 1]
-	_add_level_rings(tower.level)
+	if tower.data.god != &"":
+		_add_element_frame(cell_offsets, style.get_god_color(tower.data.god), style.noir_frame_energy)
+	_add_level_marks(cell_offsets, tower.level)
 	_base_scale = style.noir_model_scale * (1.0 + style.level_scale_step * (tower.level - 1))
+	# крупная модель не должна вылезать за свою рамку на соседние клетки и дорогу
+	_base_scale = clampf(_fit_scale(body, cell_offsets), _base_scale * FIT_FLOOR, _base_scale)
 	_model.scale = Vector3.ONE * _base_scale
 	return true
 
 
 ## Свечение и яркость материалов модели «нуар» + анизотропная фильтрация (плиты видны под углом —
 ## без неё фактура мылится). Материалы общие у всех копий модели, поэтому правятся один раз.
-static func _tune_materials(root: Node3D, glow: float, tone: float) -> void:
+static func _tune_materials(root: Node3D, glow: float, tone: float, rim: float = 0.0) -> void:
 	for node: Node in root.find_children("*", "MeshInstance3D", true, false):
 		var mesh: Mesh = (node as MeshInstance3D).mesh
 		for surface: int in mesh.get_surface_count():
@@ -98,6 +111,11 @@ static func _tune_materials(root: Node3D, glow: float, tone: float) -> void:
 			material.emission_energy_multiplier = glow
 			material.albedo_color = Color(tone, tone, tone)
 			material.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
+			# лунный контур по краю силуэта: тёмная постройка отделяется от тёмной брусчатки
+			if rim > 0.0:
+				material.rim_enabled = true
+				material.rim = rim
+				material.rim_tint = 0.25
 
 
 ## Точка навершия (кристалл/огонь) в координатах сцены — отсюда летят снаряды.
@@ -229,3 +247,67 @@ func _add_level_rings(level: int) -> void:
 		ring.ring_segments = 4
 		ArenaMaterials3D.part(_model, ring, ArenaMaterials3D.glow(ArenaMaterials3D.GOLD, 0.8),
 				Vector3(0, 0.46 + i * 0.05, 0))
+
+
+## Светящаяся рамка цвета стихии по внешнему краю фигуры: в тесном дворе постройки разных стихий
+## различаются цветом с одного взгляда, а границы соседних построек видны (внутри фигуры линий нет).
+func _add_element_frame(cell_offsets: Array[Vector3], color: Color, energy: float) -> void:
+	var material: StandardMaterial3D = ArenaMaterials3D.glow(color, energy)
+	# смещения клеток — от центра фигуры (у фигур чётного размера кратны половине клетки): сетка в полуклетках
+	var cells: Dictionary[Vector2i, bool] = {}
+	for offset: Vector3 in cell_offsets:
+		cells[Vector2i(roundi(offset.x * 2.0 / CELL), roundi(offset.z * 2.0 / CELL))] = true
+	var half: float = CELL * 0.5 - FRAME_INSET
+	for cell: Vector2i in cells:
+		var center: Vector3 = Vector3(cell.x * CELL * 0.5, FRAME_HEIGHT, cell.y * CELL * 0.5)
+		for side: Vector2i in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+			if cells.has(cell + side * 2):
+				continue
+			# вдоль края: к соседней клетке фигуры полоса доходит до края клетки (контур не рвётся),
+			# на свободном углу — кончается в углу рамки (без торчащих концов)
+			var along: Vector2i = Vector2i(side.y, side.x)
+			var reach_plus: float = CELL * 0.5 if cells.has(cell + along * 2) else half + FRAME_WIDTH * 0.5
+			var reach_minus: float = CELL * 0.5 if cells.has(cell - along * 2) else half + FRAME_WIDTH * 0.5
+			var length: float = reach_plus + reach_minus
+			var shift: float = (reach_plus - reach_minus) * 0.5
+			var size: Vector3 = Vector3(FRAME_WIDTH, 0.05, length) if side.x != 0 else Vector3(length, 0.05, FRAME_WIDTH)
+			var at: Vector3 = Vector3(side.x * half + along.x * shift, 0.0, side.y * half + along.y * shift)
+			ArenaMaterials3D.part(self, ArenaMaterials3D.box(size), material, center + at)
+
+
+## Уровень постройки — золотые зарубки (1–3) у края, обращённого к камере (камера матча — со стороны +x).
+func _add_level_marks(cell_offsets: Array[Vector3], level: int) -> void:
+	var front: Vector3 = cell_offsets[0]
+	for offset: Vector3 in cell_offsets:
+		if offset.x > front.x + 0.01 or (absf(offset.x - front.x) < 0.01 and offset.z > front.z):
+			front = offset
+	var material: StandardMaterial3D = ArenaMaterials3D.glow(ArenaMaterials3D.GOLD, 2.6)
+	var count: int = clampi(level, 1, 3)
+	# черточки поперёк края (как римские I, II, III), крупные — читаются с высоты камеры
+	for i: int in count:
+		var z: float = (float(i) - float(count - 1) * 0.5) * 0.32
+		ArenaMaterials3D.part(self, ArenaMaterials3D.box(Vector3(0.5, 0.1, 0.16)), material,
+				front + Vector3(CELL * 0.5 - FRAME_INSET - 0.38, FRAME_HEIGHT + 0.03, z))
+
+
+## Наибольший масштаб, при котором модель помещается в рамку своей фигуры (по каждой оси отдельно).
+static func _fit_scale(body: Node3D, cell_offsets: Array[Vector3]) -> float:
+	var low: Vector2 = Vector2(INF, INF)
+	var high: Vector2 = Vector2(-INF, -INF)
+	for offset: Vector3 in cell_offsets:
+		low = low.min(Vector2(offset.x, offset.z))
+		high = high.max(Vector2(offset.x, offset.z))
+	var room: Vector2 = high - low + Vector2.ONE * (CELL - 2.0 * FRAME_INSET)
+	var box: AABB = AABB()
+	var first: bool = true
+	for node: Node in body.find_children("*", "MeshInstance3D", true, false):
+		var mesh_node: MeshInstance3D = node as MeshInstance3D
+		var local: AABB = body.global_transform.affine_inverse() * mesh_node.global_transform * mesh_node.get_aabb() \
+				if body.is_inside_tree() else mesh_node.transform * mesh_node.get_aabb()
+		box = local if first else box.merge(local)
+		first = false
+	if first or box.size.x <= 0.01 or box.size.z <= 0.01:
+		return INF
+	# модель стоит в центре фигуры: считаем от центра, а не от края коробки
+	var half: Vector2 = Vector2(maxf(absf(box.position.x), absf(box.end.x)), maxf(absf(box.position.z), absf(box.end.z)))
+	return minf(room.x * 0.5 / half.x, room.y * 0.5 / half.y) * FIT_SLACK

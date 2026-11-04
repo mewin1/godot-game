@@ -7,10 +7,15 @@ var _first_round: bool = false
 var _crowded: bool = false
 var _wave: bool = false
 var _hero_select: bool = false
+var _idol_choice: bool = false
 var _shop_level: int = 4
 var _output: String = "res://output/dusk_match.png"
 var _motion_seconds: float = 0.0
 var _capture_size: Vector2i = Vector2i.ZERO
+## --gods=perun,svarog — какие стихии считать активными (кадр со всеми видами построек).
+var _gods: Array[StringName] = []
+## --mixed-levels — уровни построек 1, 2, 3 по кругу (проверить, читается ли уровень).
+var _mixed_levels: bool = false
 
 
 func _initialize() -> void:
@@ -19,6 +24,9 @@ func _initialize() -> void:
 			_output = argument.trim_prefix("--out=")
 		if argument.begins_with("--motion="):
 			_motion_seconds = clampf(argument.trim_prefix("--motion=").to_float(), 0.0, 30.0)
+		if argument.begins_with("--gods="):
+			for god: String in argument.trim_prefix("--gods=").split(","):
+				_gods.append(StringName(god))
 		if argument.begins_with("--size="):
 			var parts: PackedStringArray = argument.trim_prefix("--size=").split("x")
 			assert(parts.size() == 2)
@@ -26,7 +34,9 @@ func _initialize() -> void:
 		_first_round = _first_round or argument == "--first-round"
 		_crowded = _crowded or argument == "--crowded"
 		_wave = _wave or argument == "--wave"
+		_mixed_levels = _mixed_levels or argument == "--mixed-levels"
 		_hero_select = _hero_select or argument == "--hero-select"
+		_idol_choice = _idol_choice or argument == "--idol-choice"
 		if argument.begins_with("--level="):
 			_shop_level = clampi(argument.trim_prefix("--level=").to_int(), 1, 4)
 	seed(1701)
@@ -43,6 +53,8 @@ func _run() -> void:
 		root.size = _capture_size
 	await process_frame
 	var sim: MatchSim = _scene._sim
+	if not _gods.is_empty():
+		sim.active_gods = _gods.duplicate()
 	if _hero_select:
 		_scene.set_process(false)
 		_scene._refresh_views()
@@ -65,6 +77,11 @@ func _run() -> void:
 	else:
 		for player: PlayerState in sim.players:
 			_prepare_player(sim, player)
+	# Постановочные апгрейды не должны перекрывать кадр другим модальным окном.
+	if not _idol_choice:
+		for player: PlayerState in sim.players:
+			while player.idol_choices_left > 0:
+				assert(sim.execute_command(player.index, ChooseIdolCommand.new()) == "")
 	for frame: int in 8:
 		await process_frame
 	if _wave:
@@ -105,6 +122,9 @@ func _prepare_player(sim: MatchSim, player: PlayerState) -> void:
 		if not sim.active_gods.has(data.god) or data.tier > player.shop.level:
 			continue
 		_place_one(sim, player, data)
+	if _mixed_levels:
+		for i: int in player.field.towers.size():
+			player.field.towers[i].level = 1 + i % 3
 	player.gold = 48
 	assert(player.reroll_shop() == "")
 
