@@ -55,6 +55,12 @@ func _build_noir(mob_id: StringName) -> bool:
 	_body.add_child(holder)
 	holder.add_child(scene.instantiate())
 	var found: Array[Node] = holder.find_children("*", "Skeleton3D", true, false)
+	if kind == &"flyer":
+		return true  # летун (нетопырь): скелет человека ему не подходит — только покачивание в полёте
+	if kind == &"blob":
+		_roller = Node3D.new()  # колобок не катится (лицо не крутим), только подпрыгивает
+		_body.add_child(_roller)
+		return true
 	if not found.is_empty():
 		_skeleton = found[0] as Skeleton3D
 	kind = &"noir"
