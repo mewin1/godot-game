@@ -43,7 +43,7 @@ ssao_radius = 1.2
 ssao_intensity = 1.8
 ssao_power = 1.4
 adjustment_enabled = true
-adjustment_saturation = 1.08
+adjustment_saturation = 1.3
 
 [node name="MatchArena3D" type="Node3D"]
 

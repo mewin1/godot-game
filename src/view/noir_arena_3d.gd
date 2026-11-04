@@ -33,7 +33,7 @@ const TEREM_YAW: float = -PI * 0.5
 ## Камера перспективная и пологая — дальний лес уходит к горизонту в дымку.
 const FOREST_MIN: Vector2 = Vector2(-60.0, -120.0)
 const FOREST_MAX: Vector2 = Vector2(80.0, 14.0)
-const TREE_GAP: float = 4.4
+const TREE_GAP: float = 3.7
 ## Вокруг поля полоса без деревьев (частокол, терем); у ближнего к камере края — шире, чтобы не закрыть двор.
 const CLEAR_FAR: float = 7.5
 const CLEAR_SIDE: float = 4.5
@@ -76,7 +76,9 @@ const STREAM_SHADER: Shader = preload("res://assets/shaders/noir_stream.gdshader
 ## Ручей через лес слева от двора (точки русла в координатах вида, см. _w): из глубины леса к переднему краю.
 const STREAM_POINTS: Array[Vector2] = [Vector2(-30.0, -90.0), Vector2(-17.0, -55.0), Vector2(-9.0, -32.0),
 		Vector2(-6.4, -17.0), Vector2(-7.2, -6.0), Vector2(-5.5, 3.0), Vector2(-9.0, 12.0), Vector2(-18.0, 20.0)]
-const STREAM_WIDTH: float = 2.0
+const STREAM_WIDTH: float = 2.4
+## Где на ручье отражается луна (координаты вида, на русле у левого края двора).
+const STREAM_MOON: Vector2 = Vector2(-9.0, -31.0)
 ## Деревья и кусты не ближе этого к оси ручья (м).
 const STREAM_CLEAR: float = 2.8
 const GROUND_MIST_SHADER: Shader = preload("res://assets/shaders/noir_ground_mist.gdshader")
@@ -927,7 +929,7 @@ func _ground_grass(grass: Dictionary[String, Array]) -> void:
 	noise.frequency = 0.08
 	var lo: Vector2 = VIEW_MIN - Vector2(22.0, 30.0)
 	var hi: Vector2 = VIEW_MAX + Vector2(22.0, 14.0)
-	var step: float = 1.6
+	var step: float = 1.25
 	var y: float = lo.y
 	while y < hi.y:
 		var x: float = lo.x
@@ -938,10 +940,10 @@ func _ground_grass(grass: Dictionary[String, Array]) -> void:
 				continue
 			if _stream_distance(p) < STREAM_WIDTH * 0.5:
 				continue
-			if _clearance(p) > 4.0:
+			if _clearance(p) > 7.0:
 				continue  # кусты — только у частокола, дальше чистая тёмная земля под елями
 			var near: float = clampf(1.0 - _clearance(p) / 14.0, 0.0, 1.0)
-			if noise.get_noise_2dv(p) + near * 0.5 < 0.35:  # кустами, между ними — тёмная земля
+			if noise.get_noise_2dv(p) + near * 0.6 < 0.15:  # кустами, между ними — тёмная земля
 				continue
 			for k: int in _rng.randi_range(1, 2):  # кустик — пара пучков рядом, между кустами — чистая тёмная земля
 				var tuft: Vector2 = p + Vector2(_rng.randf_range(-0.35, 0.35), _rng.randf_range(-0.35, 0.35))
@@ -1040,6 +1042,7 @@ func _build_stream() -> void:
 	tool.generate_tangents()
 	var material: ShaderMaterial = ShaderMaterial.new()
 	material.shader = STREAM_SHADER
+	material.set_shader_parameter("moon_spot", _w3(STREAM_MOON))  # отражение луны — на видном участке русла
 	var water: MeshInstance3D = MeshInstance3D.new()
 	water.name = "Stream"
 	water.mesh = tool.commit()

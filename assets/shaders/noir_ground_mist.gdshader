@@ -8,10 +8,10 @@ render_mode unshaded, blend_mix, depth_draw_never, depth_test_disabled, cull_dis
 
 uniform vec3 tint : source_color = vec3(0.5, 0.56, 0.57);
 uniform vec3 shade : source_color = vec3(0.16, 0.2, 0.21);
-uniform float density = 0.12;  // на метр пути в самой густой части
-uniform float layer_top = 3.2;  // высота слоя, м
+uniform float density = 0.2;  // на метр пути в самой густой части
+uniform float layer_top = 5.0;  // высота слоя, м
 uniform float clump_scale = 0.07;  // клубов на метр
-uniform float clump_contrast = 2.2;
+uniform float clump_contrast = 1.5;
 uniform float drift = 0.35;  // м/с
 uniform vec4 yard_rect = vec4(-1.5, -21.5, 19.5, 1.5);  // x0, z0, x1, z1 — двор без тумана
 uniform float yard_fade = 7.0;  // м — от частокола туман густеет плавно
