@@ -80,6 +80,33 @@ def concept_mask(px: np.ndarray, thr: float = 0.012) -> np.ndarray:
     return big[: px.shape[0], : px.shape[1]]
 
 
+# только самая крупная часть силуэта (летающие огоньки вокруг духа сеть превращает в бесформенные куски)
+MAIN_ONLY = {"spirit"}
+
+
+def largest_part(mask: np.ndarray) -> np.ndarray:
+    small = mask[::2, ::2]
+    label = np.zeros(small.shape, dtype=np.int32)
+    best, best_n, cur = 0, 0, 0
+    for y0, x0 in zip(*np.nonzero(small)):
+        if label[y0, x0]:
+            continue
+        cur += 1
+        stack, n = [(y0, x0)], 0
+        label[y0, x0] = cur
+        while stack:
+            y, x = stack.pop()
+            n += 1
+            for ny, nx in ((y + 1, x), (y - 1, x), (y, x + 1), (y, x - 1)):
+                if 0 <= ny < small.shape[0] and 0 <= nx < small.shape[1] and small[ny, nx] and not label[ny, nx]:
+                    label[ny, nx] = cur
+                    stack.append((ny, nx))
+        if n > best_n:
+            best, best_n = cur, n
+    keep = np.repeat(np.repeat(label == best, 2, axis=0), 2, axis=1)[: mask.shape[0], : mask.shape[1]]
+    return mask & keep
+
+
 # концепты не из пачки 16 (автор выбрал другой вариант)
 SOURCES = {"terem": "buildings/terem_5.png"}
 
@@ -95,6 +122,8 @@ def prepare(group: str, mid: str, size: int = 518, border: float = 0.12) -> Path
     img = Image.open(src).convert("RGB")
     px = np.asarray(img, dtype=np.float32) / 255.0
     mask = concept_mask(px)
+    if mid in MAIN_ONLY:
+        mask = largest_part(mask)
     rows = np.nonzero(mask.sum(axis=1) > 3)[0]
     cols = np.nonzero(mask.sum(axis=0) > 3)[0]
     y0, y1, x0, x1 = rows.min(), rows.max() + 1, cols.min(), cols.max() + 1

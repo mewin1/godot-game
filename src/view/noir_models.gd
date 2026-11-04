@@ -12,6 +12,7 @@ const HUMAN_HEIGHT: float = 1.7
 const TIER_HEIGHT: PackedFloat32Array = [2.0, 2.8, 3.6]
 
 static var _cache: Dictionary[String, PackedScene] = {}
+static var _icons: Dictionary[String, Texture2D] = {}
 
 
 static func tower(id: StringName) -> PackedScene:
@@ -42,6 +43,19 @@ static func base() -> PackedScene:
 ## Своя плита терема (у моделей Hunyuan3D плита отрезана в отдельный файл).
 static func base_plate() -> PackedScene:
 	return _load("base/terem_plate.glb")
+
+
+## Значок идола для интерфейса — рендер модели Hunyuan3D (tools/blender/noir/idol_icons.py); нет — null.
+static func idol_icon(god: StringName) -> Texture2D:
+	var key: String = String(god) if not String(god).is_empty() else "empty"
+	if _icons.has(key):
+		return _icons[key]
+	var path: String = ROOT_H3D + "icons/idol_%s.png" % key
+	var texture: Texture2D = null
+	if ResourceLoader.exists(path):
+		texture = load(path) as Texture2D
+	_icons[key] = texture
+	return texture
 
 
 static func idol() -> PackedScene:

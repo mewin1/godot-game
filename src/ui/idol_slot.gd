@@ -81,7 +81,9 @@ func _draw() -> void:
 	var font: Font = get_theme_default_font()
 	var color: Color = Color("abb9c7") if idol.god == &"" else GodSymbols.get_color(idol.god)
 	var icon_size: float = minf(54, size.y - 18)
-	var icon: Texture2D = GodSymbols.get_icon(idol.god)
+	var icon: Texture2D = NoirModels.idol_icon(idol.god)
+	if icon == null:
+		icon = GodSymbols.get_icon(idol.god)
 	var center: Vector2 = Vector2(size.x * 0.5, icon_size * 0.5 + 1)
 	draw_texture_rect(preload("res://data/visuals/soft_light.tres"),
 			Rect2(center - Vector2.ONE * icon_size * 0.65, Vector2.ONE * icon_size * 1.3),
