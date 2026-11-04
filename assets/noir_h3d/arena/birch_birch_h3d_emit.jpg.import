@@ -3,22 +3,23 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dhvdqbbrvkueb"
-path="res://.godot/imported/birch_birch_h3d_emit.jpg-b5d9f9a02d8bdf8bc88ad33a7eccf443.ctex"
+path.s3tc="res://.godot/imported/birch_birch_h3d_emit.jpg-b5d9f9a02d8bdf8bc88ad33a7eccf443.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
-"md5": "89ba589de72e0e113564071dae5f8f2e"
+"md5": "81ebf2c50f29f30d0baa94709018927e"
 }
 
 [deps]
 
 source_file="res://assets/noir_h3d/arena/birch_birch_h3d_emit.jpg"
-dest_files=["res://.godot/imported/birch_birch_h3d_emit.jpg-b5d9f9a02d8bdf8bc88ad33a7eccf443.ctex"]
+dest_files=["res://.godot/imported/birch_birch_h3d_emit.jpg-b5d9f9a02d8bdf8bc88ad33a7eccf443.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
@@ -40,4 +41,4 @@ process/normal_map_invert_y=false
 process/hdr_as_srgb=false
 process/hdr_clamp_exposure=false
 process/size_limit=0
-detect_3d/compress_to=1
+detect_3d/compress_to=0

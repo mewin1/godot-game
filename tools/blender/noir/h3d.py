@@ -149,9 +149,14 @@ def drop_floor(ob):
 
 # ---------- загрузка ----------
 
+PAINT = {"on": False}  # --paint: текстура Hunyuan3D со всех сторон (tools/concepts/h3d_paint.py) вместо проекции
+PAINTED = {}
+
+
 def load(mid: str):
     kit.reset()
-    bpy.ops.import_scene.gltf(filepath=str(RAW / f"{mid}.glb"))
+    src = RAW / (f"{mid}_paint.glb" if PAINT["on"] else f"{mid}.glb")
+    bpy.ops.import_scene.gltf(filepath=str(src))
     meshes = [o for o in bpy.context.scene.objects if o.type == "MESH"]
     for o in list(bpy.context.scene.objects):
         if o.type != "MESH":
@@ -171,6 +176,13 @@ def load(mid: str):
     bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=1e-4)
     bm.to_mesh(ob.data)
     bm.free()
+    PAINTED.pop(mid, None)
+    for m in ob.data.materials:
+        if PAINT["on"] and m is not None and m.use_nodes:
+            for node in m.node_tree.nodes:
+                if node.type == "TEX_IMAGE" and node.image is not None:
+                    PAINTED[mid] = node.image
+                    break
     for m in list(ob.data.materials):
         bpy.data.materials.remove(m)
     ob.data.materials.clear()
@@ -447,6 +459,11 @@ def proj_cams(cam, group: str):
 
 
 def unwrap(ob):
+    """Своя развёртка "UVMap" для запекания; развёртку покраски Hunyuan (если есть) сохраняем как "huv"."""
+    if PAINT["on"] and len(ob.data.uv_layers) > 0:
+        ob.data.uv_layers[0].name = "huv"
+        ob.data.uv_layers.new(name="UVMap")
+        ob.data.uv_layers.active = ob.data.uv_layers["UVMap"]
     bpy.ops.object.select_all(action="DESELECT")
     ob.select_set(True)
     bpy.context.view_layer.objects.active = ob
@@ -455,10 +472,13 @@ def unwrap(ob):
     bpy.ops.uv.smart_project(angle_limit=math.radians(60), island_margin=0.002, area_weight=0.0,
                              correct_aspect=True, scale_to_bounds=False)
     bpy.ops.object.mode_set(mode="OBJECT")
-    ob.data.uv_layers[0].name = "UVMap"
+    ob.data.uv_layers.active.name = "UVMap"
+    ob.data.uv_layers["UVMap"].active_render = True
 
 
-def paint_model(ob, concept: Path, cmask: np.ndarray, group: str, size: int):
+def paint_model(ob, concept: Path, cmask: np.ndarray, group: str, size: int, painted=None):
+    """painted — текстура Hunyuan3D (развёртка "huv"): спереди рисунок концепта, всё, что камера концепта
+    не видит, — покраска Hunyuan вместо размытой проекции и повёрнутых камер (гибрид, без растяжек)."""
     sc = bpy.context.scene
     cam = sc.camera
     px = project._load_pixels(concept)[:, :, :3]
@@ -475,7 +495,7 @@ def paint_model(ob, concept: Path, cmask: np.ndarray, group: str, size: int):
     glow = ((px.max(axis=2) > project.GLOW_THRESHOLD) & inner).astype(np.float32)
     img_sharp, img_soft, img_glow = np_image("_c_sharp", sharp), np_image("_c_soft", soft), np_image("_c_glow", glow)
     unwrap(ob)
-    cams = proj_cams(cam, group)
+    cams = [cam] if painted is not None else proj_cams(cam, group)
     for i, c in enumerate(cams):
         project._proj_uv(ob, c, f"p{i}")
         project._visibility([ob], c, f"vis{i}")
@@ -552,7 +572,12 @@ def paint_model(ob, concept: Path, cmask: np.ndarray, group: str, size: int):
         denom = math_node("MAXIMUM", total, 1.0)
         acc = vmath("SCALE", acc, math_node("DIVIDE", 1.0, denom))
         rest = math_node("SUBTRACT", 1.0, math_node("MINIMUM", total, 1.0))
-        fb = vmath("SCALE", tex(images[1], "p0"), rest) if images[1] is not None else None
+        if images[1] is None:
+            fb = None
+        elif images[1] is painted:
+            fb = vmath("SCALE", tex(painted, "huv"), rest)
+        else:
+            fb = vmath("SCALE", tex(images[1], "p0"), rest)
         return vmath("ADD", acc, fb) if fb is not None else acc
 
     em = N("ShaderNodeEmission")
@@ -567,7 +592,7 @@ def paint_model(ob, concept: Path, cmask: np.ndarray, group: str, size: int):
     bpy.context.view_layer.objects.active = ob
     color_img = bpy.data.images.new(f"{ob.name}_h3d", size, size)
     target.image = color_img
-    L(blend([img_sharp, img_soft]), em.inputs["Color"])
+    L(blend([img_sharp, painted if painted is not None else img_soft]), em.inputs["Color"])
     bpy.ops.object.bake(type="EMIT")
     glow_img = bpy.data.images.new(f"{ob.name}_h3d_glow", size, size)
     target.image = glow_img
@@ -591,7 +616,7 @@ def paint_model(ob, concept: Path, cmask: np.ndarray, group: str, size: int):
     ob.data.materials.clear()
     ob.data.materials.append(final)
     bpy.data.materials.remove(mat)
-    for name in ("p0", "p1", "p2", "p3"):
+    for name in ("p0", "p1", "p2", "p3", "huv"):
         layer = ob.data.uv_layers.get(name)
         if layer is not None:
             ob.data.uv_layers.remove(layer)
@@ -605,6 +630,32 @@ def paint_model(ob, concept: Path, cmask: np.ndarray, group: str, size: int):
     color_img.filepath_raw = str(out_dir / f"{ob.name}.png")
     color_img.file_format = "PNG"
     color_img.save()
+
+
+def use_painted(ob, img):
+    """Материал из текстуры Hunyuan3D: та же схема, что у проекции (база + слабое свечение рисунка,
+    яркое — пламя, разряды — светится сильнее)."""
+    img.pack()
+    w, h = img.size
+    px = np.array(img.pixels[:], dtype=np.float32).reshape(h, w, 4)
+    glow = (px[..., :3].max(axis=2) > project.GLOW_THRESHOLD).astype(np.float32)
+    mask_img = np_image(f"{ob.name}_h3d_glow", np.dstack([glow, glow, glow])[::-1])  # np_image ждёт строки сверху вниз
+    em_img = paint.emission_image(img, mask_img, f"{ob.name}_h3d_emit")
+    img.name = f"{ob.name}_h3d"
+    final = bpy.data.materials.new(f"{ob.name}_h3d")
+    final.use_nodes = True
+    p = final.node_tree.nodes["Principled BSDF"]
+    t = final.node_tree.nodes.new("ShaderNodeTexImage")
+    t.image = img
+    final.node_tree.links.new(t.outputs["Color"], p.inputs["Base Color"])
+    te = final.node_tree.nodes.new("ShaderNodeTexImage")
+    te.image = em_img
+    final.node_tree.links.new(te.outputs["Color"], p.inputs["Emission Color"])
+    p.inputs["Emission Strength"].default_value = paint.GLOW_STRENGTH
+    p.inputs["Roughness"].default_value = 0.82
+    ob.data.materials.clear()
+    ob.data.materials.append(final)
+    print(f"[h3d] покраска Hunyuan3D {w}×{h}")
 
 
 # ---------- плита и скелет ----------
@@ -821,7 +872,10 @@ def build(mid: str, size: int, no_export: bool):
     tmp.unlink(missing_ok=True)
     print(f"[h3d] {mid}: силуэт IoU {iou:.3f}")
     (RENDERS / f"{mid}_h3d.iou").write_text(f"{iou:.3f}")
-    paint_model(ob, concept, cmask, group, size)
+    if PAINT["on"] and mid in PAINTED and "--paint-only" in sys.argv:
+        use_painted(ob, PAINTED[mid])
+    else:
+        paint_model(ob, concept, cmask, group, size, PAINTED.get(mid) if PAINT["on"] else None)
     objs = [ob]
     plate = None
     if group in ("buildings", "idols"):
@@ -847,6 +901,7 @@ def main():
         size = int(argv[argv.index("--tex") + 1])
         argv = [a for a in argv if a not in ("--tex", str(size))]
     no_export = "--no-export" in argv
+    PAINT["on"] = "--paint" in argv
     for mid in [a for a in argv if not a.startswith("--")]:
         build(mid, size, no_export)
 

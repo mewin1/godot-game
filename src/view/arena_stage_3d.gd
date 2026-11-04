@@ -192,6 +192,11 @@ func tower_top(tower_id: int) -> Vector2:
 	return project_milli(Vector2(tower.center_milli()), 1.5) if tower != null else Vector2.ZERO
 
 
+## Нуарная арена: закрытая часть поля — лес за частоколом (замки на клетках не нужны).
+func is_noir() -> bool:
+	return _world.get_node_or_null("Arena") is NoirArena3D
+
+
 ## Точка над тотемом героя в конце открытой дороги (для таблички HP).
 func hero_point(lift: float) -> Vector2:
 	var length: float = layout.path_length_at(_field.path_length - 1) + 0.4
@@ -314,6 +319,11 @@ func _sync_fog() -> void:
 	_fog_key = key
 	for child: Node in _fog.get_children():
 		child.queue_free()
+	var noir: NoirArena3D = _world.get_node_or_null("Arena") as NoirArena3D
+	if noir != null:
+		# нуар: двор за частоколом растёт с уровнем, терем — в конце открытой дороги (без тумана на клетках)
+		noir.set_open(_field)
+		return
 	var fog: StandardMaterial3D = ArenaMaterials3D.flat(STYLE.fog_color)
 	var edge: StandardMaterial3D = ArenaMaterials3D.flat(STYLE.fog_edge_color)
 	var path: Array[Vector2i] = _field.layout.path_cells

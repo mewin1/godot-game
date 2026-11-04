@@ -3,22 +3,23 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://c0jqyw47eayiu"
-path="res://.godot/imported/vasilisa_vasilisa.jpg-4e64c3f1c3fb53e6ca0ddbf30aad13a2.ctex"
+path.s3tc="res://.godot/imported/vasilisa_vasilisa.jpg-4e64c3f1c3fb53e6ca0ddbf30aad13a2.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
-"md5": "df758b0838b7b4f6b9fe0d286fd11b1f"
+"md5": "aee6aeb1efd207dd8c493adb9bcb6756"
 }
 
 [deps]
 
 source_file="res://assets/noir_h3d/heroes/vasilisa_vasilisa.jpg"
-dest_files=["res://.godot/imported/vasilisa_vasilisa.jpg-4e64c3f1c3fb53e6ca0ddbf30aad13a2.ctex"]
+dest_files=["res://.godot/imported/vasilisa_vasilisa.jpg-4e64c3f1c3fb53e6ca0ddbf30aad13a2.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
@@ -40,4 +41,4 @@ process/normal_map_invert_y=false
 process/hdr_as_srgb=false
 process/hdr_clamp_exposure=false
 process/size_limit=0
-detect_3d/compress_to=1
+detect_3d/compress_to=0

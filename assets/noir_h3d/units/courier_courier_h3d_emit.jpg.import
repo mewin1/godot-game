@@ -3,22 +3,23 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://duyjagaqx7h6w"
-path="res://.godot/imported/courier_courier_h3d_emit.jpg-8b79f8f7b48b2fc0978b08283b6c19fd.ctex"
+path.s3tc="res://.godot/imported/courier_courier_h3d_emit.jpg-8b79f8f7b48b2fc0978b08283b6c19fd.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
-"md5": "dd0abd3585eae9cf3952cb0de6b34171"
+"md5": "837b51268223431ea4693191ae05cb6b"
 }
 
 [deps]
 
 source_file="res://assets/noir_h3d/units/courier_courier_h3d_emit.jpg"
-dest_files=["res://.godot/imported/courier_courier_h3d_emit.jpg-8b79f8f7b48b2fc0978b08283b6c19fd.ctex"]
+dest_files=["res://.godot/imported/courier_courier_h3d_emit.jpg-8b79f8f7b48b2fc0978b08283b6c19fd.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
@@ -40,4 +41,4 @@ process/normal_map_invert_y=false
 process/hdr_as_srgb=false
 process/hdr_clamp_exposure=false
 process/size_limit=0
-detect_3d/compress_to=1
+detect_3d/compress_to=0

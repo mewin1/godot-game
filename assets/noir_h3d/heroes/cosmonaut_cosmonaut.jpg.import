@@ -3,22 +3,23 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://def72v1g0xgao"
-path="res://.godot/imported/cosmonaut_cosmonaut.jpg-01bdfa8a99227f6438ec1a1535a0db86.ctex"
+path.s3tc="res://.godot/imported/cosmonaut_cosmonaut.jpg-01bdfa8a99227f6438ec1a1535a0db86.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
-"md5": "7156945cec473a6d7a8ae9ed4b41de23"
+"md5": "5aa2b79a4e0d6840bb872e11c90fe78c"
 }
 
 [deps]
 
 source_file="res://assets/noir_h3d/heroes/cosmonaut_cosmonaut.jpg"
-dest_files=["res://.godot/imported/cosmonaut_cosmonaut.jpg-01bdfa8a99227f6438ec1a1535a0db86.ctex"]
+dest_files=["res://.godot/imported/cosmonaut_cosmonaut.jpg-01bdfa8a99227f6438ec1a1535a0db86.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
@@ -40,4 +41,4 @@ process/normal_map_invert_y=false
 process/hdr_as_srgb=false
 process/hdr_clamp_exposure=false
 process/size_limit=0
-detect_3d/compress_to=1
+detect_3d/compress_to=0

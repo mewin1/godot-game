@@ -54,6 +54,7 @@ func _build_noir(mob_id: StringName) -> bool:
 	holder.scale = Vector3.ONE / NoirModels.HUMAN_HEIGHT
 	_body.add_child(holder)
 	holder.add_child(scene.instantiate())
+	_brighten_noir(holder)
 	var found: Array[Node] = holder.find_children("*", "Skeleton3D", true, false)
 	if kind == &"flyer":
 		return true  # летун (нетопырь): скелет человека ему не подходит — только покачивание в полёте
@@ -65,6 +66,25 @@ func _build_noir(mob_id: StringName) -> bool:
 		_skeleton = found[0] as Skeleton3D
 	kind = &"noir"
 	return true
+
+
+## Рисунок концепта уже содержит свой свет; под луной арены он темнел второй раз — персонажи сливались
+## с землёй. Рисунок светится сам почти в полную силу, лунный контур отделяет фигуру от фона.
+## Материал общий для всех копий модели — правится один раз (метка noir_lit).
+func _brighten_noir(root: Node) -> void:
+	for node: Node in root.find_children("*", "MeshInstance3D", true, false):
+		var mesh_node: MeshInstance3D = node as MeshInstance3D
+		if mesh_node.mesh == null:
+			continue
+		for surface: int in mesh_node.mesh.get_surface_count():
+			var material: StandardMaterial3D = mesh_node.mesh.surface_get_material(surface) as StandardMaterial3D
+			if material == null or material.has_meta(&"noir_lit"):
+				continue
+			material.set_meta(&"noir_lit", true)
+			material.emission_energy_multiplier *= NOIR_SELF_LIGHT
+			material.rim_enabled = true
+			material.rim = NOIR_RIM
+			material.rim_tint = 0.35
 
 
 func _finish_build(height: float, sender_color: Color) -> void:
@@ -108,6 +128,9 @@ func set_enraged(enabled: bool, color: Color) -> void:
 ## Шаг анимации. speed — метры в секунду (0 — стоит), flight — высота полёта.
 ## Размах шага костями у моделей «нуар» (рад).
 const NOIR_STRIDE: float = 0.24
+## Во сколько раз сильнее светится рисунок персонажа (база 0,4 → ~0,9 яркости концепта).
+const NOIR_SELF_LIGHT: float = 2.6
+const NOIR_RIM: float = 0.55
 
 
 func animate(delta: float, speed: float, steps_per_meter: float) -> void:

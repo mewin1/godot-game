@@ -371,6 +371,8 @@ func _draw_3d() -> void:
 
 ## Закрытые места (откроются с развитием лавки): маленький замок на плите.
 func _draw_closed_locks() -> void:
+	if _stage != null and _stage.is_noir():
+		return  # двор растёт с лавкой: закрытые места — лес за частоколом
 	var radius: float = maxf(4.0, _cell_size * 0.11)
 	var color: Color = Color(0.72, 0.8, 0.92, 0.5)
 	for cell: Vector2i in _stage.layout.deck_cells():

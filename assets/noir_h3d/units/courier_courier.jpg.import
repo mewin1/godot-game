@@ -3,22 +3,23 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://ci5qbaw1e8ihf"
-path="res://.godot/imported/courier_courier.jpg-891bdb8bc58eb7890adeec7f227e4b13.ctex"
+path.s3tc="res://.godot/imported/courier_courier.jpg-891bdb8bc58eb7890adeec7f227e4b13.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
-"md5": "79f9f66bc6b33d7861d1b07eb20b871e"
+"md5": "3383a9921b7392aa34e68c6ea5b076af"
 }
 
 [deps]
 
 source_file="res://assets/noir_h3d/units/courier_courier.jpg"
-dest_files=["res://.godot/imported/courier_courier.jpg-891bdb8bc58eb7890adeec7f227e4b13.ctex"]
+dest_files=["res://.godot/imported/courier_courier.jpg-891bdb8bc58eb7890adeec7f227e4b13.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
@@ -40,4 +41,4 @@ process/normal_map_invert_y=false
 process/hdr_as_srgb=false
 process/hdr_clamp_exposure=false
 process/size_limit=0
-detect_3d/compress_to=1
+detect_3d/compress_to=0
