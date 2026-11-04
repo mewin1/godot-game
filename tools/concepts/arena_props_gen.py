@@ -25,6 +25,10 @@ PROPS = [
     ("birch", "a single slender white birch tree with black marks on the bark and a sparse crown of yellow-green leaves, "
      "whole tree visible from roots to top"),
     ("rock", "a single large mossy grey granite boulder with green moss on top and small ferns at its base"),
+    ("corner_tower", "a short squat round corner bastion of a Slavic wooden fortress wall: a thick cylinder of dark vertical oak logs "
+     "bound with two iron bands, a flat top with a dark iron grate rim, mossy base, as wide as it is tall"),
+    ("torch_post", "a single tall thin dark wooden post with a small iron basket on top holding a burning torch flame, "
+     "plain post, no lamp, no glass"),
     ("fern", "a single dense dark green fern bush with a few small mushrooms"),
 ]
 

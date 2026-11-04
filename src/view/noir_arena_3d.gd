@@ -15,6 +15,7 @@ const ROAD_HALF_WIDTH: float = 1.0
 ## Стена и жаровни крупнее, как на концепте арены (стена выше человека, жаровни — по пояс-грудь).
 const WALL_SCALE: float = 1.25
 const FIRE_SCALE: float = 1.6
+const TORCH_STEP: float = 7.0
 const ROAD_EDGE: Color = Color(0.42, 0.4, 0.42)
 
 var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
@@ -208,6 +209,20 @@ func _build_walls(entry: Vector2) -> void:
 			if k % 3 == 0:
 				_place("palisade_post", Vector3(a.x + direction.x * step * k, 0, a.y + direction.y * step * k),
 						yaw + PI)
+	for i: int in 4:
+		# круглые срубы-башенки по углам стены (как на концепте)
+		_place("corner_tower", Vector3(corners[i].x, 0, corners[i].y), _rng.randf() * TAU)
+		# факелы вдоль стены изнутри двора
+		var a: Vector2 = corners[i]
+		var b: Vector2 = corners[(i + 1) % 4]
+		var inward: Vector2 = ((lo + hi) * 0.5 - (a + b) * 0.5).normalized()
+		var torches: int = maxi(1, int((b - a).length() / TORCH_STEP))
+		for k: int in torches:
+			var p: Vector2 = a.lerp(b, (k + 0.5) / torches) + inward * 0.55
+			if p.distance_to(gate_point) < GATE_WIDTH or p.distance_to(Vector2(_terem_at.x, _terem_at.z)) < 3.5:
+				continue
+			_place("torch_post", Vector3(p.x, 0, p.y), _rng.randf() * TAU)
+			_warm_light(Vector3(p.x, 2.5, p.y), 1.6, 5.5)
 	var gate_yaw: float = 0.0
 	if absf(gate_point.x - lo.x) < 0.01 or absf(gate_point.x - hi.x) < 0.01:
 		gate_yaw = PI * 0.5

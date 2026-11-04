@@ -48,13 +48,14 @@ HEIGHT_BY_ID = {"kolobok": 0.9, "bat": 1.3, "boss": 2.6, "gorynych": 3.2, "leshy
                 "domovoy": 1.2, "koschei": 2.1,
                 # реквизит арены: высота целиком
                 "palisade": 2.3, "palisade_post": 2.9, "gate": 3.8, "fire_bowl": 1.5, "pine": 7.5, "birch": 6.5,
-                "rock": 1.1, "fern": 0.9}
+                "rock": 1.1, "fern": 0.9,
+                "corner_tower": 3.0, "torch_post": 2.4}
 CELL = 2.0
 PLATE_BY_ID = {"terem": 3.4}  # терем на концепте арены — дом почти в две клетки
 # предел треугольников: реквизит арены повторяется десятками (ели, частокол), юнитов на поле много
 FACES_BY_GROUP = {"units": 30000, "arena_props": 12000}
 FACES_BY_ID = {"pine": 16000, "birch": 16000, "rock": 4000, "fern": 4000, "palisade": 12000, "palisade_post": 8000,
-               "gate": 30000, "fire_bowl": 20000}
+               "gate": 30000, "fire_bowl": 20000, "corner_tower": 20000, "torch_post": 6000}
 
 
 def decimate(ob, mid: str, group: str):
