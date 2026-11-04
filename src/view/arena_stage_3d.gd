@@ -8,16 +8,19 @@ extends Control
 const ARENA_SCENE: PackedScene = preload("res://scenes/match_arena_noir.tscn")
 const STYLE: Arena3DStyle = preload("res://data/visuals/arena_3d_style.tres")
 const MILLI: float = 1000.0
+const POST_SHADER: Shader = preload("res://assets/shaders/noir_post.gdshader")
 ## Наклон и поворот камеры — как в превью арены (вид сверху-спереди, чуть справа).
 ## Ракурс как на концепте арены: ниже и с угла.
-const CAMERA_PITCH: float = -0.72
-const CAMERA_YAW: float = 0.45
+const CAMERA_PITCH: float = -0.68
+const CAMERA_YAW: float = 0.2
 const CAMERA_DISTANCE: float = 70.0
 ## Объём поля для кадрирования: x 0..18, z −20..0, высоты 0..6.5 м.
 const BOARD_MIN: Vector3 = Vector3(0.0, 0.3, -20.0)
 ## Верх рамки — постройки двора «нуар» (≈3,6 м); у лесных террас было 6,5.
 const BOARD_MAX: Vector3 = Vector3(18.0, 4.0, 0.0)
 const FILL: float = 0.97
+## Доля кадра над полем под лес и небо (перспективная камера «нуар»).
+const SKY_SHARE: float = 0.15
 const SPEED_SMOOTHING: float = 8.0
 const SIDE_SPREAD: float = 0.45
 const DEFAULT_CELL_H: float = 3.0
@@ -49,6 +52,10 @@ func _init() -> void:
 	_viewport.msaa_3d = Viewport.MSAA_4X
 	_viewport.render_target_update_mode = SubViewport.UPDATE_WHEN_VISIBLE
 	add_child(_viewport)
+	# постобработка «нуар» — только на картинку 3D (её рисует _draw), интерфейс поверх остаётся чистым
+	var post: ShaderMaterial = ShaderMaterial.new()
+	post.shader = POST_SHADER
+	material = post
 	resized.connect(_fit_viewport)
 	_world = ARENA_SCENE.instantiate() as Node3D
 	_viewport.add_child(_world)
@@ -114,6 +121,9 @@ func frame_board(target: Rect2) -> void:
 		var local: Vector3 = basis.inverse() * corner
 		low = low.min(Vector2(local.x, local.y))
 		high = high.max(Vector2(local.x, local.y))
+	if _camera.projection == Camera3D.PROJECTION_PERSPECTIVE:
+		_frame_perspective(target, basis)
+		return
 	var extent: Vector2 = high - low
 	pixels_per_meter = minf(target.size.x / extent.x, target.size.y / extent.y) * FILL
 	var center: Vector2 = (low + high) * 0.5
@@ -123,6 +133,39 @@ func frame_board(target: Rect2) -> void:
 	_camera_goal = basis * camera_local + basis.z * CAMERA_DISTANCE
 	_camera.size = _camera_goal_size
 	_camera.position = _camera_goal
+
+
+## Перспектива (нуар, как на концепте): отъезд и сдвиг камеры подбираются, пока рамка поля
+## не впишется в target — проекция нелинейна, поэтому несколькими шагами.
+func _frame_perspective(target: Rect2, basis: Basis) -> void:
+	if _viewport.size.y < 4:
+		return
+	# сверху кадра — полоса под лес и лунную дымку (как на концепте), поле чуть ниже
+	target = Rect2(target.position + Vector2(0, target.size.y * SKY_SHARE), target.size * Vector2(1, 1.0 - SKY_SHARE))
+	var center: Vector3 = (BOARD_MIN + BOARD_MAX) * 0.5
+	var shift: Vector2 = Vector2.ZERO
+	var distance: float = CAMERA_DISTANCE
+	var half_tan: float = tan(deg_to_rad(_camera.fov) * 0.5)
+	for step: int in 24:
+		_camera.position = center + basis * Vector3(shift.x, shift.y, 0.0) + basis.z * distance
+		var low: Vector2 = Vector2(INF, INF)
+		var high: Vector2 = Vector2(-INF, -INF)
+		for i: int in 8:
+			var corner: Vector3 = Vector3(BOARD_MAX.x if i & 1 else BOARD_MIN.x,
+					BOARD_MAX.y if i & 2 else BOARD_MIN.y, BOARD_MAX.z if i & 4 else BOARD_MIN.z)
+			var point: Vector2 = project(corner)
+			low = low.min(point)
+			high = high.max(point)
+		var ratio: float = maxf((high.x - low.x) / target.size.x, (high.y - low.y) / target.size.y) / FILL
+		var meters_per_pixel: float = 2.0 * distance * half_tan / size.y
+		var miss: Vector2 = target.get_center() - (low + high) * 0.5
+		shift += Vector2(-miss.x, miss.y) * meters_per_pixel
+		distance *= ratio
+		if absf(ratio - 1.0) < 0.002 and miss.length() < 0.5:
+			break
+	_camera_goal = _camera.position
+	_camera_goal_size = _camera.size
+	pixels_per_meter = size.y / (2.0 * distance * half_tan)
 
 
 ## Точка сцены → координаты этого узла.
