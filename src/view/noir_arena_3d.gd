@@ -103,6 +103,10 @@ func _build_ground() -> void:
 	var yard_material: StandardMaterial3D = _textured("res://assets/noir/arena/tex/courtyard.png",
 			Vector3(extent.x / 4.0, extent.y / 4.0, 1), 0.55)
 	yard_material.albedo_color = Color(0.78, 0.76, 0.76)
+	# плиты по мировой сетке: 4 плиты на 4 м — швы совпадают с краями клеток (клетка 2 м)
+	yard_material.uv1_triplanar = true
+	yard_material.uv1_world_triplanar = true
+	yard_material.uv1_scale = Vector3(0.25, 0.25, 0.25)
 	yard.material_override = yard_material
 	yard.position = Vector3((BOARD_MIN.x + BOARD_MAX.x) * 0.5, -0.01, (BOARD_MIN.y + BOARD_MAX.y) * 0.5)
 	add_child(yard)
