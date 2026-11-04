@@ -11,13 +11,13 @@ const MILLI: float = 1000.0
 const POST_SHADER: Shader = preload("res://assets/shaders/noir_post.gdshader")
 ## Наклон и поворот камеры — как в превью арены (вид сверху-спереди, чуть справа).
 ## Ракурс как на концепте арены: ниже и с угла.
-const CAMERA_PITCH: float = -0.68
-const CAMERA_YAW: float = 0.2
+const CAMERA_PITCH: float = -0.95
+const CAMERA_YAW: float = 1.45
 const CAMERA_DISTANCE: float = 70.0
 ## Объём поля для кадрирования: x 0..18, z −20..0, высоты 0..6.5 м.
-const BOARD_MIN: Vector3 = Vector3(0.0, 0.3, -20.0)
+const BOARD_MIN: Vector3 = Vector3(0.0, 0.3, -27.5)
 ## Верх рамки — постройки двора «нуар» (≈3,6 м); у лесных террас было 6,5.
-const BOARD_MAX: Vector3 = Vector3(18.0, 4.0, 0.0)
+const BOARD_MAX: Vector3 = Vector3(18.0, 4.0, 1.0)
 const FILL: float = 0.97
 ## Доля кадра над полем под лес и небо (перспективная камера «нуар»).
 const SKY_SHARE: float = 0.15
@@ -50,6 +50,8 @@ func _init() -> void:
 	_viewport = SubViewport.new()
 	_viewport.own_world_3d = true
 	_viewport.msaa_3d = Viewport.MSAA_4X
+	# чуть резче фактуры вдали и под углом (иначе мелкие постройки мылятся)
+	_viewport.texture_mipmap_bias = STYLE.mipmap_bias
 	_viewport.render_target_update_mode = SubViewport.UPDATE_WHEN_VISIBLE
 	add_child(_viewport)
 	# постобработка «нуар» — только на картинку 3D (её рисует _draw), интерфейс поверх остаётся чистым

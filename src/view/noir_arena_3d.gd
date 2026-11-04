@@ -24,6 +24,10 @@ const FIRE_SCALE: float = 2.2
 const TORCH_STEP: float = 7.0
 const ROAD_EDGE: Color = Color(0.42, 0.4, 0.42)
 const TEREM_OFFSET: float = 4.4
+## Сторона, откуда смотрит камера матча (ArenaStage3D: поворот ≈ 83°, камера над краем поля x = 18).
+const VIEW_FROM: Vector3 = Vector3(1.0, 0.0, 0.0)
+## Насколько терем довернуть к камере от направления дороги (1 — пополам).
+const TEREM_TURN: float = 1.0
 const TEREM_SCALE: float = 2.3
 ## Лес: россыпь с интервалами (как на концепте — стволы стоят порознь, между ними дымка).
 ## Камера перспективная и пологая — дальний лес уходит к горизонту в дымку.
@@ -62,6 +66,18 @@ const TREE_BRIGHT: float = 1.0
 ## Земля леса — смесь трёх фактур Poly Haven (CC0) пятнами по шуму, темнее двора, с ямками и буграми.
 const PAVING_SHADER: Shader = preload("res://assets/shaders/noir_paving.gdshader")
 const FLAME_SHADER: Shader = preload("res://assets/shaders/noir_flame.gdshader")
+const MIST_SHADER: Shader = preload("res://assets/shaders/noir_mist.gdshader")
+const GROUND_MIST_SHADER: Shader = preload("res://assets/shaders/noir_ground_mist.gdshader")
+## Как рисуется туман в лесу: CARDS — прежние полотна + объём; LAYER — слой у земли шейдером
+## по глубине сцены; LAYER_VOLUME — слой + прежний объёмный FogVolume.
+enum MistMode { CARDS, LAYER, LAYER_VOLUME }
+const MIST_MODE: MistMode = MistMode.LAYER
+## Клубы тумана за частоколом: ряды полотен по удалению от стены (м), их непрозрачность и цвет.
+const MIST_ROWS: PackedFloat32Array = [4.0, 10.0, 18.0, 30.0]
+const MIST_ROW_OPACITY: PackedFloat32Array = [0.4, 0.6, 0.72, 0.8]
+const MIST_SIDE_OPACITY: float = 0.2
+const MIST_MOON_TINT: Color = Color(0.68, 0.73, 0.72)
+const MIST_SIDE_TINT: Color = Color(0.42, 0.47, 0.47)
 ## Высота языка пламени на единицу масштаба чаши, м.
 const FLAME_HEIGHT: float = 0.85
 const ROAD_SHADER: Shader = preload("res://assets/shaders/noir_road.gdshader")
@@ -130,6 +146,9 @@ const GRASS_SCALE: float = 0.9
 const FRAME_SPRUCES: Array[Vector2] = [Vector2(-5.0, 7.0)]  # справа камера ближе — там плоская картинка бросается в глаза
 ## Справа старые деревья не ближе этого (м от полосы у поля).
 const NEAR_RIGHT_GAP: float = 9.0
+## Двор в координатах вида (см. _w): 20 м поперёк кадра, 18 м в глубину.
+const VIEW_MIN: Vector2 = Vector2(0.0, -18.0)
+const VIEW_MAX: Vector2 = Vector2(20.0, 0.0)
 ## Пояс елей за частоколом: от и до (м от края поля).
 const FENCE_BELT: Vector2 = Vector2(1.6, 5.5)
 ## Старый лес вокруг терема: высокие ели и берёзы, внизу голые стволы.
@@ -142,8 +161,8 @@ const BIRCH_DIM: float = 1.0
 ## Молодые ели нарисованы светлее старых — в поясе у частокола они не должны выделяться.
 const SAPLING_DIM: float = 0.9
 ## Плотность низовой дымки: за задней стеной (под луной) и по бокам/спереди.
-const MIST_BACK: float = 0.4
-const MIST_SIDES: float = 0.1
+const MIST_BACK: float = 0.18
+const MIST_SIDES: float = 0.05
 const PROP_TINTS: Dictionary[String, Color] = {"q/Rock": Color(0.45, 0.5, 0.52)}
 const ROCK_IDS: Array[String] = ["q/Rock_Medium_1", "q/Rock_Medium_2", "q/Rock_Medium_3"]
 ## Факелы вдоль частокола: на концепте стена тёмная, тёплые пятна — у жаровен.
@@ -200,7 +219,12 @@ func build_for_layout(layout: ArenaLayout3D) -> void:
 	_layout = layout
 	_terem_scene = NoirModels.base()
 	_build_forest()
-	_build_mist()
+	if MIST_MODE != MistMode.LAYER:
+		_build_mist()
+	if MIST_MODE == MistMode.CARDS:
+		_build_mist_cards()
+	if MIST_MODE != MistMode.CARDS:
+		_build_ground_mist()
 
 
 ## Двор под открытую часть поля: вызывается при смене длины пути (уровня магазина).
@@ -481,7 +505,9 @@ func _build_terem(at: Vector3, out3: Vector3) -> void:
 	var house: Node3D = _terem_scene.instantiate() as Node3D
 	_yard.add_child(house)
 	house.position = Vector3(at.x, 0, at.z)
-	house.rotation.y = atan2(-out3.x, -out3.z)
+	# лицом между дорогой и камерой: прямо к дороге камера видела бы только глухой бок
+	var face: Vector3 = (-out3 + VIEW_FROM * TEREM_TURN).normalized()
+	house.rotation.y = atan2(face.x, face.z)
 	house.scale = Vector3.ONE * TEREM_SCALE  # на концепте арены терем — самый большой дом двора
 	_warm_light(house.position - out3 * 2.2 + Vector3(0, 2.4, 0), 4.0, 9.0)
 	var plate_scene: PackedScene = NoirModels.base_plate()
@@ -748,17 +774,17 @@ func _build_forest() -> void:
 		var clear: float = _clearance(p)
 		if clear < 0.0:
 			continue
-		if p.y > BOARD_MAX.y and clear < CLEAR_NEAR + 8.0:
+		if p.y > VIEW_MAX.y and clear < CLEAR_NEAR + 8.0:
 			low.append(p)
 			continue
-		if p.x > BOARD_MAX.x and clear < NEAR_RIGHT_GAP:
+		if p.x > VIEW_MAX.x and clear < NEAR_RIGHT_GAP:
 			continue  # справа камера ближе всего: высокие деревья — только поодаль
 		var birch: bool = _rng.randf() < 0.2
 		var span: Vector2 = BIRCH_HEIGHT if birch else SPRUCE_HEIGHT
 		var size: float = _rng.randf_range(span.x, span.y)
 		# картинка повёрнута к камере сама; зеркалим половину для разнообразия
 		var basis: Basis = Basis.from_scale(Vector3(size * (1.0 if _rng.randf() < 0.5 else -1.0), size, size))
-		var tree: Transform3D = Transform3D(basis, Vector3(p.x, 0, p.y))
+		var tree: Transform3D = Transform3D(basis, _w3(p))
 		var kind: String = BIRCH_IDS[_rng.randi() % BIRCH_IDS.size()] if birch else PINE_IDS[_rng.randi() % PINE_IDS.size()]
 		if not kinds.has(kind):
 			kinds[kind] = []
@@ -768,68 +794,68 @@ func _build_forest() -> void:
 	# подножие: стволы не «втыкаются» в ровную землю — корни под елями, трава и папоротник у комля
 	var grass: Dictionary[String, Array] = {}
 	for tree: Transform3D in pines + birches:
-		var base: Vector2 = Vector2(tree.origin.x, tree.origin.z)
+		var base: Vector2 = _v(Vector2(tree.origin.x, tree.origin.z))
 		# средний ярус: молодая ель — её лапы закрывают голые стволы старых (на концепте под кронами тёмная масса)
 		if _rng.randf() < 0.55:
 			var mid: Vector2 = base + Vector2.from_angle(_rng.randf() * TAU) * _rng.randf_range(2.5, 5.0)
 			if _clearance(mid) > 1.0:
-				_collect(grass, PINE_IDS[_rng.randi() % PINE_IDS.size()], mid, _rng.randf_range(7.0, 13.0), 0.0)
+				_collect(grass, PINE_IDS[_rng.randi() % PINE_IDS.size()], _w(mid), _rng.randf_range(7.0, 13.0), 0.0)
 		if _rng.randf() < 0.6:
 			var young: Vector2 = base + Vector2.from_angle(_rng.randf() * TAU) * _rng.randf_range(2.0, 4.0)
 			if _clearance(young) > 0.5:
-				_collect(grass, SAPLING_IDS[_rng.randi() % SAPLING_IDS.size()], young, _rng.randf_range(1.8, 3.4))
+				_collect(grass, SAPLING_IDS[_rng.randi() % SAPLING_IDS.size()], _w(young), _rng.randf_range(1.8, 3.4))
 		for k: int in 3:
 			var around: Vector2 = base + Vector2.from_angle(_rng.randf() * TAU) * _rng.randf_range(0.6, 2.2)
-			_collect(grass, GRASS_IDS[_rng.randi() % GRASS_IDS.size()], around, GRASS_SCALE * _rng.randf_range(0.8, 1.3))
+			_collect(grass, GRASS_IDS[_rng.randi() % GRASS_IDS.size()], _w(around), GRASS_SCALE * _rng.randf_range(0.8, 1.3))
 	_fence_spruces(grass)
 	_ground_grass(grass)
 	var ferns: Array[String] = FERN_IDS
 	for p: Vector2 in low:
 		if _rng.randf() < 0.6:
-			_collect(grass, ferns[_rng.randi() % ferns.size()], p, _rng.randf_range(1.0, 1.6))
+			_collect(grass, ferns[_rng.randi() % ferns.size()], _w(p), _rng.randf_range(1.0, 1.6))
 		else:
-			_place_rock(Vector3(p.x, 0, p.y), self)
+			_place_rock(_w3(p), self)
 	# подлесок между деревьями: камни и папоротник вдоль полосы у частокола (только в полосе у поля:
 	# россыпь по всему лесу заметно удлиняла загрузку)
-	var lo: Vector2 = BOARD_MIN - Vector2(CLEAR_SIDE + 9.0, CLEAR_FAR + 9.0)
-	var hi: Vector2 = BOARD_MAX + Vector2(CLEAR_SIDE + 9.0, CLEAR_NEAR + 9.0)
+	var lo: Vector2 = VIEW_MIN - Vector2(CLEAR_SIDE + 9.0, CLEAR_FAR + 9.0)
+	var hi: Vector2 = VIEW_MAX + Vector2(CLEAR_SIDE + 9.0, CLEAR_NEAR + 9.0)
 	for p: Vector2 in _scatter(lo, hi, 2.6):
 		var clear: float = _clearance(p)
 		if clear < -1.0 or clear > 9.0 or _rng.randf() < 0.55:
 			continue
 		if _rng.randf() < 0.65:
-			_collect(grass, ferns[_rng.randi() % ferns.size()], p, _rng.randf_range(0.9, 1.4))
+			_collect(grass, ferns[_rng.randi() % ferns.size()], _w(p), _rng.randf_range(0.9, 1.4))
 		else:
-			_place_rock(Vector3(p.x, 0, p.y), self)
+			_place_rock(_w3(p), self)
 	_build_collected(grass, self)
 
 
 ## Пояс густых елей с лапами до земли сразу за частоколом (сзади и по бокам): на концепте на высоте забора —
 ## сплошная тёмная масса леса, а не поляна. Спереди — только у углов (рамка кадра), иначе закрыли бы двор.
 func _fence_spruces(into: Dictionary[String, Array]) -> void:
-	var lo: Vector2 = BOARD_MIN - Vector2(FENCE_BELT.y, FENCE_BELT.y)
-	var hi: Vector2 = BOARD_MAX + Vector2(FENCE_BELT.y, FENCE_BELT.y)
+	var lo: Vector2 = VIEW_MIN - Vector2(FENCE_BELT.y, FENCE_BELT.y)
+	var hi: Vector2 = VIEW_MAX + Vector2(FENCE_BELT.y, FENCE_BELT.y)
 	for p: Vector2 in _scatter(lo, hi, 2.6):
-		var outside: Vector2 = Vector2(maxf(BOARD_MIN.x - p.x, p.x - BOARD_MAX.x), maxf(BOARD_MIN.y - p.y, p.y - BOARD_MAX.y))
+		var outside: Vector2 = Vector2(maxf(VIEW_MIN.x - p.x, p.x - VIEW_MAX.x), maxf(VIEW_MIN.y - p.y, p.y - VIEW_MAX.y))
 		var gap: float = maxf(outside.x, outside.y)
-		var front_corner: bool = p.y > BOARD_MAX.y - 2.0 and outside.x > FENCE_BELT.x and p.x < BOARD_MIN.x
-		if gap < FENCE_BELT.x or (p.y > BOARD_MAX.y - 2.0 and not front_corner) or _rng.randf() < 0.3:
+		var front_corner: bool = p.y > VIEW_MAX.y - 2.0 and outside.x > FENCE_BELT.x and p.x < VIEW_MIN.x
+		if gap < FENCE_BELT.x or (p.y > VIEW_MAX.y - 2.0 and not front_corner) or _rng.randf() < 0.3:
 			continue
 		# ближе к камере (передняя половина боков и весь правый бок) — только невысокие ёлочки: высокая плоская картинка
 		# сверху выглядит вырезанной из бумаги
-		if p.y > (BOARD_MIN.y + BOARD_MAX.y) * 0.5 or p.x > BOARD_MAX.x:
-			_collect(into, SAPLING_IDS[_rng.randi() % SAPLING_IDS.size()], p, _rng.randf_range(3.0, 5.0), 0.0)
+		if p.y > (VIEW_MIN.y + VIEW_MAX.y) * 0.5 or p.x > VIEW_MAX.x:
+			_collect(into, SAPLING_IDS[_rng.randi() % SAPLING_IDS.size()], _w(p), _rng.randf_range(3.0, 5.0), 0.0)
 			continue
 		var roll: float = _rng.randf()
-		if roll < 0.12 and p.y < BOARD_MIN.y:
-			_collect(into, BIRCH_IDS[_rng.randi() % BIRCH_IDS.size()], p, _rng.randf_range(13.0, 18.0), 0.0)
+		if roll < 0.12 and p.y < VIEW_MIN.y:
+			_collect(into, BIRCH_IDS[_rng.randi() % BIRCH_IDS.size()], _w(p), _rng.randf_range(13.0, 18.0), 0.0)
 		elif roll < 0.45:
-			_collect(into, PINE_IDS[_rng.randi() % PINE_IDS.size()], p, _rng.randf_range(7.0, 12.0), 0.0)
+			_collect(into, PINE_IDS[_rng.randi() % PINE_IDS.size()], _w(p), _rng.randf_range(7.0, 12.0), 0.0)
 		else:
-			_collect(into, SAPLING_IDS[_rng.randi() % SAPLING_IDS.size()], p, _rng.randf_range(3.5, 8.5), 0.0)
+			_collect(into, SAPLING_IDS[_rng.randi() % SAPLING_IDS.size()], _w(p), _rng.randf_range(3.5, 8.5), 0.0)
 	# рамка кадра: старые ели у ближних углов, ближе к камере (на концепте лапы обрезаны краем кадра)
 	for corner: Vector2 in FRAME_SPRUCES:
-		_collect(into, PINE_IDS[_rng.randi() % PINE_IDS.size()], corner, _rng.randf_range(15.0, 19.0), 0.0)
+		_collect(into, PINE_IDS[_rng.randi() % PINE_IDS.size()], _w(corner), _rng.randf_range(15.0, 19.0), 0.0)
 
 
 ## Трава пятнами вокруг поля (шум): гуще у частокола, вдали реже; внутрь поля не заходит.
@@ -837,8 +863,8 @@ func _ground_grass(grass: Dictionary[String, Array]) -> void:
 	var noise: FastNoiseLite = FastNoiseLite.new()
 	noise.seed = 9
 	noise.frequency = 0.08
-	var lo: Vector2 = BOARD_MIN - Vector2(22.0, 30.0)
-	var hi: Vector2 = BOARD_MAX + Vector2(22.0, 14.0)
+	var lo: Vector2 = VIEW_MIN - Vector2(22.0, 30.0)
+	var hi: Vector2 = VIEW_MAX + Vector2(22.0, 14.0)
 	var step: float = 1.6
 	var y: float = lo.y
 	while y < hi.y:
@@ -846,7 +872,7 @@ func _ground_grass(grass: Dictionary[String, Array]) -> void:
 		while x < hi.x:
 			var p: Vector2 = Vector2(x, y) + Vector2(_rng.randf(), _rng.randf()) * step
 			x += step
-			if p.x > BOARD_MIN.x - 1.2 and p.x < BOARD_MAX.x + 1.2 and p.y > BOARD_MIN.y - 1.2 and p.y < BOARD_MAX.y + 1.2:
+			if p.x > VIEW_MIN.x - 1.2 and p.x < VIEW_MAX.x + 1.2 and p.y > VIEW_MIN.y - 1.2 and p.y < VIEW_MAX.y + 1.2:
 				continue
 			if _clearance(p) > 4.0:
 				continue  # кусты — только у частокола, дальше чистая тёмная земля под елями
@@ -856,7 +882,7 @@ func _ground_grass(grass: Dictionary[String, Array]) -> void:
 			for k: int in _rng.randi_range(1, 2):  # кустик — пара пучков рядом, между кустами — чистая тёмная земля
 				var tuft: Vector2 = p + Vector2(_rng.randf_range(-0.35, 0.35), _rng.randf_range(-0.35, 0.35))
 				var kind: Array[String] = FERN_IDS if _rng.randf() < 0.5 else GRASS_IDS
-				_collect(grass, kind[_rng.randi() % kind.size()], tuft, GRASS_SCALE * _rng.randf_range(0.6, 1.4))
+				_collect(grass, kind[_rng.randi() % kind.size()], _w(tuft), GRASS_SCALE * _rng.randf_range(0.6, 1.4))
 		y += step
 
 
@@ -922,10 +948,26 @@ func _place_rock(at: Vector3, parent: Node3D = null) -> void:
 	_place(ROCK_IDS[_rng.randi() % ROCK_IDS.size()], at, _rng.randf() * TAU, _rng.randf_range(0.18, 0.4), parent)
 
 
+## Лес и дымка расставляются в «координатах вида»: x — поперёк кадра (слева направо), y — к камере
+## (дальний край двора — VIEW_MIN.y, ближний — VIEW_MAX.y). Камера матча смотрит с края поля x = 18,
+## поэтому вид повёрнут к миру на 90°: x вида = −z мира, y вида = x мира − 18.
+static func _w(v: Vector2) -> Vector2:
+	return Vector2(v.y + BOARD_MAX.x, -v.x)
+
+
+static func _w3(v: Vector2) -> Vector3:
+	var p: Vector2 = _w(v)
+	return Vector3(p.x, 0.0, p.y)
+
+
+static func _v(p: Vector2) -> Vector2:
+	return Vector2(-p.y, p.x - BOARD_MAX.x)
+
+
 ## Расстояние от точки до края полосы без деревьев вокруг поля (меньше нуля — внутри полосы).
 func _clearance(p: Vector2) -> float:
-	var lo: Vector2 = BOARD_MIN - Vector2(CLEAR_SIDE, CLEAR_FAR)
-	var hi: Vector2 = BOARD_MAX + Vector2(CLEAR_SIDE, CLEAR_NEAR)
+	var lo: Vector2 = VIEW_MIN - Vector2(CLEAR_SIDE, CLEAR_FAR)
+	var hi: Vector2 = VIEW_MAX + Vector2(CLEAR_SIDE, CLEAR_NEAR)
 	var dx: float = maxf(lo.x - p.x, p.x - hi.x)
 	var dy: float = maxf(lo.y - p.y, p.y - hi.y)
 	if dx < 0.0 and dy < 0.0:
@@ -991,6 +1033,72 @@ static func _moonlit(mesh: Mesh) -> void:
 		material.rim_tint = 0.4
 
 
+## Клубы тумана между деревьями (как на концепте): полотна с клубящимся шумом. Деревья стоят
+## перед ними и режут туман на слои; за задней стеной (под луной) гуще и светлее, по бокам реже,
+## между камерой и двором — нет.
+func _build_mist_cards() -> void:
+	var rng: RandomNumberGenerator = RandomNumberGenerator.new()
+	rng.seed = 11
+	var lo: Vector2 = VIEW_MIN - FENCE_BELT.x * Vector2.ONE
+	var hi: Vector2 = VIEW_MAX + FENCE_BELT.x * Vector2.ONE
+	for row: int in MIST_ROWS.size():
+		var z: float = lo.y - MIST_ROWS[row]
+		var x: float = lo.x - 30.0 - row * 6.0
+		while x < hi.x + 30.0 + row * 6.0:
+			var width: float = rng.randf_range(18.0, 28.0) + row * 4.0
+			_add_mist_card(_w3(Vector2(x + width * 0.5, z + rng.randf_range(-2.0, 2.0))),
+					Vector2(width, rng.randf_range(5.0, 8.0) + row * 1.5), MIST_MOON_TINT,
+					MIST_ROW_OPACITY[row], rng.randf() * 10.0)
+			x += width * 0.62
+	for side: float in [-1.0, 1.0]:
+		var edge: float = lo.x if side < 0.0 else hi.x
+		for depth: float in [6.0, 14.0]:
+			var z: float = lo.y + 2.0
+			while z < hi.y - 2.0:
+				var width: float = rng.randf_range(12.0, 18.0)
+				_add_mist_card(_w3(Vector2(edge + side * depth, z + width * 0.3)),
+						Vector2(width, rng.randf_range(4.0, 6.0)), MIST_SIDE_TINT,
+						MIST_SIDE_OPACITY * (0.7 if depth < 10.0 else 1.0), rng.randf() * 10.0)
+				z += width * 0.55
+
+
+func _add_mist_card(at: Vector3, card: Vector2, tint: Color, opacity: float, seed: float) -> void:
+	var quad: QuadMesh = QuadMesh.new()
+	quad.size = card
+	var material: ShaderMaterial = ShaderMaterial.new()
+	material.shader = MIST_SHADER
+	material.set_shader_parameter("tint", tint)
+	material.set_shader_parameter("opacity", opacity)
+	material.set_shader_parameter("card_size", card)
+	material.set_shader_parameter("seed", seed)
+	var instance: MeshInstance3D = MeshInstance3D.new()
+	instance.mesh = quad
+	instance.material_override = material
+	instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	instance.position = at + Vector3(0.0, card.y * 0.5 - 0.8, 0.0)
+	add_child(instance)
+
+
+## Низовой туман слоем у земли (noir_ground_mist.gdshader): полноэкранный квад в сцене считает туман
+## по глубине каждого пикселя — стволы стоят в тумане, кроны над ним. Двор (с частоколом) чистый.
+func _build_ground_mist() -> void:
+	var quad: QuadMesh = QuadMesh.new()
+	quad.size = Vector2(2.0, 2.0)
+	var material: ShaderMaterial = ShaderMaterial.new()
+	material.shader = GROUND_MIST_SHADER
+	material.render_priority = -50  # раньше огня и эффектов: пламя поверх тумана, а не в нём
+	var pad: float = 1.6
+	var a: Vector2 = Vector2(BOARD_MIN.x - pad, BOARD_MIN.y - pad)
+	var b: Vector2 = Vector2(BOARD_MAX.x + pad, BOARD_MAX.y + pad)
+	material.set_shader_parameter("yard_rect", Vector4(a.x, a.y, b.x, b.y))
+	quad.material = material
+	var instance: MeshInstance3D = MeshInstance3D.new()
+	instance.name = "GroundMist"
+	instance.mesh = quad
+	instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	instance.extra_cull_margin = 16384.0  # квад растянут на экран в шейдере — не отсекать по рамке
+	add_child(instance)
+
 ## Дымка в лесу за стеной (как на концепте), гуще вдали; двор остаётся чистым и читаемым.
 func _build_mist() -> void:
 	# концепт: за частоколом дымка яркая и заметная, клочьями; во дворе её почти нет
@@ -1010,8 +1118,8 @@ func _build_mist() -> void:
 	patches.depth = 64
 	patches.seamless = true
 	material.density_texture = patches
-	var lo: Vector2 = BOARD_MIN - Vector2(1.6, 1.6)
-	var hi: Vector2 = BOARD_MAX + Vector2(1.6, 1.6)
+	var lo: Vector2 = VIEW_MIN - Vector2(1.6, 1.6)
+	var hi: Vector2 = VIEW_MAX + Vector2(1.6, 1.6)
 	var strips: Array[Rect2] = [
 		Rect2(FOREST_MIN.x, FOREST_MIN.y, FOREST_MAX.x - FOREST_MIN.x, lo.y - FOREST_MIN.y),
 		Rect2(FOREST_MIN.x, hi.y + 3.0, FOREST_MAX.x - FOREST_MIN.x, FOREST_MAX.y - hi.y - 3.0),
@@ -1023,7 +1131,7 @@ func _build_mist() -> void:
 		var volume: FogVolume = FogVolume.new()
 		volume.shape = RenderingServer.FOG_VOLUME_SHAPE_BOX
 		# низовой туман клочьями: кроны выступают тёмными силуэтами над светлой дымкой
-		volume.size = Vector3(strip.size.x, 2.6, strip.size.y)
-		volume.position = Vector3(strip.get_center().x, 0.5, strip.get_center().y)
+		volume.size = Vector3(strip.size.y, 2.6, strip.size.x)  # поворот вида на 90°: оси меняются
+		volume.position = _w3(strip.get_center()) + Vector3(0, 0.5, 0)
 		volume.material = material if strip == strips[0] else dim  # первая полоса — за задней стеной, под луной
 		add_child(volume)

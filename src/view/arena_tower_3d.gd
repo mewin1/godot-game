@@ -46,11 +46,6 @@ func build(tower: TowerState, style: Arena3DStyle, cell_offsets: Array[Vector3])
 	_model.scale = Vector3.ONE * _base_scale
 
 
-## Свет стихии вокруг постройки «нуар».
-const AURA_ENERGY: float = 2.4
-const AURA_RANGE: float = 5.5
-
-
 ## Модель «славянского нуара»: плита уровня под каждой клеткой фигуры + модель в центре.
 ## Нет GLB для этой постройки — false, строится прежняя процедурная.
 func _build_noir(tower: TowerState, style: Arena3DStyle, cell_offsets: Array[Vector3]) -> bool:
@@ -66,25 +61,43 @@ func _build_noir(tower: TowerState, style: Arena3DStyle, cell_offsets: Array[Vec
 		var scene_for_cell: PackedScene = own_plate if own_plate != null else plate
 		if scene_for_cell != null:
 			var tile: Node3D = scene_for_cell.instantiate() as Node3D
+			_tune_materials(tile, style.noir_plate_glow, style.noir_plate_tone)
 			add_child(tile)
 			tile.position = offset
 	_model = Node3D.new()
 	add_child(_model)
-	_model.add_child(scene.instantiate())
+	var body: Node3D = scene.instantiate() as Node3D
+	_tune_materials(body, style.noir_model_glow, 1.0)
+	_model.add_child(body)
 	# цветное пятно света стихии на брусчатке вокруг постройки (как на концепте арены)
 	if tower.data.god != &"":
 		var aura: OmniLight3D = OmniLight3D.new()
 		aura.light_color = GodSymbols.get_color(tower.data.god)
-		aura.light_energy = AURA_ENERGY
-		aura.omni_range = AURA_RANGE
+		aura.light_energy = style.noir_aura_energy
+		aura.omni_range = style.noir_aura_range
 		aura.omni_attenuation = 1.6
 		aura.position = Vector3(0, 1.4, 0)
 		add_child(aura)
 	_noir_height = NoirModels.TIER_HEIGHT[tier - 1]
 	_add_level_rings(tower.level)
-	_base_scale = 1.0 + style.level_scale_step * (tower.level - 1)
+	_base_scale = style.noir_model_scale * (1.0 + style.level_scale_step * (tower.level - 1))
 	_model.scale = Vector3.ONE * _base_scale
 	return true
+
+
+## Свечение и яркость материалов модели «нуар» + анизотропная фильтрация (плиты видны под углом —
+## без неё фактура мылится). Материалы общие у всех копий модели, поэтому правятся один раз.
+static func _tune_materials(root: Node3D, glow: float, tone: float) -> void:
+	for node: Node in root.find_children("*", "MeshInstance3D", true, false):
+		var mesh: Mesh = (node as MeshInstance3D).mesh
+		for surface: int in mesh.get_surface_count():
+			var material: StandardMaterial3D = mesh.surface_get_material(surface) as StandardMaterial3D
+			if material == null or material.has_meta(&"noir_tuned"):
+				continue
+			material.set_meta(&"noir_tuned", true)
+			material.emission_energy_multiplier = glow
+			material.albedo_color = Color(tone, tone, tone)
+			material.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
 
 
 ## Точка навершия (кристалл/огонь) в координатах сцены — отсюда летят снаряды.

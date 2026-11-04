@@ -18,6 +18,20 @@ extends Resource
 ## Прибавка размера за уровень слияния (доля на каждый уровень сверх первого).
 @export var level_scale_step: float = 0.12
 
+@export_group("Нуар")
+## Плита под постройкой — фон, а не главное: её свечение и яркость фактуры (1 — как в модели).
+@export var noir_plate_glow: float = 0.0
+@export var noir_plate_tone: float = 0.32
+## Свечение самой постройки (1,6 — как в модели).
+@export var noir_model_glow: float = 1.0
+## Масштаб модели постройки «нуар» (плита не меняется).
+@export var noir_model_scale: float = 1.45
+## Цветной свет стихии вокруг постройки.
+@export var noir_aura_energy: float = 1.2
+@export var noir_aura_range: float = 5.5
+## Сдвиг уровня мип-карт картинки арены: меньше нуля — фактуры резче (слишком мало — рябь).
+@export var mipmap_bias: float = -0.5
+
 ## Модель моба по id (&"walker", &"heavy", &"flyer", &"boss", &"blob"); нет записи — walker.
 @export var mob_models: Dictionary[StringName, StringName] = {}
 @export var mob_tints: Dictionary[StringName, Color] = {}

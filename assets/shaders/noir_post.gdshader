@@ -5,7 +5,7 @@ shader_type canvas_item;
 // Свечение огня и луны — glow окружения сцены, мягкий дальний лес — DOF камеры (match_arena_noir.tscn).
 
 uniform float curve : hint_range(0.0, 1.0) = 0.25;
-uniform float clarity : hint_range(0.0, 1.0) = 0.25;
+uniform float clarity : hint_range(0.0, 1.0) = 0.1;
 uniform float clarity_radius = 7.0;  // пикселей
 // Палитра концепта: по каналам YCbCr (0..1) кадра игры и верха 05_arena.jpg. Яркость — умножением
 // (чёрное остаётся чёрным), цветность — растяжением вокруг серого.
@@ -19,7 +19,7 @@ uniform vec3 light_tint = vec3(0.03, 0.012, -0.01);
 uniform float black_point = 0.012;
 uniform float vignette : hint_range(0.0, 1.0) = 0.42;
 uniform vec2 vignette_center = vec2(0.6, 0.55);  // двор правее центра (слева панели)
-uniform float grain : hint_range(0.0, 0.05) = 0.008;
+uniform float grain : hint_range(0.0, 0.05) = 0.0;
 
 vec3 to_ycc(vec3 c) {
 	float y = dot(c, vec3(0.299, 0.587, 0.114));
