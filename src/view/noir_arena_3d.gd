@@ -55,6 +55,7 @@ func build_for_layout(layout: ArenaLayout3D) -> void:
 	_build_walls(Vector2(entry.x, entry.z))
 	_build_fires()
 	_build_forest()
+	_build_mist()
 
 
 func _prop(id: String) -> Node3D:
@@ -301,6 +302,30 @@ func _build_forest() -> void:
 		p += Vector2(_rng.randf_range(-0.5, 0.5), _rng.randf_range(-0.5, 0.5))
 		_place("rock" if i % 2 == 0 else "fern", Vector3(p.x, 0, p.y), _rng.randf() * TAU,
 				_rng.randf_range(0.6, 1.2))
+
+
+## Низкая дымка в лесу за стеной (как на концепте); двор остаётся чистым и читаемым.
+func _build_mist() -> void:
+	var material: FogMaterial = FogMaterial.new()
+	material.density = 0.35
+	material.albedo = Color(0.5, 0.64, 0.7)
+	material.height_falloff = 0.6
+	material.edge_fade = 0.6
+	var lo: Vector2 = BOARD_MIN - Vector2(WALL_MARGIN, WALL_MARGIN) - Vector2(1.5, 1.5)
+	var hi: Vector2 = BOARD_MAX + Vector2(WALL_MARGIN, WALL_MARGIN) + Vector2(1.5, 1.5)
+	var depth: float = 14.0
+	var strips: Array[Rect2] = [
+		Rect2(lo.x - depth, lo.y - depth, hi.x - lo.x + depth * 2.0, depth),
+		Rect2(lo.x - depth, hi.y, hi.x - lo.x + depth * 2.0, depth),
+		Rect2(lo.x - depth, lo.y, depth, hi.y - lo.y),
+		Rect2(hi.x, lo.y, depth, hi.y - lo.y)]
+	for strip: Rect2 in strips:
+		var volume: FogVolume = FogVolume.new()
+		volume.shape = RenderingServer.FOG_VOLUME_SHAPE_BOX
+		volume.size = Vector3(strip.size.x, 3.0, strip.size.y)
+		volume.position = Vector3(strip.get_center().x, 1.0, strip.get_center().y)
+		volume.material = material
+		add_child(volume)
 
 
 static func _rect_point(center: Vector2, half: Vector2, t: float) -> Vector2:
