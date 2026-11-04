@@ -183,7 +183,7 @@ const ROCK_IDS: Array[String] = ["q/Rock_Medium_1", "q/Rock_Medium_2", "q/Rock_M
 const TORCH_ENERGY: float = 1.4
 ## Чаша-жаровня в середине каждой стены (как на концепте 05); в углах — башни с шатрами, без огня.
 const WALL_BOWLS: bool = true
-const WALL_BOWL_SCALE: float = 1.3
+const WALL_BOWL_SCALE: float = 0.8
 const BOWL_ENERGY: float = 4.0
 const BOWL_REACH: float = 7.5
 ## Большие чаши в углах двора: тёплое пятно, но не заливать двор оранжевым.

@@ -8,10 +8,10 @@ render_mode unshaded, blend_mix, depth_draw_never, depth_test_disabled, cull_dis
 
 uniform vec3 tint : source_color = vec3(0.5, 0.56, 0.57);
 uniform vec3 shade : source_color = vec3(0.16, 0.2, 0.21);
-uniform float density = 0.2;  // на метр пути в самой густой части
+uniform float density = 0.26;  // на метр пути в самой густой части
 uniform float layer_top = 5.0;  // высота слоя, м
 uniform float clump_scale = 0.07;  // клубов на метр
-uniform float clump_contrast = 1.5;
+uniform float clump_contrast = 2.4;
 uniform float drift = 0.35;  // м/с
 uniform vec4 yard_rect = vec4(-1.5, -21.5, 19.5, 1.5);  // x0, z0, x1, z1 — двор без тумана
 uniform float yard_fade = 7.0;  // м — от частокола туман густеет плавно
@@ -49,7 +49,7 @@ float mist_at(vec3 p, float t) {
 	float h = clamp(p.y / layer_top, 0.0, 1.0);
 	// клуб выше там, где шум сильнее: верх слоя рваный, а не ровная крышка
 	float clump = clamp((n - 0.42 - h * 0.3) * clump_contrast * 2.0, 0.0, 1.0);
-	float base = (1.0 - h) * (1.0 - h) * 0.12;  // тонкая ровная пелена у самой земли
+	float base = (1.0 - h) * (1.0 - h) * 0.03;  // без сплошной вуали — туман клубами  // тонкая ровная пелена у самой земли
 	vec2 out_yard = max(yard_rect.xy - p.xz, p.xz - yard_rect.zw);
 	float yard_dist = length(max(out_yard, vec2(0.0))) + min(max(out_yard.x, out_yard.y), 0.0);
 	float yard = smoothstep(0.0, yard_fade, yard_dist);

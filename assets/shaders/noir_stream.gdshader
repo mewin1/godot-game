@@ -9,7 +9,7 @@ uniform vec3 shallow : source_color = vec3(0.07, 0.13, 0.14);
 uniform vec3 sky : source_color = vec3(0.3, 0.4, 0.48);  // отражённое ночное небо
 uniform vec3 moon_color : source_color = vec3(0.92, 0.96, 1.0);
 uniform vec3 moon_spot = vec3(12.0, 0.0, 7.0);  // мир: где на ручье видно отражение луны
-uniform float moon_radius = 0.9;  // м
+uniform float moon_radius = 1.3;  // м
 uniform float flow = 0.5;  // м/с
 uniform float ripple_scale = 0.9;
 
@@ -49,8 +49,8 @@ void fragment() {
 	vec2 d = (world.xz - moon_spot.xz + slope * 0.25) / vec2(moon_radius * 1.8, moon_radius);
 	float disc = smoothstep(1.0, 0.55, length(d)) * (0.65 + 0.35 * h);
 	float glow = exp(-dot(d, d) * 0.35) * 0.35;
-	EMISSION = sky * (0.12 + fresnel * 0.5) * smoothstep(0.05, 0.4, edge) + moon_color * (disc * 0.8 + glow * 0.7);
-	ROUGHNESS = 0.12;
+	EMISSION = sky * (0.12 + fresnel * 0.5) * smoothstep(0.05, 0.4, edge) + moon_color * (disc * 1.8 + glow * 1.2);
+	ROUGHNESS = 0.05;
 	SPECULAR = 0.15;  // тёплые блики факелов почти не берёт: иначе вода выглядит как нефть
 	ALPHA = smoothstep(0.0, 0.25, edge);
 }
