@@ -33,17 +33,68 @@ const TREE_GAP: float = 3.1
 const CLEAR_FAR: float = 7.5
 const CLEAR_SIDE: float = 4.5
 const CLEAR_NEAR: float = 9.0
+## Луна (как на концепте — над лесом в дымке): место на экране в долях кадра. Камера смотрит сверху,
+## неба в кадре нет — луна рисуется поверх крон, её ореол высветляет дымку вокруг.
+const MOON_SCREEN: Vector2 = Vector2(0.43, 0.075)
+const MOON_DEPTH: float = 40.0
+const MOON_SHADER: String = """
+shader_type spatial;
+render_mode unshaded, blend_add, depth_draw_never, depth_test_disabled, cull_disabled, fog_disabled;
+uniform vec3 disc_color = vec3(0.86, 0.92, 0.95);
+uniform vec3 halo_color = vec3(0.32, 0.46, 0.52);
+void fragment() {
+	vec2 p = UV * 2.0 - 1.0;
+	float r = length(p);
+	float disc = smoothstep(0.125, 0.115, r);
+	// пятна «морей» на диске — мягкие и тусклые
+	float seas = 0.82 + 0.18 * smoothstep(0.01, 0.055, length(p - vec2(0.03, -0.025)))
+			* smoothstep(0.005, 0.035, length(p - vec2(-0.045, 0.04)));
+	float halo = exp(-r * r * 18.0) * 0.45 + exp(-r * 2.4) * 0.14;
+	ALBEDO = disc_color * disc * seas + halo_color * halo * (1.0 - disc);
+}
+"""
+## Деревья под луной: лунный контур отделяет кроны от тёмной земли (как на концепте).
+const TREE_RIM: float = 0.22
+const TREE_BRIGHT: float = 1.0
+## Факелы вдоль частокола: на концепте стена тёмная, тёплые пятна — у жаровен.
+const TORCH_ENERGY: float = 0.9
+const TORCH_REACH: float = 4.5
 
 var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
 var _layout: ArenaLayout3D
 var _yard: Node3D
 var _open_key: int = -1
 var _terem_scene: PackedScene
+var _moon: MeshInstance3D
 
 
 func _ready() -> void:
 	_rng.seed = 22
 	_build_ground()
+	_build_moon()
+
+
+## Луна привязана к кадру (как настоящая — не плывёт с полем).
+func _process(_delta: float) -> void:
+	var camera: Camera3D = get_viewport().get_camera_3d()
+	if camera == null or _moon == null:
+		return
+	var screen: Vector2 = get_viewport().get_visible_rect().size * MOON_SCREEN
+	_moon.global_transform = Transform3D(camera.global_basis, camera.project_position(screen, MOON_DEPTH))
+
+
+func _build_moon() -> void:
+	var quad: QuadMesh = QuadMesh.new()
+	quad.size = Vector2(14.0, 14.0)
+	var shader: Shader = Shader.new()
+	shader.code = MOON_SHADER
+	var material: ShaderMaterial = ShaderMaterial.new()
+	material.shader = shader
+	quad.material = material
+	_moon = MeshInstance3D.new()
+	_moon.mesh = quad
+	_moon.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(_moon)
 
 
 ## Неизменная часть (земля леса, лес, дымка) — один раз, когда ArenaStage3D получит раскладку.
@@ -379,7 +430,7 @@ func _build_walls(fine: Dictionary[Vector2i, bool], entry: Vector2, door: Vector
 			if p.distance_to(gate_point) < GATE_WIDTH or p.distance_to(door) < 3.0:
 				continue
 			_place("torch_post", Vector3(p.x, 0, p.y), _rng.randf() * TAU)
-			_warm_light(Vector3(p.x, 2.5, p.y), 1.6, 5.5)
+			_warm_light(Vector3(p.x, 2.5, p.y), TORCH_ENERGY, TORCH_REACH)
 		for end: Vector2 in [run.a, run.b]:
 			corners[end] = true
 	# круглые срубы-башенки на выступающих углах (как на концепте), столбы — на внутренних
@@ -563,6 +614,7 @@ func _multimesh(id: String, transforms: Array[Transform3D]) -> void:
 	for node: Node in model.find_children("*", "MeshInstance3D", true, false):
 		var part: MeshInstance3D = node as MeshInstance3D
 		var local: Transform3D = model.global_transform.affine_inverse() * part.global_transform
+		_moonlit(part.mesh)
 		var multi: MultiMesh = MultiMesh.new()
 		multi.transform_format = MultiMesh.TRANSFORM_3D
 		multi.mesh = part.mesh
@@ -576,11 +628,25 @@ func _multimesh(id: String, transforms: Array[Transform3D]) -> void:
 	model.queue_free()
 
 
+## Материалы леса (только у копий в MultiMesh): чуть светлее и с лунным контуром.
+static func _moonlit(mesh: Mesh) -> void:
+	for surface: int in mesh.get_surface_count():
+		var material: StandardMaterial3D = mesh.surface_get_material(surface) as StandardMaterial3D
+		if material == null or material.has_meta(&"moonlit"):
+			continue
+		material.set_meta(&"moonlit", true)
+		material.albedo_color = material.albedo_color * TREE_BRIGHT
+		material.rim_enabled = true
+		material.rim = TREE_RIM
+		material.rim_tint = 0.4
+
+
 ## Дымка в лесу за стеной (как на концепте), гуще вдали; двор остаётся чистым и читаемым.
 func _build_mist() -> void:
 	var material: FogMaterial = FogMaterial.new()
-	material.density = 0.4
+	material.density = 0.3
 	material.albedo = Color(0.5, 0.64, 0.7)
+	material.emission = Color(0.035, 0.05, 0.058)  # лунная дымка светится сама, а не только в лучах
 	material.height_falloff = 0.5
 	material.edge_fade = 0.8
 	var lo: Vector2 = BOARD_MIN - Vector2(3.0, 3.0)

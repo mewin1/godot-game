@@ -221,7 +221,7 @@ def palisade(seed: int = 9, length: float = 2.2):
         _log(b, x, 0.0, rnd.uniform(1.75, 2.05), length / n * 0.56, rnd, 0)
     for z in (0.55, 1.45):
         trunk(b, [(-length / 2, 0.16, z), (length / 2, 0.16, z)], [0.07, 0.07], 0, sides=6, v_scale=0.4)
-    wood = image_mat("palisade_wood", TEXTURES / "bark.png", tint=(0.52, 0.42, 0.34))
+    wood = image_mat("palisade_wood", FOLIAGE / "pine_bark.png", tint=(0.95, 0.88, 0.8))  # серо-бурые брёвна, как на концепте
     return b.finish("palisade", [wood])
 
 
@@ -231,7 +231,7 @@ def palisade_post(seed: int = 4):
     _log(b, 0, 0, 2.35, 0.2, rnd, 0)
     for z in (0.7, 1.7):  # железные обручи
         trunk(b, [(0, 0, z), (0, 0, z + 0.07)], [0.215, 0.215], 1, sides=10)
-    wood = image_mat("post_wood", TEXTURES / "bark.png", tint=(0.42, 0.34, 0.28))
+    wood = image_mat("post_wood", FOLIAGE / "pine_bark.png", tint=(0.8, 0.74, 0.68))
     iron = kit.mat("post_iron", (0.08, 0.08, 0.09), rough=0.5, metal=0.8)
     return b.finish("palisade_post", [wood, iron])
 
