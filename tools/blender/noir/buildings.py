@@ -28,10 +28,6 @@ def thunder():
     pillar_h = 1.55
     z0 = top + 0.3
     box("pillar", (0.42, 0.42, pillar_h), (0, 0, z0 + pillar_h / 2), M("oak_warm"), 0.04)
-    zig = [(0.0, 0.0), (0.05, 0.0), (0.0, 0.07), (0.05, 0.07), (-0.02, 0.17), (0.0, 0.09), (-0.05, 0.09)]
-    for k, zz in enumerate((z0 + pillar_h * 0.72, z0 + pillar_h * 0.12)):  # золотые громовые знаки
-        prism(f"zig_{k}", [(x * 1.3, y * 1.3) for x, y in zig], 0.025, (0.0, -0.215, zz), M("gold"),
-              (math.pi / 2, 0, 0), 0.004)
     # железный оголовок с проёмом
     cap_z = z0 + pillar_h
     box("cap", (0.64, 0.64, 0.3), (0, 0, cap_z + 0.15), M("steel"), 0.03)
@@ -43,17 +39,10 @@ def thunder():
     from kit import sign_shapes
     bolt = [(x * 0.62, (y + 0.5) * bolt_h) for x, y in sign_shapes("perun")[0]]
     prism("bolt", bolt, 0.12, (0.0, 0.06, cap_z + 0.22), M("silver"), (math.pi / 2, 0, math.radians(-30)), 0.02)
-    # громовое колесо на фасаде
-    wz = z0 + pillar_h * 0.45
-    cyl("wheel_rim", 0.17, 0.17, 0.04, (0, -0.23, wz), M("gold"), 16, (math.pi / 2, 0, 0))
-    cyl("wheel_in", 0.13, 0.13, 0.05, (0, -0.23, wz), M("oak_warm_dark"), 16, (math.pi / 2, 0, 0))
-    for k in range(6):
-        a = math.pi * k / 3
-        box(f"spoke_{k}", (0.025, 0.03, 0.26), (0, -0.245, wz), M("gold"), 0, (0, a, 0))
-    cyl("wheel_hub", 0.04, 0.04, 0.06, (0, -0.25, wz), M("gold"), 8, (math.pi / 2, 0, 0))
     return join_all("thunder")
 
 
+TEREM_WINDOWS = False  # окна рисует проекция концепта; свои окна давали двоение
 TEREM_LIGHTS = [(0.0, -0.75, 0.55), (0.0, -0.75, 1.55), (-0.85, 0.15, 1.2)]
 
 
@@ -76,6 +65,8 @@ def terem():
         wins = [(-0.22,), (0.22,)]
         for (wx,) in wins:
             wz = z + h * 0.52
+            if not TEREM_WINDOWS:
+                continue
             box(f"win_{i}_{wx}", (0.2, 0.03, 0.28), (wx, 0.05 - d / 2 - 0.02, wz), M("window"))
             box(f"wincore_{i}_{wx}", (0.12, 0.03, 0.18), (wx, 0.05 - d / 2 - 0.028, wz), M("window_core"))
             box(f"winbar_{i}_{wx}", (0.025, 0.04, 0.28), (wx, 0.05 - d / 2 - 0.035, wz), M("oak_dark"))

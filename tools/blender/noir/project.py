@@ -20,7 +20,8 @@ from mathutils.bvhtree import BVHTree
 import kit
 
 W, H = 768, 1024
-ERODE_PX = 4  # сужение маски концепта (пиксели) против ореолов фона
+ERODE_PX = 4
+GLOW_THRESHOLD = 0.72  # яркость пикселя концепта, с которой он считается светящимся  # сужение маски концепта (пиксели) против ореолов фона
 # проекция только на грани, смотрящие на камеру: косые грани растягивают рисунок
 FACING_MIN, FACING_MAX = 0.3, 0.6
 
@@ -203,6 +204,9 @@ def project_bake(objects, concept: Path, cmask: np.ndarray, mirror_back: bool = 
         shrunk[:, :-1] &= inner[:, 1:]
         inner = shrunk
     mask_img = _mask_image(inner, "_cmask")
+    # свечение по самому концепту: яркие места рисунка (окна, пламя, разряды) внутри силуэта
+    cpx = _load_pixels(concept)[:, :, :3]
+    glow_img = _mask_image((cpx.max(axis=2) > GLOW_THRESHOLD) & inner, "_cglow")
     for ob in objects:
         _proj_uv(ob, cam, "proj")
         if mirror_back:
@@ -294,6 +298,19 @@ def project_bake(objects, concept: Path, cmask: np.ndarray, mirror_back: bool = 
         bpy.context.view_layer.objects.active = ob
         sc.render.bake.margin = 6
         bpy.ops.object.bake(type="EMIT")
+        # второй проход: маска свечения из концепта (в развёртке модели)
+        gtex = tex(glow_img, "proj", True)
+        gm = mul(m1, gtex.outputs["Color"])
+        L(gm, em.inputs["Color"])
+        glow_bake = bpy.data.images.new(f"{ob.name}_cglow", size, size)
+        target.image = glow_bake
+        bpy.ops.object.bake(type="EMIT")
+        old_mask = bpy.data.images.get(ob.get("glow_mask", ""))
+        if old_mask is not None and tuple(old_mask.size) == tuple(glow_bake.size):
+            a = np.array(old_mask.pixels[:], dtype=np.float32)
+            b = np.array(glow_bake.pixels[:], dtype=np.float32)
+            glow_bake.pixels[:] = np.maximum(a, b)
+        ob["glow_mask"] = glow_bake.name
         # итог: рисунок концепта — и цвет, и слабое свечение (нарисованный свет читается и в тёмной сцене)
         final = bpy.data.materials.new(f"{ob.name}_final")
         final.use_nodes = True
