@@ -34,6 +34,8 @@ const TEREM_YAW: float = -PI * 0.5
 const FOREST_MIN: Vector2 = Vector2(-60.0, -120.0)
 const FOREST_MAX: Vector2 = Vector2(80.0, 14.0)
 const TREE_GAP: float = 3.7
+## Шаг кучек подлеска вдоль частокола (м).
+const THICKET_STEP: float = 2.6
 ## Земля леса: яркость и оттенок фактур (зелёный мох).
 const GROUND_TINT: float = 0.14
 const GROUND_HUE: Vector3 = Vector3(0.55, 1.0, 0.48)
@@ -180,7 +182,7 @@ const SAPLING_DIM: float = 0.9
 ## Плотность низовой дымки: за задней стеной (под луной) и по бокам/спереди.
 const MIST_BACK: float = 0.18
 const MIST_SIDES: float = 0.05
-const PROP_TINTS: Dictionary[String, Color] = {"q/Rock": Color(0.45, 0.5, 0.52)}
+const PROP_TINTS: Dictionary[String, Color] = {"q/Rock": Color(0.32, 0.36, 0.36)}
 const ROCK_IDS: Array[String] = ["q/Rock_Medium_1", "q/Rock_Medium_2", "q/Rock_Medium_3"]
 ## Факелы вдоль частокола: на концепте стена тёмная, тёплые пятна — у жаровен.
 const TORCH_ENERGY: float = 1.4
@@ -875,6 +877,7 @@ func _build_forest() -> void:
 			var around: Vector2 = base + Vector2.from_angle(_rng.randf() * TAU) * _rng.randf_range(0.6, 2.2)
 			_collect(grass, GRASS_IDS[_rng.randi() % GRASS_IDS.size()], _w(around), GRASS_SCALE * _rng.randf_range(0.8, 1.3))
 	_fence_spruces(grass)
+	_fence_thickets(grass)
 	_ground_grass(grass)
 	var ferns: Array[String] = FERN_IDS
 	for p: Vector2 in low:
@@ -925,6 +928,32 @@ func _fence_spruces(into: Dictionary[String, Array]) -> void:
 	# рамка кадра: старые ели у ближних углов, ближе к камере (на концепте лапы обрезаны краем кадра)
 	for corner: Vector2 in FRAME_SPRUCES:
 		_collect(into, PINE_IDS[_rng.randi() % PINE_IDS.size()], _w(corner), _rng.randf_range(15.0, 19.0), 0.0)
+
+
+## Подлесок кучками вдоль частокола снаружи (как на концепте 05): папоротник, трава, молодые ёлочки —
+## куча через 2–3 м, между кучами просвет тёмной земли (не ровная россыпь «по сетке»).
+func _fence_thickets(into: Dictionary[String, Array]) -> void:
+	var lo: Vector2 = VIEW_MIN - Vector2.ONE * 1.4
+	var hi: Vector2 = VIEW_MAX + Vector2.ONE * 1.4
+	var perimeter: Array[Vector2] = []
+	for side: int in 4:
+		var a: Vector2 = [lo, Vector2(hi.x, lo.y), hi, Vector2(lo.x, hi.y)][side]
+		var b: Vector2 = [Vector2(hi.x, lo.y), hi, Vector2(lo.x, hi.y), lo][side]
+		var count: int = ceili(a.distance_to(b) / THICKET_STEP)
+		for k: int in count:
+			perimeter.append(a.lerp(b, (k + _rng.randf()) / count))
+	var center: Vector2 = (VIEW_MIN + VIEW_MAX) * 0.5
+	for spot: Vector2 in perimeter:
+		if _rng.randf() < 0.25 or _stream_distance(spot) < STREAM_WIDTH:
+			continue
+		var outward: Vector2 = (spot - center).normalized()
+		var heart: Vector2 = spot + outward * _rng.randf_range(0.3, 1.6)
+		for k: int in _rng.randi_range(3, 6):
+			var p: Vector2 = heart + Vector2(_rng.randf_range(-1.1, 1.1), _rng.randf_range(-1.1, 1.1))
+			var kind: Array[String] = FERN_IDS if _rng.randf() < 0.6 else GRASS_IDS
+			_collect(into, kind[_rng.randi() % kind.size()], _w(p), _rng.randf_range(0.7, 1.6))
+		if _rng.randf() < 0.3:
+			_collect(into, SAPLING_IDS[_rng.randi() % SAPLING_IDS.size()], _w(heart + outward * 1.2), _rng.randf_range(2.2, 3.6))
 
 
 ## Трава пятнами вокруг поля (шум): гуще у частокола, вдали реже; внутрь поля не заходит.
@@ -1016,7 +1045,7 @@ func _billboards(name: String, transforms: Array[Transform3D], parent: Node3D) -
 
 ## Замшелый валун Poly Haven (вместо прежних камней), разного размера.
 func _place_rock(at: Vector3, parent: Node3D = null) -> void:
-	_place(ROCK_IDS[_rng.randi() % ROCK_IDS.size()], at, _rng.randf() * TAU, _rng.randf_range(0.18, 0.4), parent)
+	_place(ROCK_IDS[_rng.randi() % ROCK_IDS.size()], at, _rng.randf() * TAU, _rng.randf_range(0.28, 0.6), parent)
 
 
 
@@ -1056,9 +1085,9 @@ func _build_stream() -> void:
 	add_child(water)
 	# берега: камни и папоротник вперемешку, чтобы лента не лежала на голой земле
 	var banks: Dictionary[String, Array] = {}
-	for i: int in range(0, line.size(), 3):
+	for i: int in range(0, line.size(), 1):
 		for k: int in 2:
-			if _rng.randf() < 0.35:
+			if _rng.randf() < 0.45:
 				continue
 			var ahead: Vector2 = line[mini(i + 1, line.size() - 1)] - line[maxi(i - 1, 0)]
 			var side: Vector2 = Vector2(-ahead.y, ahead.x).normalized() * (1.0 if k == 0 else -1.0)

@@ -46,10 +46,10 @@ void fragment() {
 	float fresnel = pow(1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0), 3.0);
 	ALBEDO = mix(shallow, deep, smoothstep(0.0, 0.6, edge));
 	// луна: светлое пятно, растянутое вдоль взгляда камеры (ось x), дрожит на ряби
-	vec2 d = (world.xz - moon_spot.xz + slope * 0.25) / vec2(moon_radius * 1.8, moon_radius);
-	float disc = smoothstep(1.0, 0.55, length(d)) * (0.65 + 0.35 * h);
+	vec2 d = (world.xz - moon_spot.xz + slope * 0.08) / vec2(moon_radius * 1.8, moon_radius);
+	float disc = smoothstep(1.0, 0.2, length(d)) * (0.85 + 0.15 * h) * smoothstep(0.15, 0.6, edge);  // мягкий край, у берега гаснет
 	float glow = exp(-dot(d, d) * 0.35) * 0.35;
-	EMISSION = sky * (0.12 + fresnel * 0.5) * smoothstep(0.05, 0.4, edge) + moon_color * (disc * 1.8 + glow * 1.2);
+	EMISSION = sky * (0.04 + fresnel * 0.18) * smoothstep(0.05, 0.4, edge) + moon_color * (disc * 1.1 + glow * 0.8);
 	ROUGHNESS = 0.05;
 	SPECULAR = 0.15;  // тёплые блики факелов почти не берёт: иначе вода выглядит как нефть
 	ALPHA = smoothstep(0.0, 0.25, edge);
