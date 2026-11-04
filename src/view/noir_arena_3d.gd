@@ -44,6 +44,7 @@ func build_for_layout(layout: ArenaLayout3D) -> void:
 		house.position = Vector3(_terem_at.x, 0, _terem_at.z)
 		house.rotation.y = atan2(-toward.x, -toward.z)
 		house.scale = Vector3.ONE * TEREM_SCALE  # на концепте арены терем — самый большой дом двора
+		_warm_light(house.position + Vector3(-toward.x, 0, -toward.z) * 2.2 + Vector3(0, 2.4, 0), 4.0, 9.0)
 		var plate_scene: PackedScene = NoirModels.base_plate()
 		if plate_scene != null:
 			house.add_child(plate_scene.instantiate())
@@ -208,6 +209,17 @@ func _build_walls(entry: Vector2) -> void:
 	if absf(gate_point.x - lo.x) < 0.01 or absf(gate_point.x - hi.x) < 0.01:
 		gate_yaw = PI * 0.5
 	_place("gate", Vector3(gate_point.x, 0, gate_point.y), gate_yaw)
+	_warm_light(Vector3(gate_point.x, 3.0, gate_point.y), 3.0, 7.0)
+
+
+func _warm_light(at: Vector3, energy: float, reach: float) -> void:
+	var light: OmniLight3D = OmniLight3D.new()
+	light.light_color = FIRE_COLOR
+	light.light_energy = energy
+	light.omni_range = reach
+	light.omni_attenuation = 1.5
+	light.position = at
+	add_child(light)
 
 
 func _bounds(node: Node3D) -> AABB:
