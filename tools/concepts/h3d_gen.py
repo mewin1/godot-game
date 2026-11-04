@@ -116,7 +116,9 @@ def largest_part(mask: np.ndarray) -> np.ndarray:
 SOURCES = {"terem": "readable/terem_r16.png", "corner_tower": "readable/corner_tower_r31.png",
            # 05.11: игровые (читаемые сверху) концепты — tools: new_concept/readable/; прежние модели в rejected/prev_05-11
            "plague": "readable/plague_r31.png", "rime": "readable/rime_r31.png", "rain": "readable/rain_r16.png",
-           "hex": "readable/hex_r31.png", "wind": "readable/wind_r16.png"}
+           "hex": "readable/hex_r31.png", "wind": "readable/wind_r16.png",
+           "ice_lance": "readable/ice_lance_r16.png", "war_engine": "readable/war_engine_r16.png",
+           "war_rocket": "readable/war_rocket_r31.png", "spark": "readable/spark_r31.png"}
 
 
 def source(group: str, mid: str) -> Path:

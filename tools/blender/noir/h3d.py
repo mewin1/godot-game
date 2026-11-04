@@ -34,7 +34,9 @@ GROUPS = {"buildings": "towers", "idols": "idols", "units": "units", "heroes": "
 SOURCES = {"terem": "readable/terem_r16.png", "corner_tower": "readable/corner_tower_r31.png",
            # 05.11: игровые (читаемые сверху) концепты — tools: new_concept/readable/; прежние модели в rejected/prev_05-11
            "plague": "readable/plague_r31.png", "rime": "readable/rime_r31.png", "rain": "readable/rain_r16.png",
-           "hex": "readable/hex_r31.png", "wind": "readable/wind_r16.png"}  # концепты не из пачки 16
+           "hex": "readable/hex_r31.png", "wind": "readable/wind_r16.png",
+           "ice_lance": "readable/ice_lance_r16.png", "war_engine": "readable/war_engine_r16.png",
+           "war_rocket": "readable/war_rocket_r31.png", "spark": "readable/spark_r31.png"}  # концепты не из пачки 16
 KIND_BY_ID = {"terem": "base"}
 # азимут камеры концепта относительно фронта модели (как у прежних моделей): постройки и идолы — плита ромбом
 TARGET_AZ = {"buildings": -40.0, "idols": -40.0, "units": -22.0, "heroes": -22.0, "arena_props": -30.0}
