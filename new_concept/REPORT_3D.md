@@ -53,3 +53,12 @@
 без одобрения автора**: новые модели — в `assets/noir_h3d/<kind>/<id>.glb` (исходники — `source_art/noir_h3d/`),
 старые остаются; игра берёт `noir_h3d`, если файл есть (переключение в `src/view/noir_models.gd`).
 В `new_concept/final/` положить для каждой модели тройку «референс | старый метод | Hunyuan3D», чтобы автор выбрал.
+
+## Замечание автора: картинка в игре мыльная (исправить в ночной сессии)
+«Как будто 720p растянули на 2K-монитор и накинули сглаживание». Проверить и исправить:
+- `get_window().content_scale_size = ScreenFit.LANDSCAPE` в match_screen.gd и режим растяжения окна в project.godot
+  (stretch mode viewport/canvas_items, aspect) — 3D должен рисоваться в родном разрешении экрана;
+- ArenaStage3D — SubViewportContainer (stretch, stretch_shrink), размер SubViewport; при единой сцене — убрать SubViewport;
+- `scaling_3d_scale` < 1, FSR, FXAA/TAA/screen-space AA в project.godot и Environment; MSAA оставить, FXAA/TAA убрать;
+- фильтрация и mipmaps текстур GLB (assets/noir/*.import), анизотропия.
+Проверять кадром в родном разрешении монитора автора (2560×1440).
