@@ -34,6 +34,9 @@ const TEREM_YAW: float = -PI * 0.5
 const FOREST_MIN: Vector2 = Vector2(-60.0, -120.0)
 const FOREST_MAX: Vector2 = Vector2(80.0, 14.0)
 const TREE_GAP: float = 3.7
+## Земля леса: яркость и оттенок фактур (зелёный мох).
+const GROUND_TINT: float = 0.14
+const GROUND_HUE: Vector3 = Vector3(0.55, 1.0, 0.48)
 ## Вокруг поля полоса без деревьев (частокол, терем); у ближнего к камере края — шире, чтобы не закрыть двор.
 const CLEAR_FAR: float = 7.5
 const CLEAR_SIDE: float = 4.5
@@ -78,7 +81,7 @@ const STREAM_POINTS: Array[Vector2] = [Vector2(-30.0, -90.0), Vector2(-17.0, -55
 		Vector2(-6.4, -17.0), Vector2(-7.2, -6.0), Vector2(-5.5, 3.0), Vector2(-9.0, 12.0), Vector2(-18.0, 20.0)]
 const STREAM_WIDTH: float = 2.4
 ## Где на ручье отражается луна (координаты вида, на русле у левого края двора).
-const STREAM_MOON: Vector2 = Vector2(-9.0, -31.0)
+const STREAM_MOON: Vector2 = Vector2(-6.6, -14.0)
 ## Деревья и кусты не ближе этого к оси ручья (м).
 const STREAM_CLEAR: float = 2.8
 const GROUND_MIST_SHADER: Shader = preload("res://assets/shaders/noir_ground_mist.gdshader")
@@ -448,6 +451,8 @@ func _ground_material() -> ShaderMaterial:
 	texture.width = 512
 	texture.height = 512
 	material.set_shader_parameter("blend_noise", texture)
+	material.set_shader_parameter("tint", GROUND_TINT)  # мшисто-зелёная, как на концепте 05, а не серо-оливковая
+	material.set_shader_parameter("hue", GROUND_HUE)
 	material.set_shader_parameter("yard_rect", Vector4(BOARD_MIN.x - 1.5, BOARD_MIN.y - 1.5, BOARD_MAX.x + 1.5, BOARD_MAX.y + 1.5))
 	return material
 
