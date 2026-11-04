@@ -15,7 +15,8 @@ const CAMERA_YAW: float = 0.45
 const CAMERA_DISTANCE: float = 70.0
 ## Объём поля для кадрирования: x 0..18, z −20..0, высоты 0..6.5 м.
 const BOARD_MIN: Vector3 = Vector3(0.0, 0.3, -20.0)
-const BOARD_MAX: Vector3 = Vector3(18.0, 6.5, 0.0)
+## Верх рамки — постройки двора «нуар» (≈3,6 м); у лесных террас было 6,5.
+const BOARD_MAX: Vector3 = Vector3(18.0, 4.0, 0.0)
 const FILL: float = 0.97
 const SPEED_SMOOTHING: float = 8.0
 const SIDE_SPREAD: float = 0.45

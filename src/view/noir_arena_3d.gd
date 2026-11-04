@@ -11,7 +11,8 @@ const BOARD_MAX: Vector2 = Vector2(18.0, 0.0)
 const WALL_MARGIN: float = 1.3
 const GATE_WIDTH: float = 3.2
 const FIRE_COLOR: Color = Color(1.0, 0.52, 0.18)
-const ROAD_HALF_WIDTH: float = 0.95
+const ROAD_HALF_WIDTH: float = 1.0
+const ROAD_EDGE: Color = Color(0.42, 0.4, 0.42)
 
 var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
 var _built_road: bool = false
@@ -122,34 +123,36 @@ func _build_road(layout: ArenaLayout3D) -> void:
 		var lift: Vector3 = Vector3(0, 0.025, 0)
 		var v0: float = along / 4.0
 		var v1: float = (along + (b - a).length()) / 4.0
-		tool.set_normal(Vector3.UP)
-		tool.set_uv(Vector2(0, v0))
-		tool.add_vertex(a - side_a + lift)
-		tool.set_normal(Vector3.UP)
-		tool.set_uv(Vector2(1, v1))
-		tool.add_vertex(b + side_b + lift)
-		tool.set_normal(Vector3.UP)
-		tool.set_uv(Vector2(1, v0))
-		tool.add_vertex(a + side_a + lift)
-		tool.set_normal(Vector3.UP)
-		tool.set_uv(Vector2(0, v0))
-		tool.add_vertex(a - side_a + lift)
-		tool.set_normal(Vector3.UP)
-		tool.set_uv(Vector2(0, v1))
-		tool.add_vertex(b - side_b + lift)
-		tool.set_normal(Vector3.UP)
-		tool.set_uv(Vector2(1, v1))
-		tool.add_vertex(b + side_b + lift)
+		# три ряда вершин: тёмный край — светлая утоптанная середина — тёмный край
+		var rows_a: Array[Vector3] = [a - side_a + lift, a + lift * 1.2, a + side_a + lift]
+		var rows_b: Array[Vector3] = [b - side_b + lift, b + lift * 1.2, b + side_b + lift]
+		var shade: Array[Color] = [ROAD_EDGE, Color.WHITE, ROAD_EDGE]
+		var us: Array[float] = [0.0, 0.5, 1.0]
+		for k: int in 2:
+			_road_vertex(tool, rows_a[k], us[k], v0, shade[k])
+			_road_vertex(tool, rows_b[k + 1], us[k + 1], v1, shade[k + 1])
+			_road_vertex(tool, rows_a[k + 1], us[k + 1], v0, shade[k + 1])
+			_road_vertex(tool, rows_a[k], us[k], v0, shade[k])
+			_road_vertex(tool, rows_b[k], us[k], v1, shade[k])
+			_road_vertex(tool, rows_b[k + 1], us[k + 1], v1, shade[k + 1])
 		along += (b - a).length()
 		length = next
 	var road: MeshInstance3D = MeshInstance3D.new()
 	road.mesh = tool.commit()
 	var material: StandardMaterial3D = _textured("res://assets/noir/arena/tex/road.png", Vector3(1, 1, 1))
-	material.albedo_color = Color(0.62, 0.5, 0.4)
+	material.albedo_color = Color(0.7, 0.57, 0.45)
+	material.vertex_color_use_as_albedo = true
 	material.cull_mode = BaseMaterial3D.CULL_DISABLED
 	road.material_override = material
 	road.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(road)
+
+
+static func _road_vertex(tool: SurfaceTool, at: Vector3, u: float, v: float, shade: Color) -> void:
+	tool.set_normal(Vector3.UP)
+	tool.set_color(shade)
+	tool.set_uv(Vector2(u, v))
+	tool.add_vertex(at)
 
 
 func _side(layout: ArenaLayout3D, length: float) -> Vector3:
