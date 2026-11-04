@@ -28,7 +28,7 @@ const TEREM_SCALE: float = 2.3
 ## Лес: россыпь с интервалами (как на концепте — стволы стоят порознь, между ними дымка).
 const FOREST_MIN: Vector2 = Vector2(-26.0, -52.0)
 const FOREST_MAX: Vector2 = Vector2(44.0, 14.0)
-const TREE_GAP: float = 3.1
+const TREE_GAP: float = 3.4
 ## Вокруг поля полоса без деревьев (частокол, терем); у ближнего к камере края — шире, чтобы не закрыть двор.
 const CLEAR_FAR: float = 7.5
 const CLEAR_SIDE: float = 4.5
@@ -551,10 +551,10 @@ func _build_forest() -> void:
 		if p.y > BOARD_MAX.y and clear < CLEAR_NEAR + 8.0:
 			low.append(p)
 			continue
-		var size: float = _rng.randf_range(0.8, 1.35)
+		var size: float = _rng.randf_range(0.7, 1.45)
 		var basis: Basis = Basis(Vector3.UP, _rng.randf() * TAU).scaled(Vector3.ONE * size)
 		var tree: Transform3D = Transform3D(basis, Vector3(p.x, 0, p.y))
-		if _rng.randf() < 0.3:
+		if _rng.randf() < 0.38:
 			birches.append(tree)
 		else:
 			pines.append(tree)
@@ -646,7 +646,7 @@ func _build_mist() -> void:
 	var material: FogMaterial = FogMaterial.new()
 	material.density = 0.3
 	material.albedo = Color(0.5, 0.64, 0.7)
-	material.emission = Color(0.035, 0.05, 0.058)  # лунная дымка светится сама, а не только в лучах
+	material.emission = Color(0.075, 0.1, 0.11)  # лунная дымка светится сама: светлый низ, тёмные кроны над ним
 	material.height_falloff = 0.5
 	material.edge_fade = 0.8
 	var lo: Vector2 = BOARD_MIN - Vector2(3.0, 3.0)
@@ -659,7 +659,8 @@ func _build_mist() -> void:
 	for strip: Rect2 in strips:
 		var volume: FogVolume = FogVolume.new()
 		volume.shape = RenderingServer.FOG_VOLUME_SHAPE_BOX
-		volume.size = Vector3(strip.size.x, 4.0, strip.size.y)
-		volume.position = Vector3(strip.get_center().x, 1.2, strip.get_center().y)
+		# низовой туман: кроны выступают тёмными силуэтами над светлой дымкой, как на концепте
+		volume.size = Vector3(strip.size.x, 5.0, strip.size.y)
+		volume.position = Vector3(strip.get_center().x, 1.0, strip.get_center().y)
 		volume.material = material
 		add_child(volume)

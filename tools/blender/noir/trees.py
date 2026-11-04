@@ -188,19 +188,19 @@ def birch(seed: int = 5, height: float = 9.0):
         out = p - center
         return out.normalized() if out.length > 1e-4 else Vector((0, 0, 1))
 
-    for k in range(72):  # пучки листвы по овалу кроны (берёза на концепте — высокая узкая крона)
+    for k in range(130):  # пучки листвы по овалу кроны (берёза на концепте — высокая узкая крона)
         a = rnd.uniform(0, 2 * math.pi)
         e = rnd.uniform(-0.8, 1.0)
         r = Vector((math.cos(a) * math.cos(e) * 2.0, math.sin(a) * math.cos(e) * 2.0, math.sin(e) * 3.0))
-        at = center + r * rnd.uniform(0.45, 1.0)
+        at = center + r * rnd.uniform(0.35, 1.0)
         d = Vector((rnd.uniform(-1, 1), rnd.uniform(-1, 1), rnd.uniform(-0.2, 0.6))).normalized()
-        size = rnd.uniform(1.4, 2.2)
+        size = rnd.uniform(1.6, 2.5)
         # карточка «стоит»: текстура пучка растёт снизу вверх — корень внизу карточки
         root = at - Vector((0, 0, size * 0.5))
         card(b, root, Vector((d.x * 0.3, d.y * 0.3, 1.0)), size, size, rnd.uniform(0, math.pi), normal_at, 1,
              uv_box=(0, 1, 1, 0))
     bark = image_mat("birch_bark", FOLIAGE / "birch_bark.png", tint=(0.9, 0.9, 0.88))
-    leaves = image_mat("birch_leaves", FOLIAGE / "birch_leaves.png", tint=(0.78, 0.8, 0.72), alpha=True)
+    leaves = image_mat("birch_leaves", FOLIAGE / "birch_leaves.png", tint=(0.92, 0.94, 0.82), alpha=True)
     return b.finish("birch", [bark, leaves])
 
 
