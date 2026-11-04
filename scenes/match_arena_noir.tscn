@@ -7,7 +7,7 @@ background_mode = 1
 background_color = Color(0.012, 0.022, 0.03, 1)
 ambient_light_source = 2
 ambient_light_color = Color(0.32, 0.46, 0.52, 1)
-ambient_light_energy = 0.75
+ambient_light_energy = 0.9
 tonemap_mode = 4
 tonemap_exposure = 1.05
 fog_enabled = true
@@ -47,7 +47,7 @@ current = true
 [node name="Moon" type="DirectionalLight3D" parent="."]
 rotation_degrees = Vector3(-50, 145, 0)
 light_color = Color(0.55, 0.8, 0.86, 1)
-light_energy = 0.9
+light_energy = 1.35
 shadow_enabled = true
 directional_shadow_max_distance = 90.0
 
