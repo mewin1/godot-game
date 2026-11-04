@@ -15,12 +15,14 @@ const ROAD_HALF_WIDTH: float = 0.95
 
 var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
 var _built_road: bool = false
+var _terem_at: Vector3 = Vector3(INF, 0, INF)
+const TEREM_OFFSET: float = 3.4
+const TEREM_SCALE: float = 1.7
 
 
 func _ready() -> void:
 	_rng.seed = 22
 	_build_ground()
-	_build_forest()
 
 
 ## Дорога и ворота зависят от раскладки поля — строятся, когда ArenaStage3D её получит.
@@ -30,8 +32,23 @@ func build_for_layout(layout: ArenaLayout3D) -> void:
 	_built_road = true
 	_build_road(layout)
 	var entry: Vector3 = layout.road_point(0.0)
+	var finish: float = layout.road_end_length()
+	var toward: Vector3 = layout.road_direction(finish)
+	_terem_at = layout.road_point(finish) + toward * TEREM_OFFSET
+	var terem_scene: PackedScene = NoirModels.base()
+	if terem_scene != null:
+		# терем стоит в конце дороги, в линии частокола (как на концепте) и смотрит навстречу дороге
+		var house: Node3D = terem_scene.instantiate() as Node3D
+		add_child(house)
+		house.position = Vector3(_terem_at.x, 0, _terem_at.z)
+		house.rotation.y = atan2(-toward.x, -toward.z)
+		house.scale = Vector3.ONE * TEREM_SCALE  # на концепте арены терем — самый большой дом двора
+		var plate_scene: PackedScene = NoirModels.base_plate()
+		if plate_scene != null:
+			house.add_child(plate_scene.instantiate())
 	_build_walls(Vector2(entry.x, entry.z))
 	_build_fires()
+	_build_forest()
 
 
 func _prop(id: String) -> Node3D:
@@ -109,26 +126,26 @@ func _build_road(layout: ArenaLayout3D) -> void:
 		tool.set_uv(Vector2(0, v0))
 		tool.add_vertex(a - side_a + lift)
 		tool.set_normal(Vector3.UP)
-		tool.set_uv(Vector2(1, v0))
-		tool.add_vertex(a + side_a + lift)
-		tool.set_normal(Vector3.UP)
 		tool.set_uv(Vector2(1, v1))
 		tool.add_vertex(b + side_b + lift)
+		tool.set_normal(Vector3.UP)
+		tool.set_uv(Vector2(1, v0))
+		tool.add_vertex(a + side_a + lift)
 		tool.set_normal(Vector3.UP)
 		tool.set_uv(Vector2(0, v0))
 		tool.add_vertex(a - side_a + lift)
 		tool.set_normal(Vector3.UP)
-		tool.set_uv(Vector2(1, v1))
-		tool.add_vertex(b + side_b + lift)
-		tool.set_normal(Vector3.UP)
 		tool.set_uv(Vector2(0, v1))
 		tool.add_vertex(b - side_b + lift)
+		tool.set_normal(Vector3.UP)
+		tool.set_uv(Vector2(1, v1))
+		tool.add_vertex(b + side_b + lift)
 		along += (b - a).length()
 		length = next
 	var road: MeshInstance3D = MeshInstance3D.new()
 	road.mesh = tool.commit()
 	var material: StandardMaterial3D = _textured("res://assets/noir/arena/tex/road.png", Vector3(1, 1, 1))
-	material.albedo_color = Color(0.85, 0.72, 0.58)
+	material.albedo_color = Color(0.62, 0.5, 0.4)
 	material.cull_mode = BaseMaterial3D.CULL_DISABLED
 	road.material_override = material
 	road.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
@@ -175,6 +192,8 @@ func _build_walls(entry: Vector2) -> void:
 		for k: int in count:
 			var center: Vector2 = a + direction * (step * (k + 0.5))
 			if center.distance_to(gate_point) < GATE_WIDTH * 0.5 + step * 0.5:
+				continue
+			if center.distance_to(Vector2(_terem_at.x, _terem_at.z)) < 3.4:
 				continue
 			var at: Vector3 = Vector3(center.x, 0, center.y)
 			# фасадом внутрь двора: у дальних и боковых стен разворот на 180° для разнообразия не нужен
@@ -232,6 +251,13 @@ func _build_forest() -> void:
 			var p: Vector2 = _rect_point(center, half + Vector2(pad, pad), t)
 			p += Vector2(_rng.randf_range(-1.1, 1.1), _rng.randf_range(-1.1, 1.1))
 			var kind: String = "birch" if _rng.randf() < 0.2 else "pine"
+			if p.distance_to(Vector2(_terem_at.x, _terem_at.z)) < 4.5 + ring * 1.5:
+				continue  # терем не прячем за ёлками
+			if p.y > BOARD_MAX.y and ring < 2:
+				# ближний к камере край: высокие ели закрыли бы двор — только кусты и камни
+				_place("fern" if i % 2 == 0 else "rock", Vector3(p.x, 0, p.y), _rng.randf() * TAU,
+						_rng.randf_range(0.8, 1.3))
+				continue
 			_place(kind, Vector3(p.x, 0, p.y), _rng.randf() * TAU, _rng.randf_range(0.75, 1.25))
 	for i: int in 34:
 		var p: Vector2 = _rect_point(center, half + Vector2(1.2, 1.2), _rng.randf())

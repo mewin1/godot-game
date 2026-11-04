@@ -157,10 +157,14 @@ def run(group: str, mid: str, seed: int, octree: int, faces: int, steps: int, gu
     entry = hist[pid]
     status = entry.get("status", {})
     if status.get("status_str") != "success":
-        raise SystemExit(f"[h3d] {mid}: ошибка {json.dumps(status)[:1500]}")
+        msgs = [m for m in status.get("messages", []) if m[0] == "execution_error"]
+        err = msgs[0][1].get("exception_message", "")[:200] if msgs else str(status)[:200]
+        print(f"[h3d] {mid}: ошибка {err}", flush=True)
+        return None
     files = sorted((COMFY / "output" / "noir_h3d").glob(f"{mid}_*.glb"), key=lambda p: p.stat().st_mtime)
     out = OUT / f"{mid}.glb"
     shutil.copy(files[-1], out)
+    print(flush=True)
     print(f"[h3d] {mid}: {out.relative_to(ROOT)} {out.stat().st_size // 1024} КБ за {time.time() - t0:.0f} с")
     return out
 
@@ -188,7 +192,8 @@ def main() -> None:
         if only_prep:
             print(prepare(group, mid))
         else:
-            run(group, mid, seed, octree, faces, steps, guidance)
+            if run(group, mid, seed, octree, faces, steps, guidance) is None and len(ids) == 1:
+                raise SystemExit(1)
 
 
 if __name__ == "__main__":

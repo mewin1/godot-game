@@ -66,3 +66,27 @@ description: Новая 3D-модель «славянского нуара» (�
 Только свои файлы: `tools/blender/noir`, `assets/noir`, `source_art/noir`, `new_concept/compare/*.jpg`,
 `new_concept/REPORT_3D.md`. Концепты `new_concept/` целиком в Git не добавлять. Коммит на русском, без соавторства ИИ.
 Чужие незакоммиченные правки не трогать (параллельно работает Codex); в decisions.md — только свой кусок.
+
+## 7. Метод Hunyuan3D (с 4 ноября 2026, основной: точнее моделей кодом)
+Форма — нейросеть «картинка → 3D» Hunyuan3D-2 в локальном ComfyUI, покраска — проекция самого концепта.
+- **Установка** (уже сделана): `~/ComfyUI/custom_nodes/ComfyUI-Hunyuan3DWrapper` (kijai), веса
+  `~/ComfyUI/models/diffusion_models/hunyuan3d-dit-v2-0-fp16.safetensors`. Правка под transformers 5:
+  в `hy3dgen/shapegen/pipelines.py` ключи Dinov2 переименовываются (q/k/v/o_proj, gate/up/down_proj) —
+  после `git pull` узлов проверить. Текстурная часть Hunyuan на Linux не работает (нет nvcc для
+  custom_rasterizer) — и не нужна: покраска своя. ComfyUI: `~/ComfyUI/.venv/bin/python ~/ComfyUI/main.py --listen 127.0.0.1`.
+- **Сетка:** `python3 -I tools/concepts/h3d_gen.py <группа> <id> ... [--seed N]` → `source_art/noir_h3d/raw/<id>.glb`
+  (~40–90 с). Объект вырезается с концепта (фон и замкнутые «окна» фона) и кладётся на белый квадрат.
+  Группы: buildings, units, heroes, idols, arena_props (реквизит арены, концепты — `tools/concepts/arena_props_gen.py`).
+  Id реквизита не должны совпадать с id построек (жаровня арены — `fire_bowl`).
+- **Модель:** `tools/blender/noir/h3d.sh <id> ...` (flock: Blender строго по одному, можно звать параллельно) →
+  `assets/noir_h3d/<kind>/<id>.glb` (+ `<id>_plate.glb`), рендер и карта силуэта `new_concept/compare/renders/<id>_h3d*.png`.
+  Шаги в шапке `h3d.py`: ракурс концепта перебором по силуэту, плита по осям ровно в клетку, рост персонажей
+  по макушке (копьё не считается), срез «пола» под ногами, упрощение (юниты 30k, реквизит 4–30k граней),
+  покраска: концепт с растёкшимися за силуэт цветами (без ореолов) с камеры концепта на видимые грани,
+  у построек ещё 3 камеры через 90° (боковины без растяжек), остальное — размытая проекция; яркое — свечение.
+- **В игре** `NoirModels` берёт `assets/noir_h3d/...`, если файл есть, иначе старый `assets/noir/...` (старые не удалять —
+  выбор за автором). Сравнения «референс | старый | Hunyuan3D» с IoU: `python3 -I tools/blender/noir/final_sheet.py`
+  → `new_concept/final/<id>.jpg`, `all.jpg`.
+- **Доводка:** IoU < 0,8 или видимый брак — перегенерировать сетку с другим `--seed` и оставить лучший.
+  Видеопамять 12 ГБ: Hunyuan (~5 ГБ) + один Blender помещаются; два Blender — нет.
+- В Git: `assets/noir_h3d`, `source_art/noir_h3d/raw`; `.blend` и запечённые текстуры — нет (пересборка минутой).

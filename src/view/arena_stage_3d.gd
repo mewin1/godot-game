@@ -37,6 +37,8 @@ var _dying: Array[ArenaUnit3D] = []
 var _fog: Node3D
 var _fog_key: int = -1
 var _player_colors: Callable
+var _camera_goal: Vector3 = Vector3.ZERO
+var _camera_goal_size: float = 1.0
 
 
 func _init() -> void:
@@ -113,11 +115,13 @@ func frame_board(target: Rect2) -> void:
 		high = high.max(Vector2(local.x, local.y))
 	var extent: Vector2 = high - low
 	pixels_per_meter = minf(target.size.x / extent.x, target.size.y / extent.y) * FILL
-	_camera.size = size.y / pixels_per_meter
 	var center: Vector2 = (low + high) * 0.5
 	var offset: Vector2 = (target.get_center() - size * 0.5) / pixels_per_meter
 	var camera_local: Vector3 = Vector3(center.x - offset.x, center.y + offset.y, 0.0)
-	_camera.position = basis * camera_local + basis.z * CAMERA_DISTANCE
+	_camera_goal_size = size.y / pixels_per_meter
+	_camera_goal = basis * camera_local + basis.z * CAMERA_DISTANCE
+	_camera.size = _camera_goal_size
+	_camera.position = _camera_goal
 
 
 ## Точка сцены → координаты этого узла.
@@ -444,6 +448,8 @@ func _add_totem(length: float) -> void:
 	var holder: Node3D = Node3D.new()
 	_fog.add_child(holder)
 	holder.position = layout.road_point(length)
+	if _world.get_node_or_null("Arena") is NoirArena3D:
+		return  # в нуарной арене терем стоит в конце дороги у частокола
 	var terem: PackedScene = NoirModels.base()
 	if terem != null:
 		# Терем-база «славянского нуара» смотрит навстречу дороге.

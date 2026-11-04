@@ -50,9 +50,10 @@ HEIGHT_BY_ID = {"kolobok": 0.9, "bat": 1.3, "boss": 2.6, "gorynych": 3.2, "leshy
                 "palisade": 2.3, "palisade_post": 2.9, "gate": 3.8, "fire_bowl": 1.5, "pine": 7.5, "birch": 6.5,
                 "rock": 1.1, "fern": 0.9}
 CELL = 2.0
+PLATE_BY_ID = {"terem": 3.4}  # терем на концепте арены — дом почти в две клетки
 # предел треугольников: реквизит арены повторяется десятками (ели, частокол), юнитов на поле много
 FACES_BY_GROUP = {"units": 30000, "arena_props": 12000}
-FACES_BY_ID = {"pine": 7000, "birch": 7000, "rock": 4000, "fern": 4000, "palisade": 12000, "palisade_post": 8000,
+FACES_BY_ID = {"pine": 16000, "birch": 16000, "rock": 4000, "fern": 4000, "palisade": 12000, "palisade_post": 8000,
                "gate": 30000, "fire_bowl": 20000}
 
 
@@ -357,7 +358,7 @@ def stand(ob, group: str, mid: str, az_found: float) -> float:
         z0 = co[:, 2].min()
         low = co[co[:, 2] < z0 + 0.06 * (co[:, 2].max() - z0)]
         span = max(low[:, 0].max() - low[:, 0].min(), low[:, 1].max() - low[:, 1].min())
-        s = CELL / span
+        s = PLATE_BY_ID.get(mid, CELL) / span
         cx, cy = (low[:, 0].max() + low[:, 0].min()) / 2, (low[:, 1].max() + low[:, 1].min()) / 2
     else:
         z0, z1 = co[:, 2].min(), co[:, 2].max()

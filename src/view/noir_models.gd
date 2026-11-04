@@ -39,6 +39,11 @@ static func base() -> PackedScene:
 	return _load("base/terem.glb")
 
 
+## Своя плита терема (у моделей Hunyuan3D плита отрезана в отдельный файл).
+static func base_plate() -> PackedScene:
+	return _load("base/terem_plate.glb")
+
+
 static func idol() -> PackedScene:
 	return _load("idols/idol.glb")
 
