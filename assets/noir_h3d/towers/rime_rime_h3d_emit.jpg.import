@@ -3,22 +3,23 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://cqtm1p53ntsr8"
-path="res://.godot/imported/rime_rime_h3d_emit.jpg-665951b85e5d7389c1d49e276607d1c2.ctex"
+path.s3tc="res://.godot/imported/rime_rime_h3d_emit.jpg-665951b85e5d7389c1d49e276607d1c2.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
-"md5": "6faa5571b7d020ea492c0b3d4c2ca82f"
+"md5": "40d94f2ebc1f58981175c8c4456f01d8"
 }
 
 [deps]
 
 source_file="res://assets/noir_h3d/towers/rime_rime_h3d_emit.jpg"
-dest_files=["res://.godot/imported/rime_rime_h3d_emit.jpg-665951b85e5d7389c1d49e276607d1c2.ctex"]
+dest_files=["res://.godot/imported/rime_rime_h3d_emit.jpg-665951b85e5d7389c1d49e276607d1c2.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
@@ -40,4 +41,4 @@ process/normal_map_invert_y=false
 process/hdr_as_srgb=false
 process/hdr_clamp_exposure=false
 process/size_limit=0
-detect_3d/compress_to=1
+detect_3d/compress_to=0

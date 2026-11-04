@@ -3,22 +3,23 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://d3xxnpg5b5msm"
-path="res://.godot/imported/plague_plague.jpg-42f1760665923ecdea3b8c260ee79915.ctex"
+path.s3tc="res://.godot/imported/plague_plague.jpg-42f1760665923ecdea3b8c260ee79915.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
-"md5": "5339ea1c65fd0b07a24ef1e6b0c15d3b"
+"md5": "8dd3ab406758cf4b42061480f7c4425d"
 }
 
 [deps]
 
 source_file="res://assets/noir_h3d/towers/plague_plague.jpg"
-dest_files=["res://.godot/imported/plague_plague.jpg-42f1760665923ecdea3b8c260ee79915.ctex"]
+dest_files=["res://.godot/imported/plague_plague.jpg-42f1760665923ecdea3b8c260ee79915.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
@@ -40,4 +41,4 @@ process/normal_map_invert_y=false
 process/hdr_as_srgb=false
 process/hdr_clamp_exposure=false
 process/size_limit=0
-detect_3d/compress_to=1
+detect_3d/compress_to=0

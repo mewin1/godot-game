@@ -3,22 +3,23 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dwke2oi8s1nri"
-path="res://.godot/imported/plague_plate_plague_h3d_emit.jpg-7379a59d0b62e0f314f053187ea52c8f.ctex"
+path.s3tc="res://.godot/imported/plague_plate_plague_h3d_emit.jpg-7379a59d0b62e0f314f053187ea52c8f.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
-"md5": "86b87168da99299be9f6395678e1dcc1"
+"md5": "93cb66b956fb3cf9711df9ab32da016e"
 }
 
 [deps]
 
 source_file="res://assets/noir_h3d/towers/plague_plate_plague_h3d_emit.jpg"
-dest_files=["res://.godot/imported/plague_plate_plague_h3d_emit.jpg-7379a59d0b62e0f314f053187ea52c8f.ctex"]
+dest_files=["res://.godot/imported/plague_plate_plague_h3d_emit.jpg-7379a59d0b62e0f314f053187ea52c8f.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
@@ -40,4 +41,4 @@ process/normal_map_invert_y=false
 process/hdr_as_srgb=false
 process/hdr_clamp_exposure=false
 process/size_limit=0
-detect_3d/compress_to=1
+detect_3d/compress_to=0

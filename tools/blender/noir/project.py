@@ -86,6 +86,7 @@ def render_mask(out: Path) -> np.ndarray:
     sc.render.film_transparent = True
     sc.view_layers[0].material_override = white
     sc.render.engine = "BLENDER_EEVEE"
+    kit.cpu_engine(1)
     sc.render.filepath = str(out)
     bpy.ops.render.render(write_still=True)
     sc.render.film_transparent, sc.view_layers[0].material_override, sc.render.engine = prev

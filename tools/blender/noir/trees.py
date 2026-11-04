@@ -1,6 +1,6 @@
-"""Деревья и частокол арены кодом (не нейросетью): ель, берёза, звено частокола, столб.
+"""Деревья и частокол арены кодом (не нейросетью): ель, берёза, звено частокола, столб, папоротник.
 
-blender -b --factory-startup -P tools/blender/noir/trees.py -- [pine birch palisade palisade_post] [--no-export]
+blender -b --factory-startup -P tools/blender/noir/trees.py -- [pine birch palisade palisade_post fern] [--no-export]
 Ель — ствол с корой и мутовки веток-карточек (ветка ели с прозрачностью, крест из двух карточек),
 ветки к верхушке короче и круче. Берёза — белый ствол с изгибом, тонкие сучья и пучки листвы-карточек.
 Частокол — заострённые брёвна разной высоты на двух поперечинах. Фактуры — tools/concepts/foliage_gen.py
@@ -236,7 +236,66 @@ def palisade_post(seed: int = 4):
     return b.finish("palisade_post", [wood, iron])
 
 
-BUILD = {"pine": pine, "birch": birch, "palisade": palisade, "palisade_post": palisade_post}
+def color_mat(name: str, color, rough: float = 0.8, emit: float = 0.0):
+    m = bpy.data.materials.new(name)
+    m.use_nodes = True
+    p = m.node_tree.nodes["Principled BSDF"]
+    p.inputs["Base Color"].default_value = (*color, 1.0)
+    p.inputs["Roughness"].default_value = rough
+    if emit > 0:
+        p.inputs["Emission Color"].default_value = (*color, 1.0)
+        p.inputs["Emission Strength"].default_value = emit
+    return m
+
+
+def frond(b: Builder, yaw: float, length: float, rise: float, droop: float, mat: int, twist: float = 0.0):
+    """Вайя: изогнутая полоса от центра куста — поднимается и свисает к кончику (стебель — по V текстуры)."""
+    out = Vector((math.cos(yaw), math.sin(yaw), 0.0))
+    side = Vector((-out.y, out.x, 0.0))
+    side = Matrix.Rotation(twist, 3, out) @ side
+    width = length * 0.56
+    segs = 6
+    rows = []
+    for s in range(segs + 1):
+        t = s / segs
+        c = out * length * t + Vector((0, 0, rise * t - droop * t * t))
+        # лист шире к середине — полоса прямая, форму даёт прозрачность текстуры
+        rows.append((c - side * width * 0.5, c + side * width * 0.5, t))
+    for s in range(segs):
+        a0, a1, va = rows[s]
+        b0, b1, vb = rows[s + 1]
+        pts = [a0, b0, b1, a1]
+        n = (out * 0.25 + Vector((0, 0, 1))).normalized()
+        b.quad(pts, [(0, va), (0, vb), (1, vb), (1, va)], [n] * 4, mat)
+
+
+def fern(seed: int = 11):
+    """Куст папоротника как на концепте арены: ~1,7 м в ширину, вайи веером, пара рыжих грибов."""
+    rnd = random.Random(seed)
+    b = Builder()
+    rings = ((15, 0.85, 1.05, 0.7, 0.9, 0.75, 0.95),   # внешний круг — длинные, пологие, свисают
+             (10, 0.7, 0.9, 1.0, 1.25, 0.6, 0.8),      # средний
+             (7, 0.5, 0.65, 1.4, 1.7, 0.45, 0.6))      # внутренний — короче и круче, держат объём сверху
+    for ring, (count, l0, l1, r0, r1, d0, d1) in enumerate(rings):
+        for k in range(count):
+            yaw = 2 * math.pi * (k + ring * 0.37) / count + rnd.uniform(-0.15, 0.15)
+            ln = rnd.uniform(l0, l1)
+            frond(b, yaw, ln, ln * rnd.uniform(r0, r1), ln * rnd.uniform(d0, d1), 0, rnd.uniform(-0.4, 0.4))
+    for k in range(3):  # грибы у корня
+        a = rnd.uniform(0, 2 * math.pi)
+        at = Vector((math.cos(a), math.sin(a), 0)) * rnd.uniform(0.5, 0.62)
+        h = rnd.uniform(0.08, 0.14)
+        trunk(b, [tuple(at), tuple(at + Vector((0, 0, h)))], [0.022, 0.018], 1, sides=6)
+        cap = at + Vector((0, 0, h))
+        trunk(b, [tuple(cap - Vector((0, 0, 0.02))), tuple(cap + Vector((0, 0, 0.03))), tuple(cap + Vector((0, 0, 0.06)))],
+              [0.07, 0.06, 0.005], 2, sides=8)
+    leaf = image_mat("fern_frond", FOLIAGE / "fern_frond.png", tint=(0.85, 0.92, 0.8), alpha=True)
+    stem = color_mat("fern_stem", (0.82, 0.72, 0.55))
+    cap = color_mat("fern_cap", (0.75, 0.33, 0.1), emit=0.15)
+    return b.finish("fern", [leaf, stem, cap])
+
+
+BUILD = {"pine": pine, "birch": birch, "palisade": palisade, "palisade_post": palisade_post, "fern": fern}
 
 
 def main():

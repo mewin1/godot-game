@@ -678,6 +678,44 @@ def plate_top(ob) -> float:
     return z0 + 0.3
 
 
+def plate_image(ob):
+    for m in ob.data.materials:
+        if m is not None and m.node_tree is not None:
+            for node in m.node_tree.nodes:
+                if node.type == "TEX_IMAGE" and node.image is not None:
+                    return node.image
+    return None
+
+
+def patch_holes(bm, image=None):
+    """Вырез под башней в плите: у двухклеточных построек плита кладётся под каждую клетку, а башня
+    стоит между ними — вырез виден чёрной дырой. Латка заливается ровным цветом камня с угла плиты."""
+    uv = bm.loops.layers.uv.active
+    old = set(bm.faces)
+    boundary = [e for e in bm.edges if e.is_boundary]
+    bmesh.ops.holes_fill(bm, edges=boundary, sides=0)
+    if uv is None:
+        return
+    # ровный цвет камня: типичный (медианный) цвет верха плиты; берётся UV точки, ближайшей к нему по цвету
+    top = max(v.co.z for v in bm.verts)
+    uvs = [lp[uv].uv.copy() for v in bm.verts if v.co.z > top - 0.08
+           for lp in v.link_loops if lp.face in old]
+    stone = uvs[0]
+    if image is not None and uvs:
+        w, h = image.size
+        px = np.empty(w * h * 4, dtype=np.float32)
+        image.pixels.foreach_get(px)
+        px = px.reshape(h, w, 4)[..., :3]
+        cols = np.array([px[min(int(u.y * h), h - 1) % h, min(int(u.x * w), w - 1) % w] for u in uvs])
+        med = np.median(cols, axis=0)
+        stone = uvs[int(np.argmin(np.abs(cols - med).sum(axis=1)))]
+    for f in bm.faces:
+        if f in old:
+            continue
+        for loop in f.loops:
+            loop[uv].uv = stone
+
+
 def split_plate(ob, mid: str):
     zt = plate_top(ob)
     pl = ob.copy()
@@ -690,10 +728,96 @@ def split_plate(ob, mid: str):
         bmesh.ops.bisect_plane(bm, geom=bm.verts[:] + bm.edges[:] + bm.faces[:], dist=1e-5,
                                plane_co=(0, 0, zt), plane_no=(0, 0, 1),
                                clear_inner=not keep_below, clear_outer=keep_below)
+        if keep_below:
+            patch_holes(bm, plate_image(target))
         bm.to_mesh(target.data)
         bm.free()
     print(f"[h3d] плита до {zt:.2f} м")
     return pl
+
+
+def cap_top(ob) -> float:
+    """Верх шапки столба: снизу вверх от середины высоты — где ширина падает ниже 0,7 от самой широкой
+    части над серединой (шапка шире столба, то, что торчит над ней, — уже)."""
+    co = verts(ob)
+    z0, z1 = co[:, 2].min(), co[:, 2].max()
+
+    def extent(lo, hi):
+        sl = co[(co[:, 2] >= lo) & (co[:, 2] < hi)]
+        return 0.0 if len(sl) < 8 else float(max(np.ptp(sl[:, 0]), np.ptp(sl[:, 1])))
+
+    step = (z1 - z0) / 150
+    z = z0 + (z1 - z0) * 0.5
+    widest = 0.0
+    while z < z1:
+        e = extent(z, z + step)
+        widest = max(widest, e)
+        if widest > 0 and e < 0.7 * widest and z > z0 + (z1 - z0) * 0.7:
+            return z
+        z += step
+    return z1
+
+
+def thunder_bolt(ob, mid: str):
+    """Молния над столбом кодом: нейросеть рисует её вилкой (лишний зубец — «артефакт сверху»).
+    Всё выше шапки срезается, на его место — зигзаг-молния к камере концепта и вторая поперёк."""
+    co = verts(ob)
+    z1 = float(co[:, 2].max())
+    zc = cap_top(ob)
+    band = co[(co[:, 2] > zc - 0.05) & (co[:, 2] <= zc)]
+    cx, cy = float(band[:, 0].mean()), float(band[:, 1].mean())
+    bm = bmesh.new()
+    bm.from_mesh(ob.data)
+    bmesh.ops.bisect_plane(bm, geom=bm.verts[:] + bm.edges[:] + bm.faces[:], dist=1e-5,
+                           plane_co=(0, 0, zc + 0.01), plane_no=(0, 0, 1), clear_outer=True)
+    bm.to_mesh(ob.data)
+    bm.free()
+    h = (z1 - zc) * 1.05
+    # зигзаг как на концепте: широкий верх, излом, острый низ (x — поперёк взгляда, z — вверх), доли высоты
+    outline = [(-0.1, 1.0), (0.13, 1.0), (0.03, 0.6), (0.17, 0.6), (-0.07, -0.12), (0.0, 0.45), (-0.15, 0.45)]
+    cam = bpy.context.scene.camera
+    look = cam.matrix_world.to_3x3() @ Vector((0, 0, -1))
+    side = Vector((-look.y, look.x, 0)).normalized()
+    depth = Vector((look.x, look.y, 0)).normalized()
+    th = h * 0.045
+    me = bpy.data.meshes.new(f"{mid}_bolt")
+    bm = bmesh.new()
+    # две молнии крестом: башню в игре можно повернуть, плоская сбоку видна ребром («палкой»)
+    for sd, dp in ((side, depth), (depth, -side)):
+        rows = []
+        for d in (-th, th):
+            rows.append([bm.verts.new(Vector((cx, cy, zc)) + sd * (x * h) + dp * d + Vector((0, 0, z * h)))
+                         for x, z in outline])
+        bm.faces.new(rows[0][::-1])
+        bm.faces.new(rows[1])
+        n = len(outline)
+        for i in range(n):
+            bm.faces.new([rows[0][i], rows[0][(i + 1) % n], rows[1][(i + 1) % n], rows[1][i]])
+    # фаски: грани ловят лунный свет, молния выглядит металлической, а не вырезанной из бумаги
+    bmesh.ops.bevel(bm, geom=bm.edges[:], offset=th * 0.8, segments=1, affect="EDGES")
+    bm.to_mesh(me)
+    bm.free()
+    mat = bpy.data.materials.new(f"{mid}_bolt")
+    mat.use_nodes = True
+    pr = mat.node_tree.nodes["Principled BSDF"]
+    pr.inputs["Base Color"].default_value = (0.74, 0.72, 0.92, 1.0)
+    pr.inputs["Metallic"].default_value = 0.4
+    pr.inputs["Roughness"].default_value = 0.35
+    pr.inputs["Emission Color"].default_value = (0.8, 0.74, 1.0, 1.0)
+    pr.inputs["Emission Strength"].default_value = 0.9
+    me.materials.append(mat)
+    bolt = bpy.data.objects.new(f"{mid}_bolt", me)
+    bpy.context.scene.collection.objects.link(bolt)
+    bpy.ops.object.select_all(action="DESELECT")
+    bolt.select_set(True)
+    ob.select_set(True)
+    bpy.context.view_layer.objects.active = ob
+    bpy.ops.object.join()
+    print(f"[h3d] {mid}: молния кодом над шапкой {zc:.2f} м, высота {h:.2f} м")
+
+
+# доработки кодом после покраски: то, что нейросеть стабильно портит
+EXTRAS = {"thunder": thunder_bolt}
 
 
 def add_rig(ob, mid: str, group: str):
@@ -880,6 +1004,8 @@ def build(mid: str, size: int, no_export: bool):
     plate = None
     if group in ("buildings", "idols"):
         plate = split_plate(ob, mid)
+    if mid in EXTRAS:
+        EXTRAS[mid](ob, mid)
     kit.render(RENDERS / f"{mid}_h3d.png")
     if group in ("units", "heroes"):
         arm = add_rig(ob, mid, group)

@@ -5,6 +5,7 @@
 Масштаб: 1 единица = 1 м, клетка поля 2 м. Фронт модели смотрит на -Y (в Godot на +Z, к камере).
 """
 import math
+import os
 import random
 from pathlib import Path
 
@@ -469,8 +470,22 @@ def _light(name, kind, energy, color, rot):
     bpy.context.scene.collection.objects.link(lo)
 
 
+def cpu_engine(samples: int) -> bool:
+    """NOIR_CPU=1: Cycles на процессоре вместо EEVEE (EEVEE временами падает в драйвере видеокарты)."""
+    if not os.environ.get("NOIR_CPU"):
+        return False
+    sc = bpy.context.scene
+    sc.render.engine = "CYCLES"
+    sc.cycles.device = "CPU"
+    sc.cycles.samples = samples
+    sc.cycles.use_denoising = samples > 4
+    return True
+
+
 def render(path: Path):
+    """Кадр сцены (NOIR_CPU=1 — процессором, см. cpu_engine)."""
     path.parent.mkdir(parents=True, exist_ok=True)
+    cpu_engine(24)
     bpy.context.scene.render.filepath = str(path)
     bpy.ops.render.render(write_still=True)
 

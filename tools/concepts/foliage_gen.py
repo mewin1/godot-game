@@ -1,7 +1,7 @@
 """Фактуры деревьев арены (ComfyUI :8188, Z-Image Turbo): карточки веток с прозрачностью и кора.
 
 python3 -I tools/concepts/foliage_gen.py [имя ...] [--seed N] -> source_art/noir/foliage/<имя>.png
-Карточки (ветка ели, ветки берёзы) рисуются на чёрном, прозрачность — по отличию от фона;
+Карточки (ветка ели, ветки берёзы, вайя папоротника) рисуются на чёрном, прозрачность — по отличию от фона;
 кора — бесшовная (как texture_gen). Деревья собирает tools/blender/noir/trees.py.
 """
 import sys
@@ -24,6 +24,9 @@ CARDS = {
                      "side twigs, slightly lighter needle tips",
     "birch_leaves": "a single leafy birch twig spray without trunk: thin dark twigs fanning out with many small "
                     "oval leaves in muted olive green and dull autumn gold, seen from the front, filling the frame",
+    "fern_frond": "a single long fern frond seen from directly above, one thin central stem goes straight from the "
+                  "bottom edge to the top edge, many paired narrow leaflets on both sides getting smaller towards "
+                  "the pointed tip, rich deep green with lighter yellow-green leaflet edges",
 }
 TILES = {
     "pine_bark": "dark grey-brown spruce tree bark with long vertical scaly plates, deep cracks and a little moss",

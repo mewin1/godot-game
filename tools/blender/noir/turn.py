@@ -1,6 +1,6 @@
 """Облёт готовой модели: 4 ракурса (спереди-слева, справа, сзади, слева) в одну полосу — видно бока и спину.
 
-blender -b --factory-startup -P tools/blender/noir/turn.py -- <out.png> <a.glb> [<b.glb> ...]
+blender -b --factory-startup -P tools/blender/noir/turn.py -- <out.png> <a.glb> [<b.glb> ...] [--cpu]
 Несколько GLB — по строке на каждый (сравнение «было | стало»). Свет — как в kit.setup_render (нуар).
 """
 import math
@@ -15,6 +15,7 @@ import numpy as np  # noqa: E402
 import kit  # noqa: E402
 
 AZ = (-40.0, 50.0, 140.0, 230.0)
+CPU = "--cpu" in sys.argv
 W, H = 420, 520
 
 
@@ -31,12 +32,18 @@ def frame(glb: Path, az: float, out: Path) -> None:
             lo, hi = np.minimum(lo, p), np.maximum(hi, p)
     size = float(max(hi - lo))
     kit.setup_render(res=(W, H), elevation=28.0, azimuth=az, ortho=size * 1.25, look_z=float(lo[2] + hi[2]) / 2)
+    if CPU:  # EEVEE иногда падает в драйвере на текстурированных моделях — запасной рендер процессором
+        sc = bpy.context.scene
+        sc.render.engine = "CYCLES"
+        sc.cycles.device = "CPU"
+        sc.cycles.samples = 24
+        sc.cycles.use_denoising = True
     kit.render(out)
 
 
 def main() -> None:
     argv = sys.argv[sys.argv.index("--") + 1:]
-    out, glbs = Path(argv[0]), [Path(a) for a in argv[1:]]
+    out, glbs = Path(argv[0]), [Path(a) for a in argv[1:] if a != "--cpu"]
     tmp = out.parent / "_turn"
     tmp.mkdir(parents=True, exist_ok=True)
     rows = []

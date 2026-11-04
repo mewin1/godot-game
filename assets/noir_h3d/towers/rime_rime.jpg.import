@@ -3,22 +3,23 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dwblpsy82mkpe"
-path="res://.godot/imported/rime_rime.jpg-98c283bc60589da255737a16f12237c5.ctex"
+path.s3tc="res://.godot/imported/rime_rime.jpg-98c283bc60589da255737a16f12237c5.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
-"md5": "5e3f4cb62fc83b82aa1df9771a31854f"
+"md5": "9c84fc76106c2d5385b6942448fc1130"
 }
 
 [deps]
 
 source_file="res://assets/noir_h3d/towers/rime_rime.jpg"
-dest_files=["res://.godot/imported/rime_rime.jpg-98c283bc60589da255737a16f12237c5.ctex"]
+dest_files=["res://.godot/imported/rime_rime.jpg-98c283bc60589da255737a16f12237c5.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
@@ -40,4 +41,4 @@ process/normal_map_invert_y=false
 process/hdr_as_srgb=false
 process/hdr_clamp_exposure=false
 process/size_limit=0
-detect_3d/compress_to=1
+detect_3d/compress_to=0

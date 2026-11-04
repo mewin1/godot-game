@@ -1,6 +1,7 @@
 """Форма модели по концепту нейросетью Hunyuan3D-2 (узлы ComfyUI-Hunyuan3DWrapper в локальном ComfyUI :8188).
 
 Запуск: python3 -I tools/concepts/h3d_gen.py <группа> <id> [<id>...] [--seed N] [--octree 384] [--faces 80000]
+        [--tag _s7] [--bg 150,155,160]
 Концепт new_concept/<группа>/<id>_16.png → объект без фона на белом квадрате (как учили Hunyuan) →
 сетка без текстуры source_art/noir_h3d/raw/<id>.glb (+ <id>_in.png — что ушло в сеть).
 Покраска — в Blender проекцией концепта (tools/blender/noir/h3d.py): текстурной части Hunyuan на Linux
@@ -84,6 +85,8 @@ def concept_mask(px: np.ndarray, thr: float = 0.012) -> np.ndarray:
 MAIN_ONLY = {"spirit"}
 # светлый полупрозрачный объект на белом теряет края — серый фон
 BG_BY_ID = {"spirit": (70, 78, 84)}
+# --tag _s7: вариант пишется рядом (<id>_s7.glb), основная сетка не трогается; --bg R,G,B — свой фон
+OPTS = {"tag": "", "bg": None}
 
 
 def largest_part(mask: np.ndarray) -> np.ndarray:
@@ -134,12 +137,12 @@ def prepare(group: str, mid: str, size: int = 518, border: float = 0.12) -> Path
     # мягкий край маски, чтобы не тащить в сеть ореол фона
     side = max(x1 - x0, y1 - y0)
     full = int(side / (1 - 2 * border))
-    canvas = Image.new("RGB", (full, full), BG_BY_ID.get(mid, (255, 255, 255)))
+    canvas = Image.new("RGB", (full, full), OPTS["bg"] or BG_BY_ID.get(mid, (255, 255, 255)))
     ox, oy = (full - (x1 - x0)) // 2, (full - (y1 - y0)) // 2
     canvas.paste(crop, (ox, oy), alpha)
     canvas = canvas.resize((size, size), Image.LANCZOS)
     OUT.mkdir(parents=True, exist_ok=True)
-    out = OUT / f"{mid}_in.png"
+    out = OUT / f"{mid}{OPTS['tag']}_in.png"
     canvas.save(out)
     return out
 
@@ -193,7 +196,7 @@ def run(group: str, mid: str, seed: int, octree: int, faces: int, steps: int, gu
         print(f"[h3d] {mid}: ошибка {err}", flush=True)
         return None
     files = sorted((COMFY / "output" / "noir_h3d").glob(f"{mid}_*.glb"), key=lambda p: p.stat().st_mtime)
-    out = OUT / f"{mid}.glb"
+    out = OUT / f"{mid}{OPTS['tag']}.glb"
     shutil.copy(files[-1], out)
     print(flush=True)
     print(f"[h3d] {mid}: {out.relative_to(ROOT)} {out.stat().st_size // 1024} КБ за {time.time() - t0:.0f} с")
@@ -216,6 +219,9 @@ def main() -> None:
     faces = int(opt("--faces", "80000"))
     steps = int(opt("--steps", "50"))
     guidance = float(opt("--guidance", "5.5"))
+    OPTS["tag"] = opt("--tag", "")
+    bg = opt("--bg", "")
+    OPTS["bg"] = tuple(int(v) for v in bg.split(",")) if bg else None
     only_prep = "--prep" in args
     args = [a for a in args if a != "--prep"]
     group, ids = args[0], args[1:]
