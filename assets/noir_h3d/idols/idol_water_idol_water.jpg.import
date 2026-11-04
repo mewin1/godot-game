@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dq0flgt18qiom"
-path="res://.godot/imported/idol_water_idol_water.jpg-817fac7ff97961c974361b83ce5533c0.ctex"
+path.s3tc="res://.godot/imported/idol_water_idol_water.jpg-817fac7ff97961c974361b83ce5533c0.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "5ca5a283c08b31bf1a65212b4130a4e6"
@@ -14,11 +15,11 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/noir_h3d/idols/idol_water_idol_water.jpg"
-dest_files=["res://.godot/imported/idol_water_idol_water.jpg-817fac7ff97961c974361b83ce5533c0.ctex"]
+dest_files=["res://.godot/imported/idol_water_idol_water.jpg-817fac7ff97961c974361b83ce5533c0.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
@@ -39,5 +40,5 @@ process/premult_alpha=false
 process/normal_map_invert_y=false
 process/hdr_as_srgb=false
 process/hdr_clamp_exposure=false
-process/size_limit=0
+process/size_limit=2048
 detect_3d/compress_to=1

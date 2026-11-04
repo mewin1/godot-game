@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dapvniwivmhxq"
-path="res://.godot/imported/leshy_leshy_h3d_emit.jpg-f332be3c672ec2a657b80943ce7cb885.ctex"
+path.s3tc="res://.godot/imported/leshy_leshy_h3d_emit.jpg-f332be3c672ec2a657b80943ce7cb885.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "2512fe157f388627125b20579eaeac2f"
@@ -14,11 +15,11 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/noir_h3d/heroes/leshy_leshy_h3d_emit.jpg"
-dest_files=["res://.godot/imported/leshy_leshy_h3d_emit.jpg-f332be3c672ec2a657b80943ce7cb885.ctex"]
+dest_files=["res://.godot/imported/leshy_leshy_h3d_emit.jpg-f332be3c672ec2a657b80943ce7cb885.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
@@ -39,5 +40,5 @@ process/premult_alpha=false
 process/normal_map_invert_y=false
 process/hdr_as_srgb=false
 process/hdr_clamp_exposure=false
-process/size_limit=0
+process/size_limit=2048
 detect_3d/compress_to=1

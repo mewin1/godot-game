@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dse1obvc2w5jf"
-path="res://.godot/imported/torch_post_torch_post.jpg-a669c5b03c13ae52584102515a97f667.ctex"
+path.s3tc="res://.godot/imported/torch_post_torch_post.jpg-a669c5b03c13ae52584102515a97f667.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "3a7a082c7b2bdbc6a94147de0770a84a"
@@ -14,11 +15,11 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/noir_h3d/arena/torch_post_torch_post.jpg"
-dest_files=["res://.godot/imported/torch_post_torch_post.jpg-a669c5b03c13ae52584102515a97f667.ctex"]
+dest_files=["res://.godot/imported/torch_post_torch_post.jpg-a669c5b03c13ae52584102515a97f667.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
@@ -39,5 +40,5 @@ process/premult_alpha=false
 process/normal_map_invert_y=false
 process/hdr_as_srgb=false
 process/hdr_clamp_exposure=false
-process/size_limit=0
+process/size_limit=2048
 detect_3d/compress_to=1

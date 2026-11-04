@@ -10,6 +10,8 @@ const ROOT_H3D: String = "res://assets/noir_h3d/"
 const HUMAN_HEIGHT: float = 1.7
 ## Высота постройки по уровню (как в Blender: I ≈ 1 клетка, II ≈ 1,4, III ≈ 1,8).
 const TIER_HEIGHT: PackedFloat32Array = [2.0, 2.8, 3.6]
+## Папки моделей, которые матч берёт по ходу игры (см. all_paths).
+const MODEL_FOLDERS: PackedStringArray = ["towers/", "plates/", "units/", "base/", "idols/"]
 
 static var _cache: Dictionary[String, PackedScene] = {}
 static var _icons: Dictionary[String, Texture2D] = {}
@@ -60,6 +62,29 @@ static func idol_icon(god: StringName) -> Texture2D:
 
 static func idol() -> PackedScene:
 	return _load("idols/idol.glb")
+
+
+## Все модели матча (постройки, плиты, юниты, терем, идол) — для чтения заранее на экране загрузки,
+## иначе модель читается с диска в миг первой постройки и игра подвисает.
+static func all_paths() -> PackedStringArray:
+	var paths: PackedStringArray = []
+	for folder: String in MODEL_FOLDERS:
+		for file: String in ResourceLoader.list_directory(ROOT_H3D + folder):
+			if file.get_extension() == "glb":
+				paths.append(ROOT_H3D + folder + file)
+		for file: String in ResourceLoader.list_directory(ROOT + folder):
+			if file.get_extension() == "glb" and not ResourceLoader.exists(ROOT_H3D + folder + file):
+				paths.append(ROOT + folder + file)
+	return paths
+
+
+## Модель, прочитанная заранее: дальше она берётся из кэша без обращения к диску.
+static func remember(path: String, scene: PackedScene) -> void:
+	_cache[path] = scene
+
+
+static func is_cached(path: String) -> bool:
+	return _cache.has(path)
 
 
 static func _load(path: String) -> PackedScene:

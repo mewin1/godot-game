@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://4ffkn0jck82i"
-path="res://.godot/imported/fern_fern_h3d_emit.jpg-9961b71497ab4f9043177a279966650f.ctex"
+path.s3tc="res://.godot/imported/fern_fern_h3d_emit.jpg-9961b71497ab4f9043177a279966650f.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "0a45e2c78e91f3a4284f61c3e2a84bee"
@@ -14,11 +15,11 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/noir_h3d/arena/fern_fern_h3d_emit.jpg"
-dest_files=["res://.godot/imported/fern_fern_h3d_emit.jpg-9961b71497ab4f9043177a279966650f.ctex"]
+dest_files=["res://.godot/imported/fern_fern_h3d_emit.jpg-9961b71497ab4f9043177a279966650f.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
@@ -39,5 +40,5 @@ process/premult_alpha=false
 process/normal_map_invert_y=false
 process/hdr_as_srgb=false
 process/hdr_clamp_exposure=false
-process/size_limit=0
+process/size_limit=2048
 detect_3d/compress_to=1

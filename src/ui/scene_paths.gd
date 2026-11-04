@@ -10,14 +10,22 @@ const COMBAT_SANDBOX: String = "res://scenes/combat_sandbox.tscn"
 const HEROES: String = "res://scenes/heroes_gallery.tscn"
 const VISUAL_SLICE: String = "res://scenes/visual_slice.tscn"
 const SETTINGS: String = "res://scenes/settings.tscn"
+const LOADING: String = "res://scenes/loading_screen.tscn"
+## Сцены с 3D-ареной открываются через экран загрузки (модели читаются заранее).
+const VIA_LOADING: PackedStringArray = [MATCH]
 
 
 ## Параметр следующего перехода из меню в матч.
 static var requested_teams: int = 0
+## Куда идти экрану загрузки.
+static var loading_target: String = ""
 
 
 ## Переход на другую сцену с проверкой ошибки.
 static func go_to(tree: SceneTree, path: String) -> void:
+	if VIA_LOADING.has(path):
+		loading_target = path
+		path = LOADING
 	var error: Error = tree.change_scene_to_file(path)
 	if error != OK:
 		push_error("Не удалось открыть сцену %s: %s" % [path, error_string(error)])

@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://msgxudx48dyx"
-path="res://.godot/imported/dew_plate_dew.jpg-67af9a0e298d37c6b08d4dd7b1d5efcd.ctex"
+path.s3tc="res://.godot/imported/dew_plate_dew.jpg-67af9a0e298d37c6b08d4dd7b1d5efcd.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "fe0e633700e59b314afc2a394356631a"
@@ -14,11 +15,11 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/noir_h3d/towers/dew_plate_dew.jpg"
-dest_files=["res://.godot/imported/dew_plate_dew.jpg-67af9a0e298d37c6b08d4dd7b1d5efcd.ctex"]
+dest_files=["res://.godot/imported/dew_plate_dew.jpg-67af9a0e298d37c6b08d4dd7b1d5efcd.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
@@ -39,5 +40,5 @@ process/premult_alpha=false
 process/normal_map_invert_y=false
 process/hdr_as_srgb=false
 process/hdr_clamp_exposure=false
-process/size_limit=0
+process/size_limit=2048
 detect_3d/compress_to=1

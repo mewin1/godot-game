@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://b7i6vjfrssmj5"
-path="res://.godot/imported/terem_plate_terem.jpg-f639789398a05ae77ca0a55af7fa6377.ctex"
+path.s3tc="res://.godot/imported/terem_plate_terem.jpg-f639789398a05ae77ca0a55af7fa6377.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "9f35e26a28c3fddcd785dc31d6160c00"
@@ -14,11 +15,11 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/noir_h3d/base/terem_plate_terem.jpg"
-dest_files=["res://.godot/imported/terem_plate_terem.jpg-f639789398a05ae77ca0a55af7fa6377.ctex"]
+dest_files=["res://.godot/imported/terem_plate_terem.jpg-f639789398a05ae77ca0a55af7fa6377.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
@@ -39,5 +40,5 @@ process/premult_alpha=false
 process/normal_map_invert_y=false
 process/hdr_as_srgb=false
 process/hdr_clamp_exposure=false
-process/size_limit=0
+process/size_limit=2048
 detect_3d/compress_to=1

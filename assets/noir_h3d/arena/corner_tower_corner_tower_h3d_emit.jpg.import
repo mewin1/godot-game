@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://c5ie37rnsq2aw"
-path="res://.godot/imported/corner_tower_corner_tower_h3d_emit.jpg-ef6444654f308893c8a90e4e29bc3692.ctex"
+path.s3tc="res://.godot/imported/corner_tower_corner_tower_h3d_emit.jpg-ef6444654f308893c8a90e4e29bc3692.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "e92ea1c3ca0eae79d1fe374ff77a92d3"
@@ -14,11 +15,11 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/noir_h3d/arena/corner_tower_corner_tower_h3d_emit.jpg"
-dest_files=["res://.godot/imported/corner_tower_corner_tower_h3d_emit.jpg-ef6444654f308893c8a90e4e29bc3692.ctex"]
+dest_files=["res://.godot/imported/corner_tower_corner_tower_h3d_emit.jpg-ef6444654f308893c8a90e4e29bc3692.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
@@ -39,5 +40,5 @@ process/premult_alpha=false
 process/normal_map_invert_y=false
 process/hdr_as_srgb=false
 process/hdr_clamp_exposure=false
-process/size_limit=0
+process/size_limit=2048
 detect_3d/compress_to=1

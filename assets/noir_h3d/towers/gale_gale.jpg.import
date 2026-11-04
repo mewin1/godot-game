@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://cc4857r8jjmcp"
-path="res://.godot/imported/gale_gale.jpg-61a0dd5f6e340995dafc5f63f784d5b2.ctex"
+path.s3tc="res://.godot/imported/gale_gale.jpg-61a0dd5f6e340995dafc5f63f784d5b2.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "f1d7c79120e2adb8b81051a3801381f2"
@@ -14,11 +15,11 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/noir_h3d/towers/gale_gale.jpg"
-dest_files=["res://.godot/imported/gale_gale.jpg-61a0dd5f6e340995dafc5f63f784d5b2.ctex"]
+dest_files=["res://.godot/imported/gale_gale.jpg-61a0dd5f6e340995dafc5f63f784d5b2.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
@@ -39,5 +40,5 @@ process/premult_alpha=false
 process/normal_map_invert_y=false
 process/hdr_as_srgb=false
 process/hdr_clamp_exposure=false
-process/size_limit=0
+process/size_limit=2048
 detect_3d/compress_to=1
