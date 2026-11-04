@@ -76,7 +76,9 @@ func _build_noir(tower: TowerState, style: Arena3DStyle, cell_offsets: Array[Vec
 	_model = Node3D.new()
 	add_child(_model)
 	var body: Node3D = scene.instantiate() as Node3D
-	_tune_materials(body, style.noir_model_glow, style.noir_model_tone, style.noir_model_rim)
+	var glow: float = style.noir_glow_by_id.get(tower.data.id, style.noir_model_glow)
+	var tone: float = style.noir_tone_by_id.get(tower.data.id, style.noir_model_tone)
+	_tune_materials(body, glow, tone, style.noir_model_rim)
 	_model.add_child(body)
 	# цветное пятно света стихии на брусчатке вокруг постройки (как на концепте арены)
 	if tower.data.god != &"":

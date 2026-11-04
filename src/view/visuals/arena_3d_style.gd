@@ -26,6 +26,10 @@ extends Resource
 @export var noir_model_glow: float = 0.9
 ## Яркость фактуры постройки (1 — как в модели; ночные фактуры тёмные) и лунный контур силуэта.
 @export var noir_model_tone: float = 1.3
+## Своё свечение отдельных построек (у Инея светится и снежная крыша — без этого белое пятно).
+@export var noir_glow_by_id: Dictionary[StringName, float] = {&"rime": 0.2}
+## Своя яркость фактуры (белые снег, туча и лопасти иначе выгорают в пятно).
+@export var noir_tone_by_id: Dictionary[StringName, float] = {&"rime": 0.8, &"rain": 0.85, &"wind": 0.9}
 @export var noir_model_rim: float = 0.35
 ## Масштаб модели постройки «нуар» (плита не меняется).
 @export var noir_model_scale: float = 1.7
@@ -33,7 +37,7 @@ extends Resource
 @export var noir_aura_energy: float = 2.4
 @export var noir_aura_range: float = 5.5
 ## Яркость рамки цвета стихии вокруг постройки (различать соседей в тесноте).
-@export var noir_frame_energy: float = 0.6
+@export var noir_frame_energy: float = 0.4
 ## Сдвиг уровня мип-карт картинки арены: меньше нуля — фактуры резче (слишком мало — рябь).
 @export var mipmap_bias: float = -0.5
 

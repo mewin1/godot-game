@@ -26,7 +26,9 @@ const ROAD_EDGE: Color = Color(0.42, 0.4, 0.42)
 const TEREM_OFFSET: float = 4.4
 ## Сторона, откуда смотрит камера матча (ArenaStage3D: поворот ≈ 83°, камера над краем поля x = 18).
 const VIEW_FROM: Vector3 = Vector3(1.0, 0.0, 0.0)
-const TEREM_SCALE: float = 2.3
+const TEREM_SCALE: float = 1.55
+## Доворот модели терема (у модели Hunyuan фасад с крыльцом смотрит не по оси +z).
+const TEREM_YAW: float = -PI * 0.5
 ## Лес: россыпь с интервалами (как на концепте — стволы стоят порознь, между ними дымка).
 ## Камера перспективная и пологая — дальний лес уходит к горизонту в дымку.
 const FOREST_MIN: Vector2 = Vector2(-60.0, -120.0)
@@ -177,13 +179,22 @@ const PROP_TINTS: Dictionary[String, Color] = {"q/Rock": Color(0.45, 0.5, 0.52)}
 const ROCK_IDS: Array[String] = ["q/Rock_Medium_1", "q/Rock_Medium_2", "q/Rock_Medium_3"]
 ## Факелы вдоль частокола: на концепте стена тёмная, тёплые пятна — у жаровен.
 const TORCH_ENERGY: float = 1.4
-## Чаша-жаровня в середине каждой стены (выключено: вместе с угловыми чашами двор был в огнях).
-const WALL_BOWLS: bool = false
+## Чаша-жаровня в середине каждой стены (как на концепте 05); в углах — башни с шатрами, без огня.
+const WALL_BOWLS: bool = true
 const WALL_BOWL_SCALE: float = 1.3
 const BOWL_ENERGY: float = 4.0
 const BOWL_REACH: float = 7.5
 ## Большие чаши в углах двора: тёплое пятно, но не заливать двор оранжевым.
 const CORNER_FIRE_ENERGY: float = 6.0
+## На сколько метров угловая чаша отходит внутрь двора от угловой башни.
+const CORNER_FIRE_INSET: float = 0.25
+## Большие чаши в углах двора (выключено: в углах башни с шатрами, огонь закрывал их).
+const CORNER_BOWLS: bool = false
+## Масштаб угловых башен с шатрами.
+const CORNER_TOWER_SCALE: float = 1.8
+## Жаровни по сторонам ворот.
+const GATE_BOWL_SCALE: float = 1.2
+const GATE_BOWL_ENERGY: float = 3.5
 const CORNER_FIRE_REACH: float = 9.0
 const TORCH_REACH: float = 6.5
 
@@ -545,7 +556,7 @@ func _build_terem(at: Vector3, out3: Vector3) -> void:
 	_yard.add_child(house)
 	house.position = Vector3(at.x, 0, at.z)
 	# лицом к камере (к дороге камера видела бы глухой бок); поворот кратен 90° — плита вровень с двором
-	house.rotation.y = atan2(VIEW_FROM.x, VIEW_FROM.z)
+	house.rotation.y = atan2(VIEW_FROM.x, VIEW_FROM.z) + TEREM_YAW
 	house.scale = Vector3.ONE * TEREM_SCALE  # на концепте арены терем — самый большой дом двора
 	_warm_light(house.position - out3 * 2.2 + Vector3(0, 2.4, 0), 4.0, 9.0)
 	var plate_scene: PackedScene = NoirModels.base_plate()
@@ -675,13 +686,21 @@ func _build_walls(fine: Dictionary[Vector2i, bool], entry: Vector2, door: Vector
 	# круглые срубы-башенки на выступающих углах (как на концепте), столбы — на внутренних
 	for corner: Vector2 in corners:
 		if _corner_inside_count(fine, corner) == 1:
-			_place("corner_tower", Vector3(corner.x, 0, corner.y), _rng.randf() * TAU)
+			# башня с шатром (модель 05.11) — крупнее частокола, видна как угол крепости
+			_place("corner_tower", Vector3(corner.x, 0, corner.y), _rng.randf() * TAU, CORNER_TOWER_SCALE)
 		else:
 			_place("palisade_post", Vector3(corner.x, 0, corner.y), _rng.randf() * TAU)
 	if gate_run != null:
 		var gate_yaw: float = 0.0 if gate_run.out.y != 0.0 else PI * 0.5
 		_place("gate", Vector3(gate_point.x, 0, gate_point.y), gate_yaw)
 		_warm_light(Vector3(gate_point.x, 3.0, gate_point.y), 3.0, 7.0)
+		# ворота — тёплый акцент слева (как на концепте 05): по жаровне с огнём по обе стороны, снаружи двора
+		var along: Vector2 = Vector2(-gate_run.out.y, gate_run.out.x)
+		for side: float in [-1.0, 1.0]:
+			var spot: Vector2 = gate_point + along * side * (GATE_WIDTH * 0.5 + 0.9) + gate_run.out * 0.9
+			_add_flame(_place("fire_bowl", Vector3(spot.x, 0, spot.y), _rng.randf() * TAU, GATE_BOWL_SCALE),
+					FLAME_HEIGHT * GATE_BOWL_SCALE)
+			_warm_light(Vector3(spot.x, 1.5, spot.y), GATE_BOWL_ENERGY, 6.5)
 
 
 ## Сколько из четырёх мелких клеток вокруг угла — двор (1 — выступающий угол, 3 — внутренний).
@@ -733,8 +752,11 @@ func _build_fires(fine: Dictionary[Vector2i, bool], terem: Vector2) -> void:
 			continue  # только мелкие клетки в выступающем углу
 		var inward: Vector2 = Vector2(1 if fine.has(cell + Vector2i(1, 0)) else -1,
 				1 if fine.has(cell + Vector2i(0, 1)) else -1)
-		var corner: Vector2 = _fine_to_world(Vector2(cell) + Vector2(0.5, 0.5)) + inward * 0.25
+		# чаша — внутрь двора от угла: в самом углу стоит башня с шатром, огонь закрывал бы её крышу
+		var corner: Vector2 = _fine_to_world(Vector2(cell) + Vector2(0.5, 0.5)) + inward * CORNER_FIRE_INSET
 		if corner.distance_to(terem) < 5.0:
+			continue
+		if not CORNER_BOWLS:
 			continue
 		var at: Vector3 = Vector3(corner.x, 0, corner.y)
 		_add_flame(_place("fire_bowl", at, _rng.randf() * TAU, FIRE_SCALE), FLAME_HEIGHT * FIRE_SCALE)

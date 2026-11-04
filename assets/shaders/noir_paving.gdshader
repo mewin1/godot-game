@@ -12,6 +12,7 @@ uniform vec3 stone_dark : source_color = vec3(0.11, 0.12, 0.135);
 uniform vec3 stone_light : source_color = vec3(0.2, 0.21, 0.215);
 uniform vec3 grout_color : source_color = vec3(0.32, 0.29, 0.25);  // швы светлее камня, бурые (концепт)
 uniform vec3 moss_color : source_color = vec3(0.2, 0.25, 0.08);
+uniform vec3 dirt_color : source_color = vec3(0.16, 0.12, 0.085);
 uniform vec2 origin = vec2(0.0, 0.0);  // угол поля в мире — швы по клеткам
 
 varying vec3 world;
@@ -89,6 +90,12 @@ void fragment() {
 	float in_gaps = seam * smoothstep(0.6, 0.8, noise(p * 1.3));
 	float moss = clamp(rim + in_gaps * 0.8, 0.0, 1.0);
 	col = mix(col, moss_color * (0.8 + 0.4 * noise(p * 11.0)), moss);
+
+	// двор не однотонный (как на концепте): островки мха и грязи, выбитые плиты, светлые выветренные плиты
+	// пятна по шуму поверх швов (не по плиткам — иначе «шахматка»)
+	float patch = smoothstep(0.62, 0.85, noise(p * 0.32 + 3.1) + (noise(p * 1.7) - 0.5) * 0.25) * (0.5 + 0.5 * noise(p * 2.7));
+	col = mix(col, mix(dirt_color, moss_color, noise(p * 1.9)) * (0.75 + 0.5 * noise(p * 9.0)), patch * (0.45 + 0.55 * seam));
+	moss = max(moss, patch);
 
 	ALBEDO = col;
 	// влажный блик на гладких камнях, зазоры и мох матовые

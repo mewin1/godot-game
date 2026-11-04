@@ -22,6 +22,7 @@ const FILL: float = 0.97
 ## Кадр двора: запас под частокол и чаши (м), охват терема от конца дороги (м), наименьший размер кадра (м).
 const FRAME_YARD_PAD: float = 0.8
 const FRAME_TEREM_REACH: float = 5.0
+const FRAME_TEREM_DEPTH: float = 1.0
 const FRAME_MIN_SIZE: float = 12.0
 ## Доля кадра над полем под лес и небо (перспективная камера «нуар»).
 const SKY_SHARE: float = 0.15
@@ -119,7 +120,8 @@ func show_field(field: FieldState, player_colors: Callable) -> void:
 
 ## Кадрирует камеру, чтобы поле заняло прямоугольник target (координаты этого узла).
 func frame_board(target: Rect2) -> void:
-	_update_frame_bounds()  # до проверки размера: у скрытого поля ключ тоже запоминается
+	if _open_key() != _frame_key:
+		_update_frame_bounds()  # только когда двор вырос (frame_board зовут на каждой отрисовке)
 	if target.size.x < 4.0 or size.y < 4.0:
 		return
 	var basis: Basis = _camera.transform.basis
@@ -202,8 +204,10 @@ func _update_frame_bounds() -> void:
 				low = low.min(Vector2(center.x - half, center.z - half))
 				high = high.max(Vector2(center.x + half, center.z + half))
 	var finish: Vector3 = layout.road_point(layout.path_length_at(path.size() - 1))
-	low = low.min(Vector2(finish.x, finish.z) - Vector2.ONE * FRAME_TEREM_REACH)
-	high = high.max(Vector2(finish.x, finish.z) + Vector2.ONE * FRAME_TEREM_REACH)
+	# терем — по сторону кадра (камера смотрит вдоль x): охват по z, в глубину почти не нужен
+	var reach: Vector2 = Vector2(FRAME_TEREM_DEPTH, FRAME_TEREM_REACH)
+	low = low.min(Vector2(finish.x, finish.z) - reach)
+	high = high.max(Vector2(finish.x, finish.z) + reach)
 	low -= Vector2.ONE * FRAME_YARD_PAD
 	high += Vector2.ONE * FRAME_YARD_PAD
 	# совсем маленький двор не раздувать на весь экран
