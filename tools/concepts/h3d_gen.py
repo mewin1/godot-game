@@ -82,6 +82,8 @@ def concept_mask(px: np.ndarray, thr: float = 0.012) -> np.ndarray:
 
 # только самая крупная часть силуэта (летающие огоньки вокруг духа сеть превращает в бесформенные куски)
 MAIN_ONLY = {"spirit"}
+# светлый полупрозрачный объект на белом теряет края — серый фон
+BG_BY_ID = {"spirit": (70, 78, 84)}
 
 
 def largest_part(mask: np.ndarray) -> np.ndarray:
@@ -132,7 +134,7 @@ def prepare(group: str, mid: str, size: int = 518, border: float = 0.12) -> Path
     # мягкий край маски, чтобы не тащить в сеть ореол фона
     side = max(x1 - x0, y1 - y0)
     full = int(side / (1 - 2 * border))
-    canvas = Image.new("RGB", (full, full), (255, 255, 255))
+    canvas = Image.new("RGB", (full, full), BG_BY_ID.get(mid, (255, 255, 255)))
     ox, oy = (full - (x1 - x0)) // 2, (full - (y1 - y0)) // 2
     canvas.paste(crop, (ox, oy), alpha)
     canvas = canvas.resize((size, size), Image.LANCZOS)
