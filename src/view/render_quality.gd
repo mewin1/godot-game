@@ -54,8 +54,9 @@ static func max_fps() -> int:
 	return MOBILE_MAX_FPS if is_mobile() else HIGH_MAX_FPS
 
 
-## Сглаживание и разрешение 3D. TAA даёт мягкую картинку без мерцания травы, теней и тонких кольев
-## и сам сглаживает края; MSAA поверх него стоил ещё ~2 мс кадра в 2560×1440 почти без разницы.
+## Сглаживание и разрешение 3D. TAA даёт мягкую картинку без мерцания травы, теней и тонких кольев.
+## MSAA обязателен: хвоя елей и листва сглаживаются alpha-to-coverage, а он работает только с MSAA —
+## без него кроны превращались в размытые пятна. 2x выглядит как 4x и дешевле (~1,7 мс в 2560×1440).
 static func setup_viewport(viewport: SubViewport) -> void:
 	if is_mobile():
 		viewport.msaa_3d = Viewport.MSAA_DISABLED
@@ -63,7 +64,7 @@ static func setup_viewport(viewport: SubViewport) -> void:
 		viewport.screen_space_aa = Viewport.SCREEN_SPACE_AA_FXAA
 		viewport.scaling_3d_scale = MOBILE_3D_SCALE
 	else:
-		viewport.msaa_3d = Viewport.MSAA_DISABLED
+		viewport.msaa_3d = Viewport.MSAA_2X
 		viewport.use_taa = true
 		viewport.screen_space_aa = Viewport.SCREEN_SPACE_AA_DISABLED
 		viewport.scaling_3d_scale = 1.0
