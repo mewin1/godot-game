@@ -39,6 +39,10 @@ const ENV_CHUNK: float = 16.0
 ## Слой окружения (лес, трава, камни): солнце и луна дают от него тени, факелы — нет
 ## (их тени нужны только от частокола, иначе каждый факел перерисовывает весь лес).
 const ENV_LAYER: int = 2
+## Сколько цвета днём убрать у травы и лесной земли (noir_forest_shade.gdshaderinc): на свету их
+## лимонная желтизна и зелень выглядели «кислотно». Ночью и в PvP не действует (тень леса там 0).
+const GRASS_DAY_MUTE: float = 0.45
+const GROUND_DAY_MUTE: float = 0.3
 ## Слои, от которых факелы бросают тени (всё, кроме окружения).
 const TORCH_SHADOW_MASK: int = 0xFFFFF & ~ENV_LAYER
 const BOARD_MIN: Vector2 = Vector2(0.0, -20.0)
@@ -143,7 +147,7 @@ void fragment() {
 	a = mix(a, texture(mud_albedo, uv2).rgb * vec3(0.64, 0.74, 0.77), margin.g * 0.73);
 	a *= mix(vec3(1.0), vec3(0.87, 1.17, 0.87), margin.b * wm);
 	a = mix(vec3(dot(a, vec3(0.25, 0.60, 0.15))), a, 0.55);
-	ALBEDO = noir_floor_shaded(a * hue * tint * mix(1.0, 0.62, yard_fade(world.xz)), world.xz, glade_a, glade_b);
+	ALBEDO = noir_floor_shaded(noir_day_muted(a * hue * tint * mix(1.0, 0.62, yard_fade(world.xz))), world.xz, glade_a, glade_b);
 	NORMAL_MAP = nm;
 	NORMAL_MAP_DEPTH = 0.36;
 	ROUGHNESS = mix(mix(0.59, 0.95, max(wm, wl)), 0.53, margin.g);
@@ -216,6 +220,7 @@ var _rock_spots: PackedVector3Array = PackedVector3Array()
 func _ready() -> void:
 	_leaf_material.shader = preload("res://assets/shaders/noir_leaves.gdshader")
 	_set_glades(_leaf_material)
+	_leaf_material.set_shader_parameter("day_mute", GRASS_DAY_MUTE)
 	_rng.seed = 22
 	_build_ground()
 
@@ -521,6 +526,7 @@ func _ground_material() -> ShaderMaterial:
 	var material: ShaderMaterial = ShaderMaterial.new()
 	material.shader = shader
 	_set_glades(material)
+	material.set_shader_parameter("day_mute", GROUND_DAY_MUTE)
 	# Маска снята с оси ручья PvP в Blender; координаты X/Z мира, метры.
 	material.set_shader_parameter("river_margin", preload("res://assets/noir/courtyard/river_margin.png"))
 	material.set_shader_parameter("margin_extent", Vector4(-80.0, -28.0, 124.0, 64.0))

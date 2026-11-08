@@ -23,3 +23,13 @@ float noir_under_canopy(vec2 p, vec4 ga, vec4 gb) {
 vec3 noir_floor_shaded(vec3 albedo, vec2 p, vec4 ga, vec4 gb) {
 	return albedo * mix(vec3(1.0), FOREST_FLOOR, noir_forest_shade * noir_under_canopy(p, ga, gb));
 }
+
+// Днём (noir_forest_shade > 0) трава и земля приглушены: без лимонной желтизны и кислотной зелени,
+// ближе к серо-оливковому. amount — сколько цвета убрать в полдень (0..1). Ночью не действует.
+uniform float day_mute = 0.0;
+
+vec3 noir_day_muted(vec3 albedo) {
+	float value = dot(albedo, vec3(0.30, 0.55, 0.15));
+	vec3 grey = value * vec3(0.97, 1.0, 1.0);
+	return mix(albedo, grey, day_mute * noir_forest_shade);
+}
