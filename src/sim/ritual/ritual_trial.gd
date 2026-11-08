@@ -31,7 +31,6 @@ var title: String = ""
 var install_until: Dictionary[int, int] = {}
 var move_origins: Dictionary[int, Vector2i] = {}
 var move_rotations: Dictionary[int, int] = {}
-var rite_bought: Dictionary[StringName, bool] = {}
 var journal: Array[Dictionary] = []
 var dawns: Array[Dictionary] = []
 var commands: Array[Dictionary] = []
@@ -88,7 +87,8 @@ func execute(command: RitualCommand) -> String:
 	if phase == Phase.RUNNING and control_mode == ControlMode.PASSIVE:
 		return "Контроль: бой без команд"
 	var economic: bool = command.action in [RitualCommand.Action.BUY,
-		RitualCommand.Action.SELL, RitualCommand.Action.RITE]
+		RitualCommand.Action.SELL, RitualCommand.Action.RITE, RitualCommand.Action.MERGE,
+		RitualCommand.Action.ENCHANT, RitualCommand.Action.REPAIR]
 	if phase == Phase.RUNNING and economic and (economy_frozen or control_mode != ControlMode.OPEN):
 		return "В этой контрольной ветке состав зафиксирован"
 	if command.action in [RitualCommand.Action.MOVE, RitualCommand.Action.CANCEL_MOVE] \
@@ -97,7 +97,7 @@ func execute(command: RitualCommand) -> String:
 	var error: String = "Неизвестная команда"
 	match command.action:
 		RitualCommand.Action.BUY:
-			error = _buy(command.item, command.cell, command.rotation)
+			error = _buy(command.item, command.cell, command.rotation, command.tower_id)
 		RitualCommand.Action.MOVE:
 			error = _move(command.tower_id, command.cell, command.rotation)
 		RitualCommand.Action.SELL:
@@ -110,6 +110,12 @@ func execute(command: RitualCommand) -> String:
 			error = _palisade(command.progress)
 		RitualCommand.Action.CANCEL_MOVE:
 			error = _cancel_move(command.tower_id)
+		RitualCommand.Action.MERGE:
+			error = _merge(command.tower_id, command.item)
+		RitualCommand.Action.ENCHANT:
+			error = _enchant(command.item, command.tower_id)
+		RitualCommand.Action.REPAIR:
+			error = _repair()
 	if error.is_empty():
 		_record_command(command)
 	return error
@@ -121,14 +127,20 @@ func _record_command(command: RitualCommand) -> void:
 	commands.append(entry)
 
 
-func _buy(index: int, cell: Vector2i, rotation: int) -> String:
+## into_id > 0 — купить копию прямо в эту башню 1-го уровня (слияние).
+func _buy(index: int, cell: Vector2i, rotation: int, into_id: int = 0) -> String:
 	if index < 0 or index >= settings.combat.towers.size():
 		return "Нет такой постройки"
-	if field.towers.size() >= settings.tower_limit:
-		return "Все восемь мест заняты: замените постройку"
 	var data: TowerData = settings.combat.towers[index]
 	if gold < settings.costs[index]:
 		return "Не хватает золота"
+	if into_id > 0:
+		var twin: TowerState = field.get_tower(into_id)
+		if twin == null or twin.data != data:
+			return "Сливается только с такой же постройкой"
+		return _buy_into(twin, settings.costs[index])
+	if settings.tower_limit > 0 and field.towers.size() >= settings.tower_limit:
+		return "Все места заняты: замените постройку"
 	if not field.can_place_tower_data(data, cell, rotation):
 		return "Фигура не помещается на свободной площадке"
 	var tower: TowerState = field.add_tower(data, cell, posmod(rotation, TowerState.ROTATIONS))
@@ -138,6 +150,51 @@ func _buy(index: int, cell: Vector2i, rotation: int) -> String:
 	if phase == Phase.RUNNING:
 		_lock(tower)
 	return ""
+
+
+## Покупка карточки прямо на башню 1-го уровня того же вида — слияние с новой копией.
+func _buy_into(twin: TowerState, cost: int) -> String:
+	if twin.level != 1:
+		return "Новая копия сливается только с башней 1-го уровня"
+	gold -= cost
+	spent += cost
+	twin.invested_total += cost
+	_raise_level(twin)
+	return ""
+
+
+func _merge(source_id: int, target_id: int) -> String:
+	var source: TowerState = field.get_tower(source_id)
+	var target: TowerState = field.get_tower(target_id)
+	if source == null or target == null or source == target:
+		return "Выберите две башни"
+	if source.data != target.data or source.level != target.level:
+		return "Сливаются только одинаковые башни одного уровня"
+	if target.level >= settings.combat.max_tower_level:
+		return "Уровень уже максимальный"
+	target.invested_total += source.invested_total
+	for effect: int in source.enchantments:
+		if not target.has_enchantment(effect):
+			target.enchantments.append(effect)
+	field.remove_tower(source)
+	install_until.erase(source_id)
+	move_origins.erase(source_id)
+	move_rotations.erase(source_id)
+	_raise_level(target)
+	_event(&"merge", {"source": source_id, "target": target_id, "level": target.level})
+	return ""
+
+
+func _raise_level(tower: TowerState) -> void:
+	if tower.level >= settings.combat.max_tower_level:
+		return
+	tower.level += 1
+	# Перестройка в бою стоит обычной установки; незавершённый перенос становится окончательным.
+	move_origins.erase(tower.id)
+	move_rotations.erase(tower.id)
+	if phase == Phase.RUNNING:
+		_lock(tower)
+	field.mark_towers_changed()
 
 
 func _lock(tower: TowerState) -> void:
@@ -154,6 +211,10 @@ func _move(id: int, cell: Vector2i, rotation: int) -> String:
 		return "Установка ещё не завершена"
 	if tower.anchor == cell and tower.rotation == posmod(rotation, TowerState.ROTATIONS):
 		return "Башня уже здесь"
+	if tower.anchor == cell and tower.data.wind_length_milli == 0 \
+			and _same_cells(tower.cells(), TowerState.shape_cells_at(tower.data.shape, cell, rotation)):
+		# Поворот симметричной фигуры ничего не меняет — не выключаем башню на установку.
+		return "Поворот ничего не меняет"
 	var origin: Vector2i = tower.anchor
 	var old_rotation: int = tower.rotation
 	if not field.move_tower(tower, cell, posmod(rotation, TowerState.ROTATIONS)):
@@ -164,6 +225,15 @@ func _move(id: int, cell: Vector2i, rotation: int) -> String:
 		_lock(tower)
 		_event(&"move", {"id": id, "from": origin, "to": cell})
 	return ""
+
+
+static func _same_cells(first: Array[Vector2i], second: Array[Vector2i]) -> bool:
+	if first.size() != second.size():
+		return false
+	for cell: Vector2i in first:
+		if not second.has(cell):
+			return false
+	return true
 
 
 func _cancel_move(id: int) -> String:
@@ -197,9 +267,10 @@ func _rite(index: int) -> String:
 	if index < 0 or index >= settings.rites.size():
 		return "Нет такого заговора"
 	var data: RiteData = settings.rites[index]
-	if rite_bought.has(data.id):
-		return "Этот заговор уже куплен"
-	if gold < data.cost:
+	if rite_count(index) >= data.max_purchases:
+		return "Этот заговор уже усилен до предела"
+	var cost: int = rite_cost(index)
+	if gold < cost:
 		return "Не хватает золота"
 	var idol: IdolState = field.get_idol(data.god)
 	if idol == null:
@@ -210,10 +281,69 @@ func _rite(index: int) -> String:
 	if idol == null:
 		return "Все идолы посвящены"
 	idol.apply_rite(data)
-	rite_bought[data.id] = true
-	gold -= data.cost
-	spent += data.cost
+	gold -= cost
+	spent += cost
 	field.mark_towers_changed()
+	return ""
+
+
+## Сколько раз уже куплен заговор (по его идолу).
+func rite_count(index: int) -> int:
+	var data: RiteData = settings.rites[index]
+	var idol: IdolState = field.get_idol(data.god)
+	return 0 if idol == null else idol.purchases.get(data.id, 0)
+
+
+func rite_cost(index: int) -> int:
+	return settings.rites[index].cost + settings.rite_cost_step * rite_count(index)
+
+
+## Почему чару нельзя наложить на башню (пусто — можно). Цена здесь не проверяется.
+func enchant_error(index: int, tower_id: int) -> String:
+	if index < 0 or index >= settings.enchants.size():
+		return "Нет такой чары"
+	var tower: TowerState = field.get_tower(tower_id)
+	if tower == null:
+		return "Выберите башню"
+	var rite: RiteData = settings.enchants[index]
+	if not tower.data.attacks:
+		return "Эта поддержка усиливается слиянием"
+	if rite.effect == RiteData.Effect.TARGETS and tower.data.hits_all_in_range:
+		return "Постройка уже охватывает все цели"
+	if rite.effect == RiteData.Effect.ENCHANT_DAMAGE and tower.data.damage == 0:
+		return "У этой постройки нет урона для усиления"
+	if tower.has_enchantment(rite.effect):
+		return "Эта чара уже есть на башне"
+	return ""
+
+
+func _enchant(index: int, tower_id: int) -> String:
+	var error: String = enchant_error(index, tower_id)
+	if not error.is_empty():
+		return error
+	var cost: int = settings.enchant_costs[index]
+	if gold < cost:
+		return "Не хватает золота"
+	var tower: TowerState = field.get_tower(tower_id)
+	tower.enchantments.append(settings.enchants[index].effect)
+	tower.invested_total += cost
+	gold -= cost
+	spent += cost
+	field.mark_towers_changed()
+	return ""
+
+
+func _repair() -> String:
+	if phase != Phase.RUNNING:
+		return "Чинить можно только в бою"
+	if hp >= settings.hero_hp:
+		return "Терем цел"
+	if gold < settings.repair_cost:
+		return "Не хватает золота"
+	gold -= settings.repair_cost
+	spent += settings.repair_cost
+	hp = mini(settings.hero_hp, hp + settings.repair_hp)
+	_event(&"repair", {"hp": hp})
 	return ""
 
 

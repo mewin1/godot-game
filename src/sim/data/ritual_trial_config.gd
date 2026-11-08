@@ -11,7 +11,17 @@ extends Resource
 @export var build_regions: Array[Rect2i] = []
 @export var hero_hp: int = 50
 @export var start_gold: int = 92
-@export var tower_limit: int = 8
+## 0 — число башен не ограничено (редакция 3, docs/30 §15).
+@export var tower_limit: int = 0
+## Повторный заговор идола дороже на шаг за каждую прежнюю покупку.
+@export var rite_cost_step: int = 3
+## Чары на одну башню и их цены в этом опыте.
+@export var enchants: Array[RiteData] = []
+@export var enchant_costs: Array[int] = []
+@export var repair_hp: int = 5
+@export var repair_cost: int = 10
+## Здоровье тела врагов по суткам, в процентах.
+@export var cycle_hp_percent: Array[int] = [100, 100, 100, 100]
 @export var cycle_ticks: int = 1800
 @export var dusk_tick: int = 600
 @export var night_tick: int = 700

@@ -32,6 +32,9 @@ func get_buildable_cells() -> Array[Vector2i]:
 
 func spawn_mob(index: int) -> RitualMob:
 	var mob: RitualMob = RitualMob.from_data(settings.enemies[index], settings)
+	var cycle: int = clampi(wave_tick / settings.cycle_ticks, 0, settings.cycle_hp_percent.size() - 1)
+	mob.max_hp = mob.max_hp * settings.cycle_hp_percent[cycle] / 100
+	mob.hp = mob.max_hp
 	mob.id = _next_mob_id
 	_next_mob_id += 1
 	mob.clock_tick = wave_tick

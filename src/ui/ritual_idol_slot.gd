@@ -17,8 +17,18 @@ func _can_drop_data(_at_position: Vector2, value: Variant) -> bool:
 			if candidate.god == &"":
 				target = candidate
 				break
-	var allowed: bool = target == idol and trial.gold >= payload.rite.cost and not trial.rite_bought.has(payload.rite.id)
-	payload.show_rite_feedback("" if allowed else "Выберите свободный идол этой силы")
+	var index: int = payload.offer_index
+	var reason: String = ""
+	if payload.rite.target != RiteData.Target.IDOL or index < 0 or index >= trial.settings.rites.size():
+		reason = "Чару кладут на башню"
+	elif target != idol:
+		reason = "Выберите свободный идол этой силы"
+	elif trial.rite_count(index) >= trial.settings.rites[index].max_purchases:
+		reason = "Заговор уже усилен до предела"
+	elif trial.gold < trial.rite_cost(index):
+		reason = "Не хватает золота"
+	var allowed: bool = reason.is_empty()
+	payload.show_rite_feedback(reason)
 	return allowed
 
 

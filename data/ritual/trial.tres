@@ -8,6 +8,10 @@
 [ext_resource type="Resource" path="res://data/rites/war_power.tres" id="rite_0"]
 [ext_resource type="Resource" path="res://data/rites/svarog_power.tres" id="rite_1"]
 [ext_resource type="Resource" path="res://data/rites/ice_power.tres" id="rite_2"]
+[ext_resource type="Resource" path="res://data/rites/enchant_damage.tres" id="enchant_0"]
+[ext_resource type="Resource" path="res://data/rites/enchant_rate.tres" id="enchant_1"]
+[ext_resource type="Resource" path="res://data/rites/enchant_range.tres" id="enchant_2"]
+[ext_resource type="Resource" path="res://data/rites/enchant_targets.tres" id="enchant_3"]
 [ext_resource type="Resource" path="res://data/ritual/ratnik.tres" id="mob_0"]
 [ext_resource type="Resource" path="res://data/ritual/runner.tres" id="mob_1"]
 [ext_resource type="Resource" path="res://data/ritual/heavy.tres" id="mob_2"]
@@ -437,7 +441,13 @@ spawns = Array[ExtResource("spawn")]([SubResource("spawn_0"), SubResource("spawn
 build_regions = Array[Rect2i]([Rect2i(3, 3, 13, 3), Rect2i(3, 8, 13, 4)])
 hero_hp = 50
 start_gold = 92
-tower_limit = 8
+tower_limit = 0
+rite_cost_step = 3
+enchants = Array[ExtResource("rite")]([ExtResource("enchant_0"), ExtResource("enchant_1"), ExtResource("enchant_2"), ExtResource("enchant_3")])
+enchant_costs = Array[int]([10, 10, 12, 12])
+repair_hp = 5
+repair_cost = 10
+cycle_hp_percent = Array[int]([100, 120, 145, 175])
 cycle_ticks = 1800
 dusk_tick = 600
 night_tick = 700

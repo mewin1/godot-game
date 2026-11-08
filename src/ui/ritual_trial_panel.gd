@@ -31,6 +31,8 @@ var _saved_result: bool = false
 var _attempts: PackedStringArray = []
 var _schedule: PanelContainer
 var _schedule_was_paused: bool = true
+var _enchant_index: int = -1
+var _repair_button: Button
 
 
 func _ready() -> void:
@@ -77,11 +79,17 @@ func _build_ui() -> void:
 	_shop.rite_chosen.connect(_buy_rite)
 	_shop.start_requested.connect(_start)
 	_shop.sell_requested.connect(_sell_tower)
+	_shop.enchant_chosen.connect(_choose_enchant)
 	var edit: HBoxContainer = HBoxContainer.new()
 	left.add_child(edit)
 	_button(edit, "Перенести", _choose_move)
 	_button(edit, "Продать", _sell)
 	_button(edit, "Отмена", _cancel_move)
+	var upkeep: HBoxContainer = HBoxContainer.new()
+	left.add_child(upkeep)
+	_repair_button = _button(upkeep, "Починить терем +%d · %d" % [SETTINGS.repair_hp, SETTINGS.repair_cost], _repair)
+	_repair_button.tooltip_text = "Терем +%d HP за %d золота (не выше %d)" % [
+		SETTINGS.repair_hp, SETTINGS.repair_cost, SETTINGS.hero_hp]
 	var gap: Control = Control.new()
 	gap.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	gap.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -140,6 +148,7 @@ func _build_ui() -> void:
 	controls.visible = false
 	tools.add_child(controls)
 	_preset = OptionButton.new()
+	_preset.focus_mode = Control.FOCUS_NONE
 	for loadout: RitualLoadout in SETTINGS.loadouts:
 		_preset.add_item(loadout.title)
 	controls.add_child(_preset)
@@ -148,6 +157,7 @@ func _build_ui() -> void:
 	_button(controls, "Снимок", _capture)
 	_button(controls, "Открыть снимок", _load_checkpoint)
 	_branch = OptionButton.new()
+	_branch.focus_mode = Control.FOCUS_NONE
 	for text: String in ["Свободное продолжение", "Без команд", "Только приёмы", "Приёмы + переносы"]:
 		_branch.add_item(text)
 	controls.add_child(_branch)
@@ -244,6 +254,8 @@ func _button(parent: Node, text: String, callback: Callable) -> Button:
 	var button: Button = Button.new()
 	button.text = text
 	button.custom_minimum_size.y = 30
+	# Без фокуса: иначе пробел (пауза) повторно нажимает последнюю кнопку, например «Продать».
+	button.focus_mode = Control.FOCUS_NONE
 	button.add_theme_font_size_override("font_size", 15)
 	for state: StringName in [&"normal", &"hover", &"pressed", &"disabled"]:
 		var style: StyleBox = theme.get_stylebox(state, &"Button").duplicate() as StyleBox
@@ -263,7 +275,7 @@ func _reset(index: int) -> void:
 	trial = RitualTrial.new(SETTINGS, index)
 	_preset.select(index)
 	_board_reset()
-	_message.text = "Подготовка: перетащите постройки из лавки. ПКМ — поворот, сброс на лавку — продажа." \
+	_message.text = "Подготовка: перетащите постройки из лавки. Башня на такую же — слияние, ПКМ — поворот, сброс на лавку — продажа." \
 		if trial.phase == RitualTrial.Phase.PREP else "Контрольный старт на паузе: перенос требует времени, продажа возвращает половину цены."
 
 
@@ -363,6 +375,17 @@ func _buy_rite(index: int) -> void:
 	_issue(RitualCommand.new(RitualCommand.Action.RITE, index))
 
 
+func _choose_enchant(index: int) -> void:
+	_enchant_index = index
+	board.action = &"enchant"
+	board.preview_index = -1
+	_message.text = "Выберите башню для чары «%s». ПКМ — отмена." % SETTINGS.enchants[index].display_name
+
+
+func _repair() -> void:
+	_issue(RitualCommand.new(RitualCommand.Action.REPAIR))
+
+
 func _choose_skill() -> void:
 	board.action = &"skill"
 	board.preview_index = -1
@@ -400,6 +423,10 @@ func _on_cell(cell: Vector2i, right: bool) -> void:
 	if right:
 		if board.action in [&"buy", &"move"]:
 			board.preview_rotation = (board.preview_rotation + 1) % TowerState.ROTATIONS
+		elif board.action in [&"skill", &"palisade", &"enchant"]:
+			# ПКМ при прицеливании — отмена, а не поворот башни под курсором.
+			board.action = &""
+			_message.text = "Отменено"
 		else:
 			var tower: TowerState = trial.field.get_tower_at(cell)
 			if tower != null:
@@ -409,12 +436,30 @@ func _on_cell(cell: Vector2i, right: bool) -> void:
 		return
 	match board.action:
 		&"buy":
-			if _issue(RitualCommand.new(RitualCommand.Action.BUY, board.preview_index, cell, board.preview_rotation)):
+			var twin: TowerState = trial.field.get_tower_at(cell)
+			var into: int = twin.id if twin != null and twin.level == 1 \
+					and twin.data == SETTINGS.combat.towers[board.preview_index] else 0
+			if _issue(RitualCommand.new(RitualCommand.Action.BUY, board.preview_index, cell,
+					board.preview_rotation, into)):
 				board.action = &""
 				board.preview_index = -1
 		&"move":
-			if _issue(RitualCommand.new(RitualCommand.Action.MOVE, 0, cell, board.preview_rotation, board.selected_id)):
+			var twin: TowerState = trial.field.get_tower_at(cell)
+			var moving: TowerState = trial.field.get_tower(board.selected_id)
+			var command: RitualCommand = RitualCommand.new(RitualCommand.Action.MOVE, 0, cell,
+				board.preview_rotation, board.selected_id)
+			if twin != null and moving != null and twin != moving and twin.data == moving.data:
+				command = RitualCommand.new(RitualCommand.Action.MERGE, twin.id, Vector2i.ZERO, 0, moving.id)
+			if _issue(command):
 				board.action = &""
+				board.selected_id = twin.id if command.action == RitualCommand.Action.MERGE else board.selected_id
+		&"enchant":
+			var target: TowerState = trial.field.get_tower_at(cell)
+			if target == null:
+				_message.text = "Выберите башню для чары"
+			elif _issue(RitualCommand.new(RitualCommand.Action.ENCHANT, _enchant_index, Vector2i.ZERO, 0, target.id)):
+				board.action = &""
+				board.selected_id = target.id
 		&"skill", &"palisade":
 			var progress: int = board.path_progress(cell)
 			var kind: RitualCommand.Action = RitualCommand.Action.SKILL if board.action == &"skill" \
@@ -479,9 +524,11 @@ func _refresh() -> void:
 		slot.trial = trial
 		slot.refresh(trial.field.idols[index], true, SETTINGS.combat.ticks_per_second)
 	var selected: TowerState = trial.field.get_tower(board.selected_id)
-	_selection.text = "Башня: не выбрана" if selected == null else "#%d %s\nВложено %d · %s" % [
-		selected.id, selected.data.display_name, selected.invested_total,
-		"устанавливается" if selected.is_action_blocked() else "готова"]
+	_selection.text = "Башня: не выбрана" if selected == null else "#%d %s · ур. %d%s\nВложено %d · %s" % [
+		selected.id, selected.data.display_name, selected.level, _enchant_names(selected),
+		selected.invested_total, "устанавливается" if selected.is_action_blocked() else "готова"]
+	_repair_button.disabled = trial.phase != RitualTrial.Phase.RUNNING or trial.hp >= SETTINGS.hero_hp \
+			or trial.gold < SETTINGS.repair_cost
 	_shop._selection_panel.visible = selected != null
 	var threats: PackedStringArray = []
 	for index: int in range(trial.next_spawn, mini(trial.next_spawn + 3, SETTINGS.spawns.size())):
@@ -490,6 +537,14 @@ func _refresh() -> void:
 			SETTINGS.enemies[spawn.mob_index].display_name])
 	_threat.text = trial.result if trial.phase == RitualTrial.Phase.OVER else "Далее: " + " · ".join(threats)
 	board.queue_redraw()
+
+
+func _enchant_names(tower: TowerState) -> String:
+	var names: PackedStringArray = []
+	for rite: RiteData in SETTINGS.enchants:
+		if tower.has_enchantment(rite.effect):
+			names.append(rite.display_name)
+	return "" if names.is_empty() else "\n" + ", ".join(names)
 
 
 func _back() -> void:

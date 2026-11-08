@@ -296,6 +296,17 @@ func _draw_preview() -> void:
 			data = tower.data
 	if data == null:
 		return
+	var twin: TowerState = trial.field.get_tower_at(hover_cell)
+	if twin != null and twin.data == data and twin.id != selected_id \
+			and twin.level < trial.settings.combat.max_tower_level:
+		var moving: TowerState = trial.field.get_tower(selected_id) if action == &"move" else null
+		var level_ok: bool = twin.level == 1 if moving == null else moving.level == twin.level
+		if level_ok:
+			for cell: Vector2i in twin.cells():
+				_tile(cell, Color(1, 0.82, 0.35, 0.55))
+			_text(Vector2(_origin.x + 8, _origin.y + 18), "Слияние → уровень %d" % (twin.level + 1),
+				Color("f4dca0"), 15)
+			return
 	var cells: Array[Vector2i] = TowerState.shape_cells_at(data.shape, hover_cell, preview_rotation)
 	var valid: bool = trial.field.can_place(cells, selected_id if action == &"move" else 0)
 	for cell: Vector2i in cells:
@@ -307,7 +318,8 @@ func _get_tooltip(at_position: Vector2) -> String:
 		return ""
 	var tower: TowerState = trial.field.get_tower_at(stage.cell_at(at_position))
 	if tower != null:
-		return "%s #%d\n%s\nЛКМ: выбор · ПКМ: поворот" % [tower.data.display_name, tower.id, tower.data.description]
+		return "%s #%d · ур. %d\n%s\nЛКМ: выбор · ПКМ: поворот · перетащить на такую же — слияние" % [
+			tower.data.display_name, tower.id, tower.level, tower.data.description]
 	var closest: RitualMob = null
 	var distance: float = _cell * _cell * 0.25
 	for base: MobState in trial.field.mobs:
@@ -339,24 +351,62 @@ func _can_drop_data(at_position: Vector2, value: Variant) -> bool:
 	if trial == null or stage == null or not value is DragPayload:
 		return false
 	var payload: DragPayload = value
+	hover_cell = stage.cell_at(at_position)
+	var under: TowerState = trial.field.get_tower_at(hover_cell)
+	if payload.kind == DragPayload.Kind.RITE:
+		# На поле кладут только чары; заговоры идолов — на идолы.
+		if payload.rite == null or payload.rite.target != RiteData.Target.TOWER:
+			return false
+		var reason: String = "Наведите на башню" if under == null \
+				else trial.enchant_error(payload.offer_index, under.id)
+		selected_id = under.id if under != null else 0
+		payload.show_rite_feedback(reason)
+		queue_redraw()
+		return reason.is_empty()
 	if payload.kind not in [DragPayload.Kind.OFFER, DragPayload.Kind.TOWER] or payload.data == null:
 		return false
-	hover_cell = stage.cell_at(at_position)
 	preview_rotation = payload.rotation
 	preview_index = payload.offer_index if payload.kind == DragPayload.Kind.OFFER else -1
 	selected_id = payload.tower_id
 	action = &"buy" if payload.kind == DragPayload.Kind.OFFER else &"move"
-	var cells: Array[Vector2i] = TowerState.shape_cells_at(payload.data.shape, hover_cell, payload.rotation)
 	queue_redraw()
+	if merge_target(payload, under) != null:
+		return true
+	var cells: Array[Vector2i] = TowerState.shape_cells_at(payload.data.shape, hover_cell, payload.rotation)
 	return trial.field.can_place(cells, selected_id)
+
+
+## Башня под курсором, с которой сольётся перетаскиваемое (или null).
+func merge_target(payload: DragPayload, under: TowerState) -> TowerState:
+	if under == null or under.data != payload.data or under.id == payload.tower_id \
+			or under.level >= trial.settings.combat.max_tower_level:
+		return null
+	if payload.kind == DragPayload.Kind.OFFER:
+		return under if under.level == 1 else null
+	var dragged: TowerState = trial.field.get_tower(payload.tower_id)
+	return under if dragged != null and dragged.level == under.level else null
 
 
 func _drop_data(at_position: Vector2, value: Variant) -> void:
 	if not value is DragPayload:
 		return
 	var payload: DragPayload = value
-	var kind: RitualCommand.Action = RitualCommand.Action.BUY if payload.kind == DragPayload.Kind.OFFER else RitualCommand.Action.MOVE
-	command_requested.emit(RitualCommand.new(kind, payload.offer_index, stage.cell_at(at_position), payload.rotation, payload.tower_id))
+	var cell: Vector2i = stage.cell_at(at_position)
+	var under: TowerState = trial.field.get_tower_at(cell)
+	var command: RitualCommand
+	if payload.kind == DragPayload.Kind.RITE:
+		command = RitualCommand.new(RitualCommand.Action.ENCHANT, payload.offer_index,
+			Vector2i.ZERO, 0, under.id if under != null else 0)
+	elif payload.kind == DragPayload.Kind.TOWER and merge_target(payload, under) != null:
+		command = RitualCommand.new(RitualCommand.Action.MERGE, under.id, Vector2i.ZERO, 0, payload.tower_id)
+	elif payload.kind == DragPayload.Kind.OFFER:
+		var twin: TowerState = merge_target(payload, under)
+		command = RitualCommand.new(RitualCommand.Action.BUY, payload.offer_index, cell, payload.rotation,
+			twin.id if twin != null else 0)
+	else:
+		command = RitualCommand.new(RitualCommand.Action.MOVE, payload.offer_index, cell, payload.rotation,
+			payload.tower_id)
+	command_requested.emit(command)
 	action = &""
 	preview_index = -1
 

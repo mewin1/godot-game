@@ -456,3 +456,143 @@ func test_damage_journal_identifies_banner_and_actual_body_or_ward_loss() -> voi
 		return
 	assert_eq(RitualStateCodec.array(damage["protected_by"]), [banner.id])
 	assert_eq(RitualStateCodec.integer(damage["hp_damage"]), 21)
+
+
+func test_rotating_single_cell_tower_in_battle_is_rejected_without_downtime() -> void:
+	assert_eq(_trial.execute(RitualCommand.new(RitualCommand.Action.BUY, 0, Vector2i(5, 4), 0)), "")
+	_start()
+	var tower: TowerState = _trial.field.towers[0]
+	var error: String = _trial.execute(RitualCommand.new(RitualCommand.Action.MOVE, 0,
+		tower.anchor, tower.rotation + 1, tower.id))
+	assert_ne(error, "", "Поворот 1×1 ничего не меняет и не должен выключать башню")
+	assert_false(tower.is_action_blocked())
+
+
+# --- Редакция 3: золото в дело (docs/30 §15) ---
+
+func _merge_cmd(source: TowerState, target: TowerState) -> String:
+	return _trial.execute(RitualCommand.new(RitualCommand.Action.MERGE, target.id,
+		Vector2i.ZERO, 0, source.id))
+
+
+func _buy_at(index: int, cell: Vector2i) -> String:
+	return _trial.execute(RitualCommand.new(RitualCommand.Action.BUY, index, cell, 0))
+
+
+func test_tower_count_is_not_limited() -> void:
+	_trial.gold = 1000
+	for x: int in range(3, 13):
+		assert_eq(_buy_at(0, Vector2i(x, 3)), "")
+	assert_eq(_trial.field.towers.size(), 10)
+
+
+func test_merge_two_equal_towers_raises_level_frees_cells_and_costs_downtime() -> void:
+	assert_eq(_buy_at(0, Vector2i(4, 3)), "")
+	assert_eq(_buy_at(0, Vector2i(8, 3)), "")
+	var source: TowerState = _trial.field.towers[0]
+	var target: TowerState = _trial.field.towers[1]
+	_start()
+	var error: String = _trial.execute(RitualCommand.new(RitualCommand.Action.MERGE, target.id,
+		Vector2i.ZERO, 0, source.id))
+	assert_eq(error, "")
+	assert_eq(target.level, 2)
+	assert_eq(target.invested_total, 24)
+	assert_null(_trial.field.get_tower(source.id))
+	assert_null(_trial.field.get_tower_at(Vector2i(4, 3)), "Клетка слитой копии свободна")
+	assert_true(target.is_action_blocked(), "Слияние в бою — установка")
+
+
+func test_merge_rejects_different_kind_or_level_and_caps_at_three() -> void:
+	_trial.gold = 1000
+	for x: int in [3, 5, 7, 9]:
+		assert_eq(_buy_at(0, Vector2i(x, 3)), "")
+	assert_eq(_buy_at(1, Vector2i(11, 3)), "")
+	var t: Array[TowerState] = _trial.field.towers.duplicate()
+	assert_ne(_merge_cmd(t[4], t[0]), "", "Разные постройки не сливаются")
+	assert_eq(_merge_cmd(t[1], t[0]), "")
+	assert_ne(_merge_cmd(t[2], t[0]), "", "Разные уровни не сливаются")
+	assert_eq(_merge_cmd(t[3], t[2]), "")
+	assert_eq(_merge_cmd(t[2], t[0]), "")
+	assert_eq(t[0].level, 3)
+
+
+func test_buying_onto_level_one_twin_merges_and_charges_price() -> void:
+	assert_eq(_buy_at(0, Vector2i(4, 3)), "")
+	var tower: TowerState = _trial.field.towers[0]
+	var gold: int = _trial.gold
+	var into := RitualCommand.new(RitualCommand.Action.BUY, 0, Vector2i(4, 3), 0, tower.id)
+	assert_eq(_trial.execute(into), "")
+	assert_eq(_trial.field.towers.size(), 1)
+	assert_eq(tower.level, 2)
+	assert_eq(_trial.gold, gold - 12)
+	assert_ne(_trial.execute(into), "", "Копия 1-го уровня не сливается с башней 2-го")
+	assert_ne(_trial.execute(RitualCommand.new(RitualCommand.Action.BUY, 1, Vector2i(4, 3), 0, tower.id)), "",
+		"Другая постройка не сливается")
+
+
+func test_plain_buy_never_merges_even_if_anchor_cell_is_taken_by_twin() -> void:
+	# Повёрнутое горнило не занимает свою якорную клетку — там может стоять другое горнило.
+	assert_eq(_buy_at(2, Vector2i(4, 3)), "")
+	var first: TowerState = _trial.field.towers[0]
+	for anchor: Vector2i in first.cells():
+		for rotation: int in TowerState.ROTATIONS:
+			var cells: Array[Vector2i] = TowerState.shape_cells_at(first.data.shape, anchor, rotation)
+			if _trial.field.can_place(cells):
+				assert_eq(_trial.execute(RitualCommand.new(RitualCommand.Action.BUY, 2, anchor, rotation)), "")
+				assert_eq(_trial.field.towers.size(), 2, "Обычная покупка ставит новую башню")
+				assert_eq(first.level, 1)
+				return
+	fail_test("Нет поворота горнила, обходящего занятую якорную клетку")
+
+
+func test_idol_rite_can_be_repeated_with_growing_price_up_to_limit() -> void:
+	_trial.gold = 1000
+	var paid: Array[int] = []
+	for index: int in 5:
+		var before: int = _trial.gold
+		assert_eq(_trial.execute(RitualCommand.new(RitualCommand.Action.RITE, 0)), "")
+		paid.append(before - _trial.gold)
+	assert_eq(paid, [6, 9, 12, 15, 18] as Array[int])
+	assert_ne(_trial.execute(RitualCommand.new(RitualCommand.Action.RITE, 0)), "")
+	var idol: IdolState = _trial.field.get_idol(_settings.rites[0].god)
+	assert_eq(idol.damage_percent, 50)
+
+
+func test_enchant_applies_once_per_tower_and_counts_in_investment() -> void:
+	assert_eq(_buy_at(0, Vector2i(4, 3)), "")
+	var tower: TowerState = _trial.field.towers[0]
+	var gold: int = _trial.gold
+	var cost: int = _settings.enchant_costs[0]
+	assert_eq(_trial.execute(RitualCommand.new(RitualCommand.Action.ENCHANT, 0,
+		Vector2i.ZERO, 0, tower.id)), "")
+	assert_true(tower.has_enchantment(_settings.enchants[0].effect))
+	assert_eq(_trial.gold, gold - cost)
+	assert_eq(tower.invested_total, 12 + cost)
+	assert_ne(_trial.execute(RitualCommand.new(RitualCommand.Action.ENCHANT, 0,
+		Vector2i.ZERO, 0, tower.id)), "", "Одна чара одного вида")
+
+
+func test_enchant_rejects_support_without_attack() -> void:
+	assert_eq(_buy_at(4, Vector2i(4, 3)), "")
+	var trough: TowerState = _trial.field.towers[0]
+	assert_ne(_trial.execute(RitualCommand.new(RitualCommand.Action.ENCHANT, 0,
+		Vector2i.ZERO, 0, trough.id)), "")
+
+
+func test_repair_restores_hp_up_to_start_only_in_battle() -> void:
+	_trial.gold = 100
+	assert_ne(_trial.execute(RitualCommand.new(RitualCommand.Action.REPAIR)), "", "До старта нечего чинить")
+	_start()
+	_trial.hp = 47
+	assert_eq(_trial.execute(RitualCommand.new(RitualCommand.Action.REPAIR)), "")
+	assert_eq(_trial.hp, 50)
+	assert_eq(_trial.gold, 100 - _settings.repair_cost)
+	assert_ne(_trial.execute(RitualCommand.new(RitualCommand.Action.REPAIR)), "", "Терем цел")
+
+
+func test_enemy_body_hp_scales_by_cycle() -> void:
+	_trial.field.wave_tick = _settings.cycle_ticks * 3 + 10
+	var mob: RitualMob = _trial.field.spawn_mob(0)
+	var expected: int = _settings.enemies[0].hp * _settings.cycle_hp_percent[3] / 100
+	assert_eq(mob.max_hp, expected)
+	assert_eq(mob.hp, expected)

@@ -2,7 +2,9 @@ class_name RitualCommand
 extends RefCounted
 ## Все изменения игрока проходят через одну проверяемую команду.
 
-enum Action { START, BUY, MOVE, SELL, RITE, SKILL, PALISADE, CANCEL_MOVE }
+## MERGE: tower_id — сливаемая копия, item — ID башни, которая растёт. ENCHANT: item — чара.
+## BUY с tower_id — новая копия сразу сливается с этой башней 1-го уровня.
+enum Action { START, BUY, MOVE, SELL, RITE, SKILL, PALISADE, CANCEL_MOVE, MERGE, ENCHANT, REPAIR }
 var action: Action
 var item: int
 var cell: Vector2i

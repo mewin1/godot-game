@@ -6,7 +6,10 @@ signal purchase_chosen(index: int)
 signal rite_chosen(index: int)
 signal start_requested()
 signal sell_requested(tower_id: int)
+signal enchant_chosen(index: int)
 var _ritual_rites: Array[MarketOffer] = []
+var _ritual_enchants: Array[MarketOffer] = []
+var _enchant_grid: GridContainer
 
 func _init() -> void:
 	super()
@@ -44,22 +47,57 @@ func setup_ritual(settings: RitualTrialConfig) -> void:
 		var card: MarketOffer = MarketOffer.new()
 		card.offer_index = index
 		card.custom_minimum_size = Vector2(96, 96)
-		card.show_rite(settings.rites[index])
+		# Копия ресурса: цена на карточке растёт с каждой покупкой, общий .tres не меняется.
+		card.show_rite(settings.rites[index].duplicate() as RiteData)
 		card.clicked.connect(func(chosen: int) -> void: rite_chosen.emit(chosen))
 		_army_grid.add_child(card)
 		_ritual_rites.append(card)
+	var box: Node = _army_grid.get_parent()
+	var title: Label = Label.new()
+	title.text = "Чары на башню"
+	title.add_theme_font_size_override("font_size", 17)
+	title.tooltip_text = "Перетащите на башню или нажмите и выберите башню. Одна чара каждого вида на башню."
+	title.mouse_filter = Control.MOUSE_FILTER_PASS
+	box.add_child(title)
+	box.move_child(title, _army_grid.get_index() + 1)
+	_enchant_grid = GridContainer.new()
+	_enchant_grid.columns = 4
+	box.add_child(_enchant_grid)
+	box.move_child(_enchant_grid, title.get_index() + 1)
+	for index: int in settings.enchants.size():
+		var enchant: RiteData = settings.enchants[index].duplicate() as RiteData
+		enchant.cost = settings.enchant_costs[index]
+		var card: MarketOffer = MarketOffer.new()
+		card.offer_index = index
+		card.custom_minimum_size = Vector2(72, 84)
+		card.show_rite(enchant)
+		card.clicked.connect(func(chosen: int) -> void: enchant_chosen.emit(chosen))
+		_enchant_grid.add_child(card)
+		_ritual_enchants.append(card)
 
 
 func refresh_ritual(trial: RitualTrial) -> void:
-	_level_title.text = "Лавка · %d/%d" % [trial.field.towers.size(), trial.settings.tower_limit]
+	var limit: int = trial.settings.tower_limit
+	_level_title.text = "Лавка · %d/%d" % [trial.field.towers.size(), limit] if limit > 0 else "Лавка"
 	_gold_label.text = str(trial.gold)
 	_ready.visible = trial.phase == RitualTrial.Phase.PREP
+	var has_room: bool = limit <= 0 or trial.field.towers.size() < limit
 	for index: int in _cards.size():
-		_cards[index].is_active = trial.gold >= trial.settings.costs[index]
+		_cards[index].is_active = has_room and trial.gold >= trial.settings.costs[index]
 		_cards[index].queue_redraw()
 	for index: int in _ritual_rites.size():
-		_ritual_rites[index].is_active = trial.gold >= trial.settings.rites[index].cost
-		_ritual_rites[index].queue_redraw()
+		var card: MarketOffer = _ritual_rites[index]
+		var count: int = trial.rite_count(index)
+		var maxed: bool = count >= trial.settings.rites[index].max_purchases
+		card.rite.cost = trial.rite_cost(index)
+		card.is_active = not maxed and trial.gold >= card.rite.cost
+		card.tooltip_text = "%s\nКуплено %d из %d, +%d%% урона за покупку" % [
+			trial.settings.rites[index].display_name, count,
+			trial.settings.rites[index].max_purchases, trial.settings.rites[index].value]
+		card.queue_redraw()
+	for index: int in _ritual_enchants.size():
+		_ritual_enchants[index].is_active = trial.gold >= trial.settings.enchant_costs[index]
+		_ritual_enchants[index].queue_redraw()
 
 
 func _on_offer(index: int) -> void:
