@@ -33,7 +33,7 @@ const DAY_FOG_DENSITY: float = 0.25
 const DAY_EXPOSURE: float = 1.1
 const DAY_GLOW: float = 0.62
 const DAY_BLOOM: float = 0.08
-const DAY_SATURATION: float = 0.85
+const DAY_SATURATION: float = 0.9
 const DAY_SHADOW_OPACITY: float = 0.7
 ## Край тени мягкий, как ночью: резкие тени дрожали при ходе солнца.
 const DAY_SHADOW_BLUR: float = 2.0

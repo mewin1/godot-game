@@ -41,8 +41,8 @@ const ENV_CHUNK: float = 16.0
 const ENV_LAYER: int = 2
 ## Сколько цвета днём убрать у травы и лесной земли (noir_forest_shade.gdshaderinc): на свету их
 ## лимонная желтизна и зелень выглядели «кислотно». Ночью и в PvP не действует (тень леса там 0).
-const GRASS_DAY_MUTE: float = 0.45
-const GROUND_DAY_MUTE: float = 0.3
+const GRASS_DAY_MUTE: float = 0.2
+const GROUND_DAY_MUTE: float = 0.1
 ## Слои, от которых факелы бросают тени (всё, кроме окружения).
 const TORCH_SHADOW_MASK: int = 0xFFFFF & ~ENV_LAYER
 const BOARD_MIN: Vector2 = Vector2(0.0, -20.0)
