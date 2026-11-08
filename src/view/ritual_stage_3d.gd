@@ -21,8 +21,6 @@ func _init() -> void:
 	super()
 	# Лес PvP повёрнут на −90° вокруг двора (ritual_arena_3d.gd) — луна вместе с ним.
 	_camera.rotation = Vector3(CAMERA_PITCH_RITUAL, CAMERA_YAW_RITUAL, 0.0)
-	# Без TAA: днём оно размывало очертания построек; края сглаживает MSAA.
-	_viewport.use_taa = false
 	for light_name: String in ["Moon", "WarmKey"]:
 		var light: Node3D = _world.get_node(light_name) as Node3D
 		light.basis = Basis(Vector3.UP, -PI * 0.5) * light.basis

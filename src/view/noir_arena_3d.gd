@@ -34,6 +34,13 @@ const COURTYARD_PROPS: Dictionary[String, PackedScene] = {
 	"spruce": preload("res://assets/noir/courtyard/spruce.glb"),
 	"birch": preload("res://assets/noir/courtyard/birch.glb"),
 }
+## Участок леса и травы (м): копии одного вида в участке — одна отрисовка, невидимые участки отсекаются.
+const ENV_CHUNK: float = 16.0
+## Слой окружения (лес, трава, камни): солнце и луна дают от него тени, факелы — нет
+## (их тени нужны только от частокола, иначе каждый факел перерисовывает весь лес).
+const ENV_LAYER: int = 2
+## Слои, от которых факелы бросают тени (всё, кроме окружения).
+const TORCH_SHADOW_MASK: int = 0xFFFFF & ~ENV_LAYER
 const BOARD_MIN: Vector2 = Vector2(0.0, -20.0)
 const BOARD_MAX: Vector2 = Vector2(18.0, 0.0)
 const CELL: float = 2.0
@@ -226,7 +233,9 @@ func build_for_layout(layout: ArenaLayout3D) -> void:
 	var yard_and_terem: Rect2 = _yard_rect().grow(2.4).grow_side(_terem_side(), 6.0)
 	_ambience.setup_wildlife(_wild_zone(), yard_and_terem, _wild_obstacles(),
 			_world_stream())
-	var volume_supported: bool = RenderingServer.get_current_rendering_method() == &"forward_plus"
+	# Объёмная дымка — только Forward+ на ПК; телефонный профиль рисует дешёвый слой у земли.
+	var volume_supported: bool = RenderingServer.get_current_rendering_method() == &"forward_plus" \
+			and not RenderQuality.is_mobile()
 	var world_env: WorldEnvironment = get_parent().get_node("Environment") as WorldEnvironment
 	world_env.environment.volumetric_fog_enabled = volume_supported
 	if volume_supported:
@@ -802,7 +811,8 @@ func _corner_inside_count(fine: Dictionary[Vector2i, bool], corner: Vector2) -> 
 
 func _warm_light(at: Vector3, energy: float, reach: float, parent: Node3D = null, shadow: bool = false) -> void:
 	var light: OmniLight3D = OmniLight3D.new()
-	light.shadow_enabled = shadow
+	light.shadow_enabled = shadow and RenderQuality.torch_shadows()
+	light.shadow_caster_mask = TORCH_SHADOW_MASK
 	light.light_color = FIRE_COLOR
 	light.light_energy = energy
 	light.omni_range = reach
@@ -864,7 +874,8 @@ func _build_fires(fine: Dictionary[Vector2i, bool], terem: Vector2) -> void:
 		light.light_energy = CORNER_FIRE_ENERGY
 		light.omni_range = CORNER_FIRE_REACH
 		light.omni_attenuation = 1.5
-		light.shadow_enabled = true
+		light.shadow_enabled = RenderQuality.torch_shadows()
+		light.shadow_caster_mask = TORCH_SHADOW_MASK
 		light.position = at + Vector3(0, 1.88, 0) + Vector3(inward.x, 0, inward.y) * 0.23
 		_yard.add_child(light)
 
@@ -1299,7 +1310,9 @@ func _world_stream() -> PackedVector2Array:
 	return result
 
 
-## Все копии одного вида реквизита — одной MultiMesh на каждую сетку модели (одна отрисовка).
+## Копии одного вида реквизита — MultiMesh на каждую сетку модели, по участкам ENV_CHUNK × ENV_CHUNK м.
+## Одна MultiMesh на весь лес не отсекается ни камерой, ни светом: каждый факел с тенью
+## перерисовывал в свою карту теней все ели карты (6 граней × 5 факелов — половина кадра).
 func _multimesh(id: String, transforms: Array[Transform3D], parent: Node3D = null) -> void:
 	if transforms.is_empty():
 		return
@@ -1307,22 +1320,35 @@ func _multimesh(id: String, transforms: Array[Transform3D], parent: Node3D = nul
 	if model == null:
 		return
 	add_child(model)  # временно — чтобы посчитать мировые преобразования частей модели
+	var chunks: Dictionary[Vector2i, Array] = {}
+	for at: Transform3D in transforms:
+		var key: Vector2i = Vector2i(floori(at.origin.x / ENV_CHUNK), floori(at.origin.z / ENV_CHUNK))
+		if not chunks.has(key):
+			chunks[key] = []
+		chunks[key].append(at)
+	# Своды и стены погребов — часть двора: от них факелы бросают тени, как от частокола.
+	var environment: bool = id not in ["cellar_arch", "cellar_wall"]
 	for part: MeshInstance3D in _mesh_parts(model):
 		var local: Transform3D = model.global_transform.affine_inverse() * part.global_transform
 		if id not in ["sedge", "fern", "seed_grass", "moss_rock", "shingle", "cellar_arch", "cellar_wall"]:
 			_moonlit(part.mesh, id == "spruce" or id == "birch")
-		var multi: MultiMesh = MultiMesh.new()
-		multi.transform_format = MultiMesh.TRANSFORM_3D
-		multi.mesh = part.mesh
-		multi.instance_count = transforms.size()
-		for i: int in transforms.size():
-			multi.set_instance_transform(i, transforms[i] * local)
-		var holder: MultiMeshInstance3D = MultiMeshInstance3D.new()
-		holder.multimesh = multi
-		holder.name = "%s_forest" % id
-		if id in ["sedge", "seed_grass", "fern", "shingle"]:
-			holder.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF  # ночью не видно, а кадр дорожает
-		(parent if parent != null else self).add_child(holder)
+		for key: Vector2i in chunks:
+			var group: Array = chunks[key]
+			var multi: MultiMesh = MultiMesh.new()
+			multi.transform_format = MultiMesh.TRANSFORM_3D
+			multi.mesh = part.mesh
+			multi.instance_count = group.size()
+			for i: int in group.size():
+				var at: Transform3D = group[i]
+				multi.set_instance_transform(i, at * local)
+			var holder: MultiMeshInstance3D = MultiMeshInstance3D.new()
+			holder.multimesh = multi
+			holder.name = "%s_forest" % id
+			if environment:
+				holder.layers = ENV_LAYER
+			if id in ["sedge", "seed_grass", "fern", "shingle"] or not RenderQuality.env_shadows():
+				holder.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF  # ночью не видно, а кадр дорожает
+			(parent if parent != null else self).add_child(holder)
 	model.queue_free()
 
 

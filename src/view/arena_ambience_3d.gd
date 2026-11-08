@@ -401,7 +401,7 @@ static func _particles(id: String, amount: int, life: float, process: ParticlePr
 		mesh: Mesh) -> GPUParticles3D:
 	var particles: GPUParticles3D = GPUParticles3D.new()
 	particles.name = id
-	particles.amount = amount
+	particles.amount = maxi(1, roundi(amount * RenderQuality.particle_ratio()))
 	particles.lifetime = life
 	particles.process_material = process
 	particles.draw_pass_1 = mesh

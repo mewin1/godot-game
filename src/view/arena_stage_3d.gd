@@ -55,9 +55,8 @@ func _init() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_viewport = SubViewport.new()
 	_viewport.own_world_3d = true
-	_viewport.msaa_3d = Viewport.MSAA_4X
-	_viewport.use_taa = true
-	# Мип-карты и MSAA сглаживают мелкие детали на игровом масштабе.
+	RenderQuality.setup_viewport(_viewport)
+	# Мип-карты и сглаживание (RenderQuality) смягчают мелкие детали на игровом масштабе.
 	_viewport.texture_mipmap_bias = STYLE.mipmap_bias
 	_viewport.render_target_update_mode = SubViewport.UPDATE_WHEN_VISIBLE
 	add_child(_viewport)
@@ -68,6 +67,7 @@ func _init() -> void:
 	resized.connect(_fit_viewport)
 	_world = ARENA_SCENE.instantiate() as Node3D
 	_viewport.add_child(_world)
+	RenderQuality.setup_world(_world)
 	_camera = _world.get_node("Camera") as Camera3D
 	_camera.rotation = Vector3(CAMERA_PITCH, CAMERA_YAW, 0.0)
 	_fog = Node3D.new()

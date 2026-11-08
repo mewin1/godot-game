@@ -32,8 +32,9 @@ const DAY_EXPOSURE: float = 1.06
 const DAY_GLOW: float = 0.35
 const DAY_BLOOM: float = 0.015
 const DAY_SATURATION: float = 1.02
-const DAY_SHADOW_OPACITY: float = 0.88
-const DAY_SHADOW_BLUR: float = 1.0
+const DAY_SHADOW_OPACITY: float = 0.8
+## Край тени мягкий, как ночью: резкие тени дрожали при ходе солнца.
+const DAY_SHADOW_BLUR: float = 2.0
 ## Закат: низкое рыжее солнце, розово-сизое небо.
 const SUNSET_SUN: Color = Color("ffb07a")
 const SUNSET_AMBIENT: Color = Color("ab9ea0")
@@ -141,7 +142,9 @@ func apply(trial: RitualTrial) -> void:
 	_sun.light_energy = sun_energy * (1.0 - night) + _moon_energy * smoothstep(0.2, 0.75, night)
 	_sun.shadow_opacity = lerpf(DAY_SHADOW_OPACITY, _night_shadow_opacity, night)
 	_sun.shadow_blur = lerpf(DAY_SHADOW_BLUR, _night_shadow_blur, night)
-	_sun.directional_shadow_max_distance = camera_distance + 70.0
+	# Тени до дальней кромки кадра, не дальше: чем дальше, тем крупнее пиксели тени («ломаные» края).
+	_sun.directional_shadow_max_distance = minf(camera_distance + 45.0,
+			RenderQuality.MOBILE_SHADOW_DISTANCE if RenderQuality.is_mobile() else INF)
 	_warm.light_energy = lerpf(SUNSET_WARM_KEY * afterglow, _night_warm, night)
 	_env.ambient_light_color = DAY_AMBIENT.lerp(SUNSET_AMBIENT, afterglow).lerp(_night_ambient, night)
 	_env.ambient_light_energy = lerpf(DAY_AMBIENT_ENERGY, _night_ambient_energy, night)

@@ -140,6 +140,15 @@ func _build_ui() -> void:
 	_status = _hud._hp_label
 	_idols = _label(self, "", 10)
 	_idols.hide()
+	# Временный счётчик кадров: справа под кнопками «Пауза» и «Проверки».
+	var fps: FpsLabel = FpsLabel.new()
+	fps.viewport = board.stage._viewport if board.stage != null else null
+	add_child(fps)
+	fps.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
+	fps.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	fps.offset_left = -190.0
+	fps.offset_right = -16.0
+	fps.offset_top = 52.0
 	# Техническая строка опыта сохранена отдельно от интерфейса PvP.
 	var tools: VBoxContainer = VBoxContainer.new()
 	root_box.add_child(tools)

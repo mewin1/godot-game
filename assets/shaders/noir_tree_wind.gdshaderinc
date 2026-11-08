@@ -14,8 +14,9 @@ vec3 noir_tree_bend(vec3 v, mat4 model, float flex, float time) {
 	float front = 0.5 + 0.5 * sin(dot(base, lee_dir) * 0.09 - time * 0.5);
 	float wind = noir_wind * mix(0.7, 1.0, front);
 	float phase = dot(base, vec2(0.21, 0.13));
-	float sway = sin(time * (1.25 + 0.35 * wind) + phase);
-	float side = sin(time * (1.6 + 0.4 * wind) + phase * 1.7 + 1.3);
+	// частоты постоянные (как у травы): от силы ветра зависит только размах, иначе в порыв дерево дёргается
+	float sway = sin(time * 1.25 + phase);
+	float side = sin(time * 1.6 + phase * 1.7 + 1.3);
 	// направление ветра в пространстве модели (единичное: сдвиг в долях высоты дерева)
 	vec3 lee = normalize(transpose(mat3(model)) * vec3(lee_dir.x, 0.0, lee_dir.y));
 	vec2 across = vec2(-lee.z, lee.x);
@@ -23,6 +24,6 @@ vec3 noir_tree_bend(vec3 v, mat4 model, float flex, float time) {
 	vec2 shift = lee.xz * (sway * amp + wind * 0.015 * (0.85 + 0.15 * sway)) + across * side * amp * 0.45;
 	v.xz += shift * bend * flex;
 	// концы ветвей чуть покачиваются вверх-вниз
-	v.y += 0.0012 * (1.0 + wind) * outer * sin(time * (1.9 + 0.5 * wind) + phase * 3.0 + z * 4.0) * flex;
+	v.y += 0.0012 * (1.0 + wind) * outer * sin(time * 1.9 + phase * 3.0 + z * 4.0) * flex;
 	return v;
 }
