@@ -3,6 +3,7 @@ render_mode cull_disabled;
 // Кора с ветками у копий леса: как прежний StandardMaterial3D (цвет × фактура, лунный контур),
 // но гнётся ветром той же функцией, что и листва (noir_tree_wind.gdshaderinc).
 #include "res://assets/shaders/noir_tree_wind.gdshaderinc"
+#include "res://assets/shaders/noir_forest_shade.gdshaderinc"
 uniform sampler2D bark : source_color, filter_linear_mipmap;
 uniform bool use_texture = true;
 uniform vec4 tint : source_color = vec4(1.0);
@@ -19,9 +20,10 @@ void fragment() {
 	if (use_texture) {
 		col *= texture(bark, UV).rgb;
 	}
-	ALBEDO = col;
+	// стволы и ветки — в глубине леса, затеняются как низ кроны
+	ALBEDO = noir_forest_shaded(col, 0.15);
 	ROUGHNESS = 0.8;
-	SPECULAR = 0.5;
-	RIM = rim;
+	SPECULAR = mix(0.5, 0.25, noir_forest_shade);
+	RIM = rim * (1.0 - 0.5 * noir_forest_shade);
 	RIM_TINT = rim_tint;
 }

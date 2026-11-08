@@ -36,6 +36,10 @@ func _terem_side() -> Side:
 	return SIDE_RIGHT
 
 
+func _glades() -> Array[Rect2]:
+	return CLEARINGS
+
+
 func _env_transform() -> Transform3D:
 	return ENV
 

@@ -37,6 +37,10 @@ func _init() -> void:
 	_daylight = RitualDaylight.new(_world, clouds)
 
 
+func _exit_tree() -> void:
+	RitualDaylight.reset_globals()
+
+
 func show_field(field: FieldState, player_colors: Callable) -> void:
 	if layout == null:
 		layout = RitualLayout3D.new(field.layout)

@@ -107,6 +107,10 @@ uniform float tile = 4.5;
 uniform float tint = 0.1;
 uniform vec3 hue = vec3(0.62, 1.0, 0.64);
 uniform float bumps = 0.085;
+// поляна вокруг двора: за ней земля днём в тени леса (noir_forest_shade.gdshaderinc)
+uniform vec4 glade_a = vec4(-1e5, -1e5, 1e5, 1e5);
+uniform vec4 glade_b = vec4(-1e5, -1e5, 1e5, 1e5);
+#include "res://assets/shaders/noir_forest_shade.gdshaderinc"
 varying vec3 world;
 
 float yard_fade(vec2 p) {
@@ -139,7 +143,7 @@ void fragment() {
 	a = mix(a, texture(mud_albedo, uv2).rgb * vec3(0.64, 0.74, 0.77), margin.g * 0.73);
 	a *= mix(vec3(1.0), vec3(0.87, 1.17, 0.87), margin.b * wm);
 	a = mix(vec3(dot(a, vec3(0.25, 0.60, 0.15))), a, 0.55);
-	ALBEDO = a * hue * tint * mix(1.0, 0.62, yard_fade(world.xz));
+	ALBEDO = noir_floor_shaded(a * hue * tint * mix(1.0, 0.62, yard_fade(world.xz)), world.xz, glade_a, glade_b);
 	NORMAL_MAP = nm;
 	NORMAL_MAP_DEPTH = 0.36;
 	ROUGHNESS = mix(mix(0.59, 0.95, max(wm, wl)), 0.53, margin.g);
@@ -211,6 +215,7 @@ var _rock_spots: PackedVector3Array = PackedVector3Array()
 
 func _ready() -> void:
 	_leaf_material.shader = preload("res://assets/shaders/noir_leaves.gdshader")
+	_set_glades(_leaf_material)
 	_rng.seed = 22
 	_build_ground()
 
@@ -285,6 +290,20 @@ func set_open(field: FieldState) -> void:
 	_build_collected(_yard_grass, _yard)
 	if _ambience != null:
 		_ambience.set_perches(_perches)
+
+
+## Поляна (до двух прямоугольников мира x, z): за ней земля и трава днём в тени леса.
+## В PvP поляны нет — тень леса там не включается (всегда ночь).
+func _glades() -> Array[Rect2]:
+	return []
+
+
+func _set_glades(material: ShaderMaterial) -> void:
+	var rects: Array[Rect2] = _glades()
+	for index: int in mini(rects.size(), 2):
+		var rect: Rect2 = rects[index]
+		material.set_shader_parameter("glade_a" if index == 0 else "glade_b",
+				Vector4(rect.position.x, rect.position.y, rect.end.x, rect.end.y))
 
 
 ## Двор поля в мире (x, z). Другой режим на этой арене задаёт свой двор.
@@ -501,6 +520,7 @@ func _ground_material() -> ShaderMaterial:
 	shader.code = GROUND_SHADER
 	var material: ShaderMaterial = ShaderMaterial.new()
 	material.shader = shader
+	_set_glades(material)
 	# Маска снята с оси ручья PvP в Blender; координаты X/Z мира, метры.
 	material.set_shader_parameter("river_margin", preload("res://assets/noir/courtyard/river_margin.png"))
 	material.set_shader_parameter("margin_extent", Vector4(-80.0, -28.0, 124.0, 64.0))

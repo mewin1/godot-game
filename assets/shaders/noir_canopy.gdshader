@@ -7,6 +7,7 @@ uniform bool broadleaf = false;
 uniform float cut = 0.28;
 // изгиб ветром — общий с корой и ветками (noir_tree_wind.gdshaderinc)
 #include "res://assets/shaders/noir_tree_wind.gdshaderinc"
+#include "res://assets/shaders/noir_forest_shade.gdshaderinc"
 varying float open_sky;
 varying float tree_tone;
 
@@ -37,7 +38,8 @@ void fragment() {
 		float green = dot(col, vec3(0.29, 0.59, 0.12));
 		col = mix(col, green * vec3(0.78, 1.07, 0.61), 0.64);
 	}
-	ALBEDO = col * mix(vec3(0.73,0.81,0.80), vec3(1.04,1.07,0.93), tree_tone) * mix(0.74, 1.22, open_sky);
+	ALBEDO = noir_forest_shaded(col * mix(vec3(0.73,0.81,0.80), vec3(1.04,1.07,0.93), tree_tone) * mix(0.74, 1.22, open_sky),
+			open_sky);
 	ROUGHNESS = 0.83;
 	SPECULAR = 0.13;
 	AO = mix(0.57, 1.0, open_sky);

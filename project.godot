@@ -50,6 +50,10 @@ noir_wind_drift={
 "type": "vec3",
 "value": Vector3(0, 0, 0)
 }
+noir_forest_shade={
+"type": "float",
+"value": 0.0
+}
 
 [rendering]
 

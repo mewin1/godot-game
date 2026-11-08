@@ -3,11 +3,17 @@ render_mode cull_disabled;
 // Цвет у корня и на сгибе каждого листа записан в 3D-модель.
 // сила порыва ветра 0..1 (NoirWind): трава гнётся сильнее
 global uniform float noir_wind;
+// поляна вокруг двора: за ней трава днём в тени леса (noir_forest_shade.gdshaderinc)
+uniform vec4 glade_a = vec4(-1e5, -1e5, 1e5, 1e5);
+uniform vec4 glade_b = vec4(-1e5, -1e5, 1e5, 1e5);
+#include "res://assets/shaders/noir_forest_shade.gdshaderinc"
 varying float tip_light;
 varying float grass_tone;
+varying vec2 foot_at;
 
 void vertex() {
 	vec2 foot = MODEL_MATRIX[3].xz;
+	foot_at = foot;
 	float tip = smoothstep(0.025, 0.42, VERTEX.y);
 	tip_light = tip;
 	grass_tone = 0.5 + 0.5 * sin(dot(foot, vec2(0.57, 0.34)));
@@ -29,7 +35,8 @@ void vertex() {
 void fragment() {
 	float value = dot(COLOR.rgb, vec3(0.25, 0.60, 0.15));
 	vec3 tint = mix(vec3(0.76, 0.94, 0.88), vec3(1.09, 1.04, 0.80), grass_tone);
-	ALBEDO = mix(vec3(value), COLOR.rgb, 0.83) * tint * mix(0.53, 0.96, tip_light);
+	ALBEDO = noir_floor_shaded(mix(vec3(value), COLOR.rgb, 0.83) * tint * mix(0.53, 0.96, tip_light),
+			foot_at, glade_a, glade_b);
 	AO = mix(0.60, 1.0, tip_light);
 	ROUGHNESS = 0.76;
 	SPECULAR = 0.14;

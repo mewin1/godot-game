@@ -44,9 +44,14 @@ const SUNSET_FOG: Color = Color("9c8c86")
 const SUNSET_WARM_KEY: float = 0.16
 ## Тени облаков: днём заметные пятна, на закате слабее, ночью нет.
 const CLOUD_STRENGTH: float = 0.55
+## Тень леса днём (глобальный параметр шейдеров деревьев noir_forest_shade): под кронами темновато
+## даже в полдень, иначе днём лес «пластмассовый» и спорит с двором. Ночью — 0 (ночь и так тёмная).
+const FOREST_SHADE: float = 1.0
 
 ## Расстояние от камеры до двора — туман и размытие дальнего плана начинаются за двором.
 var camera_distance: float = 80.0
+## Сила дневной тени леса (для проб можно менять на лету).
+var forest_shade: float = FOREST_SHADE
 
 var _env: Environment
 var _sky: ProceduralSkyMaterial
@@ -120,6 +125,11 @@ static func sun_phase(trial: RitualTrial) -> Vector2:
 	return Vector2(1.0, lerpf(0.45, 1.0, smoothstep(0.0, 1.0, twilight)))
 
 
+## Сбросить общие параметры шейдеров (режим закрыт — PvP и меню видят обычный ночной лес).
+static func reset_globals() -> void:
+	RenderingServer.global_shader_parameter_set(&"noir_forest_shade", 0.0)
+
+
 func apply(trial: RitualTrial) -> void:
 	var phase: Vector2 = sun_phase(trial)
 	var s: float = phase.x
@@ -163,4 +173,5 @@ func apply(trial: RitualTrial) -> void:
 		_sky.sky_top_color = DAY_SKY_TOP.lerp(SUNSET_SKY_TOP, afterglow).lerp(_night_top, night)
 	if _attributes != null:
 		_attributes.dof_blur_far_distance = camera_distance + 40.0
+	RenderingServer.global_shader_parameter_set(&"noir_forest_shade", forest_shade * up * (1.0 - night))
 	_clouds.set_strength(CLOUD_STRENGTH * up * lerpf(1.0, 0.55, warmth) * (1.0 - night))
