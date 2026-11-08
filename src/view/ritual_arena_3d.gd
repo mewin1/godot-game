@@ -1,7 +1,10 @@
+class_name RitualArena3D
 extends NoirArena3D
 ## Двор «Обряда» (мостовая, частокол, терем, чаши — свои) внутри леса PvP-двора.
 ## Лес, камни, ручей, луг, туман и звери — из мастер-сцены PvP, повёрнуты на четверть
 ## оборота и сдвинуты: ручей идёт слева у ворот, терем справа, как в кадре PvP.
+## Где PvP-камера не смотрела и мастер-сцена ничего не ставила, лес, камни и траву досаживает
+## ritual_fill.tres (tools/concepts/ritual_forest_fill.py — поляна и терем там те же, что здесь).
 
 ## Двор «Обряда» с частоколом в мире (x, z): клетки 1..18 × 2..12 поля по 2 м.
 const YARD: Rect2 = Rect2(1.0, -17.0, 38.0, 24.0)
@@ -9,8 +12,15 @@ const YARD: Rect2 = Rect2(1.0, -17.0, 38.0, 24.0)
 ## ручей встаёт к воротам слева, брод — напротив входа (z = −15).
 const ENV: Transform3D = Transform3D(Basis(Vector3(0, 0, 1), Vector3(0, 1, 0), Vector3(-1, 0, 0)),
 		Vector3(1.5, 0.0, -18.0))
-## Поляна без деревьев: двор, терем справа и полоса луга; ближе к камере (+x, +z) — шире.
-const CLEARING: Rect2 = Rect2(-2.5, -24.5, 55.5, 40.5)
+## Поляна без деревьев: двор с полосой луга и площадка терема; ближе к камере (+x, +z) — шире.
+const CLEARINGS: Array[Rect2] = [Rect2(-2.5, -23.0, 48.0, 38.0), Rect2(32.0, -6.0, 20.0, 23.0)]
+## Терем с крыльцом и дорожкой к нему.
+const TEREM: Rect2 = Rect2(37.0, -0.5, 10.0, 11.0)
+const FILL: CourtyardForestLayout = preload("res://assets/noir/courtyard/ritual_fill.tres")
+## Запас от открытой клетки до травы и камней (частокол стоит в 1 м от клетки).
+const GRASS_GAP: float = 1.6
+## Открытые клетки поля (путь и места построек) — задаёт RitualStage3D до постройки леса.
+var yard_cells: Dictionary[Vector2i, bool] = {}
 
 
 func _yard_rect() -> Rect2:
@@ -25,14 +35,45 @@ func _env_transform() -> Transform3D:
 	return ENV
 
 
+func _forest_layouts() -> Array[CourtyardForestLayout]:
+	var layouts: Array[CourtyardForestLayout] = super._forest_layouts()
+	layouts.append(FILL)
+	return layouts
+
+
+func _rock_layouts() -> Array[CourtyardForestLayout]:
+	var layouts: Array[CourtyardForestLayout] = super._rock_layouts()
+	layouts.append(FILL)
+	return layouts
+
+
 ## Деревья — вне поляны; камни и трава — вне двора с теремом.
 func _keep_env(at: Vector3, tree: bool) -> bool:
 	var point: Vector2 = Vector2(at.x, at.z)
-	return not (CLEARING if tree else _yard_block()).has_point(point)
+	return not (_in_clearing(point) if tree else _in_yard(point))
 
 
-func _yard_block() -> Rect2:
-	return YARD.grow(1.2).grow_side(SIDE_RIGHT, 8.0)
+func _in_clearing(point: Vector2) -> bool:
+	for rect: Rect2 in CLEARINGS:
+		if rect.has_point(point):
+			return true
+	return false
+
+
+## Двор по настоящим клеткам: в «кармане» между поворотами частокола растёт трава.
+func _in_yard(p: Vector2) -> bool:
+	if TEREM.has_point(p):
+		return true
+	var cell: Vector2i = Vector2i(floori(p.x / CELL), floori((p.y - BOARD_MIN.y) / CELL))
+	for dy: int in range(-1, 2):
+		for dx: int in range(-1, 2):
+			var near: Vector2i = cell + Vector2i(dx, dy)
+			if not yard_cells.has(near):
+				continue
+			var area: Rect2 = Rect2(near.x * CELL, near.y * CELL + BOARD_MIN.y, CELL, CELL).grow(GRASS_GAP)
+			if area.has_point(p):
+				return true
+	return yard_cells.is_empty() and YARD.grow(1.2).has_point(p)
 
 
 func _open_cells(field: FieldState, path: Array[Vector2i]) -> Dictionary[Vector2i, bool]:
@@ -43,24 +84,35 @@ func _open_cells(field: FieldState, path: Array[Vector2i]) -> Dictionary[Vector2
 
 
 ## Трава и подлесок не растут во дворе и под теремом (двор «Обряда» чистый).
+## Весь двор «Обряда» в кадре близко — рисованные картинки заменяются объёмными, как у двора PvP.
 func _collect(into: Dictionary[String, Array], id: String, at: Vector2, scale_by: float, yaw: float = -1.0) -> void:
-	if _yard_block().has_point(at):
+	if _in_yard(at):
 		return
+	if id.begins_with("bb/grass_"):
+		id = "seed_grass" if id.ends_with("52") else "sedge"
+	elif id.begins_with("bb/fern_"):
+		id = "fern"
+	elif id.begins_with("bb/sapling_") or id.begins_with("bb/spruce_"):
+		id = "spruce"
+	elif id.begins_with("bb/birch_"):
+		id = "birch"
 	super._collect(into, id, at, scale_by, yaw)
 
 
 ## Расстояние от точки русла (координаты вида) до края поляны; меньше нуля — внутри.
 func _clearance(p: Vector2) -> float:
 	var at: Vector2 = _w(p)
-	var dx: float = maxf(CLEARING.position.x - at.x, at.x - CLEARING.end.x)
-	var dy: float = maxf(CLEARING.position.y - at.y, at.y - CLEARING.end.y)
-	if dx < 0.0 and dy < 0.0:
-		return maxf(dx, dy)
-	return Vector2(maxf(dx, 0.0), maxf(dy, 0.0)).length()
+	var best: float = INF
+	for rect: Rect2 in CLEARINGS:
+		var dx: float = maxf(rect.position.x - at.x, at.x - rect.end.x)
+		var dy: float = maxf(rect.position.y - at.y, at.y - rect.end.y)
+		var gap: float = maxf(dx, dy) if dx < 0.0 and dy < 0.0 else Vector2(maxf(dx, 0.0), maxf(dy, 0.0)).length()
+		best = minf(best, gap)
+	return best
 
 
 func _wild_zone() -> Rect2:
-	return CLEARING.grow(-0.8)
+	return CLEARINGS[0].merge(CLEARINGS[1]).grow(-0.8)
 
 
 ## Дымка леса PvP, перенесённая вместе с лесом.

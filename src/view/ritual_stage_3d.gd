@@ -53,6 +53,10 @@ func show_field(field: FieldState, player_colors: Callable) -> void:
 	if layout == null:
 		layout = RitualLayout3D.new(field.layout)
 		_build_platforms()
+		# Лес и трава обходят двор по настоящим клеткам (до постройки окружения).
+		var arena: RitualArena3D = _world.get_node("Arena") as RitualArena3D
+		for cell: Vector2i in field.get_buildable_cells() + field.layout.path_cells:
+			arena.yard_cells[cell] = true
 	super.show_field(field, player_colors)
 	if _hero == null:
 		var scene: PackedScene = load("res://assets/noir_h3d/heroes/ilya.glb") as PackedScene

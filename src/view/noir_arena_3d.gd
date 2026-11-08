@@ -8,6 +8,7 @@ const PROPS: String = "res://assets/noir_h3d/arena/%s.glb"
 ## Камни опушки по концептам new_concept/rocks (tools/blender/noir/rocks.py) и их композиция.
 const ROCKS: String = "res://assets/noir/rocks/%s.glb"
 const ROCK_LAYOUT: CourtyardForestLayout = preload("res://assets/noir/courtyard/rock_layout.tres")
+const FOREST_LAYOUT: CourtyardForestLayout = preload("res://assets/noir/courtyard/forest_layout.tres")
 const FOREST_FILL: CourtyardForestLayout = preload("res://assets/noir/courtyard/forest_fill.tres")
 ## Радиус камня при масштабе 1 (м) — звери обходят.
 const ROCK_RADIUS: Dictionary[String, float] = {"rock_boulder": 0.85, "rock_slab": 1.1, "rock_menhir": 0.45,
@@ -296,6 +297,20 @@ func _env_transform() -> Transform3D:
 ## Оставить ли дерево / камень окружения в этой точке мира (режим с большим двором прореживает лес).
 func _keep_env(_at: Vector3, _tree: bool) -> bool:
 	return true
+
+
+## Лес (деревья, подлесок) и камни из мастер-сцены; режим может добавить свою досадку.
+func _forest_layouts() -> Array[CourtyardForestLayout]:
+	return [FOREST_LAYOUT, FOREST_FILL]
+
+
+func _rock_layouts() -> Array[CourtyardForestLayout]:
+	return [ROCK_LAYOUT]
+
+
+## Точка мира во дворе с оградой или под теремом — луг и камни туда не ставятся.
+func _in_yard(p: Vector2) -> bool:
+	return _yard_rect().grow(1.0).grow_side(_terem_side(), 6.5).has_point(p)
 
 
 ## Расстановка из мастер-сцены → мир, без того, что режим велит убрать.
@@ -915,9 +930,9 @@ func _build_undergrowth(board: BoardLayout, cells: Dictionary[Vector2i, bool],
 ## деревьев не ставила, — левая половина кадра. Виды сливаются: одна MultiMesh на вид.
 func _build_forest() -> void:
 	var merged: Dictionary[String, Array] = {}
-	for layout: CourtyardForestLayout in [preload("res://assets/noir/courtyard/forest_layout.tres"), FOREST_FILL]:
+	for layout: CourtyardForestLayout in _forest_layouts():
 		for species: String in layout.placements:
-			if species == "moss_rock":
+			if species == "moss_rock" or ROCK_RADIUS.has(species):
 				continue  # одинаковые валуны мастер-сцены заменены композицией из rock_layout.tres (_build_rocks)
 			if not merged.has(species):
 				merged[species] = []
@@ -934,15 +949,17 @@ func _build_meadow() -> void:
 	rng.seed = 7707
 	var sets: Dictionary[String, Array] = {}
 	var zone: Rect2 = _wild_zone().grow(4.0)
-	var yard: Rect2 = _yard_rect().grow(1.0).grow_side(_terem_side(), 6.5)
 	var stream: PackedVector2Array = _world_stream()
 	var to_env: Transform3D = _env_transform().affine_inverse()
 	var rocks: Array[Vector3] = []
-	for kind: String in ROCK_LAYOUT.placements:
-		for at: Transform3D in _env_placements(ROCK_LAYOUT.placements[kind], false):
-			rocks.append(Vector3(at.origin.x, at.origin.z, ROCK_RADIUS[kind] * at.basis.get_scale().x))
+	for layout: CourtyardForestLayout in _rock_layouts():
+		for kind: String in layout.placements:
+			if not ROCK_RADIUS.has(kind):
+				continue
+			for at: Transform3D in _env_placements(layout.placements[kind], false):
+				rocks.append(Vector3(at.origin.x, at.origin.z, ROCK_RADIUS[kind] * at.basis.get_scale().x))
 	var free: Callable = func(p: Vector2, near_stream: float) -> bool:
-		if yard.has_point(p) or _stream_gap(p, stream) < near_stream:
+		if _in_yard(p) or _stream_gap(p, stream) < near_stream:
 			return false
 		var env: Vector3 = to_env * Vector3(p.x, 0.0, p.y)
 		if absf(env.x - 3.0) < 1.1 and env.z > -0.5 and env.z < 8.0:
@@ -1009,11 +1026,14 @@ func _stream_gap(p: Vector2, stream: PackedVector2Array) -> float:
 
 ## Камни опушки: группы и одиночные валуны разных форм (tools/concepts/rock_layout.py).
 func _build_rocks() -> void:
-	for kind: String in ROCK_LAYOUT.placements:
-		var transforms: Array[Transform3D] = _env_placements(ROCK_LAYOUT.placements[kind], false)
-		_multimesh(kind, transforms, self)
-		for at: Transform3D in transforms:
-			_rock_spots.append(Vector3(at.origin.x, at.origin.z, ROCK_RADIUS[kind] * at.basis.get_scale().x))
+	for layout: CourtyardForestLayout in _rock_layouts():
+		for kind: String in layout.placements:
+			if not ROCK_RADIUS.has(kind):
+				continue
+			var transforms: Array[Transform3D] = _env_placements(layout.placements[kind], false)
+			_multimesh(kind, transforms, self)
+			for at: Transform3D in transforms:
+				_rock_spots.append(Vector3(at.origin.x, at.origin.z, ROCK_RADIUS[kind] * at.basis.get_scale().x))
 
 
 func _collect(into: Dictionary[String, Array], id: String, at: Vector2, scale_by: float, yaw: float = -1.0) -> void:
@@ -1256,7 +1276,7 @@ func _wild_zone() -> Rect2:
 ## Деревья и камни леса (x, z, радиус) — их обходят звери.
 func _wild_obstacles() -> PackedVector3Array:
 	var result: PackedVector3Array = PackedVector3Array()
-	for layout: CourtyardForestLayout in [preload("res://assets/noir/courtyard/forest_layout.tres"), FOREST_FILL]:
+	for layout: CourtyardForestLayout in _forest_layouts():
 		_tree_obstacles(layout, result)
 	for rock: Vector3 in _rock_spots:
 		result.append(rock)
