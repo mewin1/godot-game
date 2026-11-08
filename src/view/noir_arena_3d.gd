@@ -8,12 +8,13 @@ const PROPS: String = "res://assets/noir_h3d/arena/%s.glb"
 ## Камни опушки по концептам new_concept/rocks (tools/blender/noir/rocks.py) и их композиция.
 const ROCKS: String = "res://assets/noir/rocks/%s.glb"
 const ROCK_LAYOUT: CourtyardForestLayout = preload("res://assets/noir/courtyard/rock_layout.tres")
+const FOREST_FILL: CourtyardForestLayout = preload("res://assets/noir/courtyard/forest_fill.tres")
 ## Радиус камня при масштабе 1 (м) — звери обходят.
 const ROCK_RADIUS: Dictionary[String, float] = {"rock_boulder": 0.85, "rock_slab": 1.1, "rock_menhir": 0.45,
 		"rock_cluster": 1.0, "rock_split": 0.95, "rock_flat": 0.5}
 ## Камни у ручья и в подлеске: мелкие формы (крупные стоят группами из ROCK_LAYOUT).
 ## Сколько куртин травы на поляне вокруг двора.
-const MEADOW_CLUMPS: int = 46
+const MEADOW_CLUMPS: int = 78
 const SMALL_ROCKS: Array[String] = ["rock_flat", "rock_flat", "rock_cluster", "rock_boulder", "rock_split"]
 const CellarGeometry = preload("res://src/view/courtyard_cellars.gd")
 const COURTYARD_PROPS: Dictionary[String, PackedScene] = {
@@ -863,13 +864,20 @@ func _build_undergrowth(board: BoardLayout, cells: Dictionary[Vector2i, bool],
 
 ## Внешний лес расставлен в courtyard.blend. Места внутри растущего двора и берег
 ## ручья по-прежнему заполняются относительно действующей игровой геометрии.
+## forest_fill.tres (tools/concepts/forest_fill.py) досаживает лес туда, куда камера смотрит, а мастер-сцена
+## деревьев не ставила, — левая половина кадра. Виды сливаются: одна MultiMesh на вид.
 func _build_forest() -> void:
-	var layout: CourtyardForestLayout = preload("res://assets/noir/courtyard/forest_layout.tres")
-	for species: String in layout.placements:
-		if species == "moss_rock":
-			continue  # одинаковые валуны мастер-сцены заменены композицией из rock_layout.tres (_build_rocks)
+	var merged: Dictionary[String, Array] = {}
+	for layout: CourtyardForestLayout in [preload("res://assets/noir/courtyard/forest_layout.tres"), FOREST_FILL]:
+		for species: String in layout.placements:
+			if species == "moss_rock":
+				continue  # одинаковые валуны мастер-сцены заменены композицией из rock_layout.tres (_build_rocks)
+			if not merged.has(species):
+				merged[species] = []
+			merged[species].append_array(layout.placements[species])
+	for species: String in merged:
 		var transforms: Array[Transform3D] = []
-		transforms.assign(layout.placements[species])
+		transforms.assign(merged[species])
 		_multimesh(species, transforms, self)
 
 
@@ -901,12 +909,18 @@ func _build_meadow() -> void:
 	# куртины травы
 	for clump: int in MEADOW_CLUMPS:
 		var center: Vector2 = Vector2(rng.randf_range(zone.position.x, zone.end.x), rng.randf_range(zone.position.y, zone.end.y))
-		var radius: float = rng.randf_range(0.9, 2.2)
-		for k: int in rng.randi_range(10, 26):
+		var radius: float = rng.randf_range(1.0, 2.6)
+		# каждая пятая куртина — папоротниковая, остальные — осока со злаком
+		var ferny: bool = rng.randf() < 0.2
+		for k: int in rng.randi_range(14, 32):
 			var p: Vector2 = center + Vector2.from_angle(rng.randf() * TAU) * radius * sqrt(rng.randf())
-			if free.call(p, 1.5):
+			if not free.call(p, 1.5):
+				continue
+			if ferny and rng.randf() < 0.6:
+				_collect(sets, "fern", p, rng.randf_range(0.7, 1.2), rng.randf() * TAU)
+			else:
 				var id: String = "sedge" if rng.randf() < 0.62 else "seed_grass"
-				_collect(sets, id, p, GRASS_SCALE * rng.randf_range(0.75, 1.35), rng.randf() * TAU)
+				_collect(sets, id, p, GRASS_SCALE * rng.randf_range(0.75, 1.4), rng.randf() * TAU)
 	# камни «садятся» в землю: папоротник и осока у подножия
 	for rock: Vector3 in rocks:
 		for k: int in rng.randi_range(2, 5):
@@ -926,15 +940,17 @@ func _build_meadow() -> void:
 		var along: float = 0.0
 		while along < a.distance_to(b):
 			var p: Vector2 = a + (b - a).normalized() * along + outward * rng.randf_range(-0.6, 2.6)
-			along += rng.randf_range(0.9, 1.8)
+			along += rng.randf_range(0.6, 1.2)
 			if not free.call(p, 1.8):
 				continue
 			var roll: float = rng.randf()
-			if roll < 0.5:
+			if roll < 0.45:
 				_collect(sets, "fern", p, rng.randf_range(0.9, 1.4), rng.randf() * TAU)
 			elif roll < 0.62:
-				_collect(sets, "spruce", p, rng.randf_range(1.5, 2.6), 0.0)
-			elif roll < 0.85:
+				_collect(sets, "spruce", p, rng.randf_range(1.5, 3.2), 0.0)
+			elif roll < 0.68:
+				_collect(sets, "birch", p, rng.randf_range(2.0, 3.2), 0.0)
+			elif roll < 0.92:
 				_collect(sets, "seed_grass", p, GRASS_SCALE * rng.randf_range(0.9, 1.4), rng.randf() * TAU)
 	_build_collected(sets, self)
 
@@ -1194,7 +1210,14 @@ func _wild_zone() -> Rect2:
 ## Деревья и камни леса (x, z, радиус) — их обходят звери.
 func _wild_obstacles() -> PackedVector3Array:
 	var result: PackedVector3Array = PackedVector3Array()
-	var layout: CourtyardForestLayout = preload("res://assets/noir/courtyard/forest_layout.tres")
+	for layout: CourtyardForestLayout in [preload("res://assets/noir/courtyard/forest_layout.tres"), FOREST_FILL]:
+		_tree_obstacles(layout, result)
+	for rock: Vector3 in _rock_spots:
+		result.append(rock)
+	return result
+
+
+func _tree_obstacles(layout: CourtyardForestLayout, result: PackedVector3Array) -> void:
 	for species: String in layout.placements:
 		if species != "spruce" and species != "birch":
 			continue
@@ -1202,9 +1225,6 @@ func _wild_obstacles() -> PackedVector3Array:
 		placed.assign(layout.placements[species])
 		for at: Transform3D in placed:
 			result.append(Vector3(at.origin.x, at.origin.z, 0.9))
-	for rock: Vector3 in _rock_spots:
-		result.append(rock)
-	return result
 
 
 ## Середина русла ручья в мировых x, z.
@@ -1236,6 +1256,8 @@ func _multimesh(id: String, transforms: Array[Transform3D], parent: Node3D = nul
 		var holder: MultiMeshInstance3D = MultiMeshInstance3D.new()
 		holder.multimesh = multi
 		holder.name = "%s_forest" % id
+		if id in ["sedge", "seed_grass", "fern", "shingle"]:
+			holder.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF  # ночью не видно, а кадр дорожает
 		(parent if parent != null else self).add_child(holder)
 	model.queue_free()
 

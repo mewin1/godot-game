@@ -11,12 +11,16 @@ void vertex() {
 	float tip = smoothstep(0.025, 0.42, VERTEX.y);
 	tip_light = tip;
 	grass_tone = 0.5 + 0.5 * sin(dot(foot, vec2(0.57, 0.34)));
-	float breeze = sin(dot(foot, vec2(0.68, 0.39)) + TIME * (1.24 + 1.2 * noir_wind))
+	// порыв идёт по траве волной вдоль ветра (−x, +z)
+	float front = 0.5 + 0.5 * sin(dot(foot, vec2(-0.884, 0.468)) * 0.35 - TIME * 2.4);
+	float wind = noir_wind * mix(0.35, 1.0, front);
+	float breeze = sin(dot(foot, vec2(0.68, 0.39)) + TIME * (1.24 + 4.0 * wind))
 			+ 0.34 * sin(dot(foot, vec2(-0.27, 0.82)) + TIME * 2.02);
-	VERTEX.xz += vec2(0.017, 0.009) * breeze * tip * tip * (1.0 + 2.5 * noir_wind);
-	// в порыв трава ложится по ветру (−x, +z)
-	vec3 lee = inverse(mat3(MODEL_MATRIX)) * vec3(-0.884, 0.0, 0.468);
-	VERTEX.xz += lee.xz * 0.05 * noir_wind * tip * tip;
+	VERTEX.xz += vec2(0.017, 0.009) * breeze * tip * tip * (1.0 + 4.0 * wind);
+	// в порыв трава ложится по ветру
+	mat3 basis = mat3(MODEL_MATRIX);  // поворот и равный масштаб: обратная = транспонированная / масштаб²
+	vec3 lee = transpose(basis) * vec3(-0.884, 0.0, 0.468) / dot(basis[0], basis[0]);
+	VERTEX.xz += lee.xz * (0.13 + 0.03 * breeze) * wind * tip * tip;
 	NORMAL = normalize(mix(vec3(NORMAL.x, abs(NORMAL.y), NORMAL.z), vec3(0, 1, 0), 0.34));
 }
 

@@ -28,7 +28,25 @@ static func update(delta: float) -> void:
 	RenderingServer.global_shader_parameter_set(&"noir_wind_drift", _drift)
 
 
-## Порывы: сумма синусов разных периодов, выше порога — порыв (раз в 10–25 с, по 3–6 с).
+## Порывы: раз в ~16 с (сдвиг внутри периода и сила — от номера периода): нарастает 1,2 с,
+## держится ~2 с, стихает к 6,5 с. В промежутках — лёгкий бриз.
+const GUST_PERIOD: float = 16.0
+
+
 static func gust_at(seconds: float) -> float:
-	var wave: float = sin(seconds * 0.41) + sin(seconds * 0.23 + 1.3) + 0.6 * sin(seconds * 0.97 + 2.1)
-	return clampf((wave - 0.9) / 1.4, 0.0, 1.0)
+	var index: float = floorf(seconds / GUST_PERIOD)
+	var strongest: float = 0.0
+	for k: float in [index - 1.0, index]:
+		var start: float = k * GUST_PERIOD + _hash01(k) * 6.0
+		var local: float = seconds - start
+		if local < 0.0:
+			continue
+		var power: float = 0.7 + 0.3 * _hash01(k + 17.0)
+		strongest = maxf(strongest, power * smoothstep(0.0, 1.2, local) * (1.0 - smoothstep(3.2, 6.5, local)))
+	var breeze: float = 0.08 * (0.5 + 0.5 * sin(seconds * 0.37))
+	return clampf(maxf(strongest, breeze), 0.0, 1.0)
+
+
+static func _hash01(value: float) -> float:
+	var x: float = sin(value * 12.9898) * 43758.5453
+	return x - floorf(x)
