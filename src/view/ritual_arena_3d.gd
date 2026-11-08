@@ -103,6 +103,11 @@ func _build_terem(_at: Vector3, _out3: Vector3) -> void:
 	_warm_light(TEREM_AT + TEREM_FRONT * 4.0 + Vector3(0, 2.4, 0), 4.0, 9.0)
 
 
+## Терем внутри частокола — проёма у крыльца, как в PvP, нет (ворота остаются только у входа).
+func _build_walls(fine: Dictionary[Vector2i, bool], entry: Vector2, _door: Vector2) -> void:
+	super._build_walls(fine, entry, Vector2(INF, INF))
+
+
 ## Дорога от конца пути сворачивает к крыльцу терема на площади.
 func _build_road(finish: float, _door: Vector3, out3: Vector3) -> PackedVector2Array:
 	return super._build_road(finish, TEREM_AT + TEREM_FRONT * 3.6, out3)
