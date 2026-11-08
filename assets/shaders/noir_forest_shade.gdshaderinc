@@ -3,8 +3,8 @@
 // open — насколько точка на виду у неба: 0 — глубина кроны и стволы, 1 — верх и края лап.
 global uniform float noir_forest_shade;
 
-const vec3 FOREST_DEEP = vec3(0.46, 0.58, 0.60);
-const vec3 FOREST_OPEN = vec3(0.72, 0.86, 0.86);
+const vec3 FOREST_DEEP = vec3(0.44, 0.58, 0.54);
+const vec3 FOREST_OPEN = vec3(0.72, 0.88, 0.80);
 
 vec3 noir_forest_shaded(vec3 albedo, float open) {
 	return albedo * mix(vec3(1.0), mix(FOREST_DEEP, FOREST_OPEN, open), noir_forest_shade);
@@ -31,7 +31,7 @@ uniform float day_tint = 0.0;
 
 vec3 noir_day_tinted(vec3 albedo) {
 	const vec3 LUM = vec3(0.30, 0.55, 0.15);
-	vec3 cool = albedo * vec3(0.72, 1.0, 1.16);
+	vec3 cool = albedo * vec3(0.78, 1.0, 0.98);
 	cool *= dot(albedo, LUM) / max(dot(cool, LUM), 0.0001);
 	return mix(albedo, cool, day_tint * noir_forest_shade);
 }

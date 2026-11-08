@@ -19,21 +19,21 @@ const DAY_END_S: float = 0.88
 const TWILIGHT_TICKS: int = 220
 const DAWN_TICKS: int = 100
 
-## День — мягкий, но светлый: лес насыщенно-зелёный, мрачноватый, с синевой (сеттинг).
-## Солнце умеренное (жёсткий «чёткий» день автору не понравился), рассеянный свет голубоватый,
-## дымка голубовато-серая и реже ночной; жёлтые тона «кислотно» и «болото» — их нет.
+## День по образцу автора (new_concept/compare/day/ritual_day, смесь 2 и 6): солнце и сочная зелень
+## + холодный «нуар» — синеватые тени и воздух, лес насыщенно-зелёный, мрачноватый. Жёлтых тонов
+## («кислотно», «болото») нет. Ночь — свет PvP-двора, не меняется.
 const DAY_SUN: Color = Color("fff6ea")
-const DAY_SUN_ENERGY: float = 1.4
-const DAY_AMBIENT: Color = Color("a6bccb")
-const DAY_AMBIENT_ENERGY: float = 1.0
+const DAY_SUN_ENERGY: float = 1.7
+const DAY_AMBIENT: Color = Color("a9bcc6")
+const DAY_AMBIENT_ENERGY: float = 0.85
 const DAY_SKY_TOP: Color = Color("5c7e96")
 const DAY_SKY_HORIZON: Color = Color("a1b5bd")
 const DAY_FOG: Color = Color("86a2ad")
-const DAY_FOG_DENSITY: float = 0.14
-const DAY_EXPOSURE: float = 1.24
+const DAY_FOG_DENSITY: float = 0.1
+const DAY_EXPOSURE: float = 1.2
 const DAY_GLOW: float = 0.5
 const DAY_BLOOM: float = 0.05
-const DAY_SATURATION: float = 1.06
+const DAY_SATURATION: float = 1.12
 const DAY_SHADOW_OPACITY: float = 0.7
 ## Край тени мягкий, как ночью: резкие тени дрожали при ходе солнца.
 const DAY_SHADOW_BLUR: float = 2.0
@@ -44,6 +44,9 @@ const SUNSET_SKY_TOP: Color = Color("4f526b")
 const SUNSET_SKY_HORIZON: Color = Color("df9566")
 const SUNSET_FOG: Color = Color("9c8c86")
 const SUNSET_WARM_KEY: float = 0.16
+## Огонь (факелы, жаровни, окна терема) днём светит слабее: на свету его почти не видно, а в полную силу
+## он красил частокол в ярко-рыжий. Ночью — как в сцене.
+const DAY_FIRE: float = 0.3
 ## Тени облаков: днём заметные пятна, на закате слабее, ночью нет.
 const CLOUD_STRENGTH: float = 0.55
 ## Тень леса днём (глобальный параметр шейдеров деревьев noir_forest_shade): под кронами темновато
@@ -61,6 +64,10 @@ var _sun: DirectionalLight3D
 var _warm: DirectionalLight3D
 var _attributes: CameraAttributesPractical
 var _clouds: CloudShadows3D
+var _world: Node3D
+## Огни сцены и их ночная сила (двор перестраивается — список обновляется).
+var _fires: Array[OmniLight3D] = []
+var _fire_energy: PackedFloat32Array = PackedFloat32Array()
 ## Ночь — как настроена сцена PvP-двора.
 var _night_ambient: Color
 var _night_ambient_energy: float
@@ -89,6 +96,7 @@ func _init(world: Node3D, clouds: CloudShadows3D) -> void:
 	_sun = world.get_node("Moon") as DirectionalLight3D
 	_warm = world.get_node("WarmKey") as DirectionalLight3D
 	_clouds = clouds
+	_world = world
 	_night_ambient = _env.ambient_light_color
 	_night_ambient_energy = _env.ambient_light_energy
 	_night_fog = _env.fog_light_color
@@ -177,3 +185,17 @@ func apply(trial: RitualTrial) -> void:
 		_attributes.dof_blur_far_distance = camera_distance + 40.0
 	RenderingServer.global_shader_parameter_set(&"noir_forest_shade", forest_shade * up * (1.0 - night))
 	_clouds.set_strength(CLOUD_STRENGTH * up * lerpf(1.0, 0.55, warmth) * (1.0 - night))
+	_dim_fires(lerpf(1.0, DAY_FIRE, up * (1.0 - night)))
+
+
+func _dim_fires(factor: float) -> void:
+	if _fires.is_empty() or not is_instance_valid(_fires[0]):
+		_fires.clear()
+		_fire_energy.clear()
+		for node: Node in _world.find_children("*", "OmniLight3D", true, false):
+			var light: OmniLight3D = node as OmniLight3D
+			_fires.append(light)
+			_fire_energy.append(light.light_energy)
+	for index: int in _fires.size():
+		if is_instance_valid(_fires[index]):
+			_fires[index].light_energy = _fire_energy[index] * factor
