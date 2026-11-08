@@ -35,7 +35,7 @@ void vertex() {
 void fragment() {
 	float value = dot(COLOR.rgb, vec3(0.25, 0.60, 0.15));
 	vec3 tint = mix(vec3(0.76, 0.94, 0.88), vec3(1.09, 1.04, 0.80), grass_tone);
-	ALBEDO = noir_floor_shaded(noir_day_muted(mix(vec3(value), COLOR.rgb, 0.83) * tint * mix(0.53, 0.96, tip_light)),
+	ALBEDO = noir_floor_shaded(noir_day_tinted(mix(vec3(value), COLOR.rgb, 0.83) * tint * mix(0.53, 0.96, tip_light)),
 			foot_at, glade_a, glade_b);
 	AO = mix(0.60, 1.0, tip_light);
 	ROUGHNESS = 0.76;

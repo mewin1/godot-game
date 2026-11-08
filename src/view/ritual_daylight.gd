@@ -19,21 +19,21 @@ const DAY_END_S: float = 0.88
 const TWILIGHT_TICKS: int = 220
 const DAWN_TICKS: int = 100
 
-## День — мягкий и туманный, как был до хода солнца (автору «чёткий» день с сильным солнцем
-## и без дымки не понравился): рассеянный свет, солнце слабое, дымка и свечение — как ночью.
-## Цвета нейтральные (без желтизны солнца и зелени дымки, насыщенность ниже) — «кислотно» было.
-const DAY_SUN: Color = Color("fff0dc")
-const DAY_SUN_ENERGY: float = 1.05
-const DAY_AMBIENT: Color = Color("a9b0ae")
-const DAY_AMBIENT_ENERGY: float = 0.85
-const DAY_SKY_TOP: Color = Color("505a5c")
-const DAY_SKY_HORIZON: Color = Color("7d8987")
-const DAY_FOG: Color = Color("7f9190")
-const DAY_FOG_DENSITY: float = 0.25
-const DAY_EXPOSURE: float = 1.1
-const DAY_GLOW: float = 0.62
-const DAY_BLOOM: float = 0.08
-const DAY_SATURATION: float = 0.9
+## День — мягкий, но светлый: лес насыщенно-зелёный, мрачноватый, с синевой (сеттинг).
+## Солнце умеренное (жёсткий «чёткий» день автору не понравился), рассеянный свет голубоватый,
+## дымка голубовато-серая и реже ночной; жёлтые тона «кислотно» и «болото» — их нет.
+const DAY_SUN: Color = Color("fff6ea")
+const DAY_SUN_ENERGY: float = 1.4
+const DAY_AMBIENT: Color = Color("a6bccb")
+const DAY_AMBIENT_ENERGY: float = 1.0
+const DAY_SKY_TOP: Color = Color("5c7e96")
+const DAY_SKY_HORIZON: Color = Color("a1b5bd")
+const DAY_FOG: Color = Color("86a2ad")
+const DAY_FOG_DENSITY: float = 0.14
+const DAY_EXPOSURE: float = 1.24
+const DAY_GLOW: float = 0.5
+const DAY_BLOOM: float = 0.05
+const DAY_SATURATION: float = 1.06
 const DAY_SHADOW_OPACITY: float = 0.7
 ## Край тени мягкий, как ночью: резкие тени дрожали при ходе солнца.
 const DAY_SHADOW_BLUR: float = 2.0
