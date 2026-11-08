@@ -1363,7 +1363,7 @@ func _multimesh(id: String, transforms: Array[Transform3D], parent: Node3D = nul
 				multi.set_instance_transform(i, at * local)
 			var holder: MultiMeshInstance3D = MultiMeshInstance3D.new()
 			holder.multimesh = multi
-			holder.name = "%s_forest" % id
+			holder.name = "%s_%d_%d" % [id, key.x, key.y]
 			if environment:
 				holder.layers = ENV_LAYER
 			if id in ["sedge", "seed_grass", "fern", "shingle"] or not RenderQuality.env_shadows():
