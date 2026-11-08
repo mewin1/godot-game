@@ -57,5 +57,5 @@ noir_forest_shade={
 
 [rendering]
 
-renderer/rendering_method.mobile="gl_compatibility"
+renderer/rendering_method.mobile="mobile"
 textures/default_filters/anisotropic_filtering_level=4
