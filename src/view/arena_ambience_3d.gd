@@ -19,8 +19,8 @@ const FIREFLY_COUNT: int = 70
 const DUST_COUNT: int = 160
 ## Скорость ветра для частиц, м/с: в покое и в самый сильный порыв. Задаётся частицам каждый кадр как
 ## «направленная скорость» (не копится): в порыв их резко несёт по ветру, на спаде они замедляются.
-const WIND_CALM: float = 0.25
-const WIND_GUST: float = 5.5
+const WIND_CALM: float = 0.4
+const WIND_GUST: float = 8.5
 ## Вороны: сколько сидит одновременно, как часто прилетают (с), сколько сидят (с).
 const MAX_PERCHED: int = 4
 const CROW_EVERY: Vector2 = Vector2(4.0, 11.0)

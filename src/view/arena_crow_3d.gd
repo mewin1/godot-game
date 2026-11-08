@@ -28,6 +28,14 @@ const STAND_PITCH: float = 0.5
 const STAND_SHIFT: Vector3 = Vector3(0.0, 0.25, -0.15)
 ## Сложенная летящая модель короче сидящей — к посадке чуть крупнее.
 const STAND_GROW: float = 0.12
+## После касания: крылья доскладываются (вторая половина land), затем летящая модель плавно перетекает
+## в сидящую (обе видны, прозрачность навстречу), с; при касании тело чуть проседает на лапах, м.
+const SETTLE_BLEND: float = 0.5
+const TOUCH_DIP: float = 0.035
+## Взлёт с места: столько секунд птица стоит и раскрывает крылья (модели перетекают), потом отрывается;
+## курс и наклон полёта набирает за первые TURN_IN доли пути.
+const LAUNCH_WAIT: float = 0.32
+const TURN_IN: float = 0.2
 
 ## Номер места посадки у стаи (−1 — в воздухе или без места).
 var perch_index: int = -1
@@ -52,9 +60,14 @@ var _gesture_in: float = 2.0
 ## Пока идёт посадка или взлёт, полёт не переключает анимацию на flap/glide.
 var _anim_lock: float = 0.0
 var _folding: bool = false
-var _fold_pitch: float = 0.0
 var _land_time: float = 1.0
 var _takeoff: bool = false
+var _settle_time: float = 0.0
+var _launch_wait: float = 0.0
+var _start_yaw: float = 0.0
+var _landed_tilt: Vector2 = Vector2.ZERO
+var _perch_meshes: Array[GeometryInstance3D] = []
+var _fly_meshes: Array[GeometryInstance3D] = []
 
 
 func _init(seed_value: int) -> void:
@@ -73,11 +86,16 @@ func _init(seed_value: int) -> void:
 				player.get_animation(id).loop_mode = Animation.LOOP_LINEAR
 	_land_time = _fly_anim.get_animation("land").length
 	_fly_model.position = Vector3.ZERO
+	for node: Node in _perch_model.find_children("*", "GeometryInstance3D", true, false):
+		_perch_meshes.append(node as GeometryInstance3D)
+	for node: Node in _fly_model.find_children("*", "GeometryInstance3D", true, false):
+		_fly_meshes.append(node as GeometryInstance3D)
 	_show_flying(true)
 
 
 ## Полёт из from в to. land — сесть в конце (лицом по yaw; ground — на землю), иначе исчезнуть (finished).
 func fly(from: Vector3, to: Vector3, land: bool, yaw: float = 0.0, ground: bool = false) -> void:
+	var from_perch: bool = not is_flying and _perch_model.visible
 	is_flying = true
 	on_ground = false
 	_land_ground = ground
@@ -85,21 +103,30 @@ func fly(from: Vector3, to: Vector3, land: bool, yaw: float = 0.0, ground: bool 
 	_land_yaw = yaw
 	var flat: Vector3 = Vector3(to.x - from.x, 0.0, to.z - from.z)
 	var distance: float = maxf(0.5, (to - from).length())
-	var from_perch: bool = not is_flying and _perch_model.visible
 	var side: Vector3 = flat.normalized().cross(Vector3.UP) * _rng.randf_range(-0.35, 0.35) * distance
 	# взлёт вверх-вперёд, посадка — сверху, с подлётом
 	_points = [from, from + flat * 0.3 + side + Vector3.UP * minf(3.5, distance * 0.25),
 			to - flat * 0.25 + side * 0.4 + Vector3.UP * (minf(4.0, distance * 0.3) if land else 0.0), to]
 	_duration = _curve_length() / SPEED
 	_progress = 0.0
+	_settle_time = 0.0
 	position = from
+	_start_yaw = rotation.y
+	_last_yaw = rotation.y
+	rotation = Vector3(0.0, rotation.y, 0.0)
+	_fly_model.transform = Transform3D(Basis.from_scale(Vector3.ONE * PERCH_SCALE * (1.0 + STAND_GROW)),
+			STAND_SHIFT if from_perch else Vector3.ZERO)
 	_show_flying(true)
 	_folding = false
 	_takeoff = from_perch
+	_launch_wait = 0.0
 	if from_perch:
-		# крылья раскрываются из сложенных (посадка задом наперёд), потом обычные взмахи
+		# стоя раскрывает крылья (посадка задом наперёд), сидящая модель тает поверх; потом отрывается
 		_fly_anim.play("land", 0.0, -TAKEOFF_SPEED, true)
 		_anim_lock = _land_time / TAKEOFF_SPEED
+		_launch_wait = LAUNCH_WAIT
+		_perch_model.visible = true
+		_stand_pose()
 	else:
 		_fly_anim.play("flap", 0.15, _rng.randf_range(0.9, 1.15))
 		_anim_lock = 0.0
@@ -135,7 +162,27 @@ func _process(delta: float) -> void:
 
 func _advance(delta: float) -> void:
 	_anim_lock -= delta
+	if _launch_wait > 0.0:
+		_launch_wait = maxf(0.0, _launch_wait - delta)
+		var shown: float = 1.0 - _launch_wait / LAUNCH_WAIT
+		_fade(_fly_meshes, 1.0 - smoothstep(0.0, 0.4, shown))
+		_fade(_perch_meshes, smoothstep(0.35, 1.0, shown))
+		if _launch_wait == 0.0:
+			_perch_model.visible = false
+			_fade(_perch_meshes, 0.0)
+			_fade(_fly_meshes, 0.0)
+			# наклон переходит от модели к узлу (в начале пути он тот же — STAND_PITCH)
+			_fly_model.transform = Transform3D(Basis.from_scale(Vector3.ONE * PERCH_SCALE * (1.0 + STAND_GROW)),
+					STAND_SHIFT)
+			rotation = Vector3(STAND_PITCH, _start_yaw, 0.0)
+		return
 	if _progress >= 1.0 and _lands:
+		if _settle_time == 0.0:
+			# дальше наклон и крен — у самой летящей модели, а узел стоит ровно: сидящая проявится без наклона
+			_landed_tilt = Vector2(rotation.x, rotation.z)
+			_fly_model.transform = Transform3D(Basis.from_euler(Vector3(rotation.x, 0.0, rotation.z)),
+					Vector3.ZERO) * _fly_model.transform
+			rotation = Vector3(0.0, _land_yaw, 0.0)
 		_settle(delta)
 		return
 	_progress = minf(1.0, _progress + delta / _duration)
@@ -167,8 +214,13 @@ func _advance(delta: float) -> void:
 		if _lands and _progress > 0.85:
 			yaw = lerp_angle(yaw, _land_yaw, (_progress - 0.85) / 0.15)
 			pitch = lerpf(pitch, 0.35, (_progress - 0.85) / 0.15)  # у посадки задирает грудь
+		if _takeoff and _progress < TURN_IN:
+			# с места: от позы сидящей (грудь вверх, прежний курс) к полёту
+			var turn_in: float = smoothstep(0.0, TURN_IN, _progress)
+			yaw = lerp_angle(_start_yaw, yaw, turn_in)
+			pitch = lerpf(STAND_PITCH, pitch, turn_in)
+			_roll *= turn_in
 		rotation = Vector3(pitch, yaw, _roll)
-		_fold_pitch = pitch
 	var climbing: bool = ahead.y > -0.004 or _progress < 0.18 or (_lands and _progress > 0.82)
 	var want: String = "flap" if climbing else "glide"
 	if _anim_lock <= 0.0 and _fly_anim.current_animation != want:
@@ -178,16 +230,48 @@ func _advance(delta: float) -> void:
 		queue_free()
 
 
-## Уже на месте: крылья доскладываются, грудь опускается, крен уходит; затем — сидящая модель.
+## Уже на месте: крылья доскладываются, грудь встаёт, крен уходит, тело чуть проседает на лапах;
+## под конец летящая модель перетекает в сидящую (прозрачность навстречу), без подмены за один кадр.
 func _settle(delta: float) -> void:
-	var calm: float = 1.0 - clampf(_anim_lock / (_land_time * (1.0 - LAND_LEAD)), 0.0, 1.0)
+	_settle_time += delta
+	var fold_time: float = _land_time * (1.0 - LAND_LEAD)
+	var stand: float = smoothstep(0.0, fold_time, _settle_time)
+	var tilt: Basis = Basis.from_euler(Vector3(lerpf(_landed_tilt.x, STAND_PITCH, stand), 0.0,
+			lerpf(_landed_tilt.y, 0.0, stand)))
+	var dip: float = -TOUCH_DIP * sin(PI * clampf(_settle_time / 0.4, 0.0, 1.0))
+	var size: float = PERCH_SCALE * (1.0 + STAND_GROW)
+	_fly_model.transform = Transform3D(tilt * Basis.from_scale(Vector3.ONE * size),
+			tilt * STAND_SHIFT + Vector3(0.0, dip, 0.0))
 	position = _points[3]
-	_roll = lerpf(_roll, 0.0, minf(1.0, delta * 8.0))
-	var stand: float = smoothstep(0.0, 1.0, calm)
-	rotation = Vector3(lerpf(_fold_pitch, STAND_PITCH, stand), _land_yaw, _roll)
-	_fly_model.position = STAND_SHIFT
-	if _anim_lock <= 0.0 or not _fly_anim.is_playing():
-		sit(_points[3], _land_yaw, _land_ground)
+	var blend_from: float = fold_time - 0.1
+	if _settle_time >= blend_from and not _perch_model.visible:
+		_perch_model.visible = true
+		_perch_anim.play("idle", 0.0)
+	# сначала сидящая проявляется поверх непрозрачной летящей, потом летящая тает: птица не светлеет
+	var mix: float = clampf((_settle_time - blend_from) / SETTLE_BLEND, 0.0, 1.0)
+	_fade(_perch_meshes, 1.0 - smoothstep(0.0, 0.6, mix))
+	_fade(_fly_meshes, smoothstep(0.4, 1.0, mix))
+	if _settle_time >= blend_from + SETTLE_BLEND:
+		_fade(_fly_meshes, 0.0)
+		_fade(_perch_meshes, 0.0)
+		is_flying = false
+		on_ground = _land_ground
+		_fly_model.visible = false
+		_fly_anim.stop()
+		_perch_anim.queue("idle")
+		_gesture_in = _rng.randf_range(1.5, 4.0)
+
+
+## Летящая модель в позе сидящей (как в конце посадки): грудь вверх, тело над лапами; узел — без наклона.
+func _stand_pose() -> void:
+	var tilt: Basis = Basis.from_euler(Vector3(STAND_PITCH, 0.0, 0.0))
+	_fly_model.transform = Transform3D(tilt * Basis.from_scale(Vector3.ONE * PERCH_SCALE * (1.0 + STAND_GROW)),
+			tilt * STAND_SHIFT)
+
+
+static func _fade(meshes: Array[GeometryInstance3D], amount: float) -> void:
+	for mesh: GeometryInstance3D in meshes:
+		mesh.transparency = amount
 
 
 func _ease(t: float) -> float:
@@ -218,6 +302,8 @@ func _curve_length() -> float:
 
 
 func _show_flying(flying: bool) -> void:
+	_fade(_fly_meshes, 0.0)
+	_fade(_perch_meshes, 0.0)
 	_fly_model.visible = flying
 	_perch_model.visible = not flying
 	if flying:

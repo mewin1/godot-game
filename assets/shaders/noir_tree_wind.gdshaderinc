@@ -19,8 +19,8 @@ vec3 noir_tree_bend(vec3 v, mat4 model, float flex, float time) {
 	// направление ветра в пространстве модели (единичное: сдвиг в долях высоты дерева)
 	vec3 lee = normalize(transpose(mat3(model)) * vec3(lee_dir.x, 0.0, lee_dir.y));
 	vec2 across = vec2(-lee.z, lee.x);
-	float amp = 0.0035 + 0.0045 * wind;
-	vec2 shift = lee.xz * (sway * amp + wind * 0.011 * (0.85 + 0.15 * sway)) + across * side * amp * 0.45;
+	float amp = 0.0035 + 0.006 * wind;
+	vec2 shift = lee.xz * (sway * amp + wind * 0.015 * (0.85 + 0.15 * sway)) + across * side * amp * 0.45;
 	v.xz += shift * bend * flex;
 	// концы ветвей чуть покачиваются вверх-вниз
 	v.y += 0.0012 * (1.0 + wind) * outer * sin(time * (1.9 + 0.5 * wind) + phase * 3.0 + z * 4.0) * flex;
