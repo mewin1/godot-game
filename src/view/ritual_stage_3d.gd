@@ -8,6 +8,11 @@ const UNIT_IDS: Dictionary[StringName, StringName] = {
 var _hero: Node3D
 var _barrier: Node3D
 var _barrier_progress: int = -1
+## Камера: двор длинной стороной вдоль экрана — так он крупнее, чем по диагонали, как в PvP
+## (поворот PvP с поправкой на лес был бы 0,65 — двор «ромбом» и на четверть мельче).
+## Наклон круче PvP: при пологом взгляде мокрые лужи мостовой бликуют белым.
+const CAMERA_PITCH_RITUAL: float = -0.85
+const CAMERA_YAW_RITUAL: float = 0.3
 ## Ночь «Обряда» — свет и дымка PvP-двора как в сцене; день светлее и теплее.
 var _night_ambient: Color
 var _night_ambient_energy: float
@@ -23,9 +28,8 @@ var _night_exposure: float
 
 func _init() -> void:
 	super()
-	# Лес PvP повёрнут на −90° вокруг двора (ritual_arena_3d.gd) — камера и луна вместе с ним.
-	# Наклон круче PvP: двор «Обряда» вдвое больше, а лужи мостовой при пологом взгляде бликуют белым.
-	_camera.rotation = Vector3(-0.88, CAMERA_YAW - PI * 0.5, 0.0)
+	# Лес PvP повёрнут на −90° вокруг двора (ritual_arena_3d.gd) — луна вместе с ним.
+	_camera.rotation = Vector3(CAMERA_PITCH_RITUAL, CAMERA_YAW_RITUAL, 0.0)
 	for light_name: String in ["Moon", "WarmKey"]:
 		var light: Node3D = _world.get_node(light_name) as Node3D
 		light.basis = Basis(Vector3.UP, -PI * 0.5) * light.basis
