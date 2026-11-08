@@ -34,8 +34,6 @@ const COURTYARD_PROPS: Dictionary[String, PackedScene] = {
 	"spruce": preload("res://assets/noir/courtyard/spruce.glb"),
 	"birch": preload("res://assets/noir/courtyard/birch.glb"),
 }
-## Участок леса и травы (м): копии одного вида в участке — одна отрисовка, невидимые участки отсекаются.
-const ENV_CHUNK: float = 16.0
 ## Слой окружения (лес, трава, камни): солнце и луна дают от него тени, факелы — нет
 ## (их тени нужны только от частокола, иначе каждый факел перерисовывает весь лес).
 const ENV_LAYER: int = 2
@@ -46,6 +44,12 @@ const GRASS_DAY_TINT: float = 0.85
 const GROUND_DAY_TINT: float = 0.6
 ## Слои, от которых факелы бросают тени (всё, кроме окружения).
 const TORCH_SHADOW_MASK: int = 0xFFFFF & ~ENV_LAYER
+## Трава (Poly Haven) — без теней; под пологом леса рисуется её часть (_keep_grass).
+const GRASS_IDS_3D: Array[String] = ["sedge", "seed_grass", "fern"]
+## Насколько за край поляны трава ещё густая (м).
+const GRASS_GLADE_MARGIN: float = 6.0
+## Деревья дальше этого от двора (м, от середины участка) не отбрасывают тени солнца.
+const FAR_SHADOW: float = 18.0
 const BOARD_MIN: Vector2 = Vector2(0.0, -20.0)
 const BOARD_MAX: Vector2 = Vector2(18.0, 0.0)
 const CELL: float = 2.0
@@ -74,6 +78,7 @@ const CLEAR_SIDE: float = 4.5
 const CLEAR_NEAR: float = 9.0
 ## Деревья под луной: лунный контур отделяет кроны от тёмной земли (как на концепте).
 const CANOPY: Shader = preload("res://assets/shaders/noir_canopy.gdshader")
+const CANOPY_HASHED: Shader = preload("res://assets/shaders/noir_canopy_hashed.gdshader")
 ## Кора с ветками елей и берёз: гнётся ветром вместе с листвой (иначе лапы съезжают с веток).
 const TREE_BARK: Shader = preload("res://assets/shaders/noir_tree_bark.gdshader")
 const TREE_RIM: float = 0.045
@@ -1337,7 +1342,7 @@ func _world_stream() -> PackedVector2Array:
 	return result
 
 
-## Копии одного вида реквизита — MultiMesh на каждую сетку модели, по участкам ENV_CHUNK × ENV_CHUNK м.
+## Копии одного вида реквизита — MultiMesh на каждую сетку модели, по участкам RenderQuality.env_chunk() м.
 ## Одна MultiMesh на весь лес не отсекается ни камерой, ни светом: каждый факел с тенью
 ## перерисовывал в свою карту теней все ели карты (6 граней × 5 факелов — половина кадра).
 func _multimesh(id: String, transforms: Array[Transform3D], parent: Node3D = null) -> void:
@@ -1347,9 +1352,13 @@ func _multimesh(id: String, transforms: Array[Transform3D], parent: Node3D = nul
 	if model == null:
 		return
 	add_child(model)  # временно — чтобы посчитать мировые преобразования частей модели
+	var grass: bool = id in GRASS_IDS_3D
+	var chunk: float = RenderQuality.env_chunk()
 	var chunks: Dictionary[Vector2i, Array] = {}
 	for at: Transform3D in transforms:
-		var key: Vector2i = Vector2i(floori(at.origin.x / ENV_CHUNK), floori(at.origin.z / ENV_CHUNK))
+		if grass and not _keep_grass(Vector2(at.origin.x, at.origin.z)):
+			continue
+		var key: Vector2i = Vector2i(floori(at.origin.x / chunk), floori(at.origin.z / chunk))
 		if not chunks.has(key):
 			chunks[key] = []
 		chunks[key].append(at)
@@ -1373,10 +1382,38 @@ func _multimesh(id: String, transforms: Array[Transform3D], parent: Node3D = nul
 			holder.name = "%s_%d_%d" % [id, key.x, key.y]
 			if environment:
 				holder.layers = ENV_LAYER
-			if id in ["sedge", "seed_grass", "fern", "shingle"] or not RenderQuality.env_shadows():
-				holder.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF  # ночью не видно, а кадр дорожает
+			if grass or id == "shingle" or not RenderQuality.env_shadows() or _far_from_yard(key):
+				holder.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF  # не видно, а кадр дорожает
 			(parent if parent != null else self).add_child(holder)
 	model.queue_free()
+
+
+## Трава под пологом леса (за краем поляны) днём в тени, ночью почти не видна — рисуется её часть
+## (RenderQuality); на поляне и в PvP (поляны нет) — вся, кроме телефонного профиля.
+func _keep_grass(at: Vector2) -> bool:
+	var glades: Array[Rect2] = _glades()
+	var keep: float = RenderQuality.grass_keep_glade()
+	if not glades.is_empty():
+		var open: bool = false
+		for rect: Rect2 in glades:
+			open = open or rect.grow(GRASS_GLADE_MARGIN).has_point(at)
+		if not open:
+			keep = RenderQuality.grass_keep_under_canopy()
+	if keep >= 1.0:
+		return true
+	# одно и то же место — всегда одно решение (без мигания при перестройке двора)
+	var x: float = sin(at.x * 12.9898 + at.y * 78.233) * 43758.5453
+	return x - floorf(x) < keep
+
+
+## Участок дальше FAR_SHADOW от двора: тени его деревьев падают в глубину леса, где их не видно
+## (лес там и так в тени), а карта теней солнца перерисовывает их каждый кадр.
+func _far_from_yard(key: Vector2i) -> bool:
+	var center: Vector2 = (Vector2(key) + Vector2(0.5, 0.5)) * RenderQuality.env_chunk()
+	var yard: Rect2 = _yard_rect()
+	var gap: Vector2 = Vector2(maxf(maxf(yard.position.x - center.x, center.x - yard.end.x), 0.0),
+			maxf(maxf(yard.position.y - center.y, center.y - yard.end.y), 0.0))
+	return gap.length() > FAR_SHADOW
 
 
 ## Материалы леса (только у копий в MultiMesh): чуть светлее и с лунным контуром.
@@ -1387,7 +1424,7 @@ static func _moonlit(mesh: Mesh, tree: bool = false) -> void:
 			continue
 		if material.resource_name in ["Еловая лапа", "Листва берёзы"]:
 			var crown: ShaderMaterial = ShaderMaterial.new()
-			crown.shader = CANOPY
+			crown.shader = CANOPY_HASHED if RenderQuality.hashed_foliage() else CANOPY
 			crown.set_shader_parameter("foliage", material.albedo_texture)
 			crown.set_shader_parameter("pigment", material.albedo_color)
 			crown.set_shader_parameter("broadleaf", material.resource_name == "Листва берёзы")
