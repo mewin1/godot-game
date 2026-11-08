@@ -38,6 +38,7 @@
 | Лавка/армия, карты, идолы, резерв | `src/ui/shop_panel.gd`, `offer_card.gd`, `idol_slot.gd`, `inventory_bar.gd` | smoke, ручной запуск |
 | Перетаскивание, подсветка и ПКМ на поле | `src/view/drag_payload.gd`, `field_view.gd` | smoke, ручной запуск |
 | Бой, эффекты, звук, внешний вид | `src/view/battle_layer.gd`, `tower_painter.gd`, `sound_bank.gd`, `visuals/` | запуск; не менять sim ради картинки |
+| Живость двора: ветер, частицы, вороны, медвежонок, камни | `src/view/{arena_ambience_3d,arena_crow_3d,arena_bear_cub_3d,noir_wind}.gd`, шейдеры `noir_{falling_leaf,glow_mote,smoke_puff}`, `assets/noir/{creatures,rocks,ambience}/`, `assets/noir/courtyard/rock_layout.tres` | модели: `tools/concepts/{creature_crops,rock_gen,rock_layout,leaf_atlas}.py`, `tools/blender/noir/{creatures,rocks}.py`; кадры — `new_concept/creatures/renders/` |
 | Каменный двор 2.5D, материал клеток, проекция | `src/view/courtyard_painter.gd`, `field_view.gd`, `assets/dusk/` | smoke + графический `tools/capture_match.gd` |
 | Тема, символы сил и портреты 2.5D | `src/ui/dusk_theme.gd`, `src/view/visuals/god_symbols.gd`, `hero_portraits.gd`, `data/visuals/sprites/`, `portraits/` | графический запуск; описание `docs/25_dusk_2_5d.md` |
 | Верхняя панель, справочник, обучение | `src/ui/match_hud.gd`, `heroes_gallery.gd`, `scenes/how_to_play.tscn` | запуск, smoke |

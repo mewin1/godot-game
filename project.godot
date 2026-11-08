@@ -40,6 +40,17 @@ window/stretch/aspect="expand"
 
 enabled=PackedStringArray("res://addons/gut/plugin.cfg")
 
+[shader_globals]
+
+noir_wind={
+"type": "float",
+"value": 0.0
+}
+noir_wind_drift={
+"type": "vec3",
+"value": Vector3(0, 0, 0)
+}
+
 [rendering]
 
 renderer/rendering_method.mobile="gl_compatibility"
