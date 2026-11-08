@@ -1,5 +1,6 @@
 extends Control
-## Главное меню: Играть / Как играть / Выход и выключатель звука.
+## Главное меню: «Играть» — одиночный «Обряд» (основной режим), PvP — отдельной строкой;
+## Как играть / Выход и выключатель звука.
 ## Раскладка — в сцене scenes/main_menu.tscn (её удобно править в редакторе).
 
 const SOUND_ON_ICON: Texture2D = preload("res://assets/ui/icon_sound_on.svg")
@@ -31,12 +32,12 @@ func _ready() -> void:
 	_sandbox_button.pressed.connect(_on_sandbox_pressed)
 	_quit_button.pressed.connect(_on_quit_button_pressed)
 	_sound_button.pressed.connect(_on_sound_button_pressed)
+	_add_button(%Teams as HBoxContainer, "Все против всех", _on_pvp_pressed)
 	_add_button(%Teams as HBoxContainer, "3 на 3", _on_team3_pressed)
 	_add_button(%Teams as HBoxContainer, "2 на 2 на 2", _on_team2_pressed)
 	_add_button(%Library as GridContainer, "Настройки", _on_settings_pressed)
 	_add_button(%Library as GridContainer, "Проба графики 2.5D", _on_visual_slice_pressed)
 	_add_button(%Library as GridContainer, "Дуэль волхвов · прототип", _on_siege_trial_pressed)
-	_add_button(%Library as GridContainer, "Обряд · четыре ночи", _on_ritual_trial_pressed)
 	for button: Button in [_play_button, _how_to_button, _heroes_button, _lab_button,
 			_sandbox_button, _quit_button, _sound_button]:
 		UiFx.add_press_feedback(button)
@@ -67,6 +68,11 @@ func _notification(what: int) -> void:
 
 
 func _on_play_button_pressed() -> void:
+	_sound_bank.play(&"click")
+	ScenePaths.go_to(get_tree(), ScenePaths.RITUAL_TRIAL)
+
+
+func _on_pvp_pressed() -> void:
 	_sound_bank.play(&"click")
 	ScenePaths.requested_teams = 0
 	ScenePaths.go_to(get_tree(), ScenePaths.MATCH)
@@ -123,7 +129,3 @@ func _on_visual_slice_pressed() -> void:
 
 func _on_siege_trial_pressed() -> void:
 	ScenePaths.go_to(get_tree(), ScenePaths.SIEGE_TRIAL)
-
-
-func _on_ritual_trial_pressed() -> void:
-	ScenePaths.go_to(get_tree(), ScenePaths.RITUAL_TRIAL)

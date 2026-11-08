@@ -14,7 +14,7 @@ const VISUAL_SLICE: String = "res://scenes/visual_slice.tscn"
 const SETTINGS: String = "res://scenes/settings.tscn"
 const LOADING: String = "res://scenes/loading_screen.tscn"
 ## Сцены с 3D-ареной открываются через экран загрузки (модели читаются заранее).
-const VIA_LOADING: PackedStringArray = [MATCH, SIEGE_TRIAL]
+const VIA_LOADING: PackedStringArray = [MATCH, SIEGE_TRIAL, RITUAL_TRIAL]
 
 
 ## Параметр следующего перехода из меню в матч.

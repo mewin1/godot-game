@@ -93,6 +93,8 @@ uniform sampler2D blend_noise : filter_linear, repeat_enable;
 uniform vec4 yard_rect;
 uniform sampler2D river_margin : filter_linear, repeat_disable;
 uniform vec4 margin_extent;
+// Мир → координаты расстановки леса (маска берегов снята в них); в PvP — тождество.
+uniform mat4 env_from_world = mat4(1.0);
 uniform float tile = 4.5;
 uniform float tint = 0.1;
 uniform vec3 hue = vec3(0.62, 1.0, 0.64);
@@ -107,7 +109,7 @@ float yard_fade(vec2 p) {
 void vertex() {
 	world = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 	float n = textureLod(blend_noise, world.xz * 0.045, 0.0).r;
-	vec2 creek_uv = (world.xz - margin_extent.xy) / margin_extent.zw;
+	vec2 creek_uv = ((env_from_world * vec4(world, 1.0)).xz - margin_extent.xy) / margin_extent.zw;
 	VERTEX.y -= n * bumps * yard_fade(world.xz) + 0.24 * textureLod(river_margin, creek_uv, 0.0).r;
 }
 
@@ -125,7 +127,7 @@ void fragment() {
 	vec3 nm = mix(texture(mud_normal, uv2).rgb, texture(moss_normal, uv).rgb, wm);
 	nm = mix(nm, texture(litter_normal, uv * 1.21).rgb, wl * 0.75);
 	// за частоколом — тёмная лесная трава (концепт: двор — самое светлое место, лес вокруг почти чёрный)
-	vec3 margin = texture(river_margin, (world.xz - margin_extent.xy) / margin_extent.zw).rgb;
+	vec3 margin = texture(river_margin, ((env_from_world * vec4(world, 1.0)).xz - margin_extent.xy) / margin_extent.zw).rgb;
 	a = mix(a, texture(mud_albedo, uv2).rgb * vec3(0.64, 0.74, 0.77), margin.g * 0.73);
 	a *= mix(vec3(1.0), vec3(0.87, 1.17, 0.87), margin.b * wm);
 	a = mix(vec3(dot(a, vec3(0.25, 0.60, 0.15))), a, 0.55);
@@ -218,9 +220,9 @@ func build_for_layout(layout: ArenaLayout3D) -> void:
 	_ambience = ArenaAmbience3D.new()
 	_ambience.name = "Ambience"
 	add_child(_ambience)
-	_ambience.setup(Rect2(BOARD_MIN, BOARD_MAX - BOARD_MIN))
+	_ambience.setup(_yard_rect())
 	# двор с оградой и терем за дальней стороной поля (z < −20) — медвежонку туда нельзя
-	var yard_and_terem: Rect2 = Rect2(BOARD_MIN, BOARD_MAX - BOARD_MIN).grow(2.4).grow_side(SIDE_TOP, 6.0)
+	var yard_and_terem: Rect2 = _yard_rect().grow(2.4).grow_side(_terem_side(), 6.0)
 	_ambience.setup_wildlife(_wild_zone(), yard_and_terem, _wild_obstacles(),
 			_world_stream())
 	var volume_supported: bool = RenderingServer.get_current_rendering_method() == &"forward_plus"
@@ -273,6 +275,47 @@ func set_open(field: FieldState) -> void:
 	_build_collected(_yard_grass, _yard)
 	if _ambience != null:
 		_ambience.set_perches(_perches)
+
+
+## Двор поля в мире (x, z). Другой режим на этой арене задаёт свой двор.
+func _yard_rect() -> Rect2:
+	return Rect2(BOARD_MIN, BOARD_MAX - BOARD_MIN)
+
+
+## С какой стороны двора стоит терем.
+func _terem_side() -> Side:
+	return SIDE_TOP
+
+
+## Куда переносится расстановка окружения из мастер-сцены (лес, камни, ручей, маска берегов).
+## В PvP — как есть; режим с другим двором поворачивает и сдвигает лес вокруг своего двора.
+func _env_transform() -> Transform3D:
+	return Transform3D.IDENTITY
+
+
+## Оставить ли дерево / камень окружения в этой точке мира (режим с большим двором прореживает лес).
+func _keep_env(_at: Vector3, _tree: bool) -> bool:
+	return true
+
+
+## Расстановка из мастер-сцены → мир, без того, что режим велит убрать.
+func _env_placements(placed: Array, tree: bool) -> Array[Transform3D]:
+	var env: Transform3D = _env_transform()
+	var result: Array[Transform3D] = []
+	for at: Transform3D in placed:
+		var moved: Transform3D = env * at
+		if _keep_env(moved.origin, tree):
+			result.append(moved)
+	return result
+
+
+## Точка русла (координаты вида) после переноса окружения.
+func _env_view(p: Vector2) -> Vector2:
+	var env: Transform3D = _env_transform()
+	if env == Transform3D.IDENTITY:
+		return p
+	var at: Vector3 = env * _w3(p)
+	return Vector2(-at.z, at.x - BOARD_MAX.x)
 
 
 ## Во дворе идёт бой: вороны слетают с частокола и не садятся на него, пока бой не кончится.
@@ -455,7 +498,9 @@ func _ground_material() -> ShaderMaterial:
 	material.set_shader_parameter("blend_noise", texture)
 	material.set_shader_parameter("tint", GROUND_TINT)  # мшисто-зелёная, как на концепте 05, а не серо-оливковая
 	material.set_shader_parameter("hue", GROUND_HUE)
-	material.set_shader_parameter("yard_rect", Vector4(BOARD_MIN.x - 1.5, BOARD_MIN.y - 1.5, BOARD_MAX.x + 1.5, BOARD_MAX.y + 1.5))
+	var yard: Rect2 = _yard_rect().grow(1.5)
+	material.set_shader_parameter("yard_rect", Vector4(yard.position.x, yard.position.y, yard.end.x, yard.end.y))
+	material.set_shader_parameter("env_from_world", Projection(_env_transform().affine_inverse()))
 	return material
 
 
@@ -716,7 +761,7 @@ func _build_walls(fine: Dictionary[Vector2i, bool], entry: Vector2, door: Vector
 	for corner: Vector2 in corners:
 		var post_scale: float = 1.14 if _corner_inside_count(fine, corner) == 1 else 1.0
 		_place("palisade_post", Vector3(corner.x, 0, corner.y), 0.0, post_scale)
-		_add_perch(corner, post_scale, (corner - Vector2(BOARD_MIN + BOARD_MAX) * 0.5).normalized())
+		_add_perch(corner, post_scale, (corner - _yard_rect().get_center()).normalized())
 	if gate_run != null:
 		var gate_yaw: float = 0.0 if gate_run.out.y != 0.0 else PI * 0.5
 		_place("gate", Vector3(gate_point.x, 0, gate_point.y), gate_yaw)
@@ -878,9 +923,7 @@ func _build_forest() -> void:
 				merged[species] = []
 			merged[species].append_array(layout.placements[species])
 	for species: String in merged:
-		var transforms: Array[Transform3D] = []
-		transforms.assign(merged[species])
-		_multimesh(species, transforms, self)
+		_multimesh(species, _env_placements(merged[species], species == "spruce" or species == "birch"), self)
 
 
 ## Поляна вокруг двора: трава куртинами (пятна гуще и реже, а не ровная россыпь), папоротник и осока
@@ -891,18 +934,18 @@ func _build_meadow() -> void:
 	rng.seed = 7707
 	var sets: Dictionary[String, Array] = {}
 	var zone: Rect2 = _wild_zone().grow(4.0)
-	var yard: Rect2 = Rect2(BOARD_MIN, BOARD_MAX - BOARD_MIN).grow(1.0).grow_side(SIDE_TOP, 6.5)
+	var yard: Rect2 = _yard_rect().grow(1.0).grow_side(_terem_side(), 6.5)
 	var stream: PackedVector2Array = _world_stream()
+	var to_env: Transform3D = _env_transform().affine_inverse()
 	var rocks: Array[Vector3] = []
 	for kind: String in ROCK_LAYOUT.placements:
-		var placed: Array[Transform3D] = []
-		placed.assign(ROCK_LAYOUT.placements[kind])
-		for at: Transform3D in placed:
+		for at: Transform3D in _env_placements(ROCK_LAYOUT.placements[kind], false):
 			rocks.append(Vector3(at.origin.x, at.origin.z, ROCK_RADIUS[kind] * at.basis.get_scale().x))
 	var free: Callable = func(p: Vector2, near_stream: float) -> bool:
 		if yard.has_point(p) or _stream_gap(p, stream) < near_stream:
 			return false
-		if absf(p.x - 3.0) < 1.1 and p.y > -0.5 and p.y < 8.0:
+		var env: Vector3 = to_env * Vector3(p.x, 0.0, p.y)
+		if absf(env.x - 3.0) < 1.1 and env.z > -0.5 and env.z < 8.0:
 			return false  # тропа от ворот к броду
 		for rock: Vector3 in rocks:
 			if p.distance_to(Vector2(rock.x, rock.y)) < rock.z * 0.75:
@@ -967,8 +1010,7 @@ func _stream_gap(p: Vector2, stream: PackedVector2Array) -> float:
 ## Камни опушки: группы и одиночные валуны разных форм (tools/concepts/rock_layout.py).
 func _build_rocks() -> void:
 	for kind: String in ROCK_LAYOUT.placements:
-		var transforms: Array[Transform3D] = []
-		transforms.assign(ROCK_LAYOUT.placements[kind])
+		var transforms: Array[Transform3D] = _env_placements(ROCK_LAYOUT.placements[kind], false)
 		_multimesh(kind, transforms, self)
 		for at: Transform3D in transforms:
 			_rock_spots.append(Vector3(at.origin.x, at.origin.z, ROCK_RADIUS[kind] * at.basis.get_scale().x))
@@ -1108,7 +1150,7 @@ func _build_stream() -> void:
 	var material: ShaderMaterial = ShaderMaterial.new()
 	material.shader = STREAM_SHADER
 	material.set_shader_parameter("bed", preload("res://assets/noir/courtyard/river_gravel.png"))
-	material.set_shader_parameter("moon_spot", _w3(STREAM_MOON))  # отражение луны — на видном участке русла
+	material.set_shader_parameter("moon_spot", _w3(_env_view(STREAM_MOON)))  # отражение луны — на видном участке русла
 	var water: MeshInstance3D = MeshInstance3D.new()
 	water.name = "Stream"
 	water.mesh = tool.commit()
@@ -1155,7 +1197,9 @@ func _build_stream() -> void:
 ## Русло ручья точками через ~0,7 м (координаты вида).
 func _stream_line() -> Array[Vector2]:
 	var line: Array[Vector2] = []
-	var points: Array[Vector2] = STREAM_POINTS
+	var points: Array[Vector2] = []
+	for point: Vector2 in STREAM_POINTS:
+		points.append(_env_view(point))
 	for i: int in points.size() - 1:
 		var p0: Vector2 = points[maxi(i - 1, 0)]
 		var p1: Vector2 = points[i]
@@ -1223,9 +1267,7 @@ func _tree_obstacles(layout: CourtyardForestLayout, result: PackedVector3Array) 
 	for species: String in layout.placements:
 		if species != "spruce" and species != "birch":
 			continue
-		var placed: Array[Transform3D] = []
-		placed.assign(layout.placements[species])
-		for at: Transform3D in placed:
+		for at: Transform3D in _env_placements(layout.placements[species], true):
 			result.append(Vector3(at.origin.x, at.origin.z, 0.9))
 
 
@@ -1309,10 +1351,8 @@ func _build_ground_mist() -> void:
 	var material: ShaderMaterial = ShaderMaterial.new()
 	material.shader = GROUND_MIST_SHADER
 	material.render_priority = -50  # раньше огня и эффектов: пламя поверх тумана, а не в нём
-	var pad: float = 1.6
-	var a: Vector2 = Vector2(BOARD_MIN.x - pad, BOARD_MIN.y - pad)
-	var b: Vector2 = Vector2(BOARD_MAX.x + pad, BOARD_MAX.y + pad)
-	material.set_shader_parameter("yard_rect", Vector4(a.x, a.y, b.x, b.y))
+	var clear: Rect2 = _yard_rect().grow(1.6)
+	material.set_shader_parameter("yard_rect", Vector4(clear.position.x, clear.position.y, clear.end.x, clear.end.y))
 	quad.material = material
 	var instance: MeshInstance3D = MeshInstance3D.new()
 	instance.name = "GroundMist"
@@ -1325,8 +1365,8 @@ func _build_ground_mist() -> void:
 func _build_mist() -> void:
 	var material: ShaderMaterial = ShaderMaterial.new()
 	material.shader = FOREST_FOG
-	material.set_shader_parameter("yard_rect", Vector4(BOARD_MIN.x - 1.4, BOARD_MIN.y - 1.4,
-			BOARD_MAX.x + 1.4, BOARD_MAX.y + 1.4))
+	var clear: Rect2 = _yard_rect().grow(1.4)
+	material.set_shader_parameter("yard_rect", Vector4(clear.position.x, clear.position.y, clear.end.x, clear.end.y))
 	var volume: FogVolume = FogVolume.new()
 	volume.name = "ForestMist"
 	volume.size = Vector3(104, 12, 112)

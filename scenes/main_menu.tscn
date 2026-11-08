@@ -143,6 +143,11 @@ theme_type_variation = &"AccentButton"
 theme_override_font_sizes/font_size = 27
 text = "Играть"
 
+[node name="PvpLabel" type="Label" parent="Menu"]
+theme_override_colors/font_color = Color(0.70, 0.75, 0.78, 1)
+theme_override_font_sizes/font_size = 14
+text = "P V P   ·   С Х В А Т К А   Д В О Р О В"
+
 [node name="Teams" type="HBoxContainer" parent="Menu"]
 unique_name_in_owner = true
 theme_override_constants/separation = 8

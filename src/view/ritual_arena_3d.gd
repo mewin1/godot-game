@@ -1,7 +1,39 @@
 extends NoirArena3D
-## Рисованный лес и двор PvP, кадрированные для поля «Обряда».
+## Двор «Обряда» (мостовая, частокол, терем, чаши — свои) внутри леса PvP-двора.
+## Лес, камни, ручей, луг, туман и звери — из мастер-сцены PvP, повёрнуты на четверть
+## оборота и сдвинуты: ручей идёт слева у ворот, терем справа, как в кадре PvP.
 
-const FOREST_SHADER: Shader = preload("res://assets/shaders/ritual_forest.gdshader")
+## Двор «Обряда» с частоколом в мире (x, z): клетки 1..18 × 2..12 поля по 2 м.
+const YARD: Rect2 = Rect2(1.0, -17.0, 38.0, 24.0)
+## Расстановка PvP → мир «Обряда»: −90° вокруг вертикали (терем PvP с −z уходит на +x),
+## ручей встаёт к воротам слева, брод — напротив входа (z = −15).
+const ENV: Transform3D = Transform3D(Basis(Vector3(0, 0, 1), Vector3(0, 1, 0), Vector3(-1, 0, 0)),
+		Vector3(1.5, 0.0, -18.0))
+## Поляна без деревьев: двор, терем справа и полоса луга; ближе к камере (+x, +z) — шире.
+const CLEARING: Rect2 = Rect2(-2.5, -24.5, 55.5, 40.5)
+
+
+func _yard_rect() -> Rect2:
+	return YARD
+
+
+func _terem_side() -> Side:
+	return SIDE_RIGHT
+
+
+func _env_transform() -> Transform3D:
+	return ENV
+
+
+## Деревья — вне поляны; камни и трава — вне двора с теремом.
+func _keep_env(at: Vector3, tree: bool) -> bool:
+	var point: Vector2 = Vector2(at.x, at.z)
+	return not (CLEARING if tree else _yard_block()).has_point(point)
+
+
+func _yard_block() -> Rect2:
+	return YARD.grow(1.2).grow_side(SIDE_RIGHT, 8.0)
+
 
 func _open_cells(field: FieldState, path: Array[Vector2i]) -> Dictionary[Vector2i, bool]:
 	var cells: Dictionary[Vector2i, bool] = {}
@@ -10,65 +42,33 @@ func _open_cells(field: FieldState, path: Array[Vector2i]) -> Dictionary[Vector2
 	return cells
 
 
-func _build_forest() -> void:
-	var sets: Dictionary[String, Array] = {}
-	# Три яруса за стеной: крупные силуэты, берёзы и более низкая опушка.
-	for row: int in 4:
-		for column: int in 18:
-			var at: Vector2 = Vector2(-22 + column * 5.4 + _rng.randf_range(-2, 2), -29 - row * 8.0 + _rng.randf_range(-2, 2))
-			var birch: bool = _rng.randf() < 0.23
-			var ids: Array[String] = BIRCH_IDS if birch else PINE_IDS
-			_collect(sets, ids[_rng.randi() % ids.size()], at, _rng.randf_range(18, 28), 0)
-	for side: int in [-1, 1]:
-		for index: int in 11:
-			var at: Vector2 = Vector2(-11 if side < 0 else 56, -27 + index * 4.8)
-			at += Vector2(_rng.randf_range(-3, 3), _rng.randf_range(-2, 2))
-			_collect(sets, PINE_IDS[_rng.randi() % PINE_IDS.size()], at, _rng.randf_range(15, 24), 0)
-	# Низкие ели и папоротник обрамляют ближние углы, не закрывая место постройки.
-	for index: int in 28:
-		var at: Vector2 = Vector2(_rng.randf_range(-6, 48), _rng.randf_range(15, 22))
-		var ids: Array[String] = FERN_IDS if index % 3 else SAPLING_IDS
-		_collect(sets, ids[_rng.randi() % ids.size()], at, _rng.randf_range(1.4, 3.0), 0)
-	_build_collected(sets, self)
-
-
+## Трава и подлесок не растут во дворе и под теремом (двор «Обряда» чистый).
 func _collect(into: Dictionary[String, Array], id: String, at: Vector2, scale_by: float, yaw: float = -1.0) -> void:
-	if at.x > -3 and at.x < 45 and at.y > -24 and at.y < 12:
+	if _yard_block().has_point(at):
 		return
 	super._collect(into, id, at, scale_by, yaw)
 
 
-func _billboards(id: String, transforms: Array[Transform3D], parent: Node3D) -> void:
-	if transforms.is_empty():
-		return
-	var texture: Texture2D = load(BILLBOARDS % id) as Texture2D
-	var quad: QuadMesh = QuadMesh.new()
-	quad.size = Vector2(float(texture.get_width()) / texture.get_height(), 1)
-	quad.center_offset = Vector3(0, 0.5, 0)
-	var ink: ShaderMaterial = ShaderMaterial.new()
-	ink.shader = FOREST_SHADER
-	ink.set_shader_parameter("artwork", texture)
-	quad.material = ink
-	var multi: MultiMesh = MultiMesh.new()
-	multi.transform_format = MultiMesh.TRANSFORM_3D
-	multi.mesh = quad
-	multi.instance_count = transforms.size()
-	for index: int in transforms.size():
-		multi.set_instance_transform(index, transforms[index])
-	var holder: MultiMeshInstance3D = MultiMeshInstance3D.new()
-	holder.multimesh = multi
-	holder.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	parent.add_child(holder)
+## Расстояние от точки русла (координаты вида) до края поляны; меньше нуля — внутри.
+func _clearance(p: Vector2) -> float:
+	var at: Vector2 = _w(p)
+	var dx: float = maxf(CLEARING.position.x - at.x, at.x - CLEARING.end.x)
+	var dy: float = maxf(CLEARING.position.y - at.y, at.y - CLEARING.end.y)
+	if dx < 0.0 and dy < 0.0:
+		return maxf(dx, dy)
+	return Vector2(maxf(dx, 0.0), maxf(dy, 0.0)).length()
 
 
-func _build_ground_mist() -> void:
-	super._build_ground_mist()
-	var mist: MeshInstance3D = get_node("GroundMist") as MeshInstance3D
-	var material: ShaderMaterial = mist.mesh.surface_get_material(0) as ShaderMaterial
-	material.set_shader_parameter("yard_rect", Vector4(-2, -23, 44, 12))
-	material.set_shader_parameter("density", 0.16)
-	material.set_shader_parameter("layer_top", 4.5)
-	material.set_shader_parameter("tint", Color("759c9c"))
+func _wild_zone() -> Rect2:
+	return CLEARING.grow(-0.8)
+
+
+## Дымка леса PvP, перенесённая вместе с лесом.
+func _build_mist() -> void:
+	super._build_mist()
+	var volume: FogVolume = get_node("ForestMist") as FogVolume
+	volume.position = ENV * volume.position
+	volume.size = Vector3(volume.size.z, volume.size.y, volume.size.x)
 
 
 func _build_fires(_fine: Dictionary[Vector2i, bool], _terem: Vector2) -> void:
