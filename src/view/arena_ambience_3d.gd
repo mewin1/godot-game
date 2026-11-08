@@ -17,9 +17,10 @@ const LEAF_SIZE: float = 0.42
 const GUST_LEAF_COUNT: int = 35
 const FIREFLY_COUNT: int = 70
 const DUST_COUNT: int = 160
-## Снос листа ветром (ускорение, м/с²): в покое и в самый сильный порыв.
-const LEAF_DRIFT_CALM: float = 0.05
-const LEAF_DRIFT_GUST: float = 0.55
+## Скорость ветра для частиц, м/с: в покое и в самый сильный порыв. Задаётся частицам каждый кадр как
+## «направленная скорость» (не копится): в порыв их резко несёт по ветру, на спаде они замедляются.
+const WIND_CALM: float = 0.25
+const WIND_GUST: float = 5.5
 ## Вороны: сколько сидит одновременно, как часто прилетают (с), сколько сидят (с).
 const MAX_PERCHED: int = 4
 const CROW_EVERY: Vector2 = Vector2(4.0, 11.0)
@@ -33,10 +34,9 @@ const FIELD_CENTER: Vector3 = Vector3(9.0, 0.0, -10.0)
 const SCARE_DISTANCE: float = 3.0
 const GROUND_SPOTS: int = 10
 
-var _leaf_process: ParticleProcessMaterial
 var _gust_leaves: GPUParticles3D
-var _gust_process: ParticleProcessMaterial
-var _dust_process: ParticleProcessMaterial
+## Частицы, которые несёт ветер, и доля скорости ветра для каждой.
+var _windy: Dictionary[ParticleProcessMaterial, float] = {}
 var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
 ## Места посадки ворон: столбы частокола (от двора) и земля опушки; у каждого — признак «земля».
 var _fence_spots: Array[Transform3D] = []
@@ -62,11 +62,10 @@ func _process(delta: float) -> void:
 	NoirWind.update(delta)
 	_update_crows(delta)
 	var wind: float = NoirWind.strength
-	var push: Vector3 = NoirWind.DIRECTION * lerpf(LEAF_DRIFT_CALM, LEAF_DRIFT_GUST, wind)
-	if _leaf_process != null:
-		_leaf_process.gravity = Vector3(0.0, -0.07, 0.0) + push
-	if _dust_process != null:
-		_dust_process.gravity = push * 0.6
+	var speed: float = lerpf(WIND_CALM, WIND_GUST, wind)
+	for process: ParticleProcessMaterial in _windy:
+		process.directional_velocity_min = speed * _windy[process]
+		process.directional_velocity_max = speed * _windy[process] * 1.15
 	if _gust_leaves != null:
 		# порыв поднимает листву с земли: выпуск растёт с силой ветра
 		_gust_leaves.amount_ratio = smoothstep(0.15, 0.8, wind)
@@ -91,7 +90,8 @@ func _build_leaves() -> void:
 	process.anim_offset_max = 1.0
 	_add_turbulence(process, 1.4, 0.06, 0.16)
 	_ground_collision(process)
-	_leaf_process = process
+	# лёгший лист (к ~0,7 жизни) ветер лишь чуть шевелит по земле
+	_blown(process, 1.0, 0.55, 0.8)
 	var leaves: GPUParticles3D = _particles("FallingLeaves", LEAF_COUNT, LEAF_LIFE, process, _leaf_mesh(LEAF_SIZE))
 	# центр источника — против ветра от видимой земли, чтобы снос приносил листья в кадр
 	var center: Vector2 = VIEW_AREA.get_center() - Vector2(NoirWind.DIRECTION.x, NoirWind.DIRECTION.z) * 5.0
@@ -107,8 +107,8 @@ func _build_gust_leaves() -> void:
 	process.emission_box_extents = Vector3(VIEW_AREA.size.x * 0.5, 0.6, VIEW_AREA.size.y * 0.5)
 	process.direction = NoirWind.DIRECTION + Vector3(0, 0.25, 0)
 	process.spread = 18.0
-	process.initial_velocity_min = 2.2
-	process.initial_velocity_max = 3.8
+	process.initial_velocity_min = 1.0
+	process.initial_velocity_max = 2.0
 	process.gravity = Vector3(0, -0.6, 0)
 	process.damping_min = 0.3
 	process.damping_max = 0.6
@@ -121,7 +121,7 @@ func _build_gust_leaves() -> void:
 	process.anim_offset_max = 1.0
 	_add_turbulence(process, 2.5, 0.2, 0.35)
 	_ground_collision(process)
-	_gust_process = process
+	_blown(process, 0.9)
 	_gust_leaves = _particles("GustLeaves", GUST_LEAF_COUNT, 5.0, process, _leaf_mesh(LEAF_SIZE * 0.9))
 	var center: Vector2 = VIEW_AREA.get_center()
 	_gust_leaves.position = Vector3(center.x, 0.9, center.y)
@@ -141,6 +141,7 @@ func _build_fireflies(yard: Rect2) -> void:
 	process.scale_min = 0.7
 	process.scale_max = 1.2
 	_add_turbulence(process, 1.2, 0.25, 0.4)
+	_blown(process, 0.25)
 	var material: ShaderMaterial = _mote_material(Color(0.82, 1.0, 0.42), Color(0.55, 0.95, 0.3), 4.5, 1.0, yard)
 	var flies: GPUParticles3D = _particles("Fireflies", FIREFLY_COUNT, 9.0, process, _quad(0.3, material))
 	var center: Vector2 = VIEW_AREA.get_center()
@@ -161,7 +162,7 @@ func _build_dust(yard: Rect2) -> void:
 	process.scale_min = 0.5
 	process.scale_max = 1.0
 	_add_turbulence(process, 0.8, 0.1, 0.2)
-	_dust_process = process
+	_blown(process, 0.8)
 	var material: ShaderMaterial = _mote_material(Color(0.7, 0.86, 0.95), Color(0.5, 0.65, 0.8), 0.55, 0.0,
 			yard.grow(-1.5))
 	var dust: GPUParticles3D = _particles("MoonDust", DUST_COUNT, 12.0, process, _quad(0.1, material))
@@ -169,6 +170,28 @@ func _build_dust(yard: Rect2) -> void:
 	dust.position = Vector3(center.x, 3.6, center.y)
 	dust.preprocess = 12.0
 	add_child(dust)
+
+
+## Частицы несёт ветер: направление — NoirWind.DIRECTION, скорость ставит _process (доля share от ветра).
+## После доли жизни settle_from (к settle_to — до 0,15) снос слабеет: лёгший лист почти не ползёт.
+func _blown(process: ParticleProcessMaterial, share: float, settle_from: float = 2.0, settle_to: float = 3.0) -> void:
+	var curve: CurveXYZTexture = CurveXYZTexture.new()
+	curve.curve_x = _wind_axis(NoirWind.DIRECTION.x, settle_from, settle_to)
+	curve.curve_y = _wind_axis(0.0, settle_from, settle_to)
+	curve.curve_z = _wind_axis(NoirWind.DIRECTION.z, settle_from, settle_to)
+	process.directional_velocity_curve = curve
+	_windy[process] = share
+
+
+static func _wind_axis(value: float, settle_from: float, settle_to: float) -> Curve:
+	var axis: Curve = Curve.new()
+	axis.min_value = -1.0
+	axis.add_point(Vector2(0.0, value))
+	if settle_from < 1.0:
+		axis.add_point(Vector2(settle_from, value))
+		axis.add_point(Vector2(settle_to, value * 0.15))
+	axis.add_point(Vector2(1.0, value * (0.15 if settle_from < 1.0 else 1.0)))
+	return axis
 
 
 ## Земля ловит листья: они ложатся и лежат до конца жизни.

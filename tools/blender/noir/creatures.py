@@ -202,6 +202,15 @@ def key(axis: tuple, angle_deg: float, offset: tuple = (0, 0, 0), scale: float =
     return Vector(axis), math.radians(angle_deg), Vector(offset), scale
 
 
+def turns(*rots: tuple, offset: tuple = (0, 0, 0)) -> tuple:
+    """Несколько поворотов (ось, градусы) подряд — справа налево, как матрицы: turns(Rz, Ry) = Rz @ Ry."""
+    m = Matrix.Identity(3)
+    for axis, deg in rots:
+        m = m @ Matrix.Rotation(math.radians(deg), 3, Vector(axis))
+    axis, angle = m.to_quaternion().to_axis_angle()
+    return axis, angle, Vector(offset), 1.0
+
+
 def wave(t: float, phase: float = 0.0) -> float:
     return math.sin((t + phase) * math.tau)
 
@@ -305,8 +314,27 @@ def crow_fly(obj: bpy.types.Object) -> bpy.types.Object:
                 "wing2.L": key(fwd, 6.0 + 3.0 * wave(t, 0.3)), "wing2.R": key(fwd, -6.0 - 3.0 * wave(t, 0.3)),
                 "tail": key(fwd, 6.0 * wave(t, 0.2)), "head": key((0, 0, 1), 8.0 * wave(t, 0.4))}
 
+    def land(t: float) -> dict:
+        """Посадка (1 с, без повтора): два тормозящих взмаха с крыльями чуть вперёд, затем крылья
+        опускаются и складываются вдоль тела к хвосту — как у сидящей; в конце модель меняется на сидящую."""
+        brake = 1.0 - smooth(0.38, 0.6, t)
+        fold = smooth(0.4, 0.92, t)
+        a = math.sin(min(t, 0.5) / 0.5 * 2.0 * math.tau)
+        b = math.sin(min(t, 0.5) / 0.5 * 2.0 * math.tau - 0.75)
+        up = (0, 0, 1)
+        pose = {"body": key((1, 0, 0), 6.0 * a * brake),
+                "tail": key((1, 0, 0), -10.0 * brake + 4.0 * a * brake),
+                "head": key((1, 0, 0), -4.0 * a * brake)}
+        for s, n in ((1, "L"), (-1, "R")):
+            lift = (-40.0 * a - 8.0) * brake + 14.0 * fold
+            sweep = 14.0 * brake - 80.0 * fold
+            pose[f"wing1.{n}"] = turns((up, s * sweep), (fwd, s * lift))
+            pose[f"wing2.{n}"] = turns((up, s * -22.0 * fold), (fwd, s * (-26.0 * b * brake + 6.0 * fold)))
+        return pose
+
     animate(arm, "flap", 0.42, flap)
     animate(arm, "glide", 2.4, glide)
+    animate(arm, "land", 1.0, land, loop=False)
     return arm
 
 
@@ -439,7 +467,7 @@ def preview(mid: str, arm: bpy.types.Object) -> None:
     for action in [a for a in bpy.data.actions]:
         arm.animation_data.action = action
         start, end = action.frame_range
-        for i, frac in enumerate((0.0, 0.25, 0.5, 0.75)):
+        for i, frac in enumerate((0.0, 0.25, 0.5, 0.75, 1.0)):
             scn.frame_set(int(start + frac * (end - start)))
             for j, d in enumerate((Vector((1, 0, 0)), Vector((1, -0.8, 1.1)).normalized())):
                 cam.location = center + d * size * 3

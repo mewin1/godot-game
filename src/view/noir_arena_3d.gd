@@ -61,6 +61,8 @@ const CLEAR_SIDE: float = 4.5
 const CLEAR_NEAR: float = 9.0
 ## Деревья под луной: лунный контур отделяет кроны от тёмной земли (как на концепте).
 const CANOPY: Shader = preload("res://assets/shaders/noir_canopy.gdshader")
+## Кора с ветками елей и берёз: гнётся ветром вместе с листвой (иначе лапы съезжают с веток).
+const TREE_BARK: Shader = preload("res://assets/shaders/noir_tree_bark.gdshader")
 const TREE_RIM: float = 0.045
 const TREE_BRIGHT: float = 0.72
 ## Земля леса — смесь трёх фактур Poly Haven (CC0) пятнами по шуму, темнее двора, с ямками и буграми.
@@ -1246,7 +1248,7 @@ func _multimesh(id: String, transforms: Array[Transform3D], parent: Node3D = nul
 	for part: MeshInstance3D in _mesh_parts(model):
 		var local: Transform3D = model.global_transform.affine_inverse() * part.global_transform
 		if id not in ["sedge", "fern", "seed_grass", "moss_rock", "shingle", "cellar_arch", "cellar_wall"]:
-			_moonlit(part.mesh)
+			_moonlit(part.mesh, id == "spruce" or id == "birch")
 		var multi: MultiMesh = MultiMesh.new()
 		multi.transform_format = MultiMesh.TRANSFORM_3D
 		multi.mesh = part.mesh
@@ -1263,7 +1265,7 @@ func _multimesh(id: String, transforms: Array[Transform3D], parent: Node3D = nul
 
 
 ## Материалы леса (только у копий в MultiMesh): чуть светлее и с лунным контуром.
-static func _moonlit(mesh: Mesh) -> void:
+static func _moonlit(mesh: Mesh, tree: bool = false) -> void:
 	for surface: int in mesh.get_surface_count():
 		var material: StandardMaterial3D = mesh.surface_get_material(surface) as StandardMaterial3D
 		if material == null or material.has_meta(&"moonlit"):
@@ -1279,6 +1281,16 @@ static func _moonlit(mesh: Mesh) -> void:
 		material.set_meta(&"moonlit", true)
 		var tint: Color = material.albedo_color * TREE_BRIGHT
 		tint.a = material.albedo_color.a
+		if tree:
+			var bark: ShaderMaterial = ShaderMaterial.new()
+			bark.shader = TREE_BARK
+			bark.set_shader_parameter("bark", material.albedo_texture)
+			bark.set_shader_parameter("use_texture", material.albedo_texture != null)
+			bark.set_shader_parameter("tint", tint)
+			bark.set_shader_parameter("flex", 1.4 if material.resource_name in ["Береста", "Чечевички бересты"] else 1.0)
+			bark.set_shader_parameter("rim", TREE_RIM)
+			mesh.surface_set_material(surface, bark)
+			continue
 		material.albedo_color = tint
 		if material.transparency == BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR:
 			material.alpha_antialiasing_mode = BaseMaterial3D.ALPHA_ANTIALIASING_ALPHA_TO_COVERAGE
