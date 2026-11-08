@@ -13,23 +13,16 @@ var _barrier_progress: int = -1
 ## Наклон круче PvP: при пологом взгляде мокрые лужи мостовой бликуют белым.
 const CAMERA_PITCH_RITUAL: float = -0.85
 const CAMERA_YAW_RITUAL: float = 0.3
-## Ночь «Обряда» — свет и дымка PvP-двора как в сцене; день светлее и теплее.
-var _night_ambient: Color
-var _night_ambient_energy: float
-var _night_fog: Color
-var _night_horizon: Color
-var _night_ground: Color
-var _night_top: Color
-var _night_moon: Color
-var _night_moon_energy: float
-var _night_warm: float
-var _night_exposure: float
+## Солнце, закат, ночь и тени облаков (ночь — свет PvP-двора).
+var _daylight: RitualDaylight
 
 
 func _init() -> void:
 	super()
 	# Лес PvP повёрнут на −90° вокруг двора (ritual_arena_3d.gd) — луна вместе с ним.
 	_camera.rotation = Vector3(CAMERA_PITCH_RITUAL, CAMERA_YAW_RITUAL, 0.0)
+	# Без TAA: днём оно размывало очертания построек; края сглаживает MSAA.
+	_viewport.use_taa = false
 	for light_name: String in ["Moon", "WarmKey"]:
 		var light: Node3D = _world.get_node(light_name) as Node3D
 		light.basis = Basis(Vector3.UP, -PI * 0.5) * light.basis
@@ -38,19 +31,12 @@ func _init() -> void:
 	# Ресурс окружения принадлежит только этому экземпляру режима.
 	var environment: WorldEnvironment = _world.get_node("Environment") as WorldEnvironment
 	environment.environment = environment.environment.duplicate(true) as Environment
-	var env: Environment = environment.environment
-	var sky_material: ProceduralSkyMaterial = env.sky.sky_material as ProceduralSkyMaterial
-	var moon: DirectionalLight3D = _world.get_node("Moon") as DirectionalLight3D
-	_night_ambient = env.ambient_light_color
-	_night_ambient_energy = env.ambient_light_energy
-	_night_fog = env.fog_light_color
-	_night_horizon = sky_material.sky_horizon_color
-	_night_ground = sky_material.ground_horizon_color
-	_night_top = sky_material.sky_top_color
-	_night_moon = moon.light_color
-	_night_moon_energy = moon.light_energy
-	_night_warm = (_world.get_node("WarmKey") as DirectionalLight3D).light_energy
-	_night_exposure = env.tonemap_exposure
+	environment.camera_attributes = environment.camera_attributes.duplicate(true) as CameraAttributes
+	var clouds: CloudShadows3D = CloudShadows3D.new()
+	clouds.name = "CloudShadows"
+	clouds.center = Vector3(24.0, 0.0, -5.0)  # середина двора
+	_world.add_child(clouds)
+	_daylight = RitualDaylight.new(_world, clouds)
 
 
 func show_field(field: FieldState, player_colors: Callable) -> void:
@@ -94,29 +80,8 @@ func mob_head(mob: MobState, interpolation: float) -> Vector2:
 
 
 func update_ritual(trial: RitualTrial, delta: float) -> void:
-	var local: int = trial.tick_count % trial.settings.cycle_ticks
-	var night: float = 0.0
-	if trial.tick_count < trial.settings.cycle_ticks * trial.settings.cycles:
-		if local >= trial.settings.dusk_tick:
-			night = clampf(float(local - trial.settings.dusk_tick) / (trial.settings.night_tick - trial.settings.dusk_tick), 0, 1)
-		elif trial.tick_count >= trial.settings.cycle_ticks:
-			night = 1.0 - clampf(float(local) / 100.0, 0, 1)
-	var env: Environment = (_world.get_node("Environment") as WorldEnvironment).environment
-	env.ambient_light_color = Color("a5ae9e").lerp(_night_ambient, night)
-	env.ambient_light_energy = lerpf(0.85, _night_ambient_energy, night)
-	env.fog_light_color = Color("77958b").lerp(_night_fog, night)
-	var horizon: Color = Color("77877d").lerp(_night_horizon, night)
-	var sky_material: ProceduralSkyMaterial = env.sky.sky_material as ProceduralSkyMaterial
-	if sky_material.sky_horizon_color != horizon:
-		sky_material.sky_horizon_color = horizon
-		sky_material.ground_horizon_color = Color("77877d").lerp(_night_ground, night)
-		sky_material.sky_top_color = Color("77877d").darkened(0.35).lerp(_night_top, night)
-	var sun: DirectionalLight3D = _world.get_node("Moon") as DirectionalLight3D
-	var sunset: float = sin(night * PI)
-	sun.light_color = Color("ffe3a8").lerp(_night_moon, night).lerp(Color("ed9255"), sunset * 0.65)
-	sun.light_energy = lerpf(1.05, _night_moon_energy, night)
-	(_world.get_node("WarmKey") as DirectionalLight3D).light_energy = lerpf(0.12, _night_warm, night)
-	env.tonemap_exposure = lerpf(1.1, _night_exposure, night)
+	_daylight.camera_distance = _camera.position.distance_to((_frame_min + _frame_max) * 0.5)
+	_daylight.apply(trial)
 	if trial.palisade_progress != _barrier_progress:
 		_barrier_progress = trial.palisade_progress
 		if _barrier != null:
@@ -140,7 +105,7 @@ func update_ritual(trial: RitualTrial, delta: float) -> void:
 func _update_frame_bounds() -> void:
 	# Весь маршрут и терем; исходные PvP-отступы рассчитаны на другой конец пути.
 	_frame_min = Vector3(1, 0.0, -17)
-	_frame_max = Vector3(45, 4.0, 8)
+	_frame_max = Vector3(49, 4.0, 8)
 	_frame_key = _open_key()
 
 
