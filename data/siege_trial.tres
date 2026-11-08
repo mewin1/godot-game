@@ -1,0 +1,88 @@
+[gd_resource type="Resource" script_class="SiegeTrialConfig" format=3]
+[ext_resource type="Script" path="res://src/sim/data/siege_trial_config.gd" id="1"]
+[ext_resource type="Resource" path="res://data/game_config.tres" id="game"]
+[ext_resource type="Script" path="res://src/sim/data/tower_data.gd" id="tower_type"]
+[ext_resource type="Script" path="res://src/sim/data/mob_data.gd" id="mob_type"]
+[ext_resource type="Resource" path="res://data/towers/bolt.tres" id="bolt"]
+[ext_resource type="Resource" path="res://data/towers/spark.tres" id="spark"]
+[ext_resource type="Resource" path="res://data/towers/water.tres" id="water"]
+[ext_resource type="Resource" path="res://data/mobs/send_unit.tres" id="main"]
+[ext_resource type="Resource" path="res://data/mobs/fast.tres" id="fast"]
+[ext_resource type="Resource" path="res://data/mobs/armored.tres" id="heavy"]
+[ext_resource type="Script" path="res://src/sim/data/siege_reserve_plan.gd" id="plan"]
+[ext_resource type="Script" path="res://src/sim/data/siege_defense_plan.gd" id="defense"]
+[sub_resource type="Resource" id="central_defense"]
+script = ExtResource("defense")
+display_name = "Средний рубеж"
+description = "Большая часть башен стоит вокруг середины пути. Присмотритесь к общей зоне налёта."
+positions = Array[Vector2i]([Vector2i(0, 7), Vector2i(2, 3), Vector2i(2, 5), Vector2i(5, 3)])
+[sub_resource type="Resource" id="spread_defense"]
+script = ExtResource("defense")
+display_name = "Разнесённая оборона"
+description = "Те же башни разнесены вдоль пути. Одним кругом накрыть их сложнее."
+positions = Array[Vector2i]([Vector2i(5, 2), Vector2i(0, 4), Vector2i(2, 7), Vector2i(5, 6)])
+[sub_resource type="Resource" id="scouts"]
+script = ExtResource("plan")
+display_name = "6 разведчиков"
+description = "Быстро достигают дальних башен, но хуже держат огонь."
+order = PackedInt32Array(0, 0, 0, 0, 0, 0)
+[sub_resource type="Resource" id="guards"]
+script = ExtResource("plan")
+display_name = "6 латников"
+description = "Крепкие и медленные: дольше идут под огнём."
+order = PackedInt32Array(1, 1, 1, 1, 1, 1)
+[sub_resource type="Resource" id="shield_rush"]
+script = ExtResource("plan")
+display_name = "Латники → разведчики"
+description = "3 латника принимают первый огонь, следом выходят 3 быстрых разведчика."
+order = PackedInt32Array(1, 1, 1, 0, 0, 0)
+[sub_resource type="Resource" id="feint"]
+script = ExtResource("plan")
+display_name = "Разведчики → латники"
+description = "3 разведчика первыми добегают до обороны, за ними идут 3 латника."
+order = PackedInt32Array(0, 0, 0, 1, 1, 1)
+[sub_resource type="Resource" id="early_guards"]
+script = ExtResource("plan")
+display_name = "Латники сразу · разведчики в запасе"
+description = "3 латника идут перед основным отрядом. 3 разведчика ждут приказа. Всего бойцов столько же."
+order = PackedInt32Array(1, 1, 1, 0, 0, 0)
+opening_count = 3
+[sub_resource type="Resource" id="early_scouts"]
+script = ExtResource("plan")
+display_name = "Разведчики сразу · латники в запасе"
+description = "3 разведчика идут перед основным отрядом. 3 латника ждут приказа. Всего бойцов столько же."
+order = PackedInt32Array(0, 0, 0, 1, 1, 1)
+opening_count = 3
+[resource]
+script = ExtResource("1")
+game = ExtResource("game")
+towers = Array[ExtResource("tower_type")]([ExtResource("bolt"), ExtResource("spark"), ExtResource("water"), ExtResource("bolt")])
+positions = Array[Vector2i]([Vector2i(0, 7), Vector2i(2, 3), Vector2i(2, 5), Vector2i(5, 3)])
+levels = Array[int]([3, 2, 1, 2])
+bot_defenses = Array[ExtResource("defense")]([SubResource("central_defense"), SubResource("spread_defense")])
+main_mob = ExtResource("main")
+reserves = Array[ExtResource("mob_type")]([ExtResource("fast"), ExtResource("heavy")])
+reserve_plans = Array[ExtResource("plan")]([SubResource("scouts"), SubResource("guards"), SubResource("shield_rush"), SubResource("feint"), SubResource("early_guards"), SubResource("early_scouts")])
+main_count = 8
+main_hp = 160
+reserve_hp = Array[int]([180, 320])
+main_speed = 75
+reserve_speed = Array[int]([100, 65])
+spawn_interval = 10
+reserve_deadline = 280
+max_ticks = 900
+hero_hp = 20
+shop_level = 3
+walk_ticks = 60
+swap_ticks = 40
+walk_destination = Vector2i(5, 7)
+fire_target = Vector2i(3, 4)
+fire_warning_ticks = 24
+fire_ticks = 100
+fire_radius_milli = 2400
+bot_release_ticks = Array[int]([120, 180, 240])
+bot_walk_progress = 9000
+bot_fire_progress = 4000
+bot_reaction_ticks = 10
+bot_domovoy_chance = 25
+

@@ -15,6 +15,8 @@ const TOAST_SECONDS: float = 2.0
 const SUMMARY_SECONDS: float = 4.0
 const TOAST_FONT_SIZE: int = 24
 const HALF_FADE_SECONDS: float = 0.35
+## Ширина лавки слева (базовые пиксели 1600×900).
+const SHOP_WIDTH: float = 340.0
 ## Не больше стольких тиков за кадр — чтобы игра не «догоняла» рывком после подвисания.
 const MAX_TICKS_PER_FRAME: int = 5
 const COLOR_BACKGROUND: Color = Color(0.045, 0.075, 0.115)
@@ -56,7 +58,9 @@ var _toast_panel: PanelContainer
 var _toast_label: Label
 var _end_layer: Control
 var _end_panel: MatchEndPanel
+var _idol_choice: IdolChoicePopup
 var _hero_select: HeroSelectPanel
+var _is_aiming_hero: bool = false
 var _sound_bank: SoundBank
 
 
@@ -110,6 +114,8 @@ func _build_ui() -> void:
 	_hud.speed_pressed.connect(_on_hud_speed_pressed)
 	_hud.sound_pressed.connect(_on_hud_sound_pressed)
 	_hud.skill_pressed.connect(_on_hud_skill_pressed)
+	_hud.reserve_pressed.connect(func() -> void:
+		_sim.queue_command(HUMAN_INDEX, ReleaseReserveCommand.new()))
 	_hud.hero_info_pressed.connect(_on_hud_hero_info_pressed)
 	_hud.player_chip_pressed.connect(_on_hud_player_chip_pressed)
 	_hud.set_muted(SoundBank.is_muted())
@@ -127,6 +133,9 @@ func _build_ui() -> void:
 	_hero_select.hero_chosen.connect(_on_hero_select_hero_chosen)
 	add_child(_hero_select)
 	_hero_select.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_idol_choice = IdolChoicePopup.new()
+	_idol_choice.command_requested.connect(_on_command_requested)
+	add_child(_idol_choice)
 	_build_end_layer()
 	_sound_bank = SoundBank.new()
 	add_child(_sound_bank)
@@ -161,6 +170,9 @@ func _build_halves() -> void:
 	_shop_panel = ShopPanel.new()
 	# Лавка по содержимому, без пустой дыры; резерв прижат к низу.
 	_shop_panel.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	# узкая колонка слева (макет UI), а не половина экрана — поле и лес видны
+	_shop_panel.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	_shop_panel.custom_minimum_size.x = SHOP_WIDTH
 	_shop_panel.command_requested.connect(_on_command_requested)
 	left_column.add_child(_shop_panel)
 	var left_gap: Control = Control.new()
@@ -171,7 +183,8 @@ func _build_halves() -> void:
 	_inventory.command_requested.connect(_on_command_requested)
 	_inventory.tower_selected.connect(_on_reserve_tower_selected)
 	left_column.add_child(_inventory)
-	_opponent_view = FieldView.new()
+	_opponent_view = ActiveBattleFieldView.new()
+	_opponent_view.cell_tapped.connect(_on_enemy_hero_target)
 	_opponent_view.has_atmosphere = true
 	_opponent_view.use_arena_3d = true
 	_opponent_view.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -181,7 +194,8 @@ func _build_halves() -> void:
 	_right_column = right
 	_make_half(right)
 	right.size_flags_stretch_ratio = 1.30
-	_my_view = FieldView.new()
+	_my_view = ActiveBattleFieldView.new()
+	_my_view.cell_tapped.connect(_on_own_hero_target)
 	_my_view.has_atmosphere = true
 	_my_view.is_own_field = true
 	_my_view.attach_stage(_back_stage)
@@ -231,7 +245,7 @@ func _build_halves() -> void:
 		_idol_slots.append(slot)
 	var hero_dock: PanelContainer = PanelContainer.new()
 	hero_dock.add_theme_stylebox_override("panel", DuskTheme.glass(0.66, 6))
-	hero_dock.custom_minimum_size.x = 310
+	hero_dock.custom_minimum_size.x = 400
 	bottom_row.add_child(hero_dock)
 	var hero_row: HBoxContainer = HBoxContainer.new()
 	hero_row.add_theme_constant_override("separation", 10)
@@ -282,9 +296,12 @@ func _build_end_layer() -> void:
 
 func _start_match() -> void:
 	var config: GameConfig = load(CONFIG_PATH) as GameConfig
+	_hero_select.battle_settings = config.active_battle
 	# Сид матча выбирает отображение: внутри симуляции случайность только от этого сида.
 	var match_seed: int = randi()
 	_sim = MatchSim.new(config, match_seed, player_count, 1, ScenePaths.requested_teams)
+	(_my_view as ActiveBattleFieldView).sim = _sim
+	(_opponent_view as ActiveBattleFieldView).sim = _sim
 	if is_logging_enabled:
 		_logger = _create_logger(match_seed)
 	_sim.command_failed.connect(_on_sim_command_failed)
@@ -341,11 +358,15 @@ func _refresh_views() -> void:
 		_selected_tower_id = 0
 	_my_view.show_field(me.field, _sim.config, "Ваше поле")
 	_my_view.hero_hp = me.hero_hp
-	_my_view.can_edit = is_prep and me.is_alive
+	_my_view.can_edit = is_prep and me.is_alive and not _is_aiming_hero
 	_my_view.selected_tower_id = _selected_tower_id
 	_my_view.is_under_siege = _sim.siege_leader == HUMAN_INDEX and me.is_alive \
 			and _sim.phase != MatchSim.Phase.OVER
-	_shop_panel.visible = is_prep and me.is_alive
+	_idol_choice.refresh(me, is_prep and me.is_alive, _sim.tick_count,
+			_sim.config.ticks_per_second)
+	var order: BattleHeroOrder = _sim.battle_heroes.get_order(HUMAN_INDEX)
+	var enemy_aim: bool = _is_aiming_hero and order != null and order.skill != null and order.skill.offensive
+	_shop_panel.visible = is_prep and me.is_alive and not enemy_aim
 	_shop_panel.refresh(me.get_owned_tower(_selected_tower_id))
 	_inventory.visible = is_prep and me.is_alive
 	_inventory.refresh(me, is_prep and me.is_alive)
@@ -465,15 +486,73 @@ func _show_hero_info(player: PlayerState) -> void:
 		return
 	var prefix: String = "" if player.index == HUMAN_INDEX else "%s: " % player.display_name
 	var lines: PackedStringArray = [prefix + hero.display_name, hero.get_passive_text()]
-	if hero.skill != null:
+	var battle_skill: BattleSkillData = _sim.config.active_battle.skill_for(hero.id) \
+			if _sim.config.active_battle != null else null
+	if battle_skill != null:
+		lines.append("Приём «%s» · бесплатно: %s" % [battle_skill.title, battle_skill.description])
+	elif hero.skill != null:
 		lines.append("Навык «%s» (%s): %s" % [hero.skill.display_name,
 				hero.skill.get_timing_text(), hero.skill.description])
 	_show_toast("\n".join(lines), SUMMARY_SECONDS)
 
 
 func _on_hud_skill_pressed() -> void:
+	if _sim.config.active_battle != null and _sim.phase == MatchSim.Phase.PREP:
+		_is_aiming_hero = not _is_aiming_hero
+		var order: BattleHeroOrder = _sim.battle_heroes.get_order(HUMAN_INDEX)
+		if _is_aiming_hero and order != null and order.skill != null:
+			_show_toast(order.skill.description + "\nНажмите цель. Повторное нажатие кнопки отменяет выбор.", SUMMARY_SECONDS)
+		return
 	_sim.queue_command(HUMAN_INDEX, UseHeroSkillCommand.new())
 	_sound_bank.play(&"click")
+
+
+func _on_own_hero_target(cell: Vector2i) -> void:
+	_aim_hero_at(HUMAN_INDEX, cell)
+
+
+func _on_enemy_hero_target(cell: Vector2i) -> void:
+	var target: int = _watched_player_index if _watched_player_index >= 0 else _sim.opponent_of[HUMAN_INDEX]
+	_aim_hero_at(target, cell)
+
+
+func _aim_hero_at(target: int, cell: Vector2i) -> void:
+	if _sim.config.active_battle == null or (_sim.phase == MatchSim.Phase.PREP and not _is_aiming_hero):
+		return
+	var order: BattleHeroOrder = _sim.battle_heroes.get_order(HUMAN_INDEX)
+	if order == null or order.skill == null or order.used_tick >= 0:
+		return
+	var field: FieldState = BattleHeroes.field_for(_sim, target)
+	if field == null:
+		return
+	var tower: TowerState = field.get_tower_at(cell)
+	var first: int = order.tower_id
+	var second: int = order.second_id
+	var complete: bool = true
+	match order.skill.kind:
+		BattleSkillData.Kind.WALK:
+			if tower != null:
+				first = tower.id
+				complete = false
+		BattleSkillData.Kind.SWAP:
+			if tower == null:
+				return
+			if first == 0 or second != 0:
+				first = tower.id
+				second = 0
+				complete = false
+			else:
+				second = tower.id
+		BattleSkillData.Kind.CHARGE:
+			first = tower.id if tower != null else 0
+	var error: String = _sim.execute_command(HUMAN_INDEX, AimHeroCommand.new(target, cell, first, second))
+	if error != "":
+		_show_toast(error)
+	elif complete:
+		_is_aiming_hero = false
+	else:
+		_show_toast("Теперь выберите свободную площадку" if order.skill.kind == BattleSkillData.Kind.WALK \
+				else "Теперь выберите вторую башню")
 
 
 ## Сообщения героя: свои — тостом; навык соперника, задевший вас, — тоже.
@@ -538,6 +617,9 @@ func _on_hud_pause_pressed() -> void:
 
 
 func _on_hud_speed_pressed() -> void:
+	if _sim.config.active_battle != null:
+		_show_toast("Боевые приказы: постоянная скорость 1×")
+		return
 	_speed_index = (_speed_index + 1) % SPEEDS.size()
 	_apply_time_scale()
 	_sound_bank.play(&"click")
@@ -559,6 +641,9 @@ func _on_sim_round_finished(round_number: int) -> void:
 	var me: PlayerState = _human()
 	if not me.is_alive:
 		return
+	if _sim.resting_player == HUMAN_INDEX:
+		_show_toast("Раунд отдыха завершён. Доход начислен.", SUMMARY_SECONDS)
+		return
 	_shop_panel.show_battle_report(me.field.battle_report, round_number, me.army_damage_dealt)
 	var lines: PackedStringArray = []
 	var target: String = _round_target_name()
@@ -570,6 +655,18 @@ func _on_sim_round_finished(round_number: int) -> void:
 	lines.append("Вы потеряли %d HP" % lost if lost > 0 else "Терем устоял без потерь")
 	if me.army.rage_percent > 0:
 		lines.append("Армия не дошла — в следующем раунде злее: +%d%% HP" % me.army.rage_percent)
+	if _sim.config.active_battle != null:
+		var order: BattleHeroOrder = _sim.battle_heroes.get_order(HUMAN_INDEX)
+		if order != null:
+			lines.append("Приём: %s" % ("%d с" % (order.used_tick / _sim.config.ticks_per_second) \
+					if order.used_tick >= 0 else "не использован"))
+		for dispatch: BattleReserves.Dispatch in _sim.battle_reserves.dispatches:
+			if dispatch.sender == HUMAN_INDEX:
+				lines.append("Подкрепление: %d с%s" % [dispatch.released_tick / _sim.config.ticks_per_second,
+						" · автоматически" if dispatch.automatic else " · по приказу"])
+				break
+		var counts: Vector2i = _sim.battle_reserves.breaches.get(HUMAN_INDEX, Vector2i.ZERO)
+		lines.append("Прорывы: первый заход %d · подкрепление %d" % [counts.x, counts.y])
 	_show_toast("\n".join(lines), SUMMARY_SECONDS)
 
 
@@ -592,6 +689,8 @@ func _on_sim_round_started(round_number: int) -> void:
 	var subtitle: String = "Двое слабейших атакуют лидера"
 	if _sim.siege_leader == HUMAN_INDEX:
 		subtitle = "На вас идут сразу двое!"
+	elif _sim.resting_player == HUMAN_INDEX:
+		subtitle = "Ваш раунд отдыха · получаете доход без боя"
 	elif _sim.siege_attackers.has(HUMAN_INDEX):
 		subtitle = "Вы вместе с союзником атакуете лидера"
 	_show_banner("ОСАДА!", COLOR_SIEGE, "Раунд %d · %s" % [round_number, subtitle])
@@ -599,6 +698,7 @@ func _on_sim_round_started(round_number: int) -> void:
 
 
 func _on_sim_phase_changed(phase: MatchSim.Phase) -> void:
+	_is_aiming_hero = false
 	if phase == MatchSim.Phase.PREP:
 		_watched_player_index = -1
 	if phase != MatchSim.Phase.HERO_SELECT and _hero_select.visible:
@@ -607,7 +707,7 @@ func _on_sim_phase_changed(phase: MatchSim.Phase) -> void:
 		if hero != null:
 			_show_banner(hero.display_name, UiFx.BANNER_COLOR, hero.description)
 	if phase == MatchSim.Phase.WAVE:
-		_show_banner("Волна!")
+		_show_banner("Раунд отдыха" if _sim.resting_player == HUMAN_INDEX else "Волна!")
 		_sound_bank.play(&"wave", 0.0)
 
 

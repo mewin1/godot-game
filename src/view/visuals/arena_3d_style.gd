@@ -39,7 +39,7 @@ extends Resource
 ## Яркость рамки цвета стихии вокруг постройки (различать соседей в тесноте).
 @export var noir_frame_energy: float = 0.4
 ## Сдвиг уровня мип-карт картинки арены: меньше нуля — фактуры резче (слишком мало — рябь).
-@export var mipmap_bias: float = -0.5
+@export var mipmap_bias: float = 0.0
 
 ## Модель моба по id (&"walker", &"heavy", &"flyer", &"boss", &"blob"); нет записи — walker.
 @export var mob_models: Dictionary[StringName, StringName] = {}

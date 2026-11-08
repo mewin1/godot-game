@@ -22,9 +22,14 @@ static func apply(field: FieldState, mob: MobState) -> void:
 			continue
 		if not target.can_apply_status(status):
 			continue
-		_spread(mob, target, status, rule.spread_duration_ticks, rule.spread_slow_percent)
+		_spread(mob, target, status, rule.spread_duration_ticks, rule.spread_slow_percent,
+				field.config.resist_percent)
 		# Получатель не разносит только что полученное дальше в тот же тик.
 		target.wind_reaction_cooldown = maxi(target.wind_reaction_cooldown, rule.interval_ticks)
+	if rule.id == &"surge":
+		var idol: IdolState = field.get_idol(&"stribog")
+		if idol != null and idol.surge_slow_percent > 0:
+			mob.apply_slow(idol.surge_slow_percent, rule.interval_ticks)
 	if mob.freeze_ticks_left <= 0 and mob.stun_ticks_left <= 0:
 		# Толчок: положительный push_milli — вперёд, отрицательный — назад (не раньше старта).
 		if rule.push_milli >= 0:
@@ -35,10 +40,12 @@ static func apply(field: FieldState, mob: MobState) -> void:
 
 
 static func _spread(source: MobState, target: MobState, status: StringName,
-		ticks: int, slow: int) -> void:
+		ticks: int, slow: int, resist_percent: int) -> void:
 	match status:
 		&"wet":
-			target.wet_ticks_left = maxi(target.wet_ticks_left, mini(source.wet_ticks_left, ticks))
+			var duration: int = target.reduce_by_resist(
+					mini(source.wet_ticks_left, ticks), &"water", resist_percent)
+			target.wet_ticks_left = maxi(target.wet_ticks_left, duration)
 		&"burn":
 			target.burn_ticks_left = maxi(target.burn_ticks_left,
 					mini(source.burn_ticks_left, ticks))

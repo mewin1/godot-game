@@ -5,7 +5,7 @@ extends RefCounted
 ## Только для вида: симуляция по-прежнему ходит по центрам клеток.
 
 const LAYOUT_PATH: String = "res://assets/arenas/forest/arena_layout.json"
-## Арена «нуар» — ровный мощёный двор (tools/blender/noir/arena_layout.py); есть файл — берётся он.
+## Арена «нуар» — проезд между мощёными кровлями подклетов (tools/blender/noir/arena_layout.py); есть файл — берётся он.
 const NOIR_LAYOUT_PATH: String = "res://assets/noir/arena/arena_layout.json"
 const MILLI: float = 1000.0
 ## Площадка ставится чуть выше самой высокой террасы своей полосы.

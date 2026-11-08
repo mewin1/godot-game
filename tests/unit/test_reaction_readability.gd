@@ -74,3 +74,15 @@ func test_dry_perun_chain_is_basic_attack_but_wet_chain_counts_as_reaction() -> 
 	DivineCombat.hit(field, tower, first, 10)
 	var wet_count: int = field.reaction_counts.get(&"chain", 0)
 	assert_eq(wet_count, 1)
+
+
+func test_guides_show_the_same_status_limit_as_combat() -> void:
+	var mob: MobState = MobState.create(_config.wave_mob)
+	mob.burn_ticks_left = 60
+	mob.wet_ticks_left = 60
+	assert_true(mob.can_apply_status(&"charge"))
+	mob.charge_ticks_left = 60
+	assert_false(mob.can_apply_status(&"curse"))
+	for hint: String in [ReactionGuide.text(_config),
+			ReactionGuide.draft_text(_config, [&"svarog", &"water", &"perun", &"curse"])]:
+		assert_true(hint.contains("До 3 стихийных статусов"))

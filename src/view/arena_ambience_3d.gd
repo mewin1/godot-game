@@ -10,11 +10,11 @@ const MOTE_SHADER: Shader = preload("res://assets/shaders/noir_glow_mote.gdshade
 const SMOKE_SHADER: Shader = preload("res://assets/shaders/noir_smoke_puff.gdshader")
 ## Видимая камерой земля вокруг поля (x, z), м — с запасом за край кадра.
 const VIEW_AREA: Rect2 = Rect2(-18.0, -36.0, 54.0, 50.0)
-const LEAF_COUNT: int = 300
+const LEAF_COUNT: int = 110
 const LEAF_LIFE: float = 16.0
 const LEAF_HEIGHT: float = 10.0
 const LEAF_SIZE: float = 0.42
-const GUST_LEAF_COUNT: int = 90
+const GUST_LEAF_COUNT: int = 35
 const FIREFLY_COUNT: int = 70
 const DUST_COUNT: int = 160
 ## Снос листа ветром (ускорение, м/с²): в покое и в самый сильный порыв.

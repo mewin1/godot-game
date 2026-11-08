@@ -11,21 +11,19 @@ const MILLI: float = 1000.0
 const POST_SHADER: Shader = preload("res://assets/shaders/noir_post.gdshader")
 ## Наклон и поворот камеры — как в превью арены (вид сверху-спереди, чуть справа).
 ## Ракурс как на концепте арены: ниже и с угла.
-const CAMERA_PITCH: float = -0.95
-const CAMERA_YAW: float = 1.45
+const CAMERA_PITCH: float = -0.757
+const CAMERA_YAW: float = 2.22
 const CAMERA_DISTANCE: float = 70.0
 ## Объём поля для кадрирования: x 0..18, z −20..0, высоты 0..6.5 м.
 const BOARD_MIN: Vector3 = Vector3(0.0, 0.3, -27.5)
 ## Верх рамки — постройки двора «нуар» (≈3,6 м); у лесных террас было 6,5.
 const BOARD_MAX: Vector3 = Vector3(18.0, 4.0, 1.0)
 const FILL: float = 0.97
-## Кадр двора: запас под частокол и чаши (м), охват терема от конца дороги (м), наименьший размер кадра (м).
-const FRAME_YARD_PAD: float = 0.8
-const FRAME_TEREM_REACH: float = 5.0
-const FRAME_TEREM_DEPTH: float = 1.0
+## Кадр двора: запас под частокол и чаши (м), наименьший размер кадра (м).
+const FRAME_YARD_PAD: float = 1.3
 const FRAME_MIN_SIZE: float = 12.0
 ## Доля кадра над полем под лес и небо (перспективная камера «нуар»).
-const SKY_SHARE: float = 0.15
+const SKY_SHARE: float = 0.10
 const SPEED_SMOOTHING: float = 8.0
 const SIDE_SPREAD: float = 0.45
 const DEFAULT_CELL_H: float = 3.0
@@ -58,7 +56,8 @@ func _init() -> void:
 	_viewport = SubViewport.new()
 	_viewport.own_world_3d = true
 	_viewport.msaa_3d = Viewport.MSAA_4X
-	# чуть резче фактуры вдали и под углом (иначе мелкие постройки мылятся)
+	_viewport.use_taa = true
+	# Мип-карты и MSAA сглаживают мелкие детали на игровом масштабе.
 	_viewport.texture_mipmap_bias = STYLE.mipmap_bias
 	_viewport.render_target_update_mode = SubViewport.UPDATE_WHEN_VISIBLE
 	add_child(_viewport)
@@ -158,13 +157,19 @@ func _frame_perspective(target: Rect2, basis: Basis) -> void:
 	var shift: Vector2 = Vector2.ZERO
 	var distance: float = CAMERA_DISTANCE
 	var half_tan: float = tan(deg_to_rad(_camera.fov) * 0.5)
+	var points: PackedVector3Array = PackedVector3Array()
+	var field_box: AABB = AABB(_frame_min, _frame_max - _frame_min)
+	for index: int in 8:
+		points.append(field_box.get_endpoint(index))
+	var courtyard: NoirArena3D = _world.get_node_or_null("Arena") as NoirArena3D
+	if courtyard != null and courtyard.terem_bounds.has_volume():
+		for index: int in 8:
+			points.append(courtyard.terem_bounds.get_endpoint(index))
 	for step: int in 24:
 		_camera.position = center + basis * Vector3(shift.x, shift.y, 0.0) + basis.z * distance
 		var low: Vector2 = Vector2(INF, INF)
 		var high: Vector2 = Vector2(-INF, -INF)
-		for i: int in 8:
-			var corner: Vector3 = Vector3(_frame_max.x if i & 1 else _frame_min.x,
-					_frame_max.y if i & 2 else _frame_min.y, _frame_max.z if i & 4 else _frame_min.z)
+		for corner: Vector3 in points:
 			var point: Vector2 = project(corner)
 			low = low.min(point)
 			high = high.max(point)
@@ -203,11 +208,7 @@ func _update_frame_bounds() -> void:
 				var center: Vector3 = layout.cell_center(near)
 				low = low.min(Vector2(center.x - half, center.z - half))
 				high = high.max(Vector2(center.x + half, center.z + half))
-	var finish: Vector3 = layout.road_point(layout.path_length_at(path.size() - 1))
-	# терем — по сторону кадра (камера смотрит вдоль x): охват по z, в глубину почти не нужен
-	var reach: Vector2 = Vector2(FRAME_TEREM_DEPTH, FRAME_TEREM_REACH)
-	low = low.min(Vector2(finish.x, finish.z) - reach)
-	high = high.max(Vector2(finish.x, finish.z) + reach)
+	# Для терема _frame_perspective добавляет габариты его реальной модели.
 	low -= Vector2.ONE * FRAME_YARD_PAD
 	high += Vector2.ONE * FRAME_YARD_PAD
 	# совсем маленький двор не раздувать на весь экран
@@ -252,20 +253,25 @@ func cell_at(point: Vector2) -> Vector2i:
 		return Vector2i(-1, -1)
 	var best: Vector2i = Vector2i(-1, -1)
 	var best_t: float = INF
+	var noir: NoirArena3D = _world.get_node_or_null("Arena") as NoirArena3D
 	var board: BoardLayout = _field.layout
 	for y: int in board.height:
 		for x: int in board.width:
 			var cell: Vector2i = Vector2i(x, y)
-			var t: float = (layout.cell_height(cell) - origin.y) / direction.y
+			var roof: bool = _field.is_buildable(cell)
+			var height: float = layout.cell_height(cell) if noir == null or roof else 0.0
+			var t: float = (height - origin.y) / direction.y
 			if t <= 0.0 or t >= best_t:
 				continue
 			var hit: Vector3 = origin + direction * t
 			var low: Vector2 = layout.corner_xz(Vector2(cell) * MILLI)
 			if hit.x >= low.x and hit.x < low.x + layout.cell_m \
 					and hit.z >= low.y and hit.z < low.y + layout.cell_m:
+				if noir != null and roof and not noir.roof_contains(cell, Vector2(hit.x, hit.z)):
+					continue
 				best = cell
 				best_t = t
-	if best.x >= 0:
+	if best.x >= 0 or noir != null:
 		return best
 	var flat_t: float = (DEFAULT_CELL_H - origin.y) / direction.y
 	var flat: Vector3 = origin + direction * flat_t
@@ -279,12 +285,36 @@ func sync(delta: float, interpolation: float) -> void:
 	_sync_fog()
 	_sync_towers()
 	_sync_units(delta, interpolation)
+	# бой во дворе распугивает ворон с частокола (живность арены — src/view/arena_ambience_3d.gd)
+	var noir: NoirArena3D = _world.get_node_or_null("Arena") as NoirArena3D
+	if noir != null:
+		noir.set_battle(not _field.mobs.is_empty())
 
 
 ## Выстрел башни — короткое вздрагивание модели.
 func pulse_tower(tower_id: int) -> void:
 	if _towers.has(tower_id):
 		_towers[tower_id].pulse()
+
+
+## Визуальное перемещение между клетками; состояние и стрельбу меняет симуляция.
+func show_tower_transfer(tower_id: int, from_cell: Vector2i, to_cell: Vector2i,
+		fraction: float) -> void:
+	if not _towers.has(tower_id):
+		return
+	var tower: TowerState = _field.get_tower(tower_id)
+	var start: Vector3 = _tower_position(TowerState.shape_cells_at(tower.data.shape, from_cell, tower.rotation))
+	var finish: Vector3 = _tower_position(TowerState.shape_cells_at(tower.data.shape, to_cell, tower.rotation))
+	_towers[tower_id].position = start.lerp(finish, fraction)
+	_towers[tower_id].position.y += absf(sin(fraction * TAU * 4.0)) * 0.3
+
+
+func _tower_position(cells: Array[Vector2i]) -> Vector3:
+	var top: float = -INF
+	for cell: Vector2i in cells:
+		top = maxf(top, layout.cell_height(cell))
+	var flat: Vector2 = layout.corner_xz(Vector2(TowerState.center_of(cells)))
+	return Vector3(flat.x, top, flat.y)
 
 
 ## Навершие башни на экране; если модели ещё нет — центр её основания.
@@ -302,6 +332,11 @@ func is_noir() -> bool:
 
 ## Точка над тотемом героя в конце открытой дороги (для таблички HP).
 func hero_point(lift: float) -> Vector2:
+	var courtyard: NoirArena3D = _world.get_node_or_null("Arena") as NoirArena3D
+	if courtyard != null and courtyard.terem_bounds.has_volume():
+		var crown: Vector3 = courtyard.terem_bounds.get_center()
+		crown.y = courtyard.terem_bounds.end.y
+		return project(crown) - Vector2(0.0, 12.0)
 	var length: float = layout.path_length_at(_field.path_length - 1) + 0.4
 	return project(layout.road_point(length) + Vector3(0, lift, 0))
 
@@ -353,11 +388,7 @@ func _sync_towers() -> void:
 
 func _build_tower(tower: TowerState) -> ArenaTower3D:
 	var cells: Array[Vector2i] = tower.cells()
-	var top: float = -INF
-	for cell: Vector2i in cells:
-		top = maxf(top, layout.cell_height(cell))
-	var flat: Vector2 = layout.corner_xz(Vector2(tower.center_milli()))
-	var origin: Vector3 = Vector3(flat.x, top, flat.y)
+	var origin: Vector3 = _tower_position(cells)
 	var offsets: Array[Vector3] = []
 	for cell: Vector2i in cells:
 		offsets.append(layout.cell_center(cell) - origin)
@@ -451,7 +482,7 @@ func _sync_fog() -> void:
 func _build_platforms() -> void:
 	var noir: NoirArena3D = _world.get_node_or_null("Arena") as NoirArena3D
 	if noir != null:
-		# нуар: места — плиты двора, жаровни по углам двора; площадок-террас нет
+		# нуар: места — мощёные кровли подклетов, жаровни стоят по углам двора
 		noir.build_for_layout(layout)
 		return
 	var holder: Node3D = Node3D.new()

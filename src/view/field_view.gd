@@ -471,6 +471,8 @@ func _draw_foundation_edges(rect: Rect2, cell: Vector2i, cells: Array[Vector2i],
 
 func _draw_tower_marks() -> void:
 	for tower: TowerState in field.towers:
+		if _stage != null and _stage.is_noir():
+			_draw_workshop_seal(tower)
 		if field.silence_ticks_left > 0:
 			_draw_scorched(tower)
 		_draw_boost_mark(tower)
@@ -481,6 +483,28 @@ func _draw_tower_marks() -> void:
 				_draw_range(tower.center_milli(), field.get_tower_range(tower),
 						_style.selected_color)
 			_draw_neighbor_links(tower)
+
+
+## Клеймо у ближайшего края постройки: знак силы, римский тир и золотые точки уровня.
+## Координата берётся после проекции, поэтому знак читается и при повороте фигуры.
+func _draw_workshop_seal(tower: TowerState) -> void:
+	var low: Vector2 = Vector2(INF, INF)
+	var high: Vector2 = Vector2(-INF, -INF)
+	for cell: Vector2i in tower.cells():
+		for vertex: Vector2 in _cell_quad(cell, 0.12):
+			low = low.min(vertex)
+			high = high.max(vertex)
+	var center: Vector2 = Vector2((low.x + high.x) * 0.5, high.y - 2).round()
+	var numeral: String = ["I", "II", "III"][clampi(tower.data.tier, 1, 3) - 1]
+	var width: float = 28.0 + 4.0 * tower.level
+	var base: Vector2 = center - Vector2(width * 0.5, 5)
+	draw_rect(Rect2(base, Vector2(width, 12)), Color("121719e8"))
+	draw_line(base, base + Vector2(width, 0), Color("776750"), 1.0)
+	draw_texture_rect(GodSymbols.get_icon(tower.data.god), Rect2(base + Vector2(1, 0), Vector2(12, 12)), false)
+	draw_string(get_theme_default_font(), base + Vector2(13, 10), numeral,
+			HORIZONTAL_ALIGNMENT_CENTER, 12, 10, Color("e1d4b8"))
+	for i: int in tower.level:
+		draw_circle(base + Vector2(27 + 4.2 * i, 6), 1.72, Color("ecc480"), true, -1, true)
 
 
 ## Леший: на середине пути мобов отбрасывает назад — отмечаем это место зелёным кругом.
@@ -576,7 +600,8 @@ func _draw_range(center_milli: Vector2i, range_milli: int, color: Color) -> void
 			var flat: Vector2 = _stage.layout.corner_xz(center_world
 					+ Vector2.from_angle(angle) * range_milli)
 			ring.append(_stage.project(Vector3(flat.x, height, flat.y)) + _stage_offset())
-		draw_colored_polygon(ring, Color(color, 0.1))
+		# заливка — без повторной замыкающей точки: с ней многоугольник не триангулируется
+		draw_colored_polygon(ring.slice(0, ring.size() - 1), Color(color, 0.1))
 		draw_polyline(ring, Color(color, 0.6), 2.0, true)
 		return
 	var radius: float = range_milli / MILLI * _cell_size

@@ -10,8 +10,11 @@ const PERCH_SCENE: PackedScene = preload("res://assets/noir/creatures/crow_perch
 const FLY_SCENE: PackedScene = preload("res://assets/noir/creatures/crow_fly.glb")
 ## Скорость полёта, м/с; посадка и взлёт плавные.
 const SPEED: float = 5.8
-## Крупнее настоящей: камера высоко, ворона в натуральную величину — 10 пикселей.
-const MODEL_SCALE: float = 1.8
+## Сидящая — почти натуральная (рядом с медвежонком и частоколом), летящая высоко — крупнее:
+## над лесом в натуральную величину её не видно. Размер в полёте плавно зависит от высоты.
+const PERCH_SCALE: float = 0.85
+const FLY_SCALE: float = 1.8
+const FLY_SCALE_HEIGHT: Vector2 = Vector2(3.0, 11.0)
 ## Крен в повороте: доля скорости поворота (рад/с) и предел, рад.
 const BANK: float = 0.35
 const BANK_LIMIT: float = 0.7
@@ -44,8 +47,8 @@ func _init(seed_value: int) -> void:
 	_fly_model = FLY_SCENE.instantiate() as Node3D
 	add_child(_perch_model)
 	add_child(_fly_model)
-	_perch_model.scale = Vector3.ONE * MODEL_SCALE
-	_fly_model.scale = Vector3.ONE * MODEL_SCALE
+	_perch_model.scale = Vector3.ONE * PERCH_SCALE
+	_fly_model.scale = Vector3.ONE * FLY_SCALE
 	_perch_anim = _find_player(_perch_model)
 	_fly_anim = _find_player(_fly_model)
 	for id: String in ["idle", "flap", "glide"]:
@@ -110,6 +113,8 @@ func _advance(delta: float) -> void:
 	var at: Vector3 = _bezier(eased)
 	var ahead: Vector3 = _bezier(minf(1.0, eased + 0.02)) - at
 	position = at
+	_fly_model.scale = Vector3.ONE * lerpf(PERCH_SCALE, FLY_SCALE,
+			smoothstep(FLY_SCALE_HEIGHT.x, FLY_SCALE_HEIGHT.y, at.y))
 	if ahead.length() > 0.001:
 		var yaw: float = atan2(-ahead.x, -ahead.z)
 		var turn: float = wrapf(yaw - _last_yaw, -PI, PI) / maxf(delta, 0.001)

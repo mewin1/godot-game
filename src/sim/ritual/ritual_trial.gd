@@ -1,0 +1,508 @@
+class_name RitualTrial
+extends RefCounted
+## Четыре ночи: фиксированный тик, команды и полный независимый снимок.
+
+enum Phase { PREP, RUNNING, OVER }
+enum ControlMode { OPEN, PASSIVE, ABILITIES, TRANSFERS }
+const SNAPSHOT_VERSION: int = 2
+
+var rules_hash: int = 0
+var settings: RitualTrialConfig
+var field: RitualField
+var phase: Phase = Phase.PREP
+var control_mode: ControlMode = ControlMode.OPEN
+var economy_frozen: bool = false
+var tick_count: int = 0
+var hp: int = 0
+var gold: int = 0
+var earned: int = 0
+var spent: int = 0
+var refunded: int = 0
+var next_spawn: int = 0
+var last_dawn: int = 0
+var palisades: int = 0
+var palisade_progress: int = -1
+var palisade_ready: int = -1
+var hero_ready: int = 0
+var hero_due: int = -1
+var hero_progress: int = 0
+var result: String = ""
+var title: String = ""
+var install_until: Dictionary[int, int] = {}
+var move_origins: Dictionary[int, Vector2i] = {}
+var move_rotations: Dictionary[int, int] = {}
+var rite_bought: Dictionary[StringName, bool] = {}
+var journal: Array[Dictionary] = []
+var dawns: Array[Dictionary] = []
+var commands: Array[Dictionary] = []
+
+
+func _init(rules: RitualTrialConfig, loadout_index: int = 0) -> void:
+	settings = rules
+	var hasher: StateHasher = StateHasher.new()
+	RitualStateCodec.hash_value(hasher, RitualStateCodec.rules_state(rules))
+	rules_hash = hasher.value
+	field = RitualField.new(rules)
+	field.mob_killed.connect(_on_killed)
+	field.mob_breached.connect(_on_breached)
+	field.trial_event.connect(_on_field_event)
+	field.movement_completed.connect(_resolve_palisade)
+	field.hit_observed.connect(_on_hit_observed)
+	hp = rules.hero_hp
+	gold = rules.start_gold
+	if loadout_index >= 0 and loadout_index < settings.loadouts.size():
+		_apply_loadout(settings.loadouts[loadout_index])
+		if tick_count > 0:
+			# Заполненная заготовка уже в бою; пауза UI не даёт бесплатной подготовки.
+			phase = Phase.RUNNING
+
+
+func _apply_loadout(loadout: RitualLoadout) -> void:
+	title = loadout.title
+	gold = loadout.capital
+	for index: int in loadout.tower_indices.size():
+		var error: String = _buy(loadout.tower_indices[index], loadout.positions[index],
+				loadout.rotations[index])
+		assert(error.is_empty(), error)
+	for index: int in loadout.rite_indices:
+		var error: String = _rite(index)
+		assert(error.is_empty(), error)
+	tick_count = loadout.start_tick
+	last_dawn = tick_count / settings.cycle_ticks
+	palisades = loadout.palisades
+	while next_spawn < settings.spawns.size() and settings.spawns[next_spawn].at_tick < tick_count:
+		next_spawn += 1
+	field.prepare_tick(tick_count)
+	journal.clear()
+
+
+func execute(command: RitualCommand) -> String:
+	if phase == Phase.OVER:
+		return "Опыт завершён"
+	if command.action == RitualCommand.Action.START:
+		if phase != Phase.PREP:
+			return "Опыт уже запущен"
+		phase = Phase.RUNNING
+		_record_command(command)
+		return ""
+	if phase == Phase.RUNNING and control_mode == ControlMode.PASSIVE:
+		return "Контроль: бой без команд"
+	var economic: bool = command.action in [RitualCommand.Action.BUY,
+		RitualCommand.Action.SELL, RitualCommand.Action.RITE]
+	if phase == Phase.RUNNING and economic and (economy_frozen or control_mode != ControlMode.OPEN):
+		return "В этой контрольной ветке состав зафиксирован"
+	if command.action in [RitualCommand.Action.MOVE, RitualCommand.Action.CANCEL_MOVE] \
+			and phase == Phase.RUNNING and control_mode == ControlMode.ABILITIES:
+		return "Контроль: башни неподвижны"
+	var error: String = "Неизвестная команда"
+	match command.action:
+		RitualCommand.Action.BUY:
+			error = _buy(command.item, command.cell, command.rotation)
+		RitualCommand.Action.MOVE:
+			error = _move(command.tower_id, command.cell, command.rotation)
+		RitualCommand.Action.SELL:
+			error = _sell(command.tower_id)
+		RitualCommand.Action.RITE:
+			error = _rite(command.item)
+		RitualCommand.Action.SKILL:
+			error = _skill(command.progress)
+		RitualCommand.Action.PALISADE:
+			error = _palisade(command.progress)
+		RitualCommand.Action.CANCEL_MOVE:
+			error = _cancel_move(command.tower_id)
+	if error.is_empty():
+		_record_command(command)
+	return error
+
+
+func _record_command(command: RitualCommand) -> void:
+	var entry: Dictionary[String, Variant] = command.record()
+	entry["tick"] = tick_count
+	commands.append(entry)
+
+
+func _buy(index: int, cell: Vector2i, rotation: int) -> String:
+	if index < 0 or index >= settings.combat.towers.size():
+		return "Нет такой постройки"
+	if field.towers.size() >= settings.tower_limit:
+		return "Все восемь мест заняты: замените постройку"
+	var data: TowerData = settings.combat.towers[index]
+	if gold < settings.costs[index]:
+		return "Не хватает золота"
+	if not field.can_place_tower_data(data, cell, rotation):
+		return "Фигура не помещается на свободной площадке"
+	var tower: TowerState = field.add_tower(data, cell, posmod(rotation, TowerState.ROTATIONS))
+	tower.invested_total = settings.costs[index]
+	gold -= tower.invested_total
+	spent += tower.invested_total
+	if phase == Phase.RUNNING:
+		_lock(tower)
+	return ""
+
+
+func _lock(tower: TowerState) -> void:
+	install_until[tower.id] = tick_count + settings.install_ticks
+	tower.action_lock_ticks = settings.install_ticks
+	field.mark_towers_changed()
+
+
+func _move(id: int, cell: Vector2i, rotation: int) -> String:
+	var tower: TowerState = field.get_tower(id)
+	if tower == null:
+		return "Выберите башню"
+	if install_until.has(id):
+		return "Установка ещё не завершена"
+	if tower.anchor == cell and tower.rotation == posmod(rotation, TowerState.ROTATIONS):
+		return "Башня уже здесь"
+	var origin: Vector2i = tower.anchor
+	var old_rotation: int = tower.rotation
+	if not field.move_tower(tower, cell, posmod(rotation, TowerState.ROTATIONS)):
+		return "Фигура не помещается"
+	if phase == Phase.RUNNING:
+		move_origins[id] = origin
+		move_rotations[id] = old_rotation
+		_lock(tower)
+		_event(&"move", {"id": id, "from": origin, "to": cell})
+	return ""
+
+
+func _cancel_move(id: int) -> String:
+	var tower: TowerState = field.get_tower(id)
+	if tower == null or not move_origins.has(id):
+		return "Нет незавершённого переноса"
+	if not field.move_tower(tower, move_origins[id], move_rotations[id]):
+		return "Исходное место уже занято"
+	# Уже потраченное время не возвращается: старый срок блокировки остаётся.
+	move_origins.erase(id)
+	move_rotations.erase(id)
+	return ""
+
+
+func _sell(id: int) -> String:
+	var tower: TowerState = field.get_tower(id)
+	if tower == null:
+		return "Выберите башню"
+	var amount: int = tower.invested_total if phase == Phase.PREP \
+			else tower.invested_total * settings.sell_percent / 100
+	gold += amount
+	refunded += amount
+	field.remove_tower(tower)
+	install_until.erase(id)
+	move_origins.erase(id)
+	move_rotations.erase(id)
+	return ""
+
+
+func _rite(index: int) -> String:
+	if index < 0 or index >= settings.rites.size():
+		return "Нет такого заговора"
+	var data: RiteData = settings.rites[index]
+	if rite_bought.has(data.id):
+		return "Этот заговор уже куплен"
+	if gold < data.cost:
+		return "Не хватает золота"
+	var idol: IdolState = field.get_idol(data.god)
+	if idol == null:
+		for candidate: IdolState in field.idols:
+			if candidate.god == &"":
+				idol = candidate
+				break
+	if idol == null:
+		return "Все идолы посвящены"
+	idol.apply_rite(data)
+	rite_bought[data.id] = true
+	gold -= data.cost
+	spent += data.cost
+	field.mark_towers_changed()
+	return ""
+
+
+func _skill(progress: int) -> String:
+	if phase != Phase.RUNNING or tick_count < hero_ready or hero_due >= 0:
+		return "Илья не готов"
+	if not valid_progress(progress):
+		return "Выберите точку дороги"
+	hero_progress = progress
+	hero_due = tick_count + settings.hero_warning
+	hero_ready = tick_count + settings.hero_cooldown
+	return ""
+
+
+func _palisade(progress: int) -> String:
+	if phase != Phase.RUNNING or palisades <= 0 or palisade_progress >= 0:
+		return "Нет свободного частокола"
+	if not valid_progress(progress):
+		return "Выберите точку дороги"
+	for base: MobState in field.mobs:
+		if base.is_alive() and eligible_for_palisade(base) and base.progress == progress:
+			return "Нельзя ставить частокол поверх тяжёлого врага"
+	palisades -= 1
+	palisade_progress = progress
+	palisade_ready = tick_count + settings.palisade_install
+	return ""
+
+
+func valid_progress(progress: int) -> bool:
+	return progress >= 0 and progress < field.get_path_end_progress()
+
+
+func eligible_for_palisade(mob: MobState) -> bool:
+	return mob.data.tags.has(settings.heavy_tag) or mob.data.tags.has(settings.boss_tag)
+
+
+func hero_damage(mob: RitualMob) -> int:
+	var raw: int = mini(settings.hero_cap, mob.hp * settings.hero_percent / 100)
+	return maxi(1, raw * settings.ward_physical_percent / 100) if mob.ward_hp > 0 \
+			else field.body_damage(mob, raw)
+
+
+func _resolve_hero() -> void:
+	if hero_due < 0 or tick_count < hero_due:
+		return
+	hero_due = -1
+	var point: Vector2i = field.get_path_point(hero_progress)
+	for mob: MobState in field.mobs:
+		if mob.is_alive() and field._is_in_range(point, field.get_mob_position(mob), settings.hero_radius):
+			var raw: int = mini(settings.hero_cap, mob.hp * settings.hero_percent / 100)
+			var before_hp: int = mob.hp
+			var target: RitualMob = mob as RitualMob
+			var before_ward: int = target.ward_hp
+			var sources: Array[int] = []
+			if before_ward == 0:
+				sources = field.banner_sources(mob)
+			field.deal_mob_damage(mob, raw, 0, &"hero")
+			_event(&"hero_hit", {"mob": mob.id, "raw": raw,
+				"hp_damage": before_hp - maxi(0, mob.hp),
+				"ward_damage": before_ward - target.ward_hp, "protected_by": sources})
+
+
+func tick() -> void:
+	if phase != Phase.RUNNING:
+		return
+	_boundaries()
+	while next_spawn < settings.spawns.size() and settings.spawns[next_spawn].at_tick <= tick_count:
+		field.spawn_mob(settings.spawns[next_spawn].mob_index)
+		next_spawn += 1
+	field.prepare_tick(tick_count)
+	_finish_installations()
+	_resolve_hero()
+	field.fire_trial_towers()
+	field.finish_tick()
+	field.pending_kill_gold = 0
+	field.pending_breaches.clear()
+	tick_count += 1
+	field.wave_tick = tick_count
+	_boundaries()
+	if phase == Phase.RUNNING and tick_count >= settings.end_tick:
+		phase = Phase.OVER
+		result = "Зачистка завершена" if field.count_alive_mobs() == 0 else "Зачистка не завершена"
+
+
+func _finish_installations() -> void:
+	var finished: Array[int] = []
+	for id: int in install_until:
+		var tower: TowerState = field.get_tower(id)
+		if tower == null or tick_count >= install_until[id]:
+			finished.append(id)
+			if tower != null:
+				tower.action_lock_ticks = 0
+		else:
+			tower.action_lock_ticks = install_until[id] - tick_count
+	for id: int in finished:
+		install_until.erase(id)
+		move_origins.erase(id)
+		move_rotations.erase(id)
+	if not finished.is_empty():
+		field.mark_towers_changed()
+
+
+func _resolve_palisade() -> void:
+	if palisade_progress < 0 or tick_count < palisade_ready:
+		return
+	var first: RitualMob = null
+	var first_distance: int = 0
+	var first_step: int = 1
+	for base: MobState in field.mobs:
+		var mob: RitualMob = base as RitualMob
+		if not mob.is_alive() or not eligible_for_palisade(mob) \
+				or mob.previous_progress > palisade_progress or mob.progress < palisade_progress:
+			continue
+		var distance: int = palisade_progress - mob.previous_progress
+		var step: int = maxi(1, mob.step_distance)
+		# Сравниваем доли целочисленного шага без float. Равенство — меньший ID.
+		var earlier: bool = distance * first_step < first_distance * step
+		var equal: bool = distance * first_step == first_distance * step
+		if first == null or earlier or (equal and mob.id < first.id):
+			first = mob
+			first_distance = distance
+			first_step = step
+	if first != null:
+		_on_mob_moved(first)
+
+
+func _on_mob_moved(mob: RitualMob) -> void:
+	if palisade_progress < 0 or tick_count < palisade_ready:
+		return
+	if mob.is_alive() and eligible_for_palisade(mob) \
+			and mob.previous_progress <= palisade_progress and mob.progress >= palisade_progress:
+		var affected: bool = mob.immune_until <= tick_count
+		if affected:
+			mob.progress = palisade_progress
+			affected = field.stop_mob(mob, settings.palisade_stun)
+		_event(&"palisade", {"mob": mob.id, "affected": affected, "progress": palisade_progress,
+			"crossing_distance": palisade_progress - mob.previous_progress, "step": mob.step_distance})
+		palisade_progress = -1
+		palisade_ready = -1
+
+
+func _boundaries() -> void:
+	var dawn: int = mini(settings.cycles, tick_count / settings.cycle_ticks)
+	if dawn <= last_dawn:
+		return
+	last_dawn = dawn
+	if dawn == 1:
+		palisades += 1
+	var record: Dictionary[String, Variant] = summary()
+	record["dawn"] = dawn
+	record["roster"] = roster()
+	record["idols"] = idol_report()
+	record["remaining"] = remaining_report()
+	dawns.append(record)
+	_event(&"dawn", {"number": dawn})
+
+
+func _on_killed(mob: MobState) -> void:
+	gold += mob.kill_reward
+	earned += mob.kill_reward
+	_event(&"killed", {"mob": mob.id, "kind": String(mob.data.id), "reward": mob.kill_reward})
+
+
+func _on_breached(mob: MobState) -> void:
+	hp = maxi(0, hp - mob.breach_damage)
+	_event(&"breach", {"mob": mob.id, "kind": String(mob.data.id), "damage": mob.breach_damage})
+	if hp == 0:
+		phase = Phase.OVER
+		result = "Терем пал"
+		field.stopped = true
+
+
+func _on_hit_observed(details: Dictionary) -> void:
+	_event(&"damage", details)
+
+
+func _on_field_event(kind: StringName, mob: RitualMob, amount: int) -> void:
+	_event(kind, {"mob": mob.id, "amount": amount})
+
+
+func _event(kind: StringName, details: Dictionary) -> void:
+	var record: Dictionary = details.duplicate(true)
+	record["tick"] = tick_count
+	record["event"] = String(kind)
+	journal.append(record)
+
+
+func roster() -> Array[Dictionary]:
+	var result_roster: Array[Dictionary] = []
+	for tower: TowerState in field.towers:
+		result_roster.append({"id": tower.id, "kind": String(tower.data.id),
+			"anchor": tower.anchor, "rotation": tower.rotation})
+	return result_roster
+
+
+func idol_report() -> Array[Dictionary]:
+	var records: Array[Dictionary] = []
+	for idol: IdolState in field.idols:
+		records.append(RitualStateCodec.capture(idol))
+	return records
+
+
+func remaining_report() -> Array[Dictionary]:
+	var records: Array[Dictionary] = []
+	for base: MobState in field.mobs:
+		var mob: RitualMob = base as RitualMob
+		if mob.is_alive():
+			records.append({"id": mob.id, "kind": String(mob.data.id), "hp": mob.hp,
+				"max_hp": mob.max_hp, "ward_hp": mob.ward_hp, "progress": mob.progress,
+				"statuses": mob.status_tags(), "protected_by": field.banner_sources(mob),
+				"boss_phase": int(mob.boss_phase), "immune_until": mob.immune_until})
+	return records
+
+
+func summary() -> Dictionary[String, Variant]:
+	return {"simulation_version": SNAPSHOT_VERSION, "rules_hash": rules_hash,
+		"tick": tick_count, "hp": hp, "gold": gold, "earned": earned,
+		"spent": spent, "refunded": refunded, "alive": field.count_alive_mobs(),
+		"result": result, "title": title}
+
+
+func snapshot() -> Dictionary[String, Variant]:
+	var entities: Array[Dictionary] = []
+	for mob: MobState in field.mobs:
+		entities.append({"data": String(mob.data.id), "state": RitualStateCodec.capture(mob)})
+	var buildings: Array[Dictionary] = []
+	for tower: TowerState in field.towers:
+		buildings.append({"data": String(tower.data.id), "state": RitualStateCodec.capture(tower)})
+	var idols: Array[Dictionary] = []
+	for idol: IdolState in field.idols:
+		idols.append(RitualStateCodec.capture(idol))
+	return {"version": SNAPSHOT_VERSION, "rules": settings.resource_path, "rules_hash": rules_hash,
+		"trial": RitualStateCodec.capture(self), "mobs": entities, "towers": buildings,
+		"idols": idols, "counters": field.counters(), "stopped": field.stopped,
+		"reactions": field.reaction_counts.duplicate(),
+		"report": RitualStateCodec.capture(field.battle_report)}
+
+
+static func from_snapshot(rules: RitualTrialConfig, state: Dictionary) -> RitualTrial:
+	if RitualStateCodec.integer(state.get("version", -1), -1) != SNAPSHOT_VERSION \
+			or not state.has_all(["trial", "towers", "mobs", "idols", "counters", "stopped", "reactions", "report"]):
+		return null
+	var trial: RitualTrial = RitualTrial.new(rules, -1)
+	if RitualStateCodec.integer(state.get("rules_hash", -1), -1) != trial.rules_hash:
+		return null
+	RitualStateCodec.apply(trial, RitualStateCodec.dictionary(state["trial"]))
+	for record: Dictionary in state["towers"]:
+		var data: TowerData = null
+		for candidate: TowerData in rules.combat.towers:
+			if String(candidate.id) == RitualStateCodec.text(record["data"]):
+				data = candidate
+		if data == null:
+			return null
+		var tower: TowerState = TowerState.new()
+		tower.data = data
+		RitualStateCodec.apply(tower, RitualStateCodec.dictionary(record["state"]))
+		trial.field.attach_tower(tower)
+	for record: Dictionary in state["mobs"]:
+		var data: MobData = null
+		for candidate: MobData in rules.enemies:
+			if String(candidate.id) == RitualStateCodec.text(record["data"]):
+				data = candidate
+		if data == null:
+			return null
+		var mob: RitualMob = RitualMob.from_data(data, rules)
+		RitualStateCodec.apply(mob, RitualStateCodec.dictionary(record["state"]))
+		trial.field.mobs.append(mob)
+	trial.field.idols.clear()
+	for values: Dictionary in state["idols"]:
+		var idol: IdolState = IdolState.new()
+		RitualStateCodec.apply(idol, values)
+		trial.field.idols.append(idol)
+	trial.field.restore_counters(RitualStateCodec.array(state["counters"]))
+	trial.field.stopped = RitualStateCodec.boolean(state["stopped"])
+	trial.field.reaction_counts.assign(RitualStateCodec.dictionary(state["reactions"]))
+	RitualStateCodec.apply(trial.field.battle_report, RitualStateCodec.dictionary(state["report"]))
+	trial.field.wave_tick = trial.tick_count
+	trial.field.mark_towers_changed()
+	return trial
+
+
+func fork_control(mode: ControlMode) -> RitualTrial:
+	var branch: RitualTrial = from_snapshot(settings, snapshot())
+	branch.control_mode = mode
+	branch.economy_frozen = true
+	return branch
+
+
+func state_hash() -> int:
+	var hasher: StateHasher = StateHasher.new()
+	RitualStateCodec.hash_value(hasher, snapshot())
+	return hasher.value

@@ -14,6 +14,7 @@ const MOB_IDS: Array[StringName] = [&"basic", &"send_unit", &"fast", &"armored",
 		&"healer", &"knight", &"stealth", &"boss", &"robber"]
 
 var _grids: Array[GridContainer] = []
+var _battle_settings: ActiveBattleConfig
 
 
 func _ready() -> void:
@@ -45,6 +46,7 @@ func _ready() -> void:
 	sections.add_theme_constant_override("separation", 12)
 	scroll.add_child(sections)
 	var config: GameConfig = load(CONFIG_PATH) as GameConfig
+	_battle_settings = config.active_battle
 	var heroes: GridContainer = _add_section(sections, "")
 	for hero: HeroData in config.heroes:
 		heroes.add_child(_make_card(hero))
@@ -142,7 +144,11 @@ func _make_card(hero: HeroData) -> PanelContainer:
 	text.add_child(_make_label(hero.display_name, 22, COLOR_TEXT))
 	text.add_child(_make_label("♥ %d HP · %s" % [hero.hp, hero.style], 16, COLOR_HP))
 	text.add_child(_make_label(hero.get_passive_text(), 15, COLOR_TEXT))
-	if hero.skill != null:
+	var battle_skill: BattleSkillData = _battle_settings.skill_for(hero.id) if _battle_settings != null else null
+	if battle_skill != null:
+		text.add_child(_make_label("Приём «%s» · бесплатно" % battle_skill.title, 15, COLOR_SKILL))
+		text.add_child(_make_label(battle_skill.description, 14, COLOR_MUTED))
+	elif hero.skill != null:
 		var skill: HeroSkillData = hero.skill
 		text.add_child(_make_label("Навык «%s» · %d зол. · %s" % [skill.display_name, skill.cost,
 				skill.get_timing_text()], 15, COLOR_SKILL))

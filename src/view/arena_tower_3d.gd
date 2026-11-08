@@ -4,12 +4,14 @@ extends Node3D
 ## Три базовые модели (тир 1 — деревянный пост, 2 — каменная башня, 3 — резная башня
 ## с кристаллом), окраска и свечение — по богу из Arena3DStyle. Уровень слияния — кольца.
 
+const Workshop = preload("res://src/view/courtyard_workshop.gd")
+const WORKSHOP_SILL: PackedScene = preload("res://assets/noir/courtyard/towers/sill.glb")
 const PULSE_SECONDS: float = 0.18
 const POP_SECONDS: float = 0.35
 ## Клетка поля (м) и рамка стихии вокруг постройки: отступ от края клетки, ширина, высота над плитой.
 const CELL: float = 2.0
 const FRAME_INSET: float = 0.2
-const FRAME_WIDTH: float = 0.1
+const FRAME_WIDTH: float = 0.065
 const FRAME_HEIGHT: float = 0.47
 ## Насколько модель может выступать за рамку (ветви, лопасти): 1 — ровно по рамке.
 const FIT_SLACK: float = 1.35
@@ -21,6 +23,7 @@ var _accent: MeshInstance3D
 var _pulse_left: float = 0.0
 var _pop_left: float = 0.0
 var _time: float = 0.0
+var _rotor: Node3D
 var _base_scale: float = 1.0
 var _noir_height: float = 0.0
 
@@ -62,15 +65,19 @@ func _build_noir(tower: TowerState, style: Arena3DStyle, cell_offsets: Array[Vec
 	if scene == null:
 		return false
 	var tier: int = clampi(tower.data.tier, 1, 3)
-	var plate: PackedScene = NoirModels.plate(tier, tower.data.god)
-	var own_plate: PackedScene = NoirModels.tower_plate(tower.data.id)
-	for i: int in cell_offsets.size():
-		var offset: Vector3 = cell_offsets[i]
-		# своя плита постройки — под всеми клетками фигуры (у моделей Hunyuan3D общие плиты выбиваются из стиля)
-		var scene_for_cell: PackedScene = own_plate if own_plate != null else plate
-		if scene_for_cell != null:
-			var tile: Node3D = scene_for_cell.instantiate() as Node3D
-			_tune_materials(tile, style.noir_plate_glow, style.noir_plate_tone)
+	var workshop: bool = scene.resource_path.begins_with(NoirModels.WORKSHOPS)
+	var tile_scene: PackedScene = WORKSHOP_SILL
+	if not workshop:
+		tile_scene = NoirModels.tower_plate(tower.data.id)
+		if tile_scene == null:
+			tile_scene = NoirModels.plate(tier, tower.data.god)
+	for offset: Vector3 in cell_offsets:
+		if tile_scene != null:
+			var tile: Node3D = tile_scene.instantiate() as Node3D
+			if workshop:
+				Workshop.paint(tile, &"")
+			else:
+				_tune_materials(tile, style.noir_plate_glow, style.noir_plate_tone)
 			add_child(tile)
 			tile.position = offset
 	_model = Node3D.new()
@@ -78,7 +85,13 @@ func _build_noir(tower: TowerState, style: Arena3DStyle, cell_offsets: Array[Vec
 	var body: Node3D = scene.instantiate() as Node3D
 	var glow: float = style.noir_glow_by_id.get(tower.data.id, style.noir_model_glow)
 	var tone: float = style.noir_tone_by_id.get(tower.data.id, style.noir_model_tone)
-	_tune_materials(body, glow, tone, style.noir_model_rim)
+	if workshop:
+		Workshop.paint(body, tower.data.id)
+		_rotor = body.find_child("WindRotor*", true, false) as Node3D
+		body.rotation.y = -tower.rotation * PI * 0.5
+		body.position.y = 0.15
+	else:
+		_tune_materials(body, glow, tone, style.noir_model_rim)
 	_model.add_child(body)
 	# цветное пятно света стихии на брусчатке вокруг постройки (как на концепте арены)
 	if tower.data.god != &"":
@@ -90,12 +103,19 @@ func _build_noir(tower: TowerState, style: Arena3DStyle, cell_offsets: Array[Vec
 		aura.position = Vector3(0, 1.4, 0)
 		add_child(aura)
 	_noir_height = NoirModels.TIER_HEIGHT[tier - 1]
-	if tower.data.god != &"":
+	if tower.data.god != &"" and not workshop:
 		_add_element_frame(cell_offsets, style.get_god_color(tower.data.god), style.noir_frame_energy)
-	_add_level_marks(cell_offsets, tower.level)
+	if workshop:
+		_add_workshop_marks(cell_offsets, tower.level, style.get_god_color(tower.data.god))
+	else:
+		_add_level_marks(cell_offsets, tower.level)
 	_base_scale = style.noir_model_scale * (1.0 + style.level_scale_step * (tower.level - 1))
 	# крупная модель не должна вылезать за свою рамку на соседние клетки и дорогу
-	_base_scale = clampf(_fit_scale(body, cell_offsets), _base_scale * FIT_FLOOR, _base_scale)
+	if workshop:
+		_noir_height = _body_bounds(body).end.y
+		_base_scale = minf(1.49 + 0.08 * (tower.level - 1), _fit_scale(body, cell_offsets))
+	else:
+		_base_scale = clampf(_fit_scale(body, cell_offsets), _base_scale * FIT_FLOOR, _base_scale)
 	_model.scale = Vector3.ONE * _base_scale
 	return true
 
@@ -145,6 +165,8 @@ func _process(delta: float) -> void:
 	var growth: float = 1.0 - _pop_left / POP_SECONDS
 	var grow: float = ease(growth, 0.4) if _pop_left > 0.0 else 1.0
 	_model.scale = Vector3(1.0 + squash, 1.0 - squash * 0.5, 1.0 + squash) * _base_scale * grow
+	if _rotor != null:
+		_rotor.rotate_z(delta * 0.79)
 	if _accent != null:
 		_accent.rotation.y = _time * 0.9
 		_accent.position.y = _accent.get_meta(&"rest_y", 0.0) + sin(_time * 2.2) * 0.06
@@ -300,16 +322,54 @@ static func _fit_scale(body: Node3D, cell_offsets: Array[Vector3]) -> float:
 		low = low.min(Vector2(offset.x, offset.z))
 		high = high.max(Vector2(offset.x, offset.z))
 	var room: Vector2 = high - low + Vector2.ONE * (CELL - 2.0 * FRAME_INSET)
-	var box: AABB = AABB()
-	var first: bool = true
-	for node: Node in body.find_children("*", "MeshInstance3D", true, false):
-		var mesh_node: MeshInstance3D = node as MeshInstance3D
-		var local: AABB = body.global_transform.affine_inverse() * mesh_node.global_transform * mesh_node.get_aabb() \
-				if body.is_inside_tree() else mesh_node.transform * mesh_node.get_aabb()
-		box = local if first else box.merge(local)
-		first = false
-	if first or box.size.x <= 0.01 or box.size.z <= 0.01:
+	var box: AABB = _body_bounds(body)
+	if box.size.x <= 0.01 or box.size.z <= 0.01:
 		return INF
 	# модель стоит в центре фигуры: считаем от центра, а не от края коробки
 	var half: Vector2 = Vector2(maxf(absf(box.position.x), absf(box.end.x)), maxf(absf(box.position.z), absf(box.end.z)))
 	return minf(room.x * 0.5 / half.x, room.y * 0.5 / half.y) * FIT_SLACK
+
+
+static func _body_bounds(body: Node3D) -> AABB:
+	var box: AABB = AABB()
+	var first: bool = true
+	var parts: Array[Node] = body.find_children("*", "MeshInstance3D", true, false)
+	if body is MeshInstance3D:
+		parts.append(body)
+	for node: Node in parts:
+		var part: MeshInstance3D = node as MeshInstance3D
+		var local: AABB = part.get_aabb()
+		var ancestor: Node3D = part
+		while ancestor != null:
+			local = ancestor.transform * local
+			if ancestor == body:
+				break
+			ancestor = ancestor.get_parent_node_3d()
+		box = local if first else box.merge(local)
+		first = false
+	return box
+
+
+## Четыре обвязки фундамента. Зарубки уровня видны с каждой открытой стороны.
+func _add_workshop_marks(cells: Array[Vector3], level: int, hue: Color) -> void:
+	var poses: Array[Transform3D] = []
+	for center: Vector3 in cells:
+		for side: Vector3 in [Vector3.RIGHT, Vector3.LEFT, Vector3.FORWARD, Vector3.BACK]:
+			if cells.has(center + side * CELL):
+				continue
+			var tangent: Vector3 = Vector3(side.z, 0, -side.x)
+			var axes: Basis = Basis(Vector3.UP, atan2(side.x, side.z))
+			for i: int in level:
+				var mark: Vector3 = center + side * 0.75 + tangent * ((i - 0.5 * (level - 1)) * 0.22)
+				poses.append(Transform3D(axes, mark + Vector3.UP * 0.16))
+	var mesh: BoxMesh = ArenaMaterials3D.box(Vector3(0.105, 0.048, 0.24))
+	mesh.material = ArenaMaterials3D.glow(hue.lerp(Color("d9b770"), 0.68), 0.48)
+	var instances: MultiMesh = MultiMesh.new()
+	instances.transform_format = MultiMesh.TRANSFORM_3D
+	instances.mesh = mesh
+	instances.instance_count = poses.size()
+	for i: int in poses.size():
+		instances.set_instance_transform(i, poses[i])
+	var marks: MultiMeshInstance3D = MultiMeshInstance3D.new()
+	marks.multimesh = instances
+	add_child(marks)

@@ -60,6 +60,8 @@ var breach_overkill: int = 0
 var is_ready: bool = false
 ## Бафы на выбор (пусто — выбирать нечего).
 var buff_offers: Array[SendBuffData] = []
+## Невыбранные бесплатные усиления идола за повышение магазина.
+var idol_choices_left: int = 0
 var shop: ShopState
 var field: FieldState
 var army: ArmyState
@@ -197,29 +199,45 @@ func get_cells_used() -> int:
 
 #region Магазин
 
-## Цена обновления витрины сейчас (0 — есть бесплатное от героя).
-func get_reroll_price() -> int:
-	return 0 if free_rerolls_left > 0 else _config.reroll_cost
+## Обе лавки используют общий запас бесплатных обновлений героя.
+func get_reroll_price(army_shop: bool = false) -> int:
+	if free_rerolls_left > 0:
+		return 0
+	return _config.army_reroll_cost if army_shop else _config.reroll_cost
 
 
 func reroll_shop() -> String:
-	var price: int = get_reroll_price()
-	if gold < price:
+	if not _pay_for_reroll(get_reroll_price()):
 		return "Не хватает золота"
-	gold -= price
-	if price == 0:
-		free_rerolls_left -= 1
 	shop.roll(rng)
 	return ""
 
 
-## Обновить лавку армии за золото (казино юнитов).
-func reroll_army() -> String:
-	if gold < _config.army_reroll_cost:
+## Возвращает причину отказа для команды и для кнопки лавки армии.
+func check_army_reroll() -> String:
+	if not army.has_unoffered_upgrade(shop.level):
+		return "Все доступные бойцы уже на витрине"
+	if gold < get_reroll_price(true):
 		return "Не хватает золота"
-	gold -= _config.army_reroll_cost
+	return ""
+
+
+func reroll_army() -> String:
+	var error: String = check_army_reroll()
+	if error != "":
+		return error
+	_pay_for_reroll(get_reroll_price(true))
 	army.roll_offers(shop.level, rng)
 	return ""
+
+
+func _pay_for_reroll(price: int) -> bool:
+	if gold < price:
+		return false
+	gold -= price
+	if free_rerolls_left > 0:
+		free_rerolls_left -= 1
+	return true
 
 
 ## Цена повышения магазина с учётом скидки героя (скидка не опускает цену ниже минимума).
@@ -238,7 +256,56 @@ func upgrade_shop() -> String:
 	gold -= price
 	shop.upgrade(rng)
 	field.set_shop_level(shop.level)
+	if not _config.idol_base_rites.is_empty():
+		idol_choices_left += 1
 	return ""
+
+
+## Активные силы, для которых настроено базовое усиление.
+func get_idol_base_rites() -> Array[RiteData]:
+	var result: Array[RiteData] = []
+	for rite: RiteData in _config.idol_base_rites:
+		if shop.active_gods.is_empty() or shop.active_gods.has(rite.god):
+			result.append(rite)
+	return result
+
+
+## Проверяет посвящение/повтор. Полную основу нельзя заменить другой силой.
+func check_idol_choice(god: StringName, slot: int) -> String:
+	if idol_choices_left <= 0:
+		return "Нет бесплатного усиления идола"
+	if slot < 0 or slot >= field.idols.size():
+		return "Нет такой основы идола"
+	var idol: IdolState = field.idols[slot]
+	if idol.god != &"" and idol.god != god:
+		return "Эта основа уже посвящена другой силе"
+	var existing: IdolState = field.get_idol(god)
+	if existing != null and existing != idol:
+		return "Эта сила уже имеет идол — усильте его"
+	for rite: RiteData in get_idol_base_rites():
+		if rite.god == god:
+			return ""
+	return "Эта сила недоступна в матче"
+
+
+## slot=-1 и пустая сила — добровольно отказаться от одного бесплатного усиления.
+func choose_idol(god: StringName, slot: int) -> String:
+	if slot == -1 and god == &"":
+		if idol_choices_left <= 0:
+			return "Нет бесплатного усиления идола"
+		idol_choices_left -= 1
+		return ""
+	var error: String = check_idol_choice(god, slot)
+	if error != "":
+		return error
+	for rite: RiteData in get_idol_base_rites():
+		if rite.god == god:
+			field.idols[slot].apply_rite(rite, false)
+			break
+	idol_choices_left -= 1
+	field.mark_towers_changed()
+	return ""
+
 
 #endregion
 
@@ -251,6 +318,8 @@ func buy_army_upgrade(upgrade_index: int, element: StringName = &"") -> String:
 	var error: String = army.check_upgrade_available(upgrade_index, shop.level)
 	if error != "":
 		return error
+	if _config.army_offer_count > 0 and not army.offers.has(upgrade_index):
+		return "Этого юнита нет в витрине армии"
 	var cost: int = army.get_upgrade_cost(upgrade_index)
 	if gold < cost:
 		return "Не хватает золота"
@@ -259,6 +328,8 @@ func buy_army_upgrade(upgrade_index: int, element: StringName = &"") -> String:
 		if shop.active_gods.is_empty():
 			return "Нет активных стихий для выбора"
 		element = shop.active_gods[0]
+	if upgrade.choose_element and not shop.active_gods.has(element):
+		return "Этой стихии нет в матче"
 	gold -= cost
 	income += army.get_upgrade_income(upgrade_index)
 	army.apply_upgrade(upgrade_index, element)
@@ -315,6 +386,8 @@ func pick_hero(hero_data: HeroData) -> void:
 
 ## Цена навыка сейчас (0 — навыка нет).
 func get_skill_cost() -> int:
+	if _config.active_battle != null:
+		return 0
 	if hero == null or hero.skill == null:
 		return 0
 	return hero.skill.get_cost(skill_uses)
@@ -338,6 +411,8 @@ func check_skill_available(phase: MatchSim.Phase) -> String:
 
 ## Общие и особые условия навыка для команды, HUD и бота; без учёта цены.
 func check_skill_activation(sim: MatchSim) -> String:
+	if sim.config.active_battle != null:
+		return sim.battle_heroes.check(sim, index)
 	var error: String = check_skill_available(sim.phase)
 	if error != "":
 		return error
@@ -346,6 +421,8 @@ func check_skill_activation(sim: MatchSim) -> String:
 
 ## Нажать навык: проверки, действие, оплата. "" — получилось.
 func use_hero_skill(sim: MatchSim) -> String:
+	if sim.config.active_battle != null:
+		return sim.battle_heroes.use_skill(sim, index)
 	var error: String = check_skill_activation(sim)
 	if error != "":
 		return error
@@ -405,6 +482,7 @@ func add_to_hash(hasher: StateHasher) -> void:
 			buff_offers.size(), skill_uses, int(is_skill_used_this_round),
 			int(is_hero_triggered), free_rerolls_left, next_tower_bonus_levels,
 			discover_offers.size(), gift_towers.size()])
+	hasher.add(idol_choices_left)
 	hasher.add(rng.state)
 	hasher.add_string(String(hero.id) if hero != null else "-")
 	shop.add_to_hash(hasher)
@@ -585,6 +663,13 @@ func check_tower_rite(rite: RiteData, tower_id: int) -> String:
 	var tower: TowerState = get_owned_tower(tower_id)
 	if tower == null:
 		return "Выберите башню на поле или в резерве"
+	if not tower.data.attacks and tower.data.wind_length_milli <= 0:
+		return "Эта поддержка усиливается слиянием"
+	if rite.effect == RiteData.Effect.TARGETS and tower.data.hits_all_in_range:
+		return "Постройка уже охватывает все цели"
+	if rite.effect in [RiteData.Effect.ENCHANT_DAMAGE, RiteData.Effect.AWAKEN_FOCUS] \
+			and tower.data.damage == 0 and tower.data.wind_length_milli <= 0:
+		return "У этой постройки нет урона для усиления"
 	if rite.effect == RiteData.Effect.ENCHANT_RATE or rite.effect == RiteData.Effect.TARGETS:
 		if not tower.data.attacks:
 			return "Эта чара подходит только стреляющей постройке"

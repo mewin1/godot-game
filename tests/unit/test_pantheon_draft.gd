@@ -227,3 +227,23 @@ func _try_reactive_build(gods: Array[StringName], brain: BotBrain) -> bool:
 	for rule: ReactionData in _config.reactions:
 		reaction_count += reactions.get(rule.id, 0)
 	return mob.hp <= 0 and reaction_count > 0
+
+
+func test_reaction_rites_require_both_gods_and_shop_tier() -> void:
+	var config: GameConfig = _config.duplicate() as GameConfig
+	var shop: ShopState = ShopState.new(config)
+	for id: String in ["wet_chain", "surge_slow"]:
+		var rite: RiteData = load("res://data/rites/%s.tres" % id) as RiteData
+		assert_true(_config.rites.has(rite))
+		config.rites = [rite]
+		shop.active_gods = [rite.god, rite.partner_god]
+		shop.level = rite.tier - 1
+		var rng: RandomNumberGenerator = RandomNumberGenerator.new()
+		rng.seed = 2741
+		assert_null(shop._roll_rite(rng))
+		shop.level = rite.tier
+		assert_eq(shop._roll_rite(rng), rite)
+		shop.active_gods = [rite.god]
+		assert_null(shop._roll_rite(rng))
+		shop.active_gods = [rite.partner_god]
+		assert_null(shop._roll_rite(rng))

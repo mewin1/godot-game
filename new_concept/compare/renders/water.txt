@@ -1,0 +1,1 @@
+buildings/water_16.png

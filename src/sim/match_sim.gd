@@ -46,6 +46,8 @@ var ghost_source: int = -1
 var ghost_field: FieldState
 ## Игрок без дуэли в раунд осады (нечётный остаток после пар): полный доход, без чужой армии.
 var resting_player: int = -1
+var battle_reserves: BattleReserves = BattleReserves.new()
+var battle_heroes: BattleHeroes = BattleHeroes.new()
 
 ## Маршруты армий в этом раунде: x — чья армия, y — на чьё поле идёт.
 var _army_routes: Array[Vector2i] = []
@@ -145,6 +147,8 @@ func execute_command(player_index: int, command: SimCommand) -> String:
 	var player: PlayerState = players[player_index]
 	if not player.is_alive or phase == Phase.OVER:
 		return "Игрок выбыл"
+	if config.active_battle != null and phase == Phase.WAVE and player.hero_hp <= 0:
+		return "Крепость разрушена"
 	if command.requires_prep() and phase == Phase.HERO_SELECT:
 		return "Сначала выберите героя"
 	if command.requires_prep() and phase != Phase.PREP:
@@ -234,6 +238,9 @@ func _alive_team_count() -> int:
 
 func state_hash() -> int:
 	var hasher: StateHasher = StateHasher.new()
+	if config.active_battle != null:
+		battle_reserves.add_to_hash(hasher)
+		battle_heroes.add_to_hash(hasher)
 	hasher.add_many([round_number, phase, phase_tick, tick_count, siege_leader])
 	hasher.add_many(opponent_of)
 	hasher.add(_rng.state)
@@ -314,6 +321,7 @@ func _are_all_humans_ready() -> bool:
 
 
 func _start_round(number: int) -> void:
+	battle_reserves.clear()
 	round_number = number
 	phase = Phase.PREP
 	phase_tick = 0
@@ -334,6 +342,8 @@ func _start_round(number: int) -> void:
 	for player: PlayerState in get_alive_players():
 		if player.is_bot:
 			_bots[player.index].play_prep(self, player)
+	if config.active_battle != null:
+		battle_heroes.prepare(self)
 
 
 func _start_wave() -> void:
@@ -344,9 +354,20 @@ func _start_wave() -> void:
 		player.end_prep()
 	for player: PlayerState in alive:
 		player.field.start_wave()
-		WaveBuilder.schedule_wave(config, player.field, round_number, build_incoming_armies(player.index))
+		if config.active_battle != null:
+			_schedule_active_wave(player.index, player.field)
+		else:
+			schedule_player_wave(player.index, player.field)
 	_start_ghost_wave()
+	if config.active_battle != null:
+		battle_heroes.start(self)
 	phase_changed.emit(phase)
+
+
+## Ставит одну и ту же волну для настоящего поля и пробы защиты.
+func schedule_player_wave(receiver: int, field: FieldState) -> void:
+	if receiver != resting_player:
+		WaveBuilder.schedule_wave(config, field, round_number, build_incoming_armies(receiver))
 
 
 ## Снимок входящих армий для боя и предпросмотра, без изменения состояния или RNG.
@@ -371,14 +392,23 @@ func _start_ghost_wave() -> void:
 	ghost_field = FieldState.new(config, source.shop.level)
 	ghost_field.path_length = source.field.path_length
 	ghost_field.copy_towers_from(source.field)
+	ghost_field.enemy_army_slow_percent = source.field.enemy_army_slow_percent
+	ghost_field.knockback_milli = source.field.knockback_milli
 	ghost_field.start_wave()
 	var army: Array[MobState] = []
 	if round_number >= config.army_first_round:
-		army = players[ghost_target].army.build_pack(ghost_target, round_number)
+		if config.active_battle != null:
+			army = battle_reserves.opening(players[ghost_target].army, ghost_target,
+					GHOST, round_number)
+		else:
+			army = players[ghost_target].army.build_pack(ghost_target, round_number)
 	WaveBuilder.schedule_wave(config, ghost_field, round_number, army)
 
 
 func _tick_wave() -> void:
+	if config.active_battle != null:
+		_tick_active_wave()
+		return
 	if config.synchronized_battle:
 		_tick_synchronized_wave()
 		return
@@ -400,6 +430,49 @@ func _tick_wave() -> void:
 		if is_overtime and not ghost_field.is_enraged:
 			ghost_field.enrage()
 		all_done = _tick_ghost_field(timed_out) and all_done
+	if all_done:
+		_finish_round()
+
+
+func _schedule_active_wave(receiver: int, field: FieldState) -> void:
+	if receiver == resting_player:
+		return
+	var opening: Array[MobState] = []
+	if round_number >= config.army_first_round:
+		for route: Vector2i in _army_routes:
+			if route.y == receiver:
+				opening.append_array(battle_reserves.opening(players[route.x].army,
+						route.x, receiver, round_number))
+		if receiver == ghost_target:
+			opening.append_array(battle_reserves.opening(players[ghost_source].army,
+					GHOST, receiver, round_number))
+	WaveBuilder.schedule_wave(config, field, round_number, opening)
+
+
+## Боевые приказы требуют постоянной скорости; удержанный резерв не завершает поле.
+func _tick_active_wave() -> void:
+	phase_tick += 1
+	battle_reserves.tick(self)
+	battle_heroes.tick(self)
+	var all_done: bool = true
+	for player: PlayerState in get_alive_players():
+		player.field.tick()
+		_collect_field_results(player)
+		all_done = all_done and player.field.is_wave_done() \
+				and not battle_reserves.pending_for(player.index)
+	if ghost_field != null:
+		ghost_field.tick()
+		for mob: MobState in ghost_field.pending_breaches:
+			battle_reserves.record_breach(mob)
+		ghost_field.clear_pending()
+		all_done = all_done and ghost_field.is_wave_done() \
+				and not battle_reserves.pending_for(GHOST)
+	if phase_tick >= config.battle_real_ticks:
+		for player: PlayerState in get_alive_players():
+			player.field.retreat_remaining()
+		if ghost_field != null:
+			ghost_field.retreat_remaining()
+		all_done = true
 	if all_done:
 		_finish_round()
 
@@ -472,6 +545,8 @@ func _collect_field_results(player: PlayerState) -> void:
 
 
 func _apply_breach(player: PlayerState, mob: MobState) -> void:
+	if config.active_battle != null:
+		battle_reserves.record_breach(mob)
 	var damage: int = mob.breach_damage * config.get_breach_multiplier(round_number)
 	if player.index == siege_leader and siege_attackers.has(mob.sender_index):
 		damage = _reduce_siege_damage(damage)
@@ -749,6 +824,8 @@ func _pair(first: int, second: int) -> void:
 
 ## Скорость общей перемотки, без ручной кнопки ×2. Правила используют её же, что и HUD.
 func get_battle_speed() -> int:
+	if config.active_battle != null:
+		return 1
 	if phase != Phase.WAVE or not config.synchronized_battle:
 		return 1
 	return config.get_battle_speed_at(phase_tick)

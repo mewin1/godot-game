@@ -100,7 +100,7 @@ func _is_rite_slot(rng: RandomNumberGenerator, index: int) -> bool:
 func _roll_rite(rng: RandomNumberGenerator) -> RiteData:
 	var pool: Array[RiteData] = []
 	for rite: RiteData in _config.rites:
-		if rite.tier <= level and is_god_active(rite.god):
+		if rite.tier <= level and is_god_active(rite.god) and is_god_active(rite.partner_god):
 			pool.append(rite)
 	if pool.is_empty():
 		return null

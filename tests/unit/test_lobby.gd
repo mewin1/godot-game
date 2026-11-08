@@ -110,6 +110,29 @@ func test_siege_with_six_players_rests_one() -> void:
 	assert_eq(sim.opponent_of[sim.resting_player], MatchSim.GHOST, "у отдыхающего нет противника")
 
 
+func test_rest_in_siege_has_no_wave_and_keeps_round_income() -> void:
+	var sim: MatchSim = MatchSim.new(_config, SEED, 6, 0)
+	sim.start()
+	sim.round_number = 4
+	_finish_round_now(sim)
+	var resting: PlayerState = sim.players[sim.resting_player]
+	var trial: DefenseTrial = DefenseTrial.run(sim, resting.index)
+	assert_eq(trial.total, 0, "проба использует тот же состав, что и настоящий бой")
+	assert_true(ArmyPreview.describe(sim, resting.index)[0].contains("Отдых"))
+	_skip_prep(sim)
+	assert_true(resting.field.is_wave_done(), "даже базовая волна не приходит в раунд отдыха")
+	assert_false(sim.players[sim.siege_leader].field.is_wave_done())
+	_disable_bots(sim)
+	_remove_all_waves(sim)
+	var hp: int = resting.hero_hp
+	var streak: int = resting.streak
+	var gold_with_income: int = resting.gold + resting.get_total_income()
+	sim.tick()
+	assert_eq(resting.gold, gold_with_income + _config.get_interest(gold_with_income))
+	assert_eq(resting.hero_hp, hp)
+	assert_eq(resting.streak, streak)
+
+
 ## 3v3: две команды по 3, взаимный матчинг 1v1 по позиции, общая крепость 90.
 func test_3v3_pairs_members_across_teams() -> void:
 	var sim: MatchSim = MatchSim.new(_config, SEED, 6, 0, 2)

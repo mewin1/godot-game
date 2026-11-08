@@ -17,6 +17,10 @@ const TIER_COLORS: Array[Color] = [Color("b9814f"), Color("b8c3cc"), Color("f0c8
 const FOOTER_COLOR: Color = Color(0.02, 0.04, 0.07, 0.72)
 const PRICE_COLOR: Color = Color("ffe2a8")
 const STAT_COLOR: Color = Color("d6e0e6")
+## Какая часть концепта остаётся при обрезке по высоте: 0 — верх, 0,5 — середина (постройка чуть ниже).
+const ART_FOCUS_Y: float = 0.6
+const NAME_FONT_SIZE: int = 13
+const NAME_FONT_MIN: int = 10
 
 
 func _init() -> void:
@@ -56,21 +60,29 @@ func show_offer(tower_data: TowerData) -> void:
 		lines.append(stats)
 	lines.append("Клеток: %d · ПКМ — поворот" % data.shape.size())
 	tooltip_text = "\n".join(lines)
+	_layout_caption()
 
 
 ## Заговор использует ту же раскладку: символ силы, имя и цена.
 func show_rite(rite_data: RiteData, context: String = "") -> void:
 	super(rite_data, context)
 	tooltip_text = GodSymbols.get_power_name(rite.god) + "\n" + tooltip_text
+	_layout_caption()
 
 
 func _layout_caption() -> void:
+	var font: Font = get_theme_default_font()
 	for caption: Label in [_tower_label, _rite_label]:
 		caption.position = Vector2(CONTENT_MARGIN, size.y - FOOTER_HEIGHT - NAME_HEIGHT - 2)
 		caption.size = Vector2(size.x - CONTENT_MARGIN * 2, NAME_HEIGHT)
 		caption.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		caption.add_theme_font_size_override("font_size", 13)
+		# длинное имя («Огненный венец») уменьшается, а не обрезается многоточием
+		var font_size: int = NAME_FONT_SIZE
+		while font_size > NAME_FONT_MIN and font.get_string_size(caption.text,
+				HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x > caption.size.x:
+			font_size -= 1
+		caption.add_theme_font_size_override("font_size", font_size)
 
 
 func _draw() -> void:
@@ -81,22 +93,15 @@ func _draw() -> void:
 		return
 	var god: StringName = data.god if data != null else rite.god
 	var hue: Color = GodSymbols.get_color(god)
-	var texture: Texture2D = GodSymbols.get_icon(rite.god) if rite != null \
-			else VisualCatalog.get_default().get_tower(data.id).icon
 	var price: int = rite.cost if rite != null else tower_cost
 	var font: Font = get_theme_default_font()
-	# Мягкий ореол стихии за картинкой.
-	# Бейдж тира и символ стихии лежат поверх углов картинки — картинке больше места.
-	var art_top: float = 8.0
-	var art_bottom: float = size.y - FOOTER_HEIGHT - NAME_HEIGHT - 2
-	var room: Vector2 = Vector2(size.x - 16, maxf(1.0, art_bottom - art_top))
-	var center: Vector2 = Vector2(size.x * 0.5, art_top + room.y * 0.5)
-	draw_texture_rect(preload("res://data/visuals/soft_light.tres"),
-			Rect2(center - room * 0.62, room * 1.24), false, Color(hue, 0.26))
-	var dims: Vector2 = Vector2(texture.get_size())
-	dims *= minf(room.x / dims.x, room.y / dims.y) * (0.72 if rite != null else 1.0)
-	draw_texture_rect(texture, Rect2(center - dims * 0.5, dims), false,
-			Color.WHITE if is_active else Color(0.75, 0.75, 0.78))
+	var art: Texture2D = VisualCatalog.get_default().get_tower(data.id).get_card_art() \
+			if data != null and rite == null else null
+	if art != null:
+		_draw_card_art(art, rect)
+	else:
+		_draw_icon(GodSymbols.get_icon(rite.god) if rite != null
+				else VisualCatalog.get_default().get_tower(data.id).icon, hue)
 	draw_rect(Rect2(Vector2(2, 2), Vector2(size.x - 4, 3)), hue)
 	draw_texture_rect(GodSymbols.get_icon(god),
 			Rect2(Vector2(size.x - SYMBOL_SIZE - 6, 7), Vector2.ONE * SYMBOL_SIZE), false)
@@ -107,6 +112,40 @@ func _draw() -> void:
 	_draw_footer(font, price)
 	if not is_active:
 		draw_rect(rect, Color(0.02, 0.03, 0.06, 0.38))
+
+
+## Картинка концепта на всю карточку (обрезка «по заполнению», постройка по центру) и тёмная
+## полоса снизу под имя и цену.
+func _draw_card_art(art: Texture2D, rect: Rect2) -> void:
+	var area: Rect2 = Rect2(rect.position, Vector2(rect.size.x, rect.size.y - FOOTER_HEIGHT))
+	var source: Vector2 = Vector2(art.get_size())
+	var crop: Vector2 = source
+	if source.x / source.y > area.size.x / area.size.y:
+		crop.x = source.y * area.size.x / area.size.y
+	else:
+		crop.y = source.x * area.size.y / area.size.x
+	var origin: Vector2 = Vector2((source.x - crop.x) * 0.5, (source.y - crop.y) * ART_FOCUS_Y)
+	draw_texture_rect_region(art, area, Rect2(origin, crop),
+			Color.WHITE if is_active else Color(0.6, 0.6, 0.62))
+	var fade_top: float = area.end.y - NAME_HEIGHT - 16
+	var clear: Color = Color(FOOTER_COLOR, 0.0)
+	draw_polygon(PackedVector2Array([Vector2(area.position.x, fade_top), Vector2(area.end.x, fade_top),
+			Vector2(area.end.x, area.end.y), Vector2(area.position.x, area.end.y)]),
+			PackedColorArray([clear, clear, FOOTER_COLOR, FOOTER_COLOR]))
+
+
+## Прежняя картинка (иконка без фона или символ заговора) с ореолом стихии.
+func _draw_icon(texture: Texture2D, hue: Color) -> void:
+	var art_top: float = 8.0
+	var art_bottom: float = size.y - FOOTER_HEIGHT - NAME_HEIGHT - 2
+	var room: Vector2 = Vector2(size.x - 16, maxf(1.0, art_bottom - art_top))
+	var center: Vector2 = Vector2(size.x * 0.5, art_top + room.y * 0.5)
+	draw_texture_rect(preload("res://data/visuals/soft_light.tres"),
+			Rect2(center - room * 0.62, room * 1.24), false, Color(hue, 0.26))
+	var dims: Vector2 = Vector2(texture.get_size())
+	dims *= minf(room.x / dims.x, room.y / dims.y) * (0.72 if rite != null else 1.0)
+	draw_texture_rect(texture, Rect2(center - dims * 0.5, dims), false,
+			Color.WHITE if is_active else Color(0.75, 0.75, 0.78))
 
 
 func _draw_tier_badge(font: Font, tier: int) -> void:

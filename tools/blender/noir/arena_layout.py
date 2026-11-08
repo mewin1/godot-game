@@ -1,22 +1,18 @@
-"""Плоская раскладка арены «нуар» (двор за частоколом, как на new_concept/05_arena.jpg).
-
-python3 -I tools/blender/noir/arena_layout.py → assets/noir/arena/arena_layout.json
-Берёт линию дороги и клетки из лесной раскладки (assets/arenas/forest/arena_layout.json) и опускает всё
-на один уровень: в нуарной арене нет террас, поле — мощёный двор. ArenaLayout3D берёт этот файл, если он есть.
-"""
+"""Раскладка двора PvP: проезд на уровне земли, строительные клетки на кровлях подклетов."""
 import json
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
 GROUND = 0.0
-DECK_LIFT = 0.15  # ArenaLayout3D поднимает площадки на столько — в нуаре плиты лежат прямо на дворе
+ROOF = 1.12
+DECK_LIFT = 0.15  # Прибавляется к высоте основания в ArenaLayout3D.
 
 
 def main() -> None:
     src = json.loads((ROOT / "assets/arenas/forest/arena_layout.json").read_text())
     out = dict(src)
-    out["note"] = "Noir arena: flat courtyard. " + src.get("note", "")
-    out["terraces"] = {k: GROUND - DECK_LIFT for k in src["terraces"]}
+    out["note"] = "Noir courtyard: cellar roofs 1.12 m above cartway. " + src.get("note", "")
+    out["terraces"] = {k: round(ROOF - DECK_LIFT, 2) for k in src["terraces"]}
     out["road"] = [[x, y, GROUND, length] for x, y, _z, length in src["road"]]
     dst = ROOT / "assets/noir/arena/arena_layout.json"
     dst.write_text(json.dumps(out, separators=(",", ":")))

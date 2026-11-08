@@ -8,6 +8,7 @@ signal pause_pressed()
 signal speed_pressed()
 signal sound_pressed()
 signal skill_pressed()
+signal reserve_pressed()
 ## Нажали на портрет героя — показать, что он умеет (на телефоне нет наведения).
 signal hero_info_pressed()
 ## Нажали на фишку игрока — показать его героя.
@@ -25,7 +26,9 @@ const BUTTON_SIZE: Vector2 = Vector2(52, 48)
 const DANGER_PULSE_SPEED: float = 5.0
 const COLOR_ELIMINATED: Color = Color(1, 1, 1, 0.4)
 const PORTRAIT_SIZE: float = 52.0
-const CHIP_PORTRAIT_SIZE: float = 46.0
+const CHIP_PORTRAIT_SIZE: float = 56.0
+## Портрет героя в нижней плашке (круг).
+const HERO_DOCK_PORTRAIT: float = 96.0
 
 var _bar: PanelContainer
 var _legacy_row: HFlowContainer
@@ -48,6 +51,7 @@ var _chip_portraits: Array[TextureRect] = []
 var _hero_name: Label
 var _hero_portrait: TextureRect
 var _skill_button: Button
+var _reserve_button: Button
 var _siege_panel: PanelContainer
 var _siege_label: Label
 var _time: float = 0.0
@@ -60,17 +64,19 @@ var _player_colors: FieldStyle = VisualCatalog.get_default().field
 func move_hero_controls(target: HBoxContainer) -> void:
 	var portrait_frame: PanelContainer = PanelContainer.new()
 	var rim: StyleBoxFlat = DuskTheme.panel(Color("101b25"), DuskTheme.GOLD, 3)
-	rim.set_corner_radius_all(42)
+	rim.set_corner_radius_all(int(HERO_DOCK_PORTRAIT * 0.5) + 3)
+	rim.set_content_margin_all(3)  # портрет внутри кольца, кольцо целое
 	portrait_frame.add_theme_stylebox_override("panel", rim)
 	target.add_child(portrait_frame)
 	_hero_portrait.reparent(portrait_frame)
 	portrait_frame.clip_children = CanvasItem.CLIP_CHILDREN_AND_DRAW
 	_hero_portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-	_hero_portrait.custom_minimum_size = Vector2(70, 70)
+	_hero_portrait.custom_minimum_size = Vector2.ONE * HERO_DOCK_PORTRAIT
 	var stats: VBoxContainer = VBoxContainer.new()
 	stats.alignment = BoxContainer.ALIGNMENT_CENTER
 	target.add_child(stats)
-	_hero_name = _add_label(stats, 15)
+	_hero_name = _add_label(stats, 21)
+	_hero_name.theme_type_variation = &"HeaderLabel"
 	_hero_name.add_theme_color_override("font_color", Color("e9cea2"))
 	_hero_name.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	var vitals: HBoxContainer = HBoxContainer.new()
@@ -78,10 +84,18 @@ func move_hero_controls(target: HBoxContainer) -> void:
 	for control: Control in [_hp_label.get_parent() as Control,
 			_gold_label.get_parent() as Control, _income_label.get_parent() as Control]:
 		control.reparent(vitals)
-	_skill_button.reparent(target)
-	_skill_button.custom_minimum_size = Vector2(124, 56)
+	var orders: VBoxContainer = VBoxContainer.new()
+	target.add_child(orders)
+	_skill_button.reparent(orders)
+	_skill_button.custom_minimum_size = Vector2(150, 38)
 	_skill_button.clip_text = true
 	_skill_button.add_theme_font_size_override("font_size", 12)
+	_reserve_button = Button.new()
+	_reserve_button.custom_minimum_size = Vector2(150, 38)
+	_reserve_button.add_theme_font_size_override("font_size", 12)
+	_reserve_button.clip_text = true
+	_reserve_button.pressed.connect(func() -> void: reserve_pressed.emit())
+	orders.add_child(_reserve_button)
 
 
 func _init() -> void:
@@ -187,8 +201,8 @@ func set_preparation(enabled: bool) -> void:
 		var box: BoxContainer = _chip_portraits[i].get_parent() as BoxContainer
 		box.vertical = enabled
 		box.add_theme_constant_override("separation", 0 if enabled else 4)
-		_chip_labels[i].add_theme_font_size_override("font_size", 12 if enabled else CHIP_FONT_SIZE)
-		_chip_portraits[i].custom_minimum_size = Vector2(62, 54) if enabled else Vector2.ONE * CHIP_PORTRAIT_SIZE
+		_chip_labels[i].add_theme_font_size_override("font_size", 14 if enabled else CHIP_FONT_SIZE)
+		_chip_portraits[i].custom_minimum_size = Vector2(78, 70) if enabled else Vector2.ONE * CHIP_PORTRAIT_SIZE
 		if enabled:
 			_chips[i].add_theme_stylebox_override("panel", DuskTheme.panel(
 					Color("101c27"), DuskTheme.GOLD.darkened(0.4), 2))
@@ -259,6 +273,11 @@ func _refresh_hero(sim: MatchSim, me: PlayerState) -> void:
 	_hero_portrait.visible = me.hero != null
 	if me.hero != null:
 		_hero_portrait.tooltip_text = "%s: %s" % [me.hero.display_name, me.hero.description]
+	if _reserve_button != null:
+		_reserve_button.visible = sim.config.active_battle != null and sim.phase == MatchSim.Phase.WAVE
+	if sim.config.active_battle != null:
+		_refresh_battle_orders(sim, me)
+		return
 	var skill: HeroSkillData = me.hero.skill if me.hero != null else null
 	_skill_button.visible = skill != null
 	if skill == null:
@@ -273,6 +292,28 @@ func _refresh_hero(sim: MatchSim, me: PlayerState) -> void:
 	_skill_button.modulate = Color(brightness, brightness, brightness, 1.0)
 	_skill_button.tooltip_text = "%s (%s)%s" % [skill.description, skill.get_timing_text(),
 			"\n" + reason if reason != "" else ""]
+
+
+func _refresh_battle_orders(sim: MatchSim, me: PlayerState) -> void:
+	var order: BattleHeroOrder = sim.battle_heroes.get_order(me.index)
+	_skill_button.visible = order != null and order.skill != null
+	if _skill_button.visible:
+		var reason: String = sim.battle_heroes.check(sim, me.index)
+		_skill_button.disabled = not me.is_alive or (sim.phase != MatchSim.Phase.PREP and reason != "")
+		_skill_button.text = order.skill.title
+		if sim.phase == MatchSim.Phase.PREP:
+			_skill_button.text += " · цель"
+		elif order.used_tick >= 0:
+			_skill_button.text = "✓ " + order.skill.title
+		_skill_button.tooltip_text = order.skill.description + "\nБесплатно, один раз за волну.\n" + reason
+	if _reserve_button == null:
+		return
+	var count: int = sim.battle_reserves.pending_count(me.index)
+	var left: int = maxi(0, sim.config.active_battle.reserve_deadline_ticks - sim.phase_tick)
+	_reserve_button.disabled = count == 0 or not me.is_alive or sim.phase != MatchSim.Phase.WAVE
+	_reserve_button.text = "Подкрепление · %d · %d с" % [count, ceili(float(left) / sim.config.ticks_per_second)] \
+			if count > 0 else "Подкрепление · нет"
+	_reserve_button.tooltip_text = "Выпустить удержанный отряд сейчас. По сроку он выйдет сам."
 
 
 func _phase_text(sim: MatchSim) -> String:

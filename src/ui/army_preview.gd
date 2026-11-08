@@ -5,6 +5,8 @@ extends RefCounted
 
 ## Две строки: надпись в HUD и подробная подсказка. Не предсказывает исход защиты.
 static func describe(sim: MatchSim, receiver: int) -> PackedStringArray:
+	if sim.resting_player == receiver:
+		return ["Отдых · волны нет", "Во время осады у вас нет боя. Доход и проценты сохраняются."]
 	var army: Array[MobState] = sim.build_incoming_armies(receiver)
 	var base: Array[MobState] = WaveBuilder.build_base_wave(sim.config, sim.round_number)
 	var counts: Dictionary[String, int] = {}
@@ -12,6 +14,8 @@ static func describe(sim: MatchSim, receiver: int) -> PackedStringArray:
 	var potential: int = 0
 	for mob: MobState in army:
 		var name_text: String = mob.data.display_name
+		if mob.resist != &"":
+			name_text += " (%s)" % GodSymbols.get_power_name(mob.resist)
 		counts[name_text] = counts.get(name_text, 0) + 1
 		health[name_text] = mob.max_hp
 		potential += mob.breach_damage * sim.config.get_breach_multiplier(sim.round_number)

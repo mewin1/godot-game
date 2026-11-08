@@ -1,0 +1,1 @@
+buildings/ice_lance_16.png

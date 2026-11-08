@@ -6,6 +6,7 @@ extends Resource
 enum Projectile { FIREBALL, SHARD, BOLT, LIGHTNING, CURSE }
 
 ## Картинка одобренного концепта для карточки лавки (tools/concepts/ui_art.py).
+const WORKSHOP_CARD: String = "res://assets/noir/courtyard/towers/cards/%s.jpg"
 const CARD_ART: String = "res://assets/ui/towers/%s.jpg"
 
 @export var tower_id: StringName = &""
@@ -31,7 +32,9 @@ var _card_art_checked: bool = false
 func get_card_art() -> Texture2D:
 	if not _card_art_checked:
 		_card_art_checked = true
-		var path: String = CARD_ART % tower_id
+		var path: String = WORKSHOP_CARD % tower_id
+		if not ResourceLoader.exists(path):
+			path = CARD_ART % tower_id
 		if ResourceLoader.exists(path):
 			_card_art = load(path) as Texture2D
 	return _card_art

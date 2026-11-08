@@ -1,0 +1,1 @@
+buildings/beacon_16.png

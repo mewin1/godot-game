@@ -61,7 +61,7 @@ static func apply_wind(field: FieldState, mob: MobState) -> void:
 	var movement: Vector2i = field.layout.path_cells[path_index + 1] \
 			- field.layout.path_cells[path_index]
 	for tower: TowerState in field.towers:
-		if tower.data.wind_length_milli <= 0 or not is_wind_blowing(tower) \
+		if tower.is_action_blocked() or tower.data.wind_length_milli <= 0 or not is_wind_blowing(tower) \
 				or not is_in_wind(field, tower, field.get_mob_position(mob)):
 			continue
 		mob.is_in_wind = true
@@ -75,6 +75,7 @@ static func apply_wind(field: FieldState, mob: MobState) -> void:
 		if tower.has_enchantment(RiteData.Effect.ENCHANT_DAMAGE):
 			power += field.config.enchant_damage_percent / 3
 		power = mini(power, field.config.max_wind_slow_percent)
+		power = mob.reduce_by_resist(power, &"stribog", field.config.resist_percent)
 		var direction: Vector2i = wind_direction(tower)
 		var alignment: int = direction.x * movement.x + direction.y * movement.y
 		if alignment > 0:
@@ -144,8 +145,9 @@ static func hit(field: FieldState, tower: TowerState, mob: MobState, damage: int
 	var was_burning: bool = mob.burn_ticks_left > 0
 	if was_burning:
 		damage += damage * tower.data.burning_target_bonus_percent / 100
-	if mob.resist != &"" and mob.resist == tower.data.god:
-		damage = damage * (100 - field.config.resist_percent) / 100
+	# Цепь исходит из силы удара до личной защиты основной цели.
+	var chain_damage: int = damage
+	damage = mob.reduce_by_resist(damage, tower.data.god, field.config.resist_percent)
 	field.deal_mob_damage(mob, damage, tower.id, &"hit", tower.data.armor_pierce)
 	if was_shielded:
 		return
@@ -155,6 +157,7 @@ static func hit(field: FieldState, tower: TowerState, mob: MobState, damage: int
 		var water_idol: IdolState = field.get_idol(tower.data.god)
 		if water_idol != null:
 			duration += water_idol.wet_ticks
+		duration = mob.reduce_by_resist(duration, &"water", field.config.resist_percent)
 		mob.wet_ticks_left = maxi(mob.wet_ticks_left, duration)
 		field.battle_report.record_mark(tower.id)
 	if tower.data.burn_percent > 0 and mob.is_alive() and mob.can_apply_status(&"burn") \
@@ -182,9 +185,9 @@ static func hit(field: FieldState, tower: TowerState, mob: MobState, damage: int
 		field.battle_report.record_mark(tower.id)
 	if tower.data.tags.has(&"lightning") or tower.data.god == &"perun":
 		if field.config.chain_chance_percent < 0:
-			_charge(field, tower, mob, damage)
+			_charge(field, tower, mob, chain_damage)
 		elif field.roll_chance(chain_roll_chance):
-			_chain(field, tower, mob, damage,
+			_chain(field, tower, mob, chain_damage,
 					reaction != null and reaction.chain_chance_bonus > 0)
 
 
@@ -220,9 +223,12 @@ static func _charge(field: FieldState, tower: TowerState, mob: MobState, damage:
 static func _chain(field: FieldState, tower: TowerState, mob: MobState, damage: int,
 		is_reaction: bool = false) -> void:
 	var transitions: int = 1
+	var bounce_percent: int = field.config.chain_percent
 	var idol: IdolState = field.get_idol(&"perun")
 	if idol != null:
 		transitions += idol.chain_targets
+		if is_reaction:
+			bounce_percent += idol.wet_chain_damage_bonus
 	if tower.awakening == RiteData.Effect.AWAKEN_WIDE:
 		transitions += field.config.awakening_extra_targets
 	var visited: Array[MobState] = [mob]
@@ -236,7 +242,9 @@ static func _chain(field: FieldState, tower: TowerState, mob: MobState, damage: 
 		visited.append(next_target)
 		field.lightning_fired.emit(field.get_mob_position(previous),
 				field.get_mob_position(next_target))
-		field.deal_mob_damage(next_target, maxi(1, damage * field.config.chain_percent / 100),
+		var bounce_damage: int = next_target.reduce_by_resist(
+				damage * bounce_percent / 100, tower.data.god, field.config.resist_percent)
+		field.deal_mob_damage(next_target, maxi(1, bounce_damage),
 				tower.id, &"chain", tower.data.armor_pierce)
 		previous = next_target
 

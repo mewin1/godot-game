@@ -4,20 +4,20 @@ shader_type canvas_item;
 // Порядок как в образце: мягкий контраст → ясность → палитра концепта → виньетка → зерно.
 // Свечение огня и луны — glow окружения сцены, мягкий дальний лес — DOF камеры (match_arena_noir.tscn).
 
-uniform float curve : hint_range(0.0, 1.0) = 0.25;
-uniform float clarity : hint_range(0.0, 1.0) = 0.1;
-uniform float clarity_radius = 7.0;  // пикселей
+uniform float curve : hint_range(0.0, 1.0) = 0.12;
+uniform float clarity : hint_range(0.0, 1.0) = 0.0;
+uniform float clarity_radius = 2.8;  // пикселей
 // Палитра концепта: по каналам YCbCr (0..1) кадра игры и верха 05_arena.jpg. Яркость — умножением
 // (чёрное остаётся чёрным), цветность — растяжением вокруг серого.
-uniform float grade_amount : hint_range(0.0, 1.0) = 0.6;
+uniform float grade_amount : hint_range(0.0, 1.0) = 0.08;
 uniform vec3 src_mean = vec3(0.1001, 0.4950, 0.5005);
 uniform vec3 src_std = vec3(0.1196, 0.0231, 0.0297);
 uniform vec3 dst_mean = vec3(0.1379, 0.4965, 0.4970);
 uniform vec3 dst_std = vec3(0.1173, 0.042, 0.047);  // цвет насыщеннее концепта: ночь не серая
 uniform vec3 shadow_tint = vec3(-0.008, 0.004, 0.01);
 uniform vec3 light_tint = vec3(0.03, 0.012, -0.01);
-uniform float black_point = 0.012;
-uniform float vignette : hint_range(0.0, 1.0) = 0.42;
+uniform float black_point = 0.007;
+uniform float vignette : hint_range(0.0, 1.0) = 0.31;
 uniform vec2 vignette_center = vec2(0.6, 0.55);  // двор правее центра (слева панели)
 uniform float grain : hint_range(0.0, 0.05) = 0.0;
 
@@ -36,16 +36,16 @@ void fragment() {
 	vec3 c = texture(TEXTURE, UV).rgb;
 	c = mix(c, c * c * (3.0 - 2.0 * c), curve);
 
-	// ясность: разница с размытым (кольца по 8 точек) — формы чётче, без пересвета
-	vec3 blurred = vec3(0.0);
-	for (int i = 0; i < 8; i++) {
-		float a = float(i) * 0.7854;
-		vec2 dir = vec2(cos(a), sin(a)) * TEXTURE_PIXEL_SIZE * clarity_radius;
-		blurred += texture(TEXTURE, UV + dir).rgb + texture(TEXTURE, UV + dir * 0.5).rgb;
+	// Мягкая локальная резкость: четыре соседних отсчёта, радиус в пикселях.
+	if (clarity > 0.0) {
+		vec2 tap = TEXTURE_PIXEL_SIZE * clarity_radius;
+		vec3 blurred = (texture(TEXTURE, UV + vec2(tap.x, 0.0)).rgb
+				+ texture(TEXTURE, UV - vec2(tap.x, 0.0)).rgb
+				+ texture(TEXTURE, UV + vec2(0.0, tap.y)).rgb
+				+ texture(TEXTURE, UV - vec2(0.0, tap.y)).rgb) * 0.25;
+		vec3 base = mix(blurred, blurred * blurred * (3.0 - 2.0 * blurred), curve);
+		c += (c - base) * clarity;
 	}
-	blurred /= 16.0;
-	vec3 base = mix(blurred, blurred * blurred * (3.0 - 2.0 * blurred), curve);
-	c += (c - base) * clarity;
 
 	vec3 y = to_ycc(clamp(c, 0.0, 1.0));
 	vec3 graded = vec3(y.x * dst_mean.x / src_mean.x, (y.yz - 0.5) * dst_std.yz / src_std.yz + 0.5);

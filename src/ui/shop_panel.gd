@@ -38,6 +38,7 @@ var _last_battle_details: String = ""
 var _last_battle_summary: String = ""
 var _spirit_popup: PopupPanel
 var _spirit_choice_index: int = -1
+var _reserve_picker: ReservePlanPicker
 
 
 func _init() -> void:
@@ -67,12 +68,13 @@ func _init() -> void:
 	heading.add_child(_gold_label)
 	_reroll = _button("Обновить", _on_reroll)
 	_upgrade = _button("Развитие", _on_upgrade)
-	heading.add_child(_reroll)
-	_reroll.size_flags_horizontal = Control.SIZE_SHRINK_END
-	_reroll.autowrap_mode = TextServer.AUTOWRAP_OFF
-	heading.add_child(_upgrade)
-	_upgrade.size_flags_horizontal = Control.SIZE_SHRINK_END
-	_upgrade.autowrap_mode = TextServer.AUTOWRAP_OFF
+	# кнопки — второй строкой: лавка узкая, в одну строку с заголовком не помещаются
+	var shop_buttons: HBoxContainer = HBoxContainer.new()
+	box.add_child(shop_buttons)
+	for button: Button in [_reroll, _upgrade]:
+		shop_buttons.add_child(button)
+		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		button.autowrap_mode = TextServer.AUTOWRAP_OFF
 	_trial_button = _button("Проба", _on_trial)
 	_trial_button.tooltip_text = ("Бесплатно испытать текущую защиту без потери HP и золота. "
 			+ "Активные навыки не учитываются.")
@@ -99,6 +101,7 @@ func _init() -> void:
 	_battle_details.get_label().add_theme_font_size_override("font_size", 14)
 	add_child(_battle_details)
 	_spirit_popup = PopupPanel.new()
+	_spirit_popup.popup_hide.connect(_on_spirit_closed)
 	add_child(_spirit_popup)
 	_offer_grid = GridContainer.new()
 	_offer_grid.columns = 3
@@ -121,6 +124,10 @@ func _init() -> void:
 	_army_grid.add_theme_constant_override("h_separation", 5)
 	_army_grid.add_theme_constant_override("v_separation", 5)
 	box.add_child(_army_grid)
+	_reserve_picker = ReservePlanPicker.new()
+	_reserve_picker.command_requested.connect(func(command: SimCommand) -> void:
+		command_requested.emit(command))
+	box.add_child(_reserve_picker)
 	var choices: VBoxContainer = VBoxContainer.new()
 	box.add_child(choices)
 	_buff_box = _choice_row(choices, "Баф армии", _buff_buttons, _on_buff)
@@ -186,6 +193,12 @@ func setup(sim: MatchSim, player: PlayerState) -> void:
 func refresh(selected_tower: TowerState) -> void:
 	if _player == null:
 		return
+	_reserve_picker.visible = _sim.config.active_battle != null
+	if _reserve_picker.visible:
+		_reserve_picker.refresh(_player)
+	if _spirit_popup.visible and (_sim.phase != MatchSim.Phase.PREP \
+			or not _player.army.offers.has(_spirit_choice_index)):
+		_spirit_popup.hide()
 	_refresh_owned_recipe()
 	if _has_trial_report and _last_trial_board_hash != _board_hash():
 		_has_trial_report = false
@@ -208,6 +221,7 @@ func refresh(selected_tower: TowerState) -> void:
 			_strategy_summary.text = _first_recipe + "\nБой: " + report
 		_reaction_help.tooltip_text = _recipe_hint + "\n\nЭТОТ БОЙ: " + report
 		_strategy_summary.tooltip_text = _reaction_help.tooltip_text
+	# Семь предложений должны оставаться в двух рядах, иначе лавка вытесняет резерв.
 	_offer_grid.columns = 4 if _player.shop.offers.size() > 6 else 3
 	while _cards.size() < _player.shop.offers.size():
 		var card: OfferCard = MarketOffer.new()
@@ -223,9 +237,9 @@ func refresh(selected_tower: TowerState) -> void:
 		card.tower_cost = _sim.config.tower_cost
 		var has_choices: bool = not _player.buff_offers.is_empty() \
 				or not _player.discover_offers.is_empty()
-		card.custom_minimum_size.x = 94
-		card.custom_minimum_size.y = (112 if has_choices else 134) \
-				if _player.shop.offers.size() > 3 else 150
+		card.custom_minimum_size.x = 96
+		card.custom_minimum_size.y = (112 if has_choices else 138) \
+				if _player.shop.offers.size() > 3 else 156
 		var rite: RiteData = _player.shop.get_rite(i)
 		card.is_active = _player.gold >= (rite.cost if rite != null else _sim.config.tower_cost)
 		card.show_offer(_player.shop.get_offer(i))
@@ -240,8 +254,10 @@ func refresh(selected_tower: TowerState) -> void:
 	_upgrade.disabled = not _player.shop.can_upgrade() or _player.gold < upgrade_price
 	_upgrade.tooltip_text = _upgrade_context()
 	_army_title.text = "Армия   ·   %d бойцов" % _player.army.get_unit_count()
-	_army_reroll.text = "Обновить · %d" % _sim.config.army_reroll_cost
-	_army_reroll.disabled = _player.gold < _sim.config.army_reroll_cost
+	_army_reroll.text = "Обновить · %d" % _player.get_reroll_price(true)
+	var army_reroll_error: String = _player.check_army_reroll()
+	_army_reroll.disabled = army_reroll_error != ""
+	_army_reroll.tooltip_text = army_reroll_error
 	_army_grid.columns = clampi(_player.army.offers.size(), 2, 4)
 	for i: int in _army_buttons.size():
 		var army: ArmyState = _player.army
@@ -263,6 +279,9 @@ func refresh(selected_tower: TowerState) -> void:
 			tip += "\n" + stats
 		if detail != "":
 			tip += "\n" + detail
+		if army.get_upgrade(upgrade_index).choose_element:
+			for god: StringName in _sim.active_gods:
+				tip += "\n%s: %s" % [GodSymbols.get_power_name(god), _spirit_resist_text(god)]
 		tip += "\nЦена %d зол. · доход +%d" % [cost, army.get_upgrade_income(upgrade_index)]
 		_army_buttons[i].tooltip_text = locked if locked != "" else tip
 	_refresh_choices()
@@ -335,6 +354,14 @@ func _rite_context(rite: RiteData) -> String:
 			in_reserve += 1
 		else:
 			on_field += 1
+	if rite.partner_god != &"":
+		var have_partner: bool = false
+		for tower: TowerState in _player.field.towers:
+			if tower.data.god == rite.partner_god:
+				have_partner = true
+				break
+		if not have_partner:
+			return "Для реакции нужна постройка на поле: %s" % IdolSlot.god_name(rite.partner_god)
 	if on_field == 0 and in_reserve == 0:
 		return "Сейчас нет подходящих построек"
 	return "%s: поле %d · запас %d" % [
@@ -466,6 +493,7 @@ func _on_army(index: int) -> void:
 func _open_spirit_choice(upgrade_index: int) -> void:
 	_spirit_choice_index = upgrade_index
 	for child: Node in _spirit_popup.get_children():
+		_spirit_popup.remove_child(child)
 		child.queue_free()
 	var margin: MarginContainer = MarginContainer.new()
 	margin.add_theme_constant_override("margin_left", 16)
@@ -480,17 +508,34 @@ func _open_spirit_choice(upgrade_index: int) -> void:
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(title)
 	for god: StringName in _sim.active_gods:
-		var button: Button = _button(GodSymbols.get_power_name(god), _on_spirit_picked.bind(god))
-		button.custom_minimum_size = Vector2(210, 30)
+		var text: String = GodSymbols.get_power_name(god) + "\n" + _spirit_resist_text(god)
+		var button: Button = _button(text, _on_spirit_picked.bind(god))
+		button.custom_minimum_size = Vector2(310, 50)
+		button.tooltip_text = text + "\nРеакции и метки продолжают срабатывать."
 		box.add_child(button)
 	_spirit_popup.popup_centered()
 
 
 func _on_spirit_picked(god: StringName) -> void:
+	var index: int = _spirit_choice_index
 	_spirit_popup.hide()
-	if _spirit_choice_index >= 0:
-		command_requested.emit(BuyArmyUpgradeCommand.new(_spirit_choice_index, god))
-		_spirit_choice_index = -1
+	if index >= 0 and _sim.phase == MatchSim.Phase.PREP and _player.army.offers.has(index):
+		command_requested.emit(BuyArmyUpgradeCommand.new(index, god))
+
+
+func _on_spirit_closed() -> void:
+	_spirit_choice_index = -1
+
+
+func _spirit_resist_text(god: StringName) -> String:
+	var percent: int = _sim.config.resist_percent
+	if god == &"water":
+		return "Мокрота короче на %d%%" % percent
+	if god == &"stribog":
+		return "Замедление и разгон потока слабее на %d%%" % percent
+	if god == &"perun":
+		return "Удары и Цепь слабее на %d%%" % percent
+	return "Прямые удары слабее на %d%%" % percent
 
 
 func _on_army_reroll() -> void:

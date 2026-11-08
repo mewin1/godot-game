@@ -7,6 +7,7 @@ const ROOT: String = "res://assets/noir/"
 ## Модели из сеток Hunyuan3D (tools/blender/noir/h3d.py): если файл есть, берётся он, иначе прежний из ROOT.
 ## Старые модели не удаляются — какой вариант оставить, решает автор (сравнения в new_concept/final/).
 const ROOT_H3D: String = "res://assets/noir_h3d/"
+const WORKSHOPS: String = "res://assets/noir/courtyard/towers/"
 const HUMAN_HEIGHT: float = 1.7
 ## Высота постройки по уровню (как в Blender: I ≈ 1 клетка, II ≈ 1,4, III ≈ 1,8).
 const TIER_HEIGHT: PackedFloat32Array = [2.0, 2.8, 3.6]
@@ -18,6 +19,9 @@ static var _icons: Dictionary[String, Texture2D] = {}
 
 
 static func tower(id: StringName) -> PackedScene:
+	var current: String = WORKSHOPS + String(id) + ".glb"
+	if ResourceLoader.exists(current):
+		return _cached_scene(current)
 	return _load("towers/%s.glb" % id)
 
 
@@ -68,9 +72,12 @@ static func idol() -> PackedScene:
 ## иначе модель читается с диска в миг первой постройки и игра подвисает.
 static func all_paths() -> PackedStringArray:
 	var paths: PackedStringArray = []
+	for file: String in ResourceLoader.list_directory(WORKSHOPS):
+		if file.get_extension() == "glb":
+			paths.append(WORKSHOPS + file)
 	for folder: String in MODEL_FOLDERS:
 		for file: String in ResourceLoader.list_directory(ROOT_H3D + folder):
-			if file.get_extension() == "glb":
+			if file.get_extension() == "glb" and (folder != "towers/" or not ResourceLoader.exists(WORKSHOPS + file)):
 				paths.append(ROOT_H3D + folder + file)
 		for file: String in ResourceLoader.list_directory(ROOT + folder):
 			if file.get_extension() == "glb" and not ResourceLoader.exists(ROOT_H3D + folder + file):
@@ -91,6 +98,10 @@ static func _load(path: String) -> PackedScene:
 	var full: String = ROOT_H3D + path
 	if not ResourceLoader.exists(full):
 		full = ROOT + path
+	return _cached_scene(full)
+
+
+static func _cached_scene(full: String) -> PackedScene:
 	if _cache.has(full):
 		return _cache[full]
 	var scene: PackedScene = null

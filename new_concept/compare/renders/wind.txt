@@ -1,0 +1,1 @@
+buildings/wind_16.png

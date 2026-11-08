@@ -4,7 +4,7 @@ extends RefCounted
 ## поэтому бот тоже детерминирован. Действует один раз в начале каждой подготовки.
 
 ## Повышать магазин, только когда цена упала до этого значения (или раунд уже поздний).
-const VERSION: int = 4
+const VERSION: int = 5
 const CHEAP_UPGRADE_COST: int = 5
 const LATE_ROUND: int = 4
 ## Пока стреляющих башен меньше — бот берёт только стрелков (усилители и лавки потом).
@@ -29,6 +29,7 @@ func play_prep(sim: MatchSim, player: PlayerState) -> void:
 	_maybe_use_skill(sim, player, HeroSkillData.Timing.PREP)
 	_use_free_rerolls(sim, player)
 	_maybe_upgrade_shop(sim, player)
+	_choose_idols(sim, player)
 	_buy_army_with_budget(sim, player, player.gold * army_share_percent / 100)
 	_buy_rites(sim, player)
 	_buy_towers(sim, player)
@@ -36,6 +37,13 @@ func play_prep(sim: MatchSim, player: PlayerState) -> void:
 	_buy_towers(sim, player)
 	_take_gifts(sim, player)
 	_spend_rest_on_army(sim, player)
+	if sim.config.active_battle != null:
+		var purchased: Array[MobData] = player.army.purchased_mobs()
+		if not purchased.is_empty():
+			var mob: MobData = purchased[purchased.size() - 1]
+			var count: int = mini(sim.config.active_battle.bot_reserve_count,
+					player.army.available_reserve_count(mob.id, mob.resist))
+			_execute(sim, player, PlanReserveCommand.new(mob.id, mob.resist, count))
 
 
 ## В волну бот смотрит только на навык «в волну» (или «когда угодно»).
@@ -99,7 +107,7 @@ func _buy_army_with_budget(sim: MatchSim, player: PlayerState, budget: int) -> v
 	var index: int = _pick_affordable_upgrade(player, player.gold - (budget - spent))
 	while index >= 0:
 		var cost: int = player.army.get_upgrade_cost(index)
-		if not _run(sim, player, BuyArmyUpgradeCommand.new(index)):
+		if not _run(sim, player, _army_command(player, index)):
 			return
 		spent += cost
 		index = _pick_affordable_upgrade(player, player.gold - (budget - spent))
@@ -108,8 +116,16 @@ func _buy_army_with_budget(sim: MatchSim, player: PlayerState, budget: int) -> v
 ## Остаток золота после башен — в армию (если на башни уже нет места или золота).
 func _spend_rest_on_army(sim: MatchSim, player: PlayerState) -> void:
 	var index: int = _pick_affordable_upgrade(player, 0)
-	while index >= 0 and _run(sim, player, BuyArmyUpgradeCommand.new(index)):
+	while index >= 0 and _run(sim, player, _army_command(player, index)):
 		index = _pick_affordable_upgrade(player, 0)
+
+
+func _army_command(player: PlayerState, index: int) -> BuyArmyUpgradeCommand:
+	var element: StringName = &""
+	if player.army.get_upgrade(index).choose_element and not player.shop.active_gods.is_empty():
+		var choice: int = player.rng.randi_range(0, player.shop.active_gods.size() - 1)
+		element = player.shop.active_gods[choice]
+	return BuyArmyUpgradeCommand.new(index, element)
 
 
 ## Случайное доступное улучшение из текущей лавки армии, на которое хватает золота с запасом.
@@ -307,3 +323,23 @@ func _buy_rites(sim: MatchSim, player: PlayerState) -> void:
 func _uses_wet(data: TowerData) -> bool:
 	return data.tags.has(&"lightning") or data.tags.has(&"ice") \
 			or data.tags.has(&"curse") or data.tags.has(&"fire") or data.god == &"perun"
+
+
+## Предпочитает силы уже построенных башен; каждый выбор проходит общей командой.
+func _choose_idols(sim: MatchSim, player: PlayerState) -> void:
+	while player.idol_choices_left > 0:
+		var best_god: StringName = &""
+		var best_slot: int = -1
+		var best_score: int = -1
+		for rite: RiteData in player.get_idol_base_rites():
+			var score: int = 0
+			for tower: TowerState in player.field.towers:
+				if tower.data.god == rite.god:
+					score += tower.level
+			for slot: int in player.field.idols.size():
+				if player.check_idol_choice(rite.god, slot) == "" and score > best_score:
+					best_score = score
+					best_god = rite.god
+					best_slot = slot
+		if not _run(sim, player, ChooseIdolCommand.new(best_god, best_slot)):
+			return

@@ -18,9 +18,8 @@ static func run(sim: MatchSim, player_index: int) -> DefenseTrial:
 	field.copy_towers_from(player.field)
 	field.mob_killed.connect(func(_mob: MobState) -> void: result.killed += 1)
 	field.mob_breached.connect(func(_mob: MobState) -> void: result.breached += 1)
-	var incoming: Array[MobState] = sim.build_incoming_armies(player_index)
 	field.start_wave()
-	WaveBuilder.schedule_wave(sim.config, field, sim.round_number, incoming)
+	sim.schedule_player_wave(player_index, field)
 	_run_battle(sim.config, field)
 	result.retreated = field.count_remaining_mobs()
 	field.battle_report.retreated = result.retreated

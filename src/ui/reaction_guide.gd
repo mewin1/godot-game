@@ -4,7 +4,7 @@ extends RefCounted
 
 ## Таблица для наведения, без второго набора правил в интерфейсе.
 static func text(config: GameConfig) -> String:
-	var lines: PackedStringArray = ["Максимум два статуса; третий не накладывается. Стрелка — порядок удара."]
+	var lines: PackedStringArray = [_status_limit_text(), "Стрелка показывает порядок удара."]
 	var seen: Array[String] = []
 	for rule: ReactionData in config.reactions:
 		if rule.explanation.is_empty() or seen.has(rule.explanation):
@@ -104,8 +104,12 @@ static func draft_text(config: GameConfig, gods: Array[StringName]) -> String:
 			if recipe.ends_with(": " + rule.display_name):
 				lines.append(rule.explanation)
 				break
-	lines.append("Порядок попаданий важен. Третий статус не накладывается.")
+	lines.append(_status_limit_text())
 	return "\n".join(lines)
+
+
+static func _status_limit_text() -> String:
+	return "До %d стихийных статусов на цели. Холод и заморозка делят одно место." % MobState.MAX_STATUSES
 
 
 static func _can_keep_both(config: GameConfig, first: StringName, second: StringName) -> bool:

@@ -1,6 +1,6 @@
 class_name IdolState
 extends RefCounted
-## Одна из трёх пустых основ. Первый заговор посвящает её божеству; следующие усиливают.
+## Одна из трёх пустых основ. Посвящение за магазин или заговор; дальнейшие усиления складываются.
 
 var god: StringName = &""
 var status_ticks: int = 0
@@ -13,6 +13,8 @@ var chain_targets: int = 0
 var burn_percent: int = 0
 var wind_power: int = 0
 var wind_length_milli: int = 0
+var wet_chain_damage_bonus: int = 0
+var surge_slow_percent: int = 0
 var purchases: Dictionary[StringName, int] = {}
 
 
@@ -25,11 +27,16 @@ func check_rite(rite: RiteData) -> String:
 	return ""
 
 
-## Применяет уже проверенный заговор, без оплаты.
-func apply_rite(rite: RiteData) -> void:
+## Применяет проверенный эффект. Бесплатная база не расходует лимиты заговоров.
+func apply_rite(rite: RiteData, count_purchase: bool = true) -> void:
 	god = rite.god
-	purchases[rite.id] = purchases.get(rite.id, 0) + 1
+	if count_purchase:
+		purchases[rite.id] = purchases.get(rite.id, 0) + 1
 	match rite.effect:
+		RiteData.Effect.WET_CHAIN_DAMAGE:
+			wet_chain_damage_bonus += rite.value
+		RiteData.Effect.SURGE_SLOW:
+			surge_slow_percent += rite.value
 		RiteData.Effect.STATUS_DURATION:
 			status_ticks += rite.value
 		RiteData.Effect.TARGETS:
@@ -57,7 +64,7 @@ func add_to_hash(hasher: StateHasher) -> void:
 	hasher.add_string(god)
 	hasher.add_many([status_ticks, extra_targets, damage_percent, chain_reduction, chain_chance_bonus, wet_ticks,
 			chain_targets, burn_percent,
-			wind_power, wind_length_milli])
+			wind_power, wind_length_milli, wet_chain_damage_bonus, surge_slow_percent])
 	var keys: Array[StringName] = purchases.keys()
 	keys.sort()
 	for key: StringName in keys:
@@ -79,5 +86,7 @@ func duplicate_state() -> IdolState:
 	result.burn_percent = burn_percent
 	result.wind_power = wind_power
 	result.wind_length_milli = wind_length_milli
+	result.wet_chain_damage_bonus = wet_chain_damage_bonus
+	result.surge_slow_percent = surge_slow_percent
 	result.purchases = purchases.duplicate()
 	return result

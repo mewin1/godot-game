@@ -22,6 +22,8 @@ static func slots(config: GameConfig, tower: TowerState) -> String:
 
 ## Ближайшие условия развития без обещания наличия заговора в витрине.
 static func next_step(config: GameConfig, player: PlayerState, tower: TowerState) -> String:
+	if not tower.data.attacks and tower.data.wind_length_milli <= 0:
+		return "Усиливается слиянием копий"
 	if tower.awakening >= 0:
 		return "Пробуждение завершено"
 	var missing: PackedStringArray = []

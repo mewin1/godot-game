@@ -128,6 +128,10 @@ func _player_snapshot(player: PlayerState) -> Dictionary:
 	for buff: SendBuffData in player.army.buffs:
 		buffs.append(String(buff.id))
 	return {"player": player.index, "hero": String(player.hero.id) if player.hero != null else "",
+			"army_reserve_plan": {"kind": player.army.reserve_kind,
+					"resist": player.army.reserve_resist, "count": player.army.reserve_count},
+			"battle_reserve": _sim.battle_reserves.snapshot(player.index),
+			"battle_skill": _sim.battle_heroes.snapshot(player.index),
 			"placements": _placement_snapshot(player),
 			"reserve": _reserve_snapshot(player), "idols": _idol_snapshot(player),
 			"skill_uses": player.skill_uses, "building_income": player.field.get_round_income(),
@@ -154,7 +158,7 @@ func _on_sim_round_started(round_number: int) -> void:
 	_write({"event": "round_start", "round": round_number, "tick": _sim.tick_count,
 			"opponents": _sim.opponent_of, "siege_leader": _sim.siege_leader,
 			"siege_attackers": _sim.siege_attackers, "ghost_target": _sim.ghost_target,
-			"ghost_source": _sim.ghost_source})
+			"ghost_source": _sim.ghost_source, "resting_player": _sim.resting_player})
 
 
 func _on_sim_phase_changed(phase: MatchSim.Phase) -> void:
@@ -163,7 +167,7 @@ func _on_sim_phase_changed(phase: MatchSim.Phase) -> void:
 	var wave: Array[MobState] = WaveBuilder.build_base_wave(_sim.config, _sim.round_number)
 	_write({"event": "wave_start", "round": _sim.round_number, "tick": _sim.tick_count,
 			"prep_ticks": _sim.get_prep_ticks(), "base_wave_count": wave.size(),
-			"base_wave_hp": wave[0].max_hp, "players": _alive_snapshots()})
+			"base_wave_hp": wave[0].max_hp if not wave.is_empty() else 0, "players": _alive_snapshots()})
 
 
 func _on_sim_command_processed(player_index: int, description: Dictionary, error: String) -> void:

@@ -43,6 +43,7 @@ var silence_ticks_left: int = 0
 ## Накоплено с последнего сбора: золото за убийства и прорвавшиеся мобы.
 var pending_kill_gold: int = 0
 var pending_breaches: Array[MobState] = []
+var revived_senders: Array[int] = []
 
 var config: GameConfig
 
@@ -254,6 +255,13 @@ func roll_chance(percent: int) -> bool:
 
 
 func start_wave() -> void:
+	revived_senders.clear()
+	for tower: TowerState in towers:
+		tower.suppressed_ticks = 0
+		tower.ward_ticks = 0
+		tower.action_lock_ticks = 0
+		tower.haste_ticks = 0
+		tower.haste_percent = 0
 	reaction_counts.clear()
 	battle_report = FieldBattleReport.new()
 	for tower: TowerState in towers:
@@ -323,11 +331,16 @@ func tick(automatic_fire: bool = true) -> void:
 	_tick_wind_cycles()
 	_add_split_mobs()
 	_remove_finished_mobs()
+	for tower: TowerState in towers:
+		tower.tick_battle_effects()
 	wave_tick += 1
 
 
 func is_wave_done() -> bool:
-	return mobs.is_empty() and _spawn_queue.is_empty()
+	for mob: MobState in mobs:
+		if mob.is_alive() and not mob.is_decoy:
+			return false
+	return _spawn_queue.is_empty() and _split_queue.is_empty()
 
 
 ## Все оставшиеся мобы (и не появившиеся) считаются прорвавшимися — при таймауте волны.
@@ -357,6 +370,8 @@ func clear_pending() -> void:
 
 ## Хэш состояния поля для проверки детерминизма.
 func add_to_hash(hasher: StateHasher) -> void:
+	hasher.add(revived_senders.size())
+	hasher.add_many(revived_senders)
 	hasher.add(path_length)
 	hasher.add(wave_tick)
 	hasher.add(int(is_enraged))
@@ -368,6 +383,8 @@ func add_to_hash(hasher: StateHasher) -> void:
 	for tower: TowerState in towers:
 		tower.add_to_hash(hasher)
 	for mob: MobState in mobs:
+		hasher.add_many([mob.rush_ticks, mob.rush_percent, mob.revive_until, mob.revive_percent,
+				int(mob.is_decoy), mob.decoy_ticks, int(mob.is_reinforcement)])
 		hasher.add_many([mob.id, mob.hp, mob.progress, mob.slow_percent, mob.slow_ticks_left,
 				mob.shield_left, mob.heal_cooldown, mob.heal_window_ticks,
 				mob.heal_window_percent, mob.speed, mob.armor, mob.max_hp,
@@ -382,6 +399,7 @@ func add_to_hash(hasher: StateHasher) -> void:
 	for entry: SpawnEntry in _spawn_queue:
 		hasher.add(entry.spawn_tick)
 		hasher.add_string(entry.mob.data.id)
+		hasher.add_string(entry.mob.resist)
 		hasher.add_many([entry.mob.hp, entry.mob.speed, entry.mob.sender_index])
 
 #endregion
@@ -419,14 +437,25 @@ func _spawn_due_mobs() -> void:
 		_next_mob_id += 1
 		mob.progress = 0
 		mob.previous_progress = 0
-		if mob.sender_index >= 0 and enemy_army_slow_percent > 0:
+		if (mob.sender_index >= 0 or mob.sender_index == -2) and enemy_army_slow_percent > 0:
 			mob.speed = mob.speed * (100 - enemy_army_slow_percent) / 100
 		mobs.append(mob)
+
+
+func add_battle_decoy(mob: MobState, progress: int) -> void:
+	mob.id = _next_mob_id
+	_next_mob_id += 1
+	mob.progress = progress
+	mob.previous_progress = progress
+	mobs.append(mob)
 
 
 func _move_mobs() -> void:
 	var end_progress: int = get_path_end_progress()
 	for mob: MobState in mobs:
+		if mob.is_decoy:
+			mob.advance()
+			continue
 		DivineCombat.apply_wind(self, mob)
 		DivineCombat.tick_effects(self, mob)
 		if not mob.is_alive():
@@ -471,7 +500,7 @@ func _fire_towers() -> void:
 		silence_ticks_left -= 1
 		return
 	for tower: TowerState in towers:
-		if not tower.data.attacks:
+		if not tower.data.attacks or tower.is_action_blocked():
 			continue
 		if tower.cooldown_left > 0:
 			tower.cooldown_left -= 1
@@ -511,6 +540,8 @@ func _find_targets(tower: TowerState, center: Vector2i, range_milli: int) -> Arr
 			if targets.has(mob) or not _can_target(tower, center, range_milli, mob):
 				continue
 			var priority: int = _target_priority(tower, mob)
+			if mob.is_decoy:
+				priority = 2147483647
 			if best == null or priority > best_priority \
 					or (priority == best_priority and mob.progress > best.progress):
 				best = mob
@@ -571,6 +602,14 @@ func deal_mob_damage(mob: MobState, damage: int, tower_id: int = 0,
 	if before > maxi(0, mob.hp):
 		damage_recorded.emit(mob, before - maxi(0, mob.hp), tower_id, kind)
 	if was_killed:
+		if mob.is_decoy:
+			return
+		if mob.revive_until >= wave_tick and not revived_senders.has(mob.sender_index):
+			revived_senders.append(mob.sender_index)
+			mob.hp = maxi(1, mob.max_hp * mob.revive_percent / 100)
+			mob.revive_until = -1
+			effect_played.emit(&"hero_revive", mob)
+			return
 		battle_report.killed += 1
 		pending_kill_gold += mob.kill_reward
 		mob_killed.emit(mob)
@@ -587,6 +626,7 @@ func _queue_split(parent: MobState) -> void:
 		child.max_hp = maxi(1, parent.max_hp * parent.data.split_hp_percent / 100)
 		child.hp = child.max_hp
 		child.speed = parent.speed
+		child.is_reinforcement = parent.is_reinforcement
 		child.sender_index = parent.sender_index
 		child.progress = maxi(0, parent.progress - i * SPLIT_SPACING_MILLI)
 		child.previous_progress = child.progress
@@ -603,6 +643,7 @@ func _add_split_mobs() -> void:
 
 ## Лечение одной цели не складывается, даже если импульсы лекарей сдвинуты во времени.
 func _heal_mobs() -> void:
+	var ready_healers: Array[MobState] = []
 	for mob: MobState in mobs:
 		if mob.heal_window_ticks > 0:
 			mob.heal_window_ticks -= 1
@@ -610,21 +651,24 @@ func _heal_mobs() -> void:
 				mob.heal_window_percent = 0
 		if mob.data.heal_percent > 0 and mob.is_alive():
 			mob.heal_cooldown -= 1
+			if mob.heal_cooldown <= 0:
+				ready_healers.append(mob)
+	if ready_healers.is_empty():
+		return
 	for target: MobState in mobs:
-		if not target.is_alive() or target.hp >= target.max_hp:
+		if not target.is_alive() or target.is_decoy or target.hp >= target.max_hp:
 			continue
 		var percent: int = target.heal_window_percent
-		for healer: MobState in mobs:
-			if healer.is_alive() and healer.data.heal_percent > percent \
-					and healer.heal_cooldown <= 0 and _is_in_range(get_mob_position(healer),
-					get_mob_position(target), healer.data.heal_radius_milli):
+		var target_position: Vector2i = get_mob_position(target)
+		for healer: MobState in ready_healers:
+			if healer.data.heal_percent > percent and _is_in_range(get_mob_position(healer),
+					target_position, healer.data.heal_radius_milli):
 				percent = healer.data.heal_percent
 		if percent > target.heal_window_percent:
 			_apply_healing(target, percent)
-	for healer: MobState in mobs:
-		if healer.is_alive() and healer.data.heal_percent > 0 and healer.heal_cooldown <= 0:
-			healer.heal_cooldown = healer.data.heal_interval_ticks
-			effect_played.emit(&"heal", healer)
+	for healer: MobState in ready_healers:
+		healer.heal_cooldown = healer.data.heal_interval_ticks
+		effect_played.emit(&"heal", healer)
 
 
 func _apply_healing(target: MobState, percent: int) -> void:
@@ -670,6 +714,8 @@ func get_tower_cooldown(tower: TowerState) -> int:
 	if _are_bonuses_dirty:
 		_refresh_bonuses()
 	var rate: int = tower.bonus_fire_rate_percent
+	if tower.haste_ticks > 0:
+		rate += tower.haste_percent
 	if tower.has_enchantment(RiteData.Effect.ENCHANT_RATE):
 		rate += _config.enchant_rate_percent
 	return maxi(1, tower.data.cooldown_ticks * 100 / (100 + rate))

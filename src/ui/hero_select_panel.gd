@@ -1,13 +1,16 @@
 class_name HeroSelectPanel
 extends Control
+var battle_settings: ActiveBattleConfig
 ## Выбор героя перед матчем: три карточки (портрет, имя, HP, пассивка, навык) и таймер.
 ## Только показывает предложения; выбор отдаёт наверх сигналом.
 
 signal hero_chosen(offer_index: int)
 
-const PORTRAIT_SIZE: float = 132.0
+## Высота героя во весь рост на карточке (концепт 3:4).
+const ART_HEIGHT: float = 300.0
+const SOFT_EDGES: Shader = preload("res://assets/shaders/soft_edges.gdshader")
 const CARD_MIN_WIDTH: float = 210.0
-const COLOR_DIM: Color = Color(0, 0, 0, 0.72)
+const COLOR_DIM: Color = Color(0, 0, 0, 0.88)
 const COLOR_MUTED: Color = Color(0.73, 0.67, 0.56)
 const COLOR_HP: Color = Color(0.92, 0.5, 0.42)
 const COLOR_SKILL: Color = Color(0.91, 0.65, 0.29)
@@ -62,8 +65,8 @@ func _notification(what: int) -> void:
 func show_offers(offers: Array[HeroData], gods: Array[StringName] = []) -> void:
 	var names: PackedStringArray = []
 	for god: StringName in gods:
-		names.append(IdolSlot.god_name(god))
-	_draft_label.text = "Боги матча: " + " · ".join(names) if not gods.is_empty() else ""
+		names.append(GodSymbols.get_power_name(god))
+	_draft_label.text = "Стихии матча: " + "   /   ".join(names) if not gods.is_empty() else ""
 	for card: PanelContainer in _cards:
 		card.queue_free()
 	_cards.clear()
@@ -93,10 +96,13 @@ func _make_card(hero: HeroData, offer_index: int) -> PanelContainer:
 	box.add_theme_constant_override("separation", 6)
 	card.add_child(box)
 	var portrait: TextureRect = TextureRect.new()
-	portrait.texture = HeroPortraits.get_portrait(hero)
-	portrait.custom_minimum_size = Vector2.ONE * PORTRAIT_SIZE
+	portrait.texture = HeroPortraits.get_full_art(hero)
+	portrait.custom_minimum_size = Vector2(0, ART_HEIGHT)
 	portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	var soft: ShaderMaterial = ShaderMaterial.new()
+	soft.shader = SOFT_EDGES
+	portrait.material = soft
 	box.add_child(portrait)
 	var title: Label = _make_label(hero.display_name, 24)
 	title.theme_type_variation = &"HeaderLabel"
@@ -112,11 +118,19 @@ func _make_card(hero: HeroData, offer_index: int) -> PanelContainer:
 	if hero.affinity_gift != null:
 		box.add_child(_make_label("Дар %s: %s" % [IdolSlot.god_name(hero.affinity_god),
 				hero.affinity_gift.display_name], 15, COLOR_SKILL))
-	if hero.skill != null:
+	var battle_skill: BattleSkillData = battle_settings.skill_for(hero.id) if battle_settings != null else null
+	if battle_skill != null:
+		box.add_child(_make_label("Приём «%s» · бесплатно" % battle_skill.title, 16, COLOR_SKILL))
+		box.add_child(_make_label(battle_skill.description, 15))
+	elif hero.skill != null:
 		var skill: HeroSkillData = hero.skill
 		box.add_child(_make_label("Навык «%s» · %d зол. · %s" % [skill.display_name, skill.cost,
 				skill.get_timing_text()], 16, COLOR_SKILL))
 		box.add_child(_make_label(skill.description, 15))
+	# кнопки трёх карточек — на одной линии внизу
+	var gap: Control = Control.new()
+	gap.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	box.add_child(gap)
 	var button: Button = Button.new()
 	button.text = "Выбрать"
 	button.theme_type_variation = &"AccentButton"
@@ -132,6 +146,7 @@ func _make_card(hero: HeroData, offer_index: int) -> PanelContainer:
 func _make_label(text: String, font_size: int, color: Color = Color(0.94, 0.89, 0.81)) -> Label:
 	var label: Label = Label.new()
 	label.text = text
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	label.add_theme_font_size_override("font_size", font_size)
 	label.add_theme_color_override("font_color", color)

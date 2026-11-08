@@ -26,6 +26,22 @@ var enchantments: Array[int] = []
 var awakening: int = -1
 ## Таймер импульса ветра: сколько тиков уже прошло в текущем цикле «дует/пауза».
 var wind_cycle_ticks: int = 0
+var suppressed_ticks: int = 0
+var ward_ticks: int = 0
+var action_lock_ticks: int = 0
+var haste_ticks: int = 0
+var haste_percent: int = 0
+
+
+func is_action_blocked() -> bool:
+	return action_lock_ticks > 0 or (suppressed_ticks > 0 and ward_ticks <= 0)
+
+
+func tick_battle_effects() -> void:
+	suppressed_ticks = maxi(0, suppressed_ticks - 1)
+	ward_ticks = maxi(0, ward_ticks - 1)
+	action_lock_ticks = maxi(0, action_lock_ticks - 1)
+	haste_ticks = maxi(0, haste_ticks - 1)
 
 
 func has_enchantment(effect: int) -> bool:
@@ -34,6 +50,7 @@ func has_enchantment(effect: int) -> bool:
 
 ## Постоянное состояние башни; одинаково для поля и резерва.
 func add_to_hash(hasher: StateHasher) -> void:
+	hasher.add_many([suppressed_ticks, ward_ticks, action_lock_ticks, haste_ticks, haste_percent])
 	hasher.add_string(data.id)
 	hasher.add_many([id, anchor.x, anchor.y, rotation, level, cooldown_left,
 			invested_total, invested_this_phase, awakening, wind_cycle_ticks])

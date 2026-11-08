@@ -35,6 +35,8 @@ func _ready() -> void:
 	_add_button(%Teams as HBoxContainer, "2 на 2 на 2", _on_team2_pressed)
 	_add_button(%Library as GridContainer, "Настройки", _on_settings_pressed)
 	_add_button(%Library as GridContainer, "Проба графики 2.5D", _on_visual_slice_pressed)
+	_add_button(%Library as GridContainer, "Дуэль волхвов · прототип", _on_siege_trial_pressed)
+	_add_button(%Library as GridContainer, "Обряд · четыре ночи", _on_ritual_trial_pressed)
 	for button: Button in [_play_button, _how_to_button, _heroes_button, _lab_button,
 			_sandbox_button, _quit_button, _sound_button]:
 		UiFx.add_press_feedback(button)
@@ -117,3 +119,11 @@ func _on_sandbox_pressed() -> void:
 
 func _on_visual_slice_pressed() -> void:
 	ScenePaths.go_to(get_tree(), ScenePaths.VISUAL_SLICE)
+
+
+func _on_siege_trial_pressed() -> void:
+	ScenePaths.go_to(get_tree(), ScenePaths.SIEGE_TRIAL)
+
+
+func _on_ritual_trial_pressed() -> void:
+	ScenePaths.go_to(get_tree(), ScenePaths.RITUAL_TRIAL)

@@ -504,3 +504,33 @@ func test_upgraded_wind_keeps_control_after_reserve_merge_and_caps_power() -> vo
 	idol.wind_power = 100
 	DivineCombat.apply_wind(_player.field, mob)
 	assert_eq(mob.wind_slow_percent, _config.max_wind_slow_percent)
+
+
+func test_no_gold_spent_on_enchantments_without_a_combat_effect() -> void:
+	var towers: Array[StringName] = [&"beacon", &"beacon", &"rain", &"water"]
+	var rites: Array[StringName] = [&"enchant_range", &"enchant_damage", &"enchant_targets",
+			&"enchant_damage"]
+	for i: int in towers.size():
+		_offer(_tower(towers[i]))
+		assert_eq(_player.buy_to_reserve(0), "")
+		var tower: TowerState = _player.reserve.back()
+		_offer_rite(rites[i])
+		var gold: int = _player.gold
+		assert_ne(_player.buy_rite(2, tower.id), "", String(towers[i]))
+		assert_eq(_player.gold, gold)
+		assert_true(tower.enchantments.is_empty())
+		assert_not_null(_player.shop.get_rite(2))
+
+
+func test_siege_pack_larger_than_available_spawn_ticks_still_leaves_on_time() -> void:
+	var field: FieldState = _player.field
+	var pack: Array[MobState] = []
+	for index: int in 250:
+		pack.append(MobState.create(_config.army_mob))
+	field.start_wave()
+	WaveBuilder.schedule_wave(_config, field, 1, pack)
+	for frame: int in _config.spawn_window_ticks + 1:
+		field.tick()
+	assert_eq(field.mobs.size() + field.pending_breaches.size(), 250 + _config.wave_base_count)
+	assert_lt(pack[0].id, pack[1].id)
+	assert_gt(pack[0].progress, pack[-1].progress)

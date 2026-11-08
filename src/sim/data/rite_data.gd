@@ -5,12 +5,14 @@ extends Resource
 enum Target { IDOL, TOWER }
 enum Effect { DAMAGE, CHAIN_HITS, CHAIN_TARGETS, BURN, WIND_POWER, WIND_LENGTH,
 		ENCHANT_DAMAGE, ENCHANT_RATE, ENCHANT_RANGE, AWAKEN_WIDE, AWAKEN_FOCUS,
-		CHAIN_CHANCE, WET_DURATION, STATUS_DURATION, TARGETS }
+		CHAIN_CHANCE, WET_DURATION, STATUS_DURATION, TARGETS, WET_CHAIN_DAMAGE, SURGE_SLOW }
 
 @export var id: StringName = &""
 @export var display_name: String = ""
 @export_multiline var description: String = ""
 @export var god: StringName = &""
+## Для заговора реакции нужен и второй бог в драфте.
+@export var partner_god: StringName = &""
 @export var target: Target = Target.IDOL
 @export var effect: Effect = Effect.DAMAGE
 ## Величина эффекта идола; общие эффекты чар башен настраиваются в GameConfig.

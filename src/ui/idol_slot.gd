@@ -36,6 +36,10 @@ func refresh(state: IdolState, editable: bool, ticks_per_second: int = 20) -> vo
 		_:
 			tooltip_text = "Перетащите заговор, чтобы посвятить идол одной силе. Три места на выбор."
 
+	if idol.wet_chain_damage_bonus > 0:
+		tooltip_text += "\nЦепь по мокрой цели: доля урона перехода +%d п.п." % idol.wet_chain_damage_bonus
+	if idol.surge_slow_percent > 0:
+		tooltip_text += "\nОткат замедляет цель на %d%%." % idol.surge_slow_percent
 	queue_redraw()
 
 

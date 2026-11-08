@@ -15,11 +15,15 @@ extends Resource
 @export var rite_offer_percent: int = 30
 @export var reserve_capacity_by_level: Array[int] = [8, 10, 12, 14]
 @export var idol_slots: int = 3
+## Бесплатная база за повышение магазина; не расходует лимиты редких заговоров.
+@export var idol_base_rites: Array[RiteData] = []
 @export var spawn_window_ticks: int = 0
 @export var early_prep_rounds: int = 2
 @export var early_prep_ticks: int = 600
 @export var army_warmup_percent: Array[int] = []
 @export var synchronized_battle: bool = false
+## Новый бой включается после подключения управления и приёмов всех героев.
+@export var active_battle: ActiveBattleConfig
 @export var battle_real_ticks: int = 800
 @export var battle_speed_thresholds: Array[int] = [400, 600]
 @export var battle_speeds: Array[int] = [1, 2, 5]
@@ -34,7 +38,7 @@ extends Resource
 @export var chain_lifetime_ticks: int = 60
 @export var max_wind_slow_percent: int = 55
 @export var wind_fire_bonus_percent: int = 25
-## Резист моба к стихии: на столько процентов меньше урона от башен этой стихии.
+## Резист: меньше урон своей стихии, длительность мокроты или сила направленного ветра.
 @export var resist_percent: int = 30
 @export var enchant_damage_percent: int = 20
 @export var enchant_rate_percent: int = 15

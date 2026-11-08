@@ -18,5 +18,10 @@ func execute(_sim: MatchSim, player: PlayerState) -> String:
 
 func to_log(_sim: MatchSim, player: PlayerState) -> Dictionary:
 	var upgrade: ArmyUpgradeData = player.army.get_upgrade(upgrade_index)
+	var selected_element: StringName = element
+	if upgrade != null and upgrade.choose_element and selected_element == &"" \
+			and not player.shop.active_gods.is_empty():
+		selected_element = player.shop.active_gods[0]
 	return {"type": "army_upgrade", "upgrade": String(upgrade.id) if upgrade != null else "",
+			"element": String(selected_element),
 			"cost": player.army.get_upgrade_cost(upgrade_index) if upgrade != null else 0}

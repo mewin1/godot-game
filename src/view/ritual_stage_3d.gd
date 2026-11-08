@@ -1,0 +1,115 @@
+class_name RitualStage3D
+extends ArenaStage3D
+## Адаптер RitualField к актуальному PvP-рендеру. Состояние боя не меняет.
+
+const UNIT_IDS: Dictionary[StringName, StringName] = {
+	&"ratnik": &"basic", &"runner": &"fast", &"heavy": &"armored",
+	&"warded": &"knight", &"banner": &"courier", &"voevoda": &"boss"}
+var _hero: Node3D
+var _barrier: Node3D
+var _barrier_progress: int = -1
+
+
+func _init() -> void:
+	super()
+	_camera.rotation = Vector3(-0.88, 0.48, 0.0)
+	var arena: Node = _world.get_node("Arena")
+	arena.set_script(preload("res://src/view/ritual_arena_3d.gd"))
+	# Ресурс окружения принадлежит только этому экземпляру режима.
+	var environment: WorldEnvironment = _world.get_node("Environment") as WorldEnvironment
+	environment.environment = environment.environment.duplicate(true) as Environment
+
+
+func show_field(field: FieldState, player_colors: Callable) -> void:
+	if layout == null:
+		layout = RitualLayout3D.new(field.layout)
+		_build_platforms()
+	super.show_field(field, player_colors)
+	if _hero == null:
+		var scene: PackedScene = load("res://assets/noir_h3d/heroes/ilya.glb") as PackedScene
+		_hero = scene.instantiate() as Node3D
+		_world.add_child(_hero)
+		ArenaTower3D._tune_materials(_hero, STYLE.noir_model_glow, STYLE.noir_model_tone, STYLE.noir_model_rim)
+		_hero.position = layout.cell_center(Vector2i(18, 12)) + Vector3(0.2, 0, -0.7)
+		_hero.rotation.y = PI * 0.5
+
+
+func _sync_units(delta: float, interpolation: float) -> void:
+	# Создаём модели по существующим PvP-ID, не подменяя данные мобов в sim.
+	for mob: MobState in _field.mobs:
+		if not _units.has(mob.id):
+			var id: StringName = UNIT_IDS.get(mob.data.id, &"basic")
+			var unit: ArenaUnit3D = ArenaUnit3D.new()
+			_world.add_child(unit)
+			unit.build(STYLE.get_mob_model(id), STYLE.get_mob_tint(id), STYLE.get_mob_height(id), Color.TRANSPARENT, id)
+			if mob.data.id == &"banner":
+				ArenaMaterials3D.part(unit, ArenaMaterials3D.cylinder(0.025, 0.025, 1.6, 5),
+					ArenaMaterials3D.solid(ArenaMaterials3D.WOOD), Vector3(0.3, 0.8, 0))
+				ArenaMaterials3D.part(unit, ArenaMaterials3D.box(Vector3(0.5, 0.4, 0.03)),
+					ArenaMaterials3D.glow(Color("9a71bd"), 0.7), Vector3(0.55, 1.35, 0))
+			_units[mob.id] = unit
+	super._sync_units(delta, interpolation)
+
+
+func mob_head(mob: MobState, interpolation: float) -> Vector2:
+	var id: StringName = UNIT_IDS.get(mob.data.id, &"basic")
+	return project(_mob_world(mob, interpolation) + Vector3.UP * (STYLE.get_mob_height(id) * 1.15 + 0.2))
+
+
+func update_ritual(trial: RitualTrial, delta: float) -> void:
+	var local: int = trial.tick_count % trial.settings.cycle_ticks
+	var night: float = 0.0
+	if trial.tick_count < trial.settings.cycle_ticks * trial.settings.cycles:
+		if local >= trial.settings.dusk_tick:
+			night = clampf(float(local - trial.settings.dusk_tick) / (trial.settings.night_tick - trial.settings.dusk_tick), 0, 1)
+		elif trial.tick_count >= trial.settings.cycle_ticks:
+			night = 1.0 - clampf(float(local) / 100.0, 0, 1)
+	var env: Environment = (_world.get_node("Environment") as WorldEnvironment).environment
+	env.ambient_light_color = Color("a5ae9e").lerp(Color("91a49a"), night)
+	env.ambient_light_energy = lerpf(0.85, 0.68, night)
+	env.fog_light_color = Color("77958b").lerp(Color("3d6369"), night)
+	var horizon: Color = Color("77877d").lerp(Color("080f1b"), night)
+	var sky_material: ProceduralSkyMaterial = env.sky.sky_material as ProceduralSkyMaterial
+	if sky_material.sky_horizon_color != horizon:
+		sky_material.sky_horizon_color = horizon
+		sky_material.ground_horizon_color = horizon
+		sky_material.sky_top_color = horizon.darkened(0.35)
+	var sun: DirectionalLight3D = _world.get_node("Moon") as DirectionalLight3D
+	var sunset: float = sin(night * PI)
+	sun.light_color = Color("ffe3a8").lerp(Color("a7c8be"), night).lerp(Color("ed9255"), sunset * 0.65)
+	sun.light_energy = lerpf(1.05, 0.8, night)
+	sun.sky_mode = DirectionalLight3D.SKY_MODE_LIGHT_AND_SKY if night > 0.45 else DirectionalLight3D.SKY_MODE_LIGHT_ONLY
+	(_world.get_node("WarmKey") as DirectionalLight3D).light_energy = lerpf(0.12, 0.06, night)
+	env.tonemap_exposure = 1.1
+	if trial.palisade_progress != _barrier_progress:
+		_barrier_progress = trial.palisade_progress
+		if _barrier != null:
+			_barrier.queue_free()
+			_barrier = null
+		if _barrier_progress >= 0:
+			_barrier = Node3D.new()
+			_world.add_child(_barrier)
+			var length: float = layout.progress_to_length(_barrier_progress)
+			_barrier.position = layout.road_point(length)
+			var direction: Vector3 = layout.road_direction(length)
+			_barrier.rotation.y = atan2(direction.x, direction.z)
+			for index: int in 5:
+				ArenaMaterials3D.part(_barrier, ArenaMaterials3D.cylinder(0.10, 0.02, 1.2, 5),
+					ArenaMaterials3D.solid(ArenaMaterials3D.WOOD), Vector3((index - 2) * 0.36, 0.6, 0))
+	if _barrier != null:
+		_barrier.scale.y = 1.0 if trial.tick_count >= trial.palisade_ready else 0.4
+	sync(delta, 1.0)
+
+
+func _update_frame_bounds() -> void:
+	# Весь маршрут и терем; исходные PvP-отступы рассчитаны на другой конец пути.
+	_frame_min = Vector3(1, 0.0, -17)
+	_frame_max = Vector3(45, 4.0, 8)
+	_frame_key = _open_key()
+
+
+func _frame_perspective(target: Rect2, basis: Basis) -> void:
+	# Кадр занимает выделенное место полностью, без прежнего запаса под PvP-шапку.
+	var adjusted: Rect2 = Rect2(target.position - Vector2(0, target.size.y * SKY_SHARE / (1.0 - SKY_SHARE)),
+		Vector2(target.size.x, target.size.y / (1.0 - SKY_SHARE)))
+	super._frame_perspective(adjusted, basis)

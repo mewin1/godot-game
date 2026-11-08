@@ -60,3 +60,6 @@ mcp_interaction_server.gd.uid
 # --- Hunyuan3D: исходники моделей пересобирает tools/blender/noir/h3d.sh (raw-сетки — в Git) ---
 source_art/noir_h3d/*
 !source_art/noir_h3d/raw/
+
+# --- Рабочие кадры, логи и черновики проверок (не исходники) ---
+/output/

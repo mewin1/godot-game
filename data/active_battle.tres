@@ -1,0 +1,168 @@
+[gd_resource type="Resource" script_class="ActiveBattleConfig" format=3]
+
+[ext_resource type="Script" path="res://src/sim/data/active_battle_config.gd" id="1"]
+[ext_resource type="Script" path="res://src/sim/data/battle_skill_data.gd" id="skill"]
+[ext_resource type="Script" path="res://src/sim/data/mob_data.gd" id="mob"]
+
+[sub_resource type="Resource" id="decoy"]
+script = ExtResource("mob")
+id = &"hero_decoy"
+display_name = "Приманка"
+hp = 400
+speed_milli_per_tick = 0
+kill_reward = 0
+breach_damage = 0
+
+[sub_resource type="Resource" id="baba_yaga"]
+script = ExtResource("skill")
+hero_id = &"baba_yaga"
+title = "Избушка, шагом!"
+description = "Выберите башню и свободную площадку до боя. Перенос 3 с без стрельбы."
+kind = 0
+offensive = false
+warning_ticks = 0
+duration_ticks = 60
+radius_milli = 0
+power = 0
+cap = 0
+
+[sub_resource type="Resource" id="domovoy"]
+script = ExtResource("skill")
+hero_id = &"domovoy"
+title = "Перестановка"
+description = "Выберите две башни до боя. Обмен 2 с без стрельбы."
+kind = 1
+offensive = false
+warning_ticks = 0
+duration_ticks = 40
+radius_milli = 0
+power = 0
+cap = 0
+
+[sub_resource type="Resource" id="gorynych"]
+script = ExtResource("skill")
+hero_id = &"gorynych"
+title = "Налёт"
+description = "После предупреждения 1,2 с подавляет башни в круге на 5 с."
+kind = 2
+offensive = true
+warning_ticks = 24
+duration_ticks = 100
+radius_milli = 2400
+power = 0
+cap = 0
+
+[sub_resource type="Resource" id="ilya"]
+script = ExtResource("skill")
+hero_id = &"ilya"
+title = "Богатырский удар"
+description = "После замаха 1 с ударяет по врагам в круге: 45% текущего HP, максимум 500."
+kind = 3
+offensive = false
+warning_ticks = 20
+duration_ticks = 0
+radius_milli = 2200
+power = 45
+cap = 500
+
+[sub_resource type="Resource" id="leshy"]
+script = ExtResource("skill")
+hero_id = &"leshy"
+title = "Плутаный след"
+description = "Ловушка на 4 с: каждый вошедший отбрасывается на 3 клетки один раз."
+kind = 4
+offensive = false
+warning_ticks = 0
+duration_ticks = 80
+radius_milli = 1500
+power = 3000
+cap = 0
+
+[sub_resource type="Resource" id="solovey"]
+script = ExtResource("skill")
+hero_id = &"solovey"
+title = "Разбойничий свист"
+description = "Уже вышедшие бойцы вашей армии на выбранном поле на 4 с ускоряются на 50%."
+kind = 5
+offensive = true
+warning_ticks = 0
+duration_ticks = 80
+radius_milli = 0
+power = 50
+cap = 0
+
+[sub_resource type="Resource" id="vasilisa"]
+script = ExtResource("skill")
+hero_id = &"vasilisa"
+title = "Оберег"
+description = "Башни в круге снимают подавление и защищены от нового на 5 с."
+kind = 6
+offensive = false
+warning_ticks = 0
+duration_ticks = 100
+radius_milli = 2400
+power = 0
+cap = 0
+
+[sub_resource type="Resource" id="koschei"]
+script = ExtResource("skill")
+hero_id = &"koschei"
+title = "Смерть в игле"
+description = "В течение 5 с первый погибший из помеченных бойцов возрождается с 40% HP."
+kind = 7
+offensive = true
+warning_ticks = 0
+duration_ticks = 100
+radius_milli = 0
+power = 40
+cap = 0
+
+[sub_resource type="Resource" id="babushka"]
+script = ExtResource("skill")
+hero_id = &"babushka"
+title = "Пирожки в дорогу"
+description = "Ваши живые бойцы на выбранном поле восстанавливают 35% максимального HP."
+kind = 8
+offensive = true
+warning_ticks = 0
+duration_ticks = 0
+radius_milli = 0
+power = 35
+cap = 0
+
+[sub_resource type="Resource" id="skomorokh"]
+script = ExtResource("skill")
+hero_id = &"skomorokh"
+title = "Ложная тревога"
+description = "После предупреждения 1 с приманка отвлекает обычные выстрелы. Живёт до 4 с."
+kind = 9
+offensive = true
+warning_ticks = 20
+duration_ticks = 80
+radius_milli = 1500
+power = 0
+cap = 0
+decoy = SubResource("decoy")
+
+[sub_resource type="Resource" id="cosmonaut"]
+script = ExtResource("skill")
+hero_id = &"cosmonaut"
+title = "Обратный отсчёт"
+description = "Выбранная башня заряжается 2 с без огня, затем стреляет вдвое чаще 6 с."
+kind = 10
+offensive = false
+warning_ticks = 40
+duration_ticks = 120
+radius_milli = 0
+power = 100
+cap = 0
+
+[resource]
+script = ExtResource("1")
+reserve_deadline_ticks = 280
+reserve_spawn_interval_ticks = 10
+bot_release_ticks = 180
+bot_skill_ticks = 120
+bot_reaction_ticks = 10
+bot_reserve_count = 3
+skills = Array[ExtResource("skill")]([SubResource("baba_yaga"), SubResource("domovoy"), SubResource("gorynych"), SubResource("ilya"), SubResource("leshy"), SubResource("solovey"), SubResource("vasilisa"), SubResource("koschei"), SubResource("babushka"), SubResource("skomorokh"), SubResource("cosmonaut")])

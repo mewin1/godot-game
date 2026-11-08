@@ -44,6 +44,12 @@ def run_stage(name: str, arguments: list[str], environment: dict[str, str]) -> b
         passed = passed and "All tests passed!" in output and "Ignoring script" not in output
     if name in ("smoke", "lessons"):
         passed = passed and "SMOKE:" in output
+    if name == "siege":
+        passed = passed and "SIEGE SMOKE:" in output
+    if name == "ritual":
+        passed = passed and "RITUAL SMOKE: OK" in output
+    if name == "ritual_probe":
+        passed = passed and "RITUAL PROBE: отчёт" in output
     print(f"{name}: {'OK' if passed else 'ОШИБКА'} — {log_path.relative_to(ROOT)}", flush=True)
     if name == "gut":
         for line in output.splitlines():
@@ -64,6 +70,9 @@ def main() -> int:
         ("smoke", ["-s", "res://tools/rework_smoke.gd"]),
         ("lessons", ["-s", "res://tools/reaction_lab_smoke.gd"]),
         ("sandbox", ["-s", "res://tools/combat_sandbox_smoke.gd"]),
+        ("siege", ["-s", "res://tools/siege_trial_smoke.gd"]),
+        ("ritual", ["-s", "res://tools/ritual_trial_smoke.gd"]),
+        ("ritual_probe", ["-s", "res://tools/ritual_trial_probe.gd"]),
         ("launch", ["--quit-after", "2"]),
     ]
     for name, arguments in stages:

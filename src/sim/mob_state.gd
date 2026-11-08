@@ -2,6 +2,8 @@ class_name MobState
 extends RefCounted
 ## Один моб на поле. Позиция — прогресс по пути в тысячных долях клетки (только целые числа).
 
+const MAX_STATUSES: int = 3
+
 var id: int = 0
 var data: MobData
 var max_hp: int = 0
@@ -50,8 +52,15 @@ var burn_cooldown: int = 0
 var wind_slow_percent: int = 0
 var wind_boost_percent: int = 0
 var is_in_wind: bool = false
-## Резист к стихии (бог); меньше урона от башен этого бога.
+## Резист: меньше урона своей стихии, короче мокрота или слабее направленный ветер.
 var resist: StringName = &""
+var rush_ticks: int = 0
+var rush_percent: int = 0
+var revive_until: int = -1
+var revive_percent: int = 0
+var is_decoy: bool = false
+var decoy_ticks: int = 0
+var is_reinforcement: bool = false
 
 
 ## Создаёт моба по данным с бонусами к HP и скорости в процентах.
@@ -73,6 +82,13 @@ static func create(mob_data: MobData, hp_bonus_percent: int = 0,
 
 func is_alive() -> bool:
 	return hp > 0 and not is_breached
+
+
+## Личная защита получателя; не меняет силу эффекта для других бойцов.
+func reduce_by_resist(value: int, element: StringName, percent: int) -> int:
+	if resist != &"" and resist == element:
+		return value * (100 - clampi(percent, 0, 100)) / 100
+	return value
 
 
 ## Наносит урон с учётом брони (не меньше 1). Возвращает true, если моб от этого умер.
@@ -98,15 +114,22 @@ func apply_slow(percent: int, ticks: int) -> void:
 
 
 func current_speed() -> int:
+	if is_decoy:
+		return 0
 	if stun_ticks_left > 0 or freeze_ticks_left > 0:
 		return 0
 	var cold: int = cold_slow_percent if cold_ticks_left > 0 else 0
 	return speed * (100 - maxi(maxi(slow_percent, cold), wind_slow_percent) \
-			+ wind_boost_percent) / 100
+			+ wind_boost_percent + (rush_percent if rush_ticks > 0 else 0)) / 100
 
 
 ## Сдвигает моба по пути на один тик.
 func advance() -> void:
+	rush_ticks = maxi(0, rush_ticks - 1)
+	if is_decoy:
+		decoy_ticks -= 1
+		if decoy_ticks <= 0:
+			hp = 0
 	previous_progress = progress
 	progress += current_speed()
 	if freeze_ticks_left > 0:
@@ -170,7 +193,7 @@ func can_apply_status(tag: StringName) -> bool:
 	if tag == &"cold" or tag == &"frozen":
 		if active.has(&"cold") or active.has(&"frozen"):
 			return true
-	return active.has(tag) or active.size() < 3
+	return active.has(tag) or active.size() < MAX_STATUSES
 
 
 ## Накопленный взрыв и оставшиеся обычные тики огня; без ещё не полученных бонусов ветра.

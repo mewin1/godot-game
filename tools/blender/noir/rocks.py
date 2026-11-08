@@ -22,6 +22,24 @@ SINK = 0.06  # доля высоты под землёй — камень не �
 CUT = 0.07
 
 
+def noir_stone(img: bpy.types.Image) -> None:
+    """Под «нуар» двора: концепт светлый и сочный (дневной ассет) — темнее, мох глуше, холоднее."""
+    import numpy as np
+
+    px = np.empty(img.size[0] * img.size[1] * 4, dtype=np.float32)
+    img.pixels.foreach_get(px)
+    px = px.reshape(-1, 4)
+    rgb = px[:, :3]
+    luma = (rgb @ np.array([0.3, 0.59, 0.11], dtype=np.float32))[:, None]
+    green = np.clip((rgb[:, 1:2] - np.maximum(rgb[:, 0:1], rgb[:, 2:3])) * 4.0, 0.0, 1.0)  # мох
+    sat = 0.8 - 0.22 * green
+    rgb = luma + (rgb - luma) * sat
+    rgb *= (0.7 - 0.06 * green) * np.array([0.94, 1.0, 1.06], dtype=np.float32)
+    px[:, :3] = np.clip(rgb, 0.0, 1.0)
+    img.pixels.foreach_set(px.ravel())
+    img.update()
+
+
 def build(rid: str) -> None:
     bpy.ops.wm.read_factory_settings(use_empty=True)
     bpy.ops.import_scene.gltf(filepath=str(RAW / f"{rid}_paint.glb"))
@@ -75,6 +93,7 @@ def build(rid: str) -> None:
                 node.image.name = f"{rid}_stone"
                 if node.image.size[0] > 1024:
                     node.image.scale(1024, 1024)
+                noir_stone(node.image)
             if node.type == "BSDF_PRINCIPLED":
                 for link in list(node.inputs["Alpha"].links):
                     mat.node_tree.links.remove(link)

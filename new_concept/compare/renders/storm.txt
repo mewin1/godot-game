@@ -1,0 +1,1 @@
+buildings/storm_16.png

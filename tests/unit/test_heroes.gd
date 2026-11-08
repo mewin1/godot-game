@@ -402,3 +402,27 @@ func test_bot_skips_gang_without_processing_command_before_army_start() -> void:
 	assert_signal_not_emitted(sim, "command_processed")
 	assert_eq(player.gold, 50)
 	assert_true(player.army.temporary_mobs.is_empty())
+
+
+func test_all_visible_army_units_refresh_costs_nothing_and_keeps_rng() -> void:
+	var config: GameConfig = load("res://data/game_config.tres") as GameConfig
+	var sim: MatchSim = SimFixtures.make_hero_match(config, &"baba_yaga")
+	var before: int = sim.state_hash()
+	assert_ne(sim.execute_command(0, RerollArmyCommand.new()), "")
+	assert_eq(sim.state_hash(), before)
+
+
+func test_yaga_can_split_two_free_refreshes_between_shops() -> void:
+	var config: GameConfig = load("res://data/game_config.tres") as GameConfig
+	var sim: MatchSim = SimFixtures.make_hero_match(config, &"baba_yaga")
+	var player: PlayerState = sim.players[0]
+	player.gold = 100
+	assert_eq(sim.execute_command(0, UpgradeShopCommand.new()), "")
+	var gold: int = player.gold
+	assert_eq(sim.execute_command(0, RerollArmyCommand.new()), "")
+	assert_eq(sim.execute_command(0, RerollShopCommand.new()), "")
+	assert_eq(player.gold, gold)
+	assert_eq(sim.execute_command(0, RerollArmyCommand.new()), "")
+	assert_eq(player.gold, gold - config.army_reroll_cost)
+	player.start_prep(true)
+	assert_eq(player.free_rerolls_left, 2)

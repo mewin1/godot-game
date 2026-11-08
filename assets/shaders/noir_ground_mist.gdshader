@@ -6,16 +6,16 @@ render_mode unshaded, blend_mix, depth_draw_never, depth_test_disabled, cull_dis
 // в тумане, кроны торчат над ним, а у стволов нет вертикальных срезов (нет плоских полотен).
 // Двор внутри yard_rect остаётся чистым — туман начинается за частоколом.
 
-uniform vec3 tint : source_color = vec3(0.5, 0.56, 0.57);
-uniform vec3 shade : source_color = vec3(0.16, 0.2, 0.21);
-uniform float density = 0.26;  // на метр пути в самой густой части
-uniform float layer_top = 5.0;  // высота слоя, м
+uniform vec3 tint : source_color = vec3(0.31, 0.45, 0.48);
+uniform vec3 shade : source_color = vec3(0.10, 0.18, 0.20);
+uniform float density = 0.15;  // на метр пути в самой густой части
+uniform float layer_top = 4.3;  // высота слоя, м
 uniform float clump_scale = 0.07;  // клубов на метр
 uniform float clump_contrast = 2.4;
 uniform float drift = 0.35;  // м/с
 uniform vec4 yard_rect = vec4(-1.5, -21.5, 19.5, 1.5);  // x0, z0, x1, z1 — двор без тумана
 uniform float yard_fade = 7.0;  // м — от частокола туман густеет плавно
-uniform float far_boost = 0.03;  // вдали дымка плотнее (к горизонту лес растворяется)
+uniform float far_boost = 0.018;  // вдали дымка плотнее (к горизонту лес растворяется)
 uniform float max_distance = 160.0;
 uniform sampler2D depth_texture : hint_depth_texture, filter_nearest;
 
@@ -53,7 +53,10 @@ float mist_at(vec3 p, float t) {
 	vec2 out_yard = max(yard_rect.xy - p.xz, p.xz - yard_rect.zw);
 	float yard_dist = length(max(out_yard, vec2(0.0))) + min(max(out_yard.x, out_yard.y), 0.0);
 	float yard = smoothstep(0.0, yard_fade, yard_dist);
-	return (clump + base) * yard;
+	// Гуще за дальней стеной; ближний берег остаётся прозрачным.
+	vec2 from_yard = p.xz - (yard_rect.xy + yard_rect.zw) * 0.5;
+	float far_side = smoothstep(-7.0, 12.0, dot(from_yard, vec2(-0.90, 0.44)));
+	return (clump + base) * yard * mix(0.22, 1.0, far_side);
 }
 
 void vertex() {
@@ -107,5 +110,5 @@ void fragment() {
 		color /= max(alpha, 1e-4);
 	}
 	ALBEDO = color;
-	ALPHA = clamp(alpha, 0.0, 0.92);
+	ALPHA = clamp(alpha, 0.0, 0.74);
 }

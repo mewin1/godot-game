@@ -11,6 +11,10 @@
 
 | Запрос | Основные файлы | Проверка |
 |---|---|---|
+| Отдельный «Обряд»: день/ночь, оберег, босс, снимки и контрольные ветки | `src/sim/ritual/`, `src/sim/data/ritual_*.gd`, `data/ritual/trial.tres`, `src/ui/ritual_trial_panel.gd`, `src/ui/ritual_{shop_panel,match_hud,idol_slot}.gd` (адаптеры существующего PvP UI), `src/view/ritual_board.gd`, `src/view/ritual_{layout,stage}_3d.gd`, `src/view/ritual_arena_3d.gd`, `src/view/ritual_battle_layer.gd`, `src/analytics/ritual_trial_record.gd` | `test_ritual_trial`, `test_ritual_panel_regressions`, `tools/ritual_trial_smoke.gd`, `tools/ritual_trial_probe.gd`; графика — `tools/ritual_pvp_check.gd`, запуск/пределы — docs/31 |
+| Прототип осады: Яга, Горыныч, Домовой, планы подкрепления | `src/sim/siege_trial*.gd`, `src/sim/siege_tower_swap.gd`, `src/sim/data/siege_reserve_plan.gd`, `data/siege_trial.tres`, `src/ui/siege_trial_panel.gd`, `src/view/siege_field_view.gd` | `test_siege_trial`, `test_siege_swap`, `tools/siege_trial_smoke.gd`; управление — docs/27 |
+| Записи/воспроизведение дуэлей | `src/analytics/siege_trial_log.gd`, `.godot/duels/` (не в Git) | `test_siege_log`; `godot --headless --path . -s res://tools/replay_siege.gd -- res://.godot/duels/FILE.json` |
+| Авангард/резерв, прорывы по группам, варианты обороны | `src/sim/data/siege_reserve_plan.gd`, `src/sim/siege_attack_ledger.gd`, `src/sim/data/siege_defense_plan.gd`, `data/siege_trial.tres` | `test_siege_split`, `test_siege_defense`, docs/27 |
 | Улучшения/цели заговоров | `src/ui/tower_upgrade_guide.gd`, `field_view.gd`, `offer_card.gd` | `tools/rework_smoke.gd` |
 | Разбор боя | `src/sim/field_battle_report.gd`, `field_state.gd`, `src/ui/battle_report_text.gd` | `test_battle_report`, `test_analytics`, smoke |
 | Перенос проклятия | `src/sim/curse_combat.gd`, `battle_layer.gd` | `test_reactions`, sandbox smoke |
@@ -35,10 +39,11 @@
 | Герои, выбор и навыки | `src/sim/heroes/`, `data/heroes/`, `commands/use_hero_skill_command.gd` | `test_heroes`, `test_lobby` |
 | Поведение ботов | `src/sim/bot_brain.gd` | детерминизм, боты на тех же сидах |
 | Раскладка всего матча, ввод и наблюдение | `src/view/match_screen.gd`, `src/ui/screen_fit.gd` | `tools/rework_smoke.gd`, ручной запуск |
+| Живость двора: ветер, частицы, вороны, медвежонок, камни | `src/view/{arena_ambience_3d,arena_crow_3d,arena_bear_cub_3d,noir_wind}.gd`, шейдеры `noir_{falling_leaf,glow_mote,smoke_puff}`, `assets/noir/{creatures,rocks,ambience}/`, `assets/noir/courtyard/rock_layout.tres` | модели: `tools/concepts/{creature_crops,rock_gen,rock_layout,leaf_atlas}.py`, `tools/blender/noir/{creatures,rocks}.py`; кадры — `new_concept/creatures/renders/` |
+| Двор PvP, камера и реквизит по arena_battle_25 | `scenes/match_arena_noir.tscn`, `src/view/{arena_stage_3d,noir_arena_3d}.gd`, `assets/noir/courtyard/`; мастер и кадры — `source_art/noir/courtyard/` | tools/capture_match.gd, кадры Godot — godot_prep.jpg, godot_courtyard.jpg и godot_battle.jpg рядом с мастером |
 | Лавка/армия, карты, идолы, резерв | `src/ui/shop_panel.gd`, `offer_card.gd`, `idol_slot.gd`, `inventory_bar.gd` | smoke, ручной запуск |
 | Перетаскивание, подсветка и ПКМ на поле | `src/view/drag_payload.gd`, `field_view.gd` | smoke, ручной запуск |
 | Бой, эффекты, звук, внешний вид | `src/view/battle_layer.gd`, `tower_painter.gd`, `sound_bank.gd`, `visuals/` | запуск; не менять sim ради картинки |
-| Живость двора: ветер, частицы, вороны, медвежонок, камни | `src/view/{arena_ambience_3d,arena_crow_3d,arena_bear_cub_3d,noir_wind}.gd`, шейдеры `noir_{falling_leaf,glow_mote,smoke_puff}`, `assets/noir/{creatures,rocks,ambience}/`, `assets/noir/courtyard/rock_layout.tres` | модели: `tools/concepts/{creature_crops,rock_gen,rock_layout,leaf_atlas}.py`, `tools/blender/noir/{creatures,rocks}.py`; кадры — `new_concept/creatures/renders/` |
 | Каменный двор 2.5D, материал клеток, проекция | `src/view/courtyard_painter.gd`, `field_view.gd`, `assets/dusk/` | smoke + графический `tools/capture_match.gd` |
 | Тема, символы сил и портреты 2.5D | `src/ui/dusk_theme.gd`, `src/view/visuals/god_symbols.gd`, `hero_portraits.gd`, `data/visuals/sprites/`, `portraits/` | графический запуск; описание `docs/25_dusk_2_5d.md` |
 | Верхняя панель, справочник, обучение | `src/ui/match_hud.gd`, `heroes_gallery.gd`, `scenes/how_to_play.tscn` | запуск, smoke |

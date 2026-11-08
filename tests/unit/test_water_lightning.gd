@@ -227,3 +227,50 @@ func test_ghost_keeps_remaining_shot_cooldown() -> void:
 	ghost.copy_towers_from(_field)
 	assert_eq(ghost.towers[0].cooldown_left, 7,
 			"копия не должна получать бесплатный выстрел в начале боя")
+
+
+func test_chain_rite_only_changes_bounces_from_a_wet_primary() -> void:
+	var rite: RiteData = load("res://data/rites/wet_chain.tres") as RiteData
+	var first: MobState = _mob()
+	var second: MobState = _mob(3500)
+	_config.chain_chance_percent = 100
+	var player: PlayerState = PlayerState.new(_config, 0, 407)
+	player.start_prep(false)
+	player.gold = rite.cost
+	player.shop.rite_offers[0] = rite
+	assert_eq(player.buy_rite(0, 0), "")
+	assert_eq(player.gold, 0)
+	assert_ne(player.field.idols[0].check_rite(rite), "")
+	_field.copy_towers_from(player.field)
+	var tower: TowerState = _tower(&"spark")
+	DivineCombat.hit(_field, tower, first, 100)
+	assert_eq(second.max_hp - second.hp, 40)
+	first.wet_ticks_left = 20
+	DivineCombat.hit(_field, tower, first, 100)
+	assert_eq(first.max_hp - first.hp, 210, "первый удар по мокрой цели остался ×1,1")
+	assert_eq(second.max_hp - second.hp, 40 + 66, "мокрый переход 60% от 110")
+
+
+func test_surge_rite_slows_only_the_wet_carrier_on_an_actual_impulse() -> void:
+	var mob: MobState = _mob()
+	var neighbor: MobState = _mob(3500)
+	var rite: RiteData = load("res://data/rites/surge_slow.tres") as RiteData
+	_field.idols[0].apply_rite(rite)
+	var ghost: FieldState = FieldState.new(_config, 3, 1)
+	ghost.copy_towers_from(_field)
+	assert_eq(ghost.idols[0].surge_slow_percent, 25)
+	mob.is_in_wind = true
+	mob.burn_ticks_left = 30
+	WindReactions.apply(_field, mob)
+	assert_eq(mob.slow_percent, 0, "Огненный ветер не получает замедление")
+	mob.remove_status(&"burn")
+	mob.wet_ticks_left = 60
+	mob.wind_reaction_cooldown = 0
+	WindReactions.apply(_field, mob)
+	assert_eq(mob.progress, 2600)
+	assert_eq(mob.slow_percent, 25)
+	assert_eq(mob.slow_ticks_left, 20)
+	assert_eq(neighbor.slow_percent, 0)
+	assert_gt(neighbor.wet_ticks_left, 0)
+	WindReactions.apply(_field, mob)
+	assert_eq(mob.progress, 2600, "повтор сразу не сдвигает цель")

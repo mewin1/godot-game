@@ -20,6 +20,10 @@ var rage_percent: int = 0
 var upgrade_counts: Array[int] = []
 ## Индексы улучшений, видимые сейчас в лавке армии (казино — случайное подмножество).
 var offers: Array[int] = []
+## Подкрепление — часть приобретённых бойцов, базовые бойцы всегда идут сразу.
+var reserve_kind: StringName = &""
+var reserve_resist: StringName = &""
+var reserve_count: int = 0
 
 var _config: GameConfig
 
@@ -90,6 +94,14 @@ func get_total_upgrades() -> int:
 	return total
 
 
+## Есть ли открытый боец, которого сейчас нельзя купить прямо с витрины.
+func has_unoffered_upgrade(shop_level: int) -> bool:
+	for index: int in _config.army_upgrades.size():
+		if not offers.has(index) and check_upgrade_available(index, shop_level) == "":
+			return true
+	return false
+
+
 ## Казино армии: army_offer_count случайных открытых юнитов (0 — все открытые, прежние правила).
 func roll_offers(shop_level: int, rng: RandomNumberGenerator) -> void:
 	offers.clear()
@@ -114,6 +126,43 @@ func update_rage(damage_dealt: int) -> void:
 
 func get_unit_count() -> int:
 	return base_units + extra_units + added_mobs.size()
+
+
+func purchased_mobs() -> Array[MobData]:
+	var result: Array[MobData] = []
+	for i: int in extra_units:
+		result.append(_config.army_mob)
+	result.append_array(added_mobs)
+	return result
+
+
+func available_reserve_count(kind: StringName, resistance: StringName) -> int:
+	var count: int = 0
+	for data: MobData in purchased_mobs():
+		if data.id == kind and data.resist == resistance:
+			count += 1
+	return count
+
+
+func set_reserve(kind: StringName, resistance: StringName, count: int) -> String:
+	if count < 0 or count > available_reserve_count(kind, resistance):
+		return "В купленной армии нет столько бойцов этого типа"
+	reserve_kind = kind if count > 0 else &""
+	reserve_resist = resistance if count > 0 else &""
+	reserve_count = count
+	return ""
+
+
+## Индексы снимка build_pack: базовые и временные бойцы сюда не попадают.
+func reserve_indices() -> Array[int]:
+	var result: Array[int] = []
+	var purchased: Array[MobData] = purchased_mobs()
+	for i: int in purchased.size():
+		if result.size() >= reserve_count:
+			break
+		if purchased[i].id == reserve_kind and purchased[i].resist == reserve_resist:
+			result.append(base_units + i)
+	return result
 
 
 ## Армия на этот раунд: обычные юниты + добавленные, с бонусами HP и скорости.
@@ -153,6 +202,9 @@ func roll_buff_offers(shop_level: int, rng: RandomNumberGenerator) -> Array[Send
 
 
 func add_to_hash(hasher: StateHasher) -> void:
+	hasher.add_string(reserve_kind)
+	hasher.add_string(reserve_resist)
+	hasher.add(reserve_count)
 	hasher.add_many([base_units, hp_percent, speed_percent, extra_units, cost_discount, extra_income,
 			added_mobs.size(), temporary_mobs.size(), rage_percent])
 	hasher.add_many(upgrade_counts)

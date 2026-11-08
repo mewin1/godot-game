@@ -1,0 +1,1 @@
+buildings/bolt_16.png

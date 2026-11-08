@@ -46,6 +46,14 @@ func _run() -> void:
 	sim.siege_attackers.assign([1, 2])
 	for i: int in 3:
 		assert(sim.execute_command(0, UpgradeShopCommand.new()) == "")
+	# Бесплатные идолы — настоящий модальный выбор, закрываем его кнопкой отказа.
+	while player.idol_choices_left > 0:
+		scene._refresh_views()
+		assert(scene._idol_choice.visible)
+		scene._idol_choice._buttons[-1].pressed.emit()
+		sim.tick()
+	scene._refresh_views()
+	assert(not scene._idol_choice.visible)
 	for i: int in player.get_reserve_capacity():
 		player.shop.offers[0] = sim.config.towers[0]
 		player.shop.rite_offers[0] = null
