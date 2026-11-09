@@ -872,6 +872,7 @@ path_cells = Array[Vector2i]([Vector2i(5, 7), Vector2i(6, 7), Vector2i(7, 7), Ve
 build_regions = Array[Rect2i]([Rect2i(7, 5, 10, 2)])
 alley_cells = Array[Vector2i]([Vector2i(11, 9), Vector2i(11, 8)])
 cost = 40
+tribute = 10
 
 [sub_resource type="Resource" id="street_lower"]
 script = ExtResource("street")
@@ -880,6 +881,7 @@ path_cells = Array[Vector2i]([Vector2i(5, 13), Vector2i(6, 13), Vector2i(7, 13),
 build_regions = Array[Rect2i]([Rect2i(7, 14, 10, 2)])
 alley_cells = Array[Vector2i]([Vector2i(12, 11), Vector2i(12, 12)])
 cost = 80
+tribute = 15
 
 [sub_resource type="Resource" id="hero_ilya"]
 script = ExtResource("hero")

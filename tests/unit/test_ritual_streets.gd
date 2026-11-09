@@ -306,3 +306,24 @@ func test_split_mobs_really_walk_the_alley_and_survive_snapshot() -> void:
 		trial.tick()
 		copy.tick()
 	assert_eq(copy.state_hash(), trial.state_hash(), "С ветками забег после снимка бит-в-бит")
+
+
+func _until_dawn(trial: RitualTrial, dawn: int) -> void:
+	while trial.nights_survived() < dawn and trial.phase == RitualTrial.Phase.RUNNING:
+		trial.tick()
+
+
+func test_street_pays_tribute_each_dawn_after_its_entrance_night() -> void:
+	# Домов нет — золото меняется только подачей (прорвавшиеся враги наград не дают).
+	var trial: RitualTrial = _trial(5, 1000)
+	trial.hp = 100000
+	assert_eq(_street(trial), "", "Улица вечером — вход с 1-й ночи")
+	var tribute: int = _settings.streets[0].tribute
+	assert_true(tribute > 0, "У улицы есть подать")
+	var gold: int = trial.gold
+	_until_dawn(trial, 1)
+	assert_eq(trial.gold - gold, tribute, "Первый рассвет после ночи с новым входом — подать")
+	assert_eq(_street(trial), "", "Вторая улица днём — вход со 2-й ночи")
+	gold = trial.gold
+	_until_dawn(trial, 2)
+	assert_eq(trial.gold - gold, tribute + _settings.streets[1].tribute, "Обе улицы платят")

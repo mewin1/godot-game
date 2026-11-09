@@ -634,7 +634,8 @@ func _refresh_streets() -> void:
 		return
 	var street: RitualStreetData = settings.streets[trial.street_nights.size()]
 	_street_button.text = "Новая улица · %d" % street.cost
-	_street_button.tooltip_text = "%s: места под дома — сразу, новый вход для нежити — со следующей ночи.\nКвартал пустой: застройте его, иначе враги прорвутся." % street.title
+	_street_button.tooltip_text = "%s: места под дома — сразу, новый вход для нежити — со следующей ночи.\nКвартал пустой: застройте его, иначе враги прорвутся.\nПодать: +%d золота каждый рассвет, когда ночь с новым входом пережита." % [
+		street.title, street.tribute]
 	_street_button.disabled = trial.phase != RitualTrial.Phase.RUNNING or trial.gold < street.cost
 
 
@@ -778,9 +779,15 @@ func _announce_omen() -> void:
 	if not settings.is_endless() or trial.current_night() == _omen_night:
 		return
 	_omen_night = trial.current_night()
+	var parts: PackedStringArray = []
+	var tribute: int = trial.tribute_due(trial.nights_survived()) if trial.nights_survived() > 0 else 0
+	if tribute > 0:
+		parts.append("Рассвет: подать с улиц +%d золота." % tribute)
 	var night_omen: RitualOmenData = trial.plan().omen(_omen_night)
 	if night_omen != null:
-		_message.text = "Примета ночи %d — %s. %s" % [_omen_night, night_omen.title, night_omen.description]
+		parts.append("Примета ночи %d — %s. %s" % [_omen_night, night_omen.title, night_omen.description])
+	if not parts.is_empty():
+		_message.text = " ".join(parts)
 
 
 func _refresh() -> void:

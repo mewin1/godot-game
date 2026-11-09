@@ -649,6 +649,23 @@ func _street() -> String:
 	return ""
 
 
+## Подать с улиц: платит улица, чей вход был открыт в прошедшую ночь (пережили — получили).
+func _collect_tribute(dawn: int) -> void:
+	var total: int = tribute_due(dawn)
+	if total > 0:
+		gold += total
+		earned += total
+		_event(&"tribute", {"gold": total, "dawn": dawn})
+
+
+func tribute_due(dawn: int) -> int:
+	var total: int = 0
+	for index: int in street_nights.size():
+		if street_nights[index] <= dawn:
+			total += settings.streets[index].tribute
+	return total
+
+
 ## Поле видит пристроенные улицы (после снимка — из street_nights).
 func sync_streets() -> void:
 	field.open_streets = street_nights.size()
@@ -987,6 +1004,7 @@ func _boundaries() -> void:
 		# Частокол против тяжёлых — к ночи босса (решено в сессии, decisions.md).
 		if settings.nights.is_boss_night(dawn + 1):
 			palisades += 1
+		_collect_tribute(dawn)
 		# Соловей: засеки — частокол каждый рассвет, пока запас не полон.
 		if hero() != null and hero().dawn_palisades > 0:
 			palisades = maxi(palisades, mini(hero().palisade_cap, palisades + hero().dawn_palisades))

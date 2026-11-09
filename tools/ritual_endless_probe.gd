@@ -5,6 +5,8 @@ extends SceneTree
 
 ## Копия правил: аргументы `-- --hp=9 --budget=14 --boss=1800` меняют рост здоровья/бюджета ночей
 ## и здоровье босса; `--base`, `--gold`, `--spread`, `--kill=150` (награда в процентах) — тоже только в этом прогоне.
+## Бот покупает улицы (ключ `--streets`): днём, со 2-й ночи, если останется запас.
+var _streets: bool = false
 var SETTINGS: RitualTrialConfig = (load("res://data/ritual/endless.tres") as RitualTrialConfig).duplicate(true)
 const TPS: int = 20
 const LIMIT_TICKS: int = 20 * 60 * 90
@@ -40,6 +42,8 @@ func _run() -> void:
 			heroes.clear()
 			for part: String in argument.trim_prefix("--heroes=").split(","):
 				heroes.append(part.to_int())
+		if argument == "--streets":
+			_streets = true
 		if argument.begins_with("--only="):
 			only = argument.trim_prefix("--only=")
 		if argument.begins_with("--seeds="):
@@ -103,6 +107,9 @@ func _spend(trial: RitualTrial) -> void:
 		if rite_at_night >= 0 and trial.gold >= trial.rite_cost(rite_at_night) + 60:
 			trial.execute(RitualCommand.new(RitualCommand.Action.RITE, rite_at_night))
 		return
+	if _streets and trial.can_grow() and trial.current_night() >= 2 \
+			and trial.gold >= trial.street_cost() + 25:
+		trial.execute(RitualCommand.new(RitualCommand.Action.STREET))
 	if _merge(trial):
 		return
 	var bought: bool = false

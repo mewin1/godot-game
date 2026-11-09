@@ -13,3 +13,5 @@ extends Resource
 ## улицы проулок открывается и часть пачки сворачивает в него.
 @export var alley_cells: Array[Vector2i] = []
 @export var cost: int = 0
+## Подать (docs/36 §3): золото каждый рассвет после ночи, в которую вход улицы уже был открыт.
+@export var tribute: int = 0
