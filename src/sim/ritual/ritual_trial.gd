@@ -108,7 +108,8 @@ func execute(command: RitualCommand) -> String:
 		return "Контроль: бой без команд"
 	var economic: bool = command.action in [RitualCommand.Action.BUY,
 		RitualCommand.Action.SELL, RitualCommand.Action.RITE, RitualCommand.Action.MERGE,
-		RitualCommand.Action.ENCHANT, RitualCommand.Action.REPAIR, RitualCommand.Action.REROLL]
+		RitualCommand.Action.ENCHANT, RitualCommand.Action.REPAIR, RitualCommand.Action.REROLL,
+		RitualCommand.Action.REPAIR_HOUSE]
 	if phase == Phase.RUNNING and economic and (economy_frozen or control_mode != ControlMode.OPEN):
 		return "В этой контрольной ветке состав зафиксирован"
 	if command.action in [RitualCommand.Action.MOVE, RitualCommand.Action.CANCEL_MOVE] \
@@ -138,6 +139,8 @@ func execute(command: RitualCommand) -> String:
 			error = _repair()
 		RitualCommand.Action.REROLL:
 			error = _reroll()
+		RitualCommand.Action.REPAIR_HOUSE:
+			error = _repair_house(command.tower_id)
 	if error.is_empty():
 		_record_command(command)
 	return error
@@ -175,6 +178,8 @@ func _buy(index: int, cell: Vector2i, rotation: int, into_id: int = 0) -> String
 	var tower: TowerState = field.add_tower(data, cell, posmod(rotation, TowerState.ROTATIONS))
 	if slot >= 0:
 		offers[slot] = -1
+	if settings.wear_ticks > 0:
+		tower.durability = settings.max_durability(1)
 	tower.invested_total = cost
 	gold -= tower.invested_total
 	spent += tower.invested_total
@@ -190,6 +195,8 @@ func _buy_into(twin: TowerState, cost: int) -> String:
 	gold -= cost
 	spent += cost
 	twin.invested_total += cost
+	if twin.durability >= 0:
+		twin.durability += settings.max_durability(1)
 	_raise_level(twin)
 	return ""
 
@@ -271,6 +278,9 @@ func _merge(source_id: int, target_id: int) -> String:
 	if target.level >= settings.combat.max_tower_level:
 		return "Уровень уже максимальный"
 	target.invested_total += source.invested_total
+	if target.durability >= 0 and source.durability >= 0:
+		# Прочность складывается, а не восстанавливается: слияние — не бесплатный ремонт.
+		target.durability += source.durability
 	for effect: int in source.enchantments:
 		if not target.has_enchantment(effect):
 			target.enchantments.append(effect)
@@ -287,6 +297,8 @@ func _raise_level(tower: TowerState) -> void:
 	if tower.level >= settings.combat.max_tower_level:
 		return
 	tower.level += 1
+	if tower.durability >= 0:
+		tower.durability = mini(tower.durability, settings.max_durability(tower.level))
 	# Перестройка в бою стоит обычной установки; незавершённый перенос становится окончательным.
 	move_origins.erase(tower.id)
 	move_rotations.erase(tower.id)
@@ -442,6 +454,51 @@ func _enchant(index: int, tower_id: int) -> String:
 	gold -= cost
 	spent += cost
 	field.mark_towers_changed()
+	return ""
+
+
+## Цена ремонта дома: доля цены постройки его уровня за недостающую прочность, со скидкой стихии.
+func repair_cost(tower: TowerState) -> int:
+	if tower.durability < 0:
+		return 0
+	var full: int = settings.max_durability(tower.level)
+	var missing: int = full - tower.durability
+	if missing <= 0:
+		return 0
+	var index: int = settings.combat.towers.find(tower.data)
+	var value: int = discounted(settings.costs[index] << (tower.level - 1), tower.data.god)
+	return maxi(1, value * settings.repair_percent * missing / (100 * full))
+
+
+func repair_all_cost() -> int:
+	var total: int = 0
+	for tower: TowerState in field.towers:
+		total += repair_cost(tower)
+	return total
+
+
+func _repair_house(tower_id: int) -> String:
+	var targets: Array[TowerState] = []
+	if tower_id == 0:
+		targets = field.towers.duplicate()
+	else:
+		var tower: TowerState = field.get_tower(tower_id)
+		if tower == null:
+			return "Выберите дом"
+		targets.append(tower)
+	var cost: int = 0
+	for tower: TowerState in targets:
+		cost += repair_cost(tower)
+	if cost == 0:
+		return "Дом цел" if tower_id != 0 else "Все дома целы"
+	if gold < cost:
+		return "Не хватает золота"
+	gold -= cost
+	spent += cost
+	for tower: TowerState in targets:
+		if tower.durability >= 0:
+			tower.durability = settings.max_durability(tower.level)
+	_event(&"repair_house", {"tower": tower_id, "cost": cost})
 	return ""
 
 

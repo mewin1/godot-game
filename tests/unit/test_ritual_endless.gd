@@ -679,3 +679,102 @@ func test_rite_tooltip_shows_current_next_and_cap() -> void:
 	assert_string_contains(text, "Скидка на постройки этой стихии: −4%")
 	var damage: String = RitualShopPanel.rite_tooltip(trial, _rite_index(&"war_power"))
 	assert_string_contains(damage, "без предела")
+
+
+# --- Шаг 6: износ домов от боя и ремонт ---
+
+
+func _max_wear(level: int) -> int:
+	return _settings.max_durability(level)
+
+
+func test_new_house_has_full_durability_by_level() -> void:
+	var trial: RitualTrial = _trial(1)
+	trial.gold = 100
+	assert_eq(trial.execute(RitualCommand.new(RitualCommand.Action.BUY, trial.offers[0], Vector2i(10, 3))), "")
+	assert_eq(trial.field.towers[0].durability, _max_wear(1))
+	assert_eq(_max_wear(2), _max_wear(1) * 2, "Прочность растёт как число копий")
+
+
+func test_house_wears_by_time_in_battle_not_per_shot() -> void:
+	var trial: RitualTrial = _trial(1)
+	var tower: TowerState = _place(trial, &"bolt", Vector2i(10, 3), 1)
+	tower.durability = _max_wear(1)
+	trial.field.fire_trial_towers()
+	assert_eq(tower.durability, _max_wear(1), "Без врагов дом не изнашивается")
+	_crowd(trial, 0, 1, 9000)
+	trial.field.fire_trial_towers()
+	assert_eq(tower.durability, _max_wear(1) - trial.field.get_tower_cooldown(tower),
+		"Выстрел списывает время до следующего — быстрые дома не наказаны")
+
+
+func test_worn_house_is_weaker_then_silent_but_stays() -> void:
+	var trial: RitualTrial = _trial(1)
+	var tower: TowerState = _place(trial, &"bolt", Vector2i(10, 3), 1)
+	tower.durability = _max_wear(1) / 2 + 1
+	var full: int = trial.field.get_tower_damage(tower)
+	tower.durability = _max_wear(1) / 2
+	assert_eq(trial.field.get_tower_damage(tower), full * _settings.worn_damage_percent / 100, "Ниже половины — слабее")
+	tower.durability = 0
+	var mob: RitualMob = _crowd(trial, 0, 1, 9000)[0]
+	trial.field.fire_trial_towers()
+	assert_eq(mob.hp, mob.max_hp, "На нуле дом молчит")
+	assert_eq(trial.field.towers.size(), 1, "…но стоит")
+
+
+func test_splash_does_not_wear_other_houses() -> void:
+	var trial: RitualTrial = _trial(1)
+	var brazier: TowerState = _place(trial, &"brazier", Vector2i(9, 3), 2)
+	var idle: TowerState = _place(trial, &"wind", Vector2i(3, 9), 1)
+	brazier.durability = _max_wear(2)
+	idle.durability = _max_wear(1)
+	_crowd(trial, 0, 3, 8600)
+	trial.field.fire_trial_towers()
+	assert_true(brazier.durability < _max_wear(2))
+	assert_eq(idle.durability, _max_wear(1), "Область и бой не трогают другие дома")
+
+
+func test_repair_is_cheaper_than_new_and_repair_all_sums() -> void:
+	var trial: RitualTrial = _trial(1)
+	var first: TowerState = _place(trial, &"bolt", Vector2i(10, 3), 1)
+	var second: TowerState = _place(trial, &"bolt", Vector2i(4, 3), 1)
+	first.durability = 0
+	second.durability = _max_wear(1) / 2
+	var one: int = trial.repair_cost(first)
+	assert_true(one > 0 and one < _settings.costs[0], "Полный ремонт дешевле новой постройки")
+	var total: int = trial.repair_all_cost()
+	assert_eq(total, one + trial.repair_cost(second))
+	trial.gold = total
+	assert_eq(trial.execute(RitualCommand.new(RitualCommand.Action.REPAIR_HOUSE, 0, Vector2i.ZERO, 0, 0)), "")
+	assert_eq(trial.gold, 0)
+	assert_eq(first.durability, _max_wear(1))
+	assert_eq(second.durability, _max_wear(1))
+	assert_eq(trial.execute(RitualCommand.new(RitualCommand.Action.REPAIR_HOUSE, 0, Vector2i.ZERO, 0, first.id)),
+		"Дом цел")
+
+
+func test_repair_gets_own_element_discount() -> void:
+	var trial: RitualTrial = _trial(1)
+	var tower: TowerState = _place(trial, &"bolt", Vector2i(10, 3), 1)
+	tower.durability = 0
+	var full: int = trial.repair_cost(tower)
+	_buy_rite(trial, &"war_range", 8)
+	assert_true(trial.repair_cost(tower) < full, "Ремонт своей стихии дешевле")
+
+
+func test_merge_adds_durability_and_rescales() -> void:
+	var trial: RitualTrial = _trial(1)
+	var first: TowerState = _place(trial, &"bolt", Vector2i(3, 3), 1)
+	var second: TowerState = _place(trial, &"bolt", Vector2i(4, 3), 1)
+	first.durability = 300
+	second.durability = 500
+	assert_eq(trial.execute(RitualCommand.new(RitualCommand.Action.MERGE, second.id, Vector2i.ZERO, 0, first.id)), "")
+	assert_eq(second.durability, 800, "Прочность складывается — слияние не бесплатный ремонт")
+	assert_eq(second.level, 2)
+
+
+func test_old_trial_has_no_wear() -> void:
+	var old: RitualTrialConfig = load("res://data/ritual/trial.tres") as RitualTrialConfig
+	var trial: RitualTrial = RitualTrial.new(old, 0)
+	for tower: TowerState in trial.field.towers:
+		assert_eq(tower.durability, -1)

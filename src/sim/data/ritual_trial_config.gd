@@ -39,6 +39,13 @@ extends Resource
 @export var level_names: Array[String] = []
 ## Поведение построек по уровням; пусто — уровень меняет только урон (прежний опыт).
 @export var building_levels: Array[RitualBuildingLevels] = []
+## Износ домов от боя (docs/34 §5): прочность дома 1-го уровня в тиках боя; уровень ×2 (как копии).
+## 0 — износа нет (прежний опыт).
+@export var wear_ticks: int = 0
+## Ниже половины прочности дом бьёт этой долей урона; на нуле молчит, но стоит.
+@export var worn_damage_percent: int = 60
+## Полный ремонт стоит такую долю цены постройки этого уровня (со скидкой стихии).
+@export var repair_percent: int = 40
 @export var repair_hp: int = 5
 @export var repair_cost: int = 10
 ## Здоровье тела врагов по суткам, в процентах.
@@ -117,6 +124,10 @@ func idol_curve_bonus(idol: IdolState, effect: RiteData.Effect) -> int:
 		if curve != null:
 			total += curve.bonus(count)
 	return total
+
+
+func max_durability(level: int) -> int:
+	return wear_ticks << maxi(0, level - 1)
 
 
 func is_endless() -> bool:

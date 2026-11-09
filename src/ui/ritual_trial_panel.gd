@@ -38,6 +38,8 @@ var _enchant_index: int = -1
 var _repair_button: Button
 var _defeat: PanelContainer
 var _scout: RitualScoutQueue
+var _repair_all_button: Button
+var _repair_house_button: Button
 var _defeat_text: Label
 
 
@@ -97,6 +99,12 @@ func _build_ui() -> void:
 	_repair_button = _button(upkeep, "Починить терем +%d · %d" % [settings.repair_hp, settings.repair_cost], _repair)
 	_repair_button.tooltip_text = "Терем +%d HP за %d золота (не выше %d)" % [
 		settings.repair_hp, settings.repair_cost, settings.hero_hp]
+	if settings.wear_ticks > 0:
+		var houses: HBoxContainer = HBoxContainer.new()
+		left.add_child(houses)
+		_repair_all_button = _button(houses, "Починить всё", _repair_houses.bind(0))
+		_repair_all_button.tooltip_text = "Вернуть полную прочность всем домам. Ремонт дешевле новой постройки."
+		_repair_house_button = _button(houses, "Починить дом", _repair_selected)
 	var gap: Control = Control.new()
 	gap.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	gap.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -457,6 +465,26 @@ func _reroll() -> void:
 	_issue(RitualCommand.new(RitualCommand.Action.REROLL))
 
 
+func _repair_houses(tower_id: int) -> void:
+	_issue(RitualCommand.new(RitualCommand.Action.REPAIR_HOUSE, 0, Vector2i.ZERO, 0, tower_id))
+
+
+func _repair_selected() -> void:
+	_repair_houses(board.selected_id)
+
+
+func _refresh_wear(selected: TowerState) -> void:
+	if _repair_all_button == null:
+		return
+	var total: int = trial.repair_all_cost()
+	_repair_all_button.text = "Починить всё · %d" % total
+	_repair_all_button.disabled = total == 0 or trial.gold < total
+	var one: int = trial.repair_cost(selected) if selected != null else 0
+	_repair_house_button.visible = one > 0
+	_repair_house_button.text = "Починить дом · %d" % one
+	_repair_house_button.disabled = trial.gold < one
+
+
 func _repair() -> void:
 	_issue(RitualCommand.new(RitualCommand.Action.REPAIR))
 
@@ -600,6 +628,7 @@ func _refresh() -> void:
 		slot.refresh(trial.field.idols[index], true, settings.combat.ticks_per_second)
 	var selected: TowerState = trial.field.get_tower(board.selected_id)
 	_selection.text = "Башня: не выбрана" if selected == null else _selection_text(selected)
+	_refresh_wear(selected)
 	_repair_button.disabled = trial.phase != RitualTrial.Phase.RUNNING or trial.hp >= settings.hero_hp \
 			or trial.gold < settings.repair_cost
 	_shop._selection_panel.visible = selected != null
@@ -622,7 +651,12 @@ func _selection_text(tower: TowerState) -> String:
 		lines.append("Вложено %d · %s" % [tower.invested_total, state])
 		return "\n".join(lines)
 	# Одной строкой: вторая строка панели выбора уходит под всплывающее сообщение внизу поля.
-	return "%s — %s · вложено %d%s" % [lines[0], behavior.note, tower.invested_total,
+	var wear: String = ""
+	if tower.durability >= 0:
+		var full: int = settings.max_durability(tower.level)
+		wear = " · прочность %d%%%s" % [tower.durability * 100 / full,
+			" — молчит" if tower.durability == 0 else " — ослаб" if tower.durability * 2 <= full else ""]
+	return "%s — %s%s · вложено %d%s" % [lines[0], behavior.note, wear, tower.invested_total,
 		" · устанавливается" if tower.is_action_blocked() else ""]
 
 

@@ -47,6 +47,10 @@ func _check_endless(scene: PackedScene) -> void:
 	panel._refresh()
 	panel._on_cell(Vector2i(10, 3), false)
 	_check(panel._selection.text.contains(panel.settings.level_name(1)), "Не виден материал дома: " + panel._selection.text)
+	_check(panel._selection.text.contains("прочность 100%"), "Не видна прочность дома: " + panel._selection.text)
+	panel.trial.field.towers[0].durability = 0
+	panel._repair_houses(0)
+	_check(panel.trial.field.towers[0].durability == panel.settings.max_durability(1), "«Починить всё» не чинит")
 	cards = panel.shop_report()["cards"]
 	_check(cards == panel.settings.market_offers - 1,
 		"Купленная карточка осталась на прилавке")

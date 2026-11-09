@@ -31,6 +31,9 @@ var ward_ticks: int = 0
 var action_lock_ticks: int = 0
 var haste_ticks: int = 0
 var haste_percent: int = 0
+## Прочность дома «Обряда» в тиках боя (docs/34 §5); -1 — износа нет (PvP, прежний опыт).
+## Не входит в хэш PvP: там всегда -1.
+var durability: int = -1
 
 
 func is_action_blocked() -> bool:

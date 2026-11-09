@@ -4,8 +4,9 @@ extends RefCounted
 
 ## MERGE: tower_id — сливаемая копия, item — ID башни, которая растёт. ENCHANT: item — чара.
 ## BUY с tower_id — новая копия сразу сливается с этой башней 1-го уровня.
-## REROLL — платно обновить прилавок лавки с азартом.
-enum Action { START, BUY, MOVE, SELL, RITE, SKILL, PALISADE, CANCEL_MOVE, MERGE, ENCHANT, REPAIR, REROLL }
+## REROLL — платно обновить прилавок лавки с азартом. REPAIR_HOUSE: tower_id — один дом, 0 — все.
+enum Action { START, BUY, MOVE, SELL, RITE, SKILL, PALISADE, CANCEL_MOVE, MERGE, ENCHANT, REPAIR, REROLL,
+		REPAIR_HOUSE }
 var action: Action
 var item: int
 var cell: Vector2i

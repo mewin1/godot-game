@@ -114,10 +114,18 @@ func _advance_all_mobs() -> void:
 
 #region Поведение по уровню (docs/34 §2); без данных уровней — прежние формулы FieldState.
 
+## Урон с поведением уровня и износом: ниже половины прочности — слабее.
 func get_tower_damage(tower: TowerState) -> int:
+	var damage: int = _level_damage(tower)
+	if tower.durability >= 0 and tower.durability * 2 <= settings.max_durability(tower.level):
+		damage = damage * settings.worn_damage_percent / 100
+	return damage
+
+
+func _level_damage(tower: TowerState) -> int:
 	var behavior: RitualLevelBehavior = settings.level_behavior(tower)
 	if behavior == null:
-		return super(tower)
+		return super.get_tower_damage(tower)
 	if _are_bonuses_dirty:
 		_refresh_bonuses()
 	var damage: int = tower.data.damage * behavior.damage_percent / 100 + behavior.damage_add
@@ -181,6 +189,17 @@ func _shoot(tower: TowerState, target: MobState) -> void:
 			continue
 		if _is_in_range(target_position, get_mob_position(mob), splash_radius):
 			_hit(mob, splash_damage, tower.data, tower)
+
+
+## Износ от боя: изношенный до нуля дом молчит; выстрел списывает время до следующего
+## выстрела (то есть время в бою), поэтому частые выстрелы не наказаны.
+func _fire(tower: TowerState) -> bool:
+	if tower.durability == 0:
+		return false
+	var fired: bool = super(tower)
+	if fired and tower.durability > 0:
+		tower.durability = maxi(0, tower.durability - get_tower_cooldown(tower))
+	return fired
 
 
 func _level_pierce(tower_id: int) -> int:
