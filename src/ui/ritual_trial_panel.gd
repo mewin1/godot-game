@@ -95,6 +95,8 @@ func _build_ui() -> void:
 	var hud_tools: Node = _hud._pause_button.get_parent()
 	hud_tools.add_child(_fast_button)
 	hud_tools.move_child(_fast_button, _hud._pause_button.get_index() + 1)
+	# Ряд привязан к правому краю: лишняя кнопка сдвигает его влево, а не за край экрана.
+	_hud._prep_tools.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	var body: HBoxContainer = HBoxContainer.new()
 	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	body.mouse_filter = Control.MOUSE_FILTER_IGNORE
