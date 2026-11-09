@@ -171,7 +171,7 @@ func _draw() -> void:
 	for base: MobState in field.mobs:
 		_draw_mob(base as RitualMob)
 	if trial.hero_due >= 0:
-		_ring(field.lane_point(trial.hero_lane, trial.hero_progress), trial.settings.hero_radius, Color("f7d886"), 3)
+		_ring(field.lane_point(trial.hero_lane, trial.hero_progress), trial.skill_radius(), Color("f7d886"), 3)
 	for hit: Hit in _hits:
 		var endpoint: Vector2 = stage.project_milli(hit.finish, 1.0)
 		if hit.amount == "":
@@ -261,14 +261,16 @@ func _draw_preview() -> void:
 		var spot: Vector2i = road_spot(hover_cell)
 		if spot.y >= 0:
 			var point: Vector2i = trial.field.lane_point(spot.x, spot.y)
-			_ring(point, trial.settings.hero_radius if action == &"skill" else 450, Color("f4dca0"))
+			_ring(point, trial.skill_radius() if action == &"skill" else 450, Color("f4dca0"))
 			if action == &"skill":
+				var whistle: bool = trial.hero() != null and trial.hero().skill == RitualHeroData.Skill.WHISTLE
 				for base: MobState in trial.field.mobs:
 					var mob: RitualMob = base as RitualMob
-					if trial.field._is_in_range(point,
-							trial.field.get_mob_position(mob), trial.settings.hero_radius):
-						_text(_point(trial.field.get_mob_position(mob)) + Vector2(8, -12),
-							"−%d%s" % [trial.hero_damage(mob), " щит" if mob.ward_hp > 0 else ""], Color.WHITE)
+					if mob.is_alive() and trial.field._is_in_range(point,
+							trial.field.get_mob_position(mob), trial.skill_radius()):
+						var note: String = "назад" if whistle \
+								else "−%d%s" % [trial.hero_damage(mob), " щит" if mob.ward_hp > 0 else ""]
+						_text(_point(trial.field.get_mob_position(mob)) + Vector2(8, -12), note, Color.WHITE)
 			else:
 				var candidate: MobState = null
 				var candidate_gap: int = 0

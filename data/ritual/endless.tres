@@ -13,6 +13,7 @@
 [ext_resource type="Script" path="res://src/sim/data/ritual_rite_curve.gd" id="rite_curve"]
 [ext_resource type="Script" path="res://src/sim/data/ritual_gift_data.gd" id="gift"]
 [ext_resource type="Script" path="res://src/sim/data/ritual_street_data.gd" id="street"]
+[ext_resource type="Script" path="res://src/sim/data/ritual_hero_data.gd" id="hero"]
 [ext_resource type="Resource" path="res://data/ritual/rites/war_range.tres" id="rite_3"]
 [ext_resource type="Resource" path="res://data/ritual/rites/war_volley.tres" id="rite_4"]
 [ext_resource type="Resource" path="res://data/ritual/rites/svarog_heat.tres" id="rite_5"]
@@ -730,8 +731,8 @@ extra = 60
 [sub_resource type="Resource" id="gift_ilya_twice"]
 script = ExtResource("gift")
 id = &"ilya_twice"
-display_name = "Два удара Ильи"
-description = "Удар Ильи бьёт дважды."
+display_name = "Богатырская удаль"
+description = "Навык героя срабатывает дважды (Яге — два варева)."
 effect = 3
 god = &""
 value = 0
@@ -776,7 +777,7 @@ extra = 0
 script = ExtResource("gift")
 id = &"living_water"
 display_name = "Живая вода"
-description = "Илья здоров и получает +25 HP сверх предела."
+description = "Герой здоров и получает +25 HP сверх предела."
 effect = 8
 god = &""
 value = 25
@@ -841,6 +842,62 @@ build_regions = Array[Rect2i]([Rect2i(7, 14, 10, 2)])
 alley_cells = Array[Vector2i]([Vector2i(12, 11), Vector2i(12, 12)])
 cost = 80
 
+[sub_resource type="Resource" id="hero_ilya"]
+script = ExtResource("hero")
+id = &"ilya"
+display_name = "Илья Муромец"
+short_name = "Илья"
+accusative = "Илью"
+fallen_text = "Илья пал"
+skill_name = "Удар Ильи"
+passive_text = "Крепкий: 50 HP в сторожке."
+skill_text = "Палица: через 1 с враги в круге теряют 45% текущего здоровья (не больше 500). Каждые 45 с."
+portrait = "res://data/visuals/portraits/ilya.tres"
+model = "res://assets/noir_h3d/heroes/ilya.glb"
+hp = 50
+skill = 0
+cooldown_ticks = 900
+warning_ticks = 20
+radius_milli = 2200
+percent = 45
+cap = 500
+[sub_resource type="Resource" id="hero_solovey"]
+script = ExtResource("hero")
+id = &"solovey"
+display_name = "Соловей-Разбойник"
+short_name = "Соловей"
+accusative = "Соловья"
+fallen_text = "Соловей пал"
+skill_name = "Свист"
+passive_text = "Засеки: каждый рассвет +1 частокол (в запасе до 2). 45 HP."
+skill_text = "Свист: враги в круге отлетают на 3 клетки назад и оглушены на 2 с (боссы — на 1,5 клетки). Каждые 40 с."
+portrait = "res://data/visuals/portraits/solovey.tres"
+model = "res://assets/noir_h3d/heroes/solovey.glb"
+hp = 45
+skill = 1
+cooldown_ticks = 800
+warning_ticks = 10
+radius_milli = 2000
+knockback_milli = 3000
+stun_ticks = 40
+dawn_palisades = 1
+palisade_cap = 2
+[sub_resource type="Resource" id="hero_baba_yaga"]
+script = ExtResource("hero")
+id = &"baba_yaga"
+display_name = "Баба-Яга"
+short_name = "Яга"
+accusative = "Ягу"
+fallen_text = "Баба-Яга пала"
+skill_name = "Варево"
+passive_text = "Ступа: два обновления лавки в сутки бесплатно. 40 HP."
+skill_text = "Варево: следующая купленная постройка встаёт сразу каменной (2-й уровень). Каждые 60 с."
+portrait = "res://data/visuals/portraits/baba_yaga.tres"
+model = "res://assets/noir_h3d/heroes/baba_yaga.glb"
+hp = 40
+skill = 2
+cooldown_ticks = 1200
+free_rerolls = 2
 [resource]
 script = ExtResource("settings")
 combat = ExtResource("combat")
@@ -848,6 +905,7 @@ costs = Array[int]([12, 8, 18, 12, 16, 10, 10, 18, 8, 14])
 rites = Array[ExtResource("rite")]([ExtResource("rite_0"), ExtResource("rite_1"), ExtResource("rite_2"), ExtResource("rite_3"), ExtResource("rite_4"), ExtResource("rite_5"), ExtResource("rite_6"), ExtResource("rite_7"), ExtResource("rite_8"), ExtResource("rite_9"), ExtResource("rite_10"), ExtResource("rite_11"), ExtResource("rite_12"), ExtResource("rite_13")])
 enemies = Array[ExtResource("mob")]([ExtResource("mob_0"), ExtResource("mob_1"), ExtResource("mob_2"), ExtResource("mob_3"), ExtResource("mob_4"), ExtResource("mob_5"), ExtResource("mob_6"), ExtResource("mob_7")])
 build_regions = Array[Rect2i]([Rect2i(7, 8, 4, 2), Rect2i(12, 8, 5, 2), Rect2i(7, 11, 5, 2), Rect2i(13, 11, 4, 2)])
+heroes = Array[ExtResource("hero")]([SubResource("hero_ilya"), SubResource("hero_solovey"), SubResource("hero_baba_yaga")])
 streets = Array[ExtResource("street")]([SubResource("street_upper"), SubResource("street_lower")])
 hero_hp = 50
 start_gold = 75

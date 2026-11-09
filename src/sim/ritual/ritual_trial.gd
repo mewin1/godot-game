@@ -30,6 +30,10 @@ var hero_ready: int = 0
 var hero_due: int = -1
 var hero_progress: int = 0
 var hero_lane: int = 0
+## Выбранный герой забега (индекс settings.heroes); у прежнего опыта героев нет — Илья из настроек.
+var hero_index: int = 0
+## Варево Яги: сколько следующих построек встанут сразу 2-го уровня.
+var brew_charges: int = 0
 var result: String = ""
 var title: String = ""
 var install_until: Dictionary[int, int] = {}
@@ -60,8 +64,9 @@ var street_nights: Array[int] = []
 var _plan: RitualNightPlan
 
 
-func _init(rules: RitualTrialConfig, loadout_index: int = 0, seed_value: int = -1) -> void:
+func _init(rules: RitualTrialConfig, loadout_index: int = 0, seed_value: int = -1, hero_choice: int = 0) -> void:
 	settings = rules
+	hero_index = clampi(hero_choice, 0, maxi(0, rules.heroes.size() - 1))
 	var hasher: StateHasher = StateHasher.new()
 	RitualStateCodec.hash_value(hasher, RitualStateCodec.rules_state(rules))
 	rules_hash = hasher.value
@@ -71,7 +76,7 @@ func _init(rules: RitualTrialConfig, loadout_index: int = 0, seed_value: int = -
 	field.trial_event.connect(_on_field_event)
 	field.movement_completed.connect(_resolve_palisade)
 	field.hit_observed.connect(_on_hit_observed)
-	hp = rules.hero_hp
+	hp = max_hp()
 	gold = rules.start_gold
 	if rules.is_endless():
 		# Забег начинается вечером сразу, без кнопки «Начать» (docs/34 §8).
@@ -207,6 +212,13 @@ func _buy(index: int, cell: Vector2i, rotation: int, into_id: int = 0) -> String
 	tower.invested_total = cost
 	gold -= tower.invested_total
 	spent += tower.invested_total
+	if brew_charges > 0 and settings.is_endless():
+		# Варево Яги: постройка сразу каменная, как после слияния двух.
+		brew_charges -= 1
+		tower.level = 2
+		if settings.wear_ticks > 0:
+			tower.durability = settings.max_durability(2)
+		field.mark_towers_changed()
 	if phase == Phase.RUNNING:
 		_lock(tower)
 	return ""
@@ -254,7 +266,10 @@ func discount_bp(god: StringName) -> int:
 
 ## Цена следующего обновления прилавка в эти сутки.
 func reroll_cost() -> int:
-	return settings.reroll_cost + settings.reroll_cost_step * rerolls_today
+	var free: int = hero().free_rerolls if hero() != null else 0
+	if rerolls_today < free:
+		return 0
+	return settings.reroll_cost + settings.reroll_cost_step * (rerolls_today - free)
 
 
 func _reroll() -> String:
@@ -595,14 +610,14 @@ func _repair_house(tower_id: int) -> String:
 func _repair() -> String:
 	if phase != Phase.RUNNING:
 		return "Чинить можно только в бою"
-	if hp >= settings.hero_hp:
+	if hp >= max_hp():
 		# В бесконечном забеге HP — у Ильи в сторожке; «починка терема» стала лечением Ильи.
 		return "Илья здоров" if settings.is_endless() else "Терем цел"
 	if gold < settings.repair_cost:
 		return "Не хватает золота"
 	gold -= settings.repair_cost
 	spent += settings.repair_cost
-	hp = mini(settings.hero_hp, hp + settings.repair_hp)
+	hp = mini(max_hp(), hp + settings.repair_hp)
 	_event(&"repair", {"hp": hp})
 	return ""
 
@@ -696,14 +711,65 @@ func palisade_at(mob: MobState) -> int:
 
 func _skill(lane: int, progress: int) -> String:
 	if phase != Phase.RUNNING or tick_count < hero_ready or hero_due >= 0:
-		return "Илья не готов"
+		if hero() != null and not hero().needs_spot():
+			return "%s ещё не готово" % hero().skill_name
+		return "%s не готов" % hero_name()
+	var data: RitualHeroData = hero()
+	if data != null and data.skill == RitualHeroData.Skill.BREW:
+		brew_charges += 1 + gift_count(RitualGiftData.Effect.HERO_TWICE)
+		hero_ready = tick_count + data.cooldown_ticks
+		_event(&"brew", {"charges": brew_charges})
+		return ""
 	if not valid_spot(lane, progress):
 		return "Выберите точку дороги"
 	hero_lane = lane
 	hero_progress = progress
-	hero_due = tick_count + settings.hero_warning
-	hero_ready = tick_count + settings.hero_cooldown
+	hero_due = tick_count + (data.warning_ticks if data != null else settings.hero_warning)
+	hero_ready = tick_count + (data.cooldown_ticks if data != null else settings.hero_cooldown)
 	return ""
+
+
+#region Герой
+## Герой забега; null — прежний опыт без списка героев (Илья из общих настроек).
+func hero() -> RitualHeroData:
+	return settings.heroes[hero_index] if hero_index < settings.heroes.size() else null
+
+
+func max_hp() -> int:
+	return hero().hp if hero() != null else settings.hero_hp
+
+
+func hero_name() -> String:
+	return hero().short_name if hero() != null else "Илья"
+
+
+func skill_radius() -> int:
+	return hero().radius_milli if hero() != null else settings.hero_radius
+
+
+func _hero_percent() -> int:
+	return hero().percent if hero() != null else settings.hero_percent
+
+
+func _hero_cap() -> int:
+	return hero().cap if hero() != null else settings.hero_cap
+
+
+## Свист: враги в круге отлетают назад по своей дороге и оглушены; боссы — вдвое ближе.
+func _whistle() -> void:
+	var data: RitualHeroData = hero()
+	var point: Vector2i = field.lane_point(hero_lane, hero_progress)
+	for mob: MobState in field.mobs:
+		if not mob.is_alive() or not field._is_in_range(point, field.get_mob_position(mob), data.radius_milli):
+			continue
+		var push: int = data.knockback_milli
+		if mob.data.tags.has(settings.boss_tag):
+			push /= 2
+		mob.progress = maxi(0, mob.progress - push)
+		mob.previous_progress = mob.progress
+		mob.stun_ticks_left = maxi(mob.stun_ticks_left, data.stun_ticks)
+		_event(&"whistle_hit", {"mob": mob.id, "push": push})
+#endregion
 
 
 func _palisade(lane: int, progress: int) -> String:
@@ -731,7 +797,7 @@ func eligible_for_palisade(mob: MobState) -> bool:
 
 
 func hero_damage(mob: RitualMob) -> int:
-	var raw: int = mini(settings.hero_cap, mob.hp * settings.hero_percent / 100)
+	var raw: int = mini(_hero_cap(), mob.hp * _hero_percent() / 100)
 	return maxi(1, raw * settings.ward_physical_percent / 100) if mob.ward_hp > 0 \
 			else field.body_damage(mob, raw)
 
@@ -741,14 +807,17 @@ func _resolve_hero() -> void:
 		return
 	hero_due = -1
 	for strike: int in 1 + gift_count(RitualGiftData.Effect.HERO_TWICE):
-		_hero_strike()
+		if hero() != null and hero().skill == RitualHeroData.Skill.WHISTLE:
+			_whistle()
+		else:
+			_hero_strike()
 
 
 func _hero_strike() -> void:
 	var point: Vector2i = field.lane_point(hero_lane, hero_progress)
 	for mob: MobState in field.mobs:
-		if mob.is_alive() and field._is_in_range(point, field.get_mob_position(mob), settings.hero_radius):
-			var raw: int = mini(settings.hero_cap, mob.hp * settings.hero_percent / 100)
+		if mob.is_alive() and field._is_in_range(point, field.get_mob_position(mob), skill_radius()):
+			var raw: int = mini(_hero_cap(), mob.hp * _hero_percent() / 100)
 			var before_hp: int = mob.hp
 			var target: RitualMob = mob as RitualMob
 			var before_ward: int = target.ward_hp
@@ -918,6 +987,9 @@ func _boundaries() -> void:
 		# Частокол против тяжёлых — к ночи босса (решено в сессии, decisions.md).
 		if settings.nights.is_boss_night(dawn + 1):
 			palisades += 1
+		# Соловей: засеки — частокол каждый рассвет, пока запас не полон.
+		if hero() != null and hero().dawn_palisades > 0:
+			palisades = maxi(palisades, mini(hero().palisade_cap, palisades + hero().dawn_palisades))
 		# Рассвет: новый прилавок бесплатно, обновление снова дешёвое.
 		if settings.market_offers > 0:
 			rerolls_today = 0
@@ -969,7 +1041,7 @@ func _take_gift(index: int) -> String:
 		RitualGiftData.Effect.FREE_REPAIR:
 			free_repair_until = current_night() + gift.value - 1
 		RitualGiftData.Effect.HEAL_ILYA:
-			hp = maxi(hp, settings.hero_hp + gift.value)
+			hp = maxi(hp, max_hp() + gift.value)
 	sync_gifts()
 	_event(&"gift", {"gift": String(gift.id)})
 	return ""
@@ -996,7 +1068,7 @@ func _on_breached(mob: MobState) -> void:
 	if hp == 0:
 		phase = Phase.OVER
 		# Забег: враг дошёл до сторожки — удар по Илье; Илья погиб — сразу поражение.
-		result = "Илья пал" if settings.is_endless() else "Терем пал"
+		result = (hero().fallen_text if hero() != null else "Илья пал") if settings.is_endless() else "Терем пал"
 		field.stopped = true
 
 

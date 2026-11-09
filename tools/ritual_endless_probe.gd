@@ -17,6 +17,7 @@ func _initialize() -> void:
 func _run() -> void:
 	var seeds: Array[int] = [1, 2, 3]
 	var only: String = ""
+	var heroes: Array[int] = [0]
 	for argument: String in OS.get_cmdline_user_args():
 		if argument.begins_with("--hp="):
 			SETTINGS.nights.hp_growth_percent = argument.trim_prefix("--hp=").to_int()
@@ -35,6 +36,10 @@ func _run() -> void:
 		if argument.begins_with("--kill="):
 			for enemy: MobData in SETTINGS.enemies:
 				enemy.kill_reward = maxi(1, enemy.kill_reward * argument.trim_prefix("--kill=").to_int() / 100)
+		if argument.begins_with("--heroes="):
+			heroes.clear()
+			for part: String in argument.trim_prefix("--heroes=").split(","):
+				heroes.append(part.to_int())
 		if argument.begins_with("--only="):
 			only = argument.trim_prefix("--only=")
 		if argument.begins_with("--seeds="):
@@ -47,13 +52,14 @@ func _run() -> void:
 	for policy: String in ["ничего", "разумные траты"]:
 		if not only.is_empty() and not policy.contains(only):
 			continue
-		for seed_value: int in seeds:
-			_play(policy, seed_value)
+		for hero: int in heroes:
+			for seed_value: int in seeds:
+				_play(policy, seed_value, hero)
 	quit()
 
 
-func _play(policy: String, seed_value: int) -> void:
-	var trial: RitualTrial = RitualTrial.new(SETTINGS, 0, seed_value)
+func _play(policy: String, seed_value: int, hero: int = 0) -> void:
+	var trial: RitualTrial = RitualTrial.new(SETTINGS, 0, seed_value, hero)
 	var timeline: PackedStringArray = []
 	var last_night: int = 0
 	while trial.phase == RitualTrial.Phase.RUNNING and trial.tick_count < LIMIT_TICKS:
@@ -62,15 +68,16 @@ func _play(policy: String, seed_value: int) -> void:
 		if policy != "ничего" and trial.tick_count % 10 == 0:
 			_spend(trial)
 			_cast(trial)
+			_palisade(trial)
 		if trial.nights_survived() > last_night:
 			last_night = trial.nights_survived()
-			timeline.append("н%d %d:%02d Илья%d з%d д%d в%d" % [last_night, trial.tick_count / TPS / 60,
+			timeline.append("н%d %d:%02d ♥%d з%d д%d в%d" % [last_night, trial.tick_count / TPS / 60,
 				trial.tick_count / TPS % 60, trial.hp, trial.gold, trial.field.towers.size(),
 				_enemies(trial, last_night)])
 		trial.tick()
 	var seconds: int = trial.tick_count / TPS
-	print("ENDLESS: %s, сид %d — ночей %d, %d:%02d, %s, добыто %d, домов %d, боссов %d, даров %d" % [
-		policy, seed_value, trial.nights_survived(), seconds / 60, seconds % 60,
+	print("ENDLESS: %s, %s, сид %d — ночей %d, %d:%02d, %s, добыто %d, домов %d, боссов %d, даров %d" % [
+		policy, trial.hero_name(), seed_value, trial.nights_survived(), seconds / 60, seconds % 60,
 		trial.result if not trial.result.is_empty() else "жив к пределу", trial.earned,
 		trial.field.towers.size(), trial.bosses_killed, trial.gifts_taken.size()])
 	print("ENDLESS:    " + " | ".join(timeline))
@@ -86,7 +93,7 @@ func _enemies(trial: RitualTrial, night: int) -> int:
 ## Разумные траты: лечение Ильи, ремонт, слияние, покупка стрелка с прилавка, заговор урона,
 ## обновление прилавка, если покупать нечего.
 func _spend(trial: RitualTrial) -> void:
-	if trial.hp <= SETTINGS.hero_hp - 15:
+	if trial.hp <= trial.max_hp() - 15:
 		trial.execute(RitualCommand.new(RitualCommand.Action.REPAIR))
 	if trial.repair_all_cost() > 0 and trial.repair_all_cost() * 3 <= trial.gold:
 		trial.execute(RitualCommand.new(RitualCommand.Action.REPAIR_HOUSE))
@@ -172,16 +179,56 @@ func _buy_best(trial: RitualTrial, index: int) -> bool:
 func _cast(trial: RitualTrial) -> void:
 	if trial.tick_count < trial.hero_ready or trial.hero_due >= 0:
 		return
+	var hero: RitualHeroData = trial.hero()
+	if hero != null and hero.skill == RitualHeroData.Skill.BREW:
+		# Варево днём, когда есть деньги на постройку.
+		if not SETTINGS.is_night(trial.tick_count) and trial.gold >= 12:
+			trial.execute(RitualCommand.new(RitualCommand.Action.SKILL))
+		return
+	if hero != null and hero.skill == RitualHeroData.Skill.WHISTLE:
+		_whistle(trial)
+		return
 	var best: int = 0
 	var best_progress: int = -1
 	for progress: int in range(0, trial.field.get_path_end_progress(), 500):
 		var point: Vector2i = trial.field.get_path_point(progress)
 		var total: int = 0
 		for mob: MobState in trial.field.mobs:
-			if mob.is_alive() and trial.field._is_in_range(point, trial.field.get_mob_position(mob), SETTINGS.hero_radius):
+			if mob.is_alive() and trial.field._is_in_range(point, trial.field.get_mob_position(mob), trial.skill_radius()):
 				total += trial.hero_damage(mob as RitualMob)
 		if total > best:
 			best = total
 			best_progress = progress
 	if best >= 150:
 		trial.execute(RitualCommand.new(RitualCommand.Action.SKILL, 0, Vector2i.ZERO, 0, 0, best_progress))
+
+
+## Свист Соловья: когда враги в последней трети пути — туда, где их больше всего (не меньше 3).
+func _whistle(trial: RitualTrial) -> void:
+	var end: int = trial.field.get_path_end_progress()
+	var best: int = 0
+	var best_progress: int = -1
+	for progress: int in range(end / 2, end, 500):
+		var point: Vector2i = trial.field.get_path_point(progress)
+		var count: int = 0
+		for mob: MobState in trial.field.mobs:
+			if mob.is_alive() and trial.field._is_in_range(point, trial.field.get_mob_position(mob), trial.skill_radius()):
+				count += 1
+		if count > best:
+			best = count
+			best_progress = progress
+	if best >= 3:
+		trial.execute(RitualCommand.new(RitualCommand.Action.SKILL, 0, Vector2i.ZERO, 0, 0, best_progress))
+
+
+## Частокол перед самым дальним тяжёлым врагом (или боссом) во второй половине пути.
+func _palisade(trial: RitualTrial) -> void:
+	if trial.palisades <= 0 or trial.palisade_progress >= 0:
+		return
+	var end: int = trial.field.get_path_end_progress()
+	for mob: MobState in trial.field.mobs:
+		if mob.is_alive() and trial.eligible_for_palisade(mob) and (mob as RitualMob).lane == 0 \
+				and mob.progress > end / 2 and mob.progress + 1500 < end:
+			if trial.execute(RitualCommand.new(RitualCommand.Action.PALISADE, 0, Vector2i.ZERO, 0, 0,
+					mob.progress + 1500)).is_empty():
+				return

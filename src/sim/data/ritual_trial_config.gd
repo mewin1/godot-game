@@ -12,6 +12,8 @@ extends Resource
 ## Пристраиваемые улицы по порядку покупки (docs/34 §3); пусто — город не растёт.
 ## Улица N даёт вход N + 1: главная дорога поля — вход 1.
 @export var streets: Array[RitualStreetData] = []
+## Герои бесконечного забега на выбор (docs/36 §1); пусто — прежний опыт с Ильёй из полей hero_*.
+@export var heroes: Array[RitualHeroData] = []
 @export var hero_hp: int = 50
 @export var start_gold: int = 92
 ## 0 — число башен не ограничено (редакция 3, docs/30 §15).

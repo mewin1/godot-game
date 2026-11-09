@@ -21,6 +21,11 @@ func _check_endless(scene: PackedScene) -> void:
 	await process_frame
 	await process_frame
 	_check(panel.settings.is_endless(), "«Играть» ведёт не в бесконечный забег")
+	_check(panel._hero_panel != null and panel._hero_panel.visible and panel._paused,
+		"Перед забегом нет выбора героя или игра идёт")
+	_check(panel._hero_panel.get_global_rect().end.y <= panel.size.y, "Выбор героя не помещается по высоте")
+	panel._pick_hero(0)
+	_check(not panel._hero_panel.visible, "Выбор героя не закрылся")
 	_check(panel.trial.phase == RitualTrial.Phase.RUNNING and not panel._paused, "Забег не идёт сам с вечера")
 	_check(panel.get_combined_minimum_size().y <= panel.size.y, "Бесконечный забег не помещается по высоте")
 	_check(panel._scout.is_visible_in_tree() and panel._scout._cards.size() == panel.trial.night_queue().size(),
@@ -75,6 +80,15 @@ func _check_endless(scene: PackedScene) -> void:
 	_check(panel._defeat.visible and panel._defeat_text.text.contains("Продержались ночей"), "Нет экрана поражения")
 	_check(panel._defeat_text.text.begins_with("Илья пал"), "Поражение не от гибели Ильи: " + panel._defeat_text.text)
 	_check(panel._status.text.begins_with("Илья · "), "В шапке нет «Илья · HP»: " + panel._status.text)
+	# Ещё забег — снова выбор героя; Яга: своё HP и варево без прицела.
+	panel._again()
+	_check(panel._hero_panel.visible and panel._paused, "«Ещё забег» не предлагает героя")
+	panel._pick_hero(2)
+	panel._refresh()
+	_check(panel._status.text.begins_with("Яга · 40"), "В шапке не Яга: " + panel._status.text)
+	_check(panel._skill_button.text.begins_with("Варево"), "Навык Яги не варево: " + panel._skill_button.text)
+	panel._choose_skill()
+	_check(panel.trial.brew_charges == 1 and panel.board.action == &"", "Варево требует прицела или не готово")
 	panel.queue_free()
 	await process_frame
 

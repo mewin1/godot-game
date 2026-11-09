@@ -9,6 +9,7 @@ const UNIT_IDS: Dictionary[StringName, StringName] = {
 	&"mertvyak": &"basic", &"upyr": &"fast", &"kostyak": &"armored", &"navi_shield": &"knight",
 	&"navi_banner": &"courier", &"koshchei_voevoda": &"boss", &"latnik": &"armored", &"volkodlak": &"fast"}
 var _hero: Node3D
+var _hero_model: String = "res://assets/noir_h3d/heroes/ilya.glb"
 var _barrier: Node3D
 var _barrier_progress: int = -1
 var _barrier_lane: int = 0
@@ -77,13 +78,19 @@ func show_field(field: FieldState, player_colors: Callable) -> void:
 						arena.yard_cells[Vector2i(x, y)] = true
 	super.show_field(field, player_colors)
 	if _hero == null:
-		var scene: PackedScene = load("res://assets/noir_h3d/heroes/ilya.glb") as PackedScene
-		_hero = scene.instantiate() as Node3D
-		_world.add_child(_hero)
-		ArenaTower3D._tune_materials(_hero, STYLE.noir_model_glow, STYLE.noir_model_tone, STYLE.noir_model_rim)
-		# Сторожка — конец главной улицы, у крыльца терема; Илья чуть в стороне от колеи.
-		_hero.position = layout.cell_center(field.layout.path_cells[-1]) + Vector3(0.2, 0, 1.1)
-		_hero.rotation.y = PI * 0.5
+		_spawn_hero()
+
+
+## Герой забега в сторожке — конец главной улицы, у крыльца терема, чуть в стороне от колеи.
+func _spawn_hero() -> void:
+	if _hero != null:
+		_hero.queue_free()
+	var scene: PackedScene = load(_hero_model) as PackedScene
+	_hero = scene.instantiate() as Node3D
+	_world.add_child(_hero)
+	ArenaTower3D._tune_materials(_hero, STYLE.noir_model_glow, STYLE.noir_model_tone, STYLE.noir_model_rim)
+	_hero.position = layout.cell_center(_field.layout.path_cells[-1]) + Vector3(0.2, 0, 1.1)
+	_hero.rotation.y = PI * 0.5
 
 
 func _sync_units(delta: float, interpolation: float) -> void:
@@ -125,6 +132,12 @@ func mob_head(mob: MobState, interpolation: float) -> Vector2:
 
 
 func update_ritual(trial: RitualTrial, delta: float) -> void:
+	var model: String = trial.hero().model if trial.hero() != null and not trial.hero().model.is_empty() \
+			else "res://assets/noir_h3d/heroes/ilya.glb"
+	if model != _hero_model:
+		_hero_model = model
+		if _hero != null:
+			_spawn_hero()
 	_daylight.camera_distance = _camera.position.distance_to((_frame_min + _frame_max) * 0.5)
 	_daylight.apply(trial)
 	if trial.palisade_progress != _barrier_progress or trial.palisade_lane != _barrier_lane:

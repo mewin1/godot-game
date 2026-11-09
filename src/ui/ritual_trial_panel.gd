@@ -46,6 +46,9 @@ var _gift_buttons: VBoxContainer
 var _gift_key: String = ""
 var _repair_house_button: Button
 var _defeat_text: Label
+## Выбор героя перед бесконечным забегом (docs/36 §1).
+var _hero_panel: PanelContainer
+var _hero_choice: int = 0
 
 
 func _ready() -> void:
@@ -53,6 +56,7 @@ func _ready() -> void:
 	theme = DuskTheme.create()
 	_build_ui()
 	_reset(0)
+	_show_heroes()
 
 
 func _build_ui() -> void:
@@ -104,10 +108,6 @@ func _build_ui() -> void:
 	_repair_button = _button(upkeep, "Починить терем +%d · %d" % [settings.repair_hp, settings.repair_cost], _repair)
 	_repair_button.tooltip_text = "Терем +%d HP за %d золота (не выше %d)" % [
 		settings.repair_hp, settings.repair_cost, settings.hero_hp]
-	if settings.is_endless():
-		_repair_button.text = "Лечить Илью +%d · %d" % [settings.repair_hp, settings.repair_cost]
-		_repair_button.tooltip_text = "Илья в сторожке +%d HP за %d золота (не выше %d). Враг, дошедший до сторожки, бьёт Илью." % [
-			settings.repair_hp, settings.repair_cost, settings.hero_hp]
 	if not settings.streets.is_empty():
 		_street_button = _button(upkeep, "", _grow)
 	if settings.wear_ticks > 0:
@@ -235,6 +235,7 @@ func _build_ui() -> void:
 	_build_schedule()
 	_build_defeat()
 	_build_gifts()
+	_build_heroes()
 
 
 ## Экран поражения бесконечного забега: ночи, рекорд на устройстве, убитые боссы.
@@ -252,9 +253,72 @@ func _build_defeat() -> void:
 	var buttons: HBoxContainer = HBoxContainer.new()
 	buttons.alignment = BoxContainer.ALIGNMENT_CENTER
 	content.add_child(buttons)
-	_button(buttons, "Ещё забег", _reset.bind(0))
+	_button(buttons, "Ещё забег", _again)
 	_button(buttons, "В меню", _back)
 	_defeat.hide()
+
+
+## Карточки героев: портрет, пассивка, навык. Забег стоит, пока герой не выбран.
+func _build_heroes() -> void:
+	if settings.heroes.size() < 2:
+		return
+	_hero_panel = PanelContainer.new()
+	_hero_panel.add_theme_stylebox_override("panel", DuskTheme.panel(Color("101b23"), DuskTheme.GOLD, 20))
+	_hero_panel.z_index = 10
+	add_child(_hero_panel)
+	var content: VBoxContainer = VBoxContainer.new()
+	content.add_theme_constant_override("separation", 14)
+	_hero_panel.add_child(content)
+	_label(content, "Кто встанет в сторожку?", 24).horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	var row: HBoxContainer = HBoxContainer.new()
+	row.add_theme_constant_override("separation", 14)
+	content.add_child(row)
+	for index: int in settings.heroes.size():
+		var hero: RitualHeroData = settings.heroes[index]
+		var card: VBoxContainer = VBoxContainer.new()
+		card.custom_minimum_size = Vector2(250, 0)
+		card.add_theme_constant_override("separation", 8)
+		row.add_child(card)
+		var portrait: TextureRect = TextureRect.new()
+		portrait.texture = load(hero.portrait) as Texture2D
+		portrait.custom_minimum_size = Vector2(250, 170)
+		portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		card.add_child(portrait)
+		var title: Label = _label(card, hero.display_name, 20)
+		title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		title.add_theme_color_override("font_color", DuskTheme.GOLD)
+		for text: String in [hero.passive_text, hero.skill_text]:
+			var line: Label = _label(card, text, 15)
+			line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			line.custom_minimum_size = Vector2(250, 0)
+		var spacer: Control = Control.new()
+		spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		card.add_child(spacer)
+		var button: Button = _button(card, "Выбрать", _pick_hero.bind(index))
+		button.add_theme_font_size_override("font_size", 18)
+	_hero_panel.hide()
+
+
+func _show_heroes() -> void:
+	if _hero_panel == null or not settings.is_endless():
+		return
+	_paused = true
+	_hero_panel.show()
+	_hero_panel.reset_size()
+	_hero_panel.set_anchors_and_offsets_preset(Control.PRESET_CENTER, Control.PRESET_MODE_MINSIZE)
+	_message.text = "Выберите героя: он стоит в сторожке, его здоровье — здоровье забега."
+
+
+func _pick_hero(index: int) -> void:
+	_hero_choice = index
+	_hero_panel.hide()
+	_reset(0)
+
+
+func _again() -> void:
+	_reset(0)
+	_show_heroes()
 
 
 ## Выбор дара за босса: игра стоит (симуляция не идёт), пока не выбран один из трёх.
@@ -394,7 +458,7 @@ func _reset_selected() -> void:
 
 func _reset(index: int) -> void:
 	# Сид выбирает интерфейс (не симуляция): каждый забег — новые ночи, сид виден в записи.
-	trial = RitualTrial.new(settings, index, randi() % 1000000 if settings.is_endless() else -1)
+	trial = RitualTrial.new(settings, index, randi() % 1000000 if settings.is_endless() else -1, _hero_choice)
 	if index < _preset.item_count:
 		_preset.select(index)
 	_board_reset()
@@ -438,6 +502,8 @@ func _start() -> void:
 
 
 func _pause() -> void:
+	if _hero_panel != null and _hero_panel.visible:
+		return
 	if trial.phase == RitualTrial.Phase.PREP:
 		_start()
 		return
@@ -572,9 +638,16 @@ func _refresh_streets() -> void:
 
 
 func _choose_skill() -> void:
+	if trial.hero() != null and not trial.hero().needs_spot():
+		# Варево без прицела: действует на следующую купленную постройку.
+		if _issue(RitualCommand.new(RitualCommand.Action.SKILL)):
+			_message.text = "Варево готово: следующая постройка встанет сразу каменной."
+		return
 	board.action = &"skill"
 	board.preview_index = -1
-	_message.text = "Укажите точку дороги. Число у врага — текущий прогноз урона; замах 1 с."
+	_message.text = "Укажите точку дороги: враги в круге отлетят назад и замрут на 2 с." \
+			if trial.hero() != null and trial.hero().skill == RitualHeroData.Skill.WHISTLE \
+			else "Укажите точку дороги. Число у врага — текущий прогноз урона; замах 1 с."
 
 
 func _choose_palisade() -> void:
@@ -713,7 +786,12 @@ func _refresh() -> void:
 	_selection.text = "Башня: не выбрана" if selected == null else _selection_text(selected)
 	_refresh_wear(selected)
 	_refresh_streets()
-	_repair_button.disabled = trial.phase != RitualTrial.Phase.RUNNING or trial.hp >= settings.hero_hp \
+	if settings.is_endless():
+		var accusative: String = trial.hero().accusative if trial.hero() != null else "Илью"
+		_repair_button.text = "Лечить %s +%d · %d" % [accusative, settings.repair_hp, settings.repair_cost]
+		_repair_button.tooltip_text = "%s в сторожке +%d HP за %d золота (не выше %d). Враг, дошедший до сторожки, бьёт героя." % [
+			trial.hero_name(), settings.repair_hp, settings.repair_cost, trial.max_hp()]
+	_repair_button.disabled = trial.phase != RitualTrial.Phase.RUNNING or trial.hp >= trial.max_hp() \
 			or trial.gold < settings.repair_cost
 	_shop._selection_panel.visible = selected != null
 	if settings.is_endless():
