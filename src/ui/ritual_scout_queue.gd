@@ -10,6 +10,9 @@ const NEW_FRAME: Color = Color("e0b45a")
 const PLAIN_FRAME: Color = Color("4b5a63")
 const RESIST_FRAME: Color = Color("e04848")
 const MOB_VISUALS: String = "res://data/visuals/mobs/%s.tres"
+## Метка входа на карточке, когда входов больше одного: главная дорога, верхняя и нижняя улицы.
+const LANE_MARKS: Array[String] = ["→", "↑", "↓"]
+const LANE_COLORS: Array[Color] = [Color("f0c27a"), Color("7fd6d0"), Color("c59cf0")]
 
 var _key: String = ""
 var _cards: Array[Control] = []
@@ -46,7 +49,7 @@ func refresh(trial: RitualTrial) -> void:
 		"" if boss.resist == &"" else ", неуязвим: " + GodSymbols.get_power_name(boss.resist)]
 	var key: String = str(night)
 	for pack: RitualPack in queue:
-		key += ";%d" % pack.at_tick
+		key += ";%d@%d" % [pack.at_tick, trial.pack_lane(pack)]
 	if key != _key:
 		_key = key
 		_rebuild(trial, queue)
@@ -89,8 +92,19 @@ static func describe(trial: RitualTrial, pack: RitualPack) -> String:
 		for member: int in fresh:
 			names.append(settings.enemies[member].display_name)
 		lines.append("Впервые: " + ", ".join(names))
+	if trial.entrances(pack.night) > 1:
+		lines.append("Вход: " + lane_name(trial, trial.pack_lane(pack)))
+	var routes: Array[int] = trial.pack_routes(pack)
+	if routes.size() > 1:
+		var straight: int = (pack.members.size() + routes.size() - 1) / routes.size()
+		lines.append("Делится у проулка: %d прямо, %d в проулок" % [straight, pack.members.size() - straight])
 	lines.append(_eta(trial, pack))
 	return "\n".join(lines)
+
+
+## Вход по имени: главная дорога или название улицы.
+static func lane_name(trial: RitualTrial, lane: int) -> String:
+	return "главная дорога" if lane <= 0 else trial.settings.streets[lane - 1].title
 
 
 static func _eta(trial: RitualTrial, pack: RitualPack) -> String:
@@ -130,6 +144,11 @@ func _card(trial: RitualTrial, pack: RitualPack) -> Control:
 	row.add_theme_constant_override("separation", 2)
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	card.add_child(row)
+	if trial.entrances(pack.night) > 1:
+		var lane: int = trial.pack_lane(pack)
+		var mark: Label = _small_label(row, 17)
+		mark.text = LANE_MARKS[lane % LANE_MARKS.size()]
+		mark.add_theme_color_override("font_color", LANE_COLORS[lane % LANE_COLORS.size()])
 	for kind: Vector2i in kinds(pack):
 		var icon: TextureRect = TextureRect.new()
 		icon.texture = _icon(trial.settings.enemies[kind.x])

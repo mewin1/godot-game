@@ -50,7 +50,7 @@ func _process(delta: float) -> void:
 	stage.frame_board(Rect2(Vector2(338, 76), size - Vector2(358, 210)))
 	stage.update_ritual(trial, delta)
 	if _last_hero_due >= 0 and trial.hero_due < 0 and trial.tick_count >= _last_hero_due:
-		effects.play_burst(_point(trial.field.get_path_point(trial.hero_progress)), Color("ffe1a0"))
+		effects.play_burst(_point(trial.field.lane_point(trial.hero_lane, trial.hero_progress)), Color("ffe1a0"))
 	_last_hero_due = trial.hero_due
 	for index: int in range(_hits.size() - 1, -1, -1):
 		_hits[index].life -= delta
@@ -149,11 +149,9 @@ func _ring(center: Vector2i, radius: int, color: Color, width: float = 2.0) -> v
 	draw_polyline(points, color, width, true)
 
 
-func path_progress(cell: Vector2i) -> int:
-	if trial == null:
-		return -1
-	var index: int = trial.field.layout.path_cells.find(cell)
-	return index * 1000 if index >= 0 else -1
+## Точка открытой дороги под клеткой: (вход, прогресс) или (-1, -1).
+func road_spot(cell: Vector2i) -> Vector2i:
+	return trial.field.locate_road(cell) if trial != null else Vector2i(-1, -1)
 
 
 func _text(at: Vector2, text: String, color: Color, font_size: int = 14) -> void:
@@ -173,7 +171,7 @@ func _draw() -> void:
 	for base: MobState in field.mobs:
 		_draw_mob(base as RitualMob)
 	if trial.hero_due >= 0:
-		_ring(field.get_path_point(trial.hero_progress), trial.settings.hero_radius, Color("f7d886"), 3)
+		_ring(field.lane_point(trial.hero_lane, trial.hero_progress), trial.settings.hero_radius, Color("f7d886"), 3)
 	for hit: Hit in _hits:
 		var endpoint: Vector2 = stage.project_milli(hit.finish, 1.0)
 		if hit.amount == "":
@@ -241,8 +239,9 @@ func _draw_mob(mob: RitualMob) -> void:
 	if boss:
 		if mob.boss_phase == RitualMob.BossPhase.WARNING:
 			_text(stage.mob_head(mob, 1.0) + Vector2(-55, -31), "РЫВОК!", Color("ffab65"), 20)
-			var index: int = mini(mob.progress / 1000 + 3, trial.field.path_length - 1)
-			draw_line(center, _point(trial.field.get_path_point(index * 1000)), Color("ffab65"), 4, true)
+			var lane: int = RitualField.lane_of(mob)
+			var ahead: int = mini(mob.progress + 3000, trial.field.lane_end_progress(lane))
+			draw_line(center, _point(trial.field.lane_point(lane, ahead)), Color("ffab65"), 4, true)
 		if mob.immune_until > trial.tick_count:
 			draw_arc(center, radius + 3, 0, TAU, 24, Color("e9ba63"), 2)
 	if trial.field.has_banner(mob):
@@ -256,25 +255,29 @@ func _draw_mob(mob: RitualMob) -> void:
 
 
 func _draw_preview() -> void:
-	if hover_cell.x < 0 or hover_cell.x >= 20 or hover_cell.y < 0 or hover_cell.y >= 14:
+	if not trial.field.layout.is_inside(hover_cell):
 		return
 	if action in [&"skill", &"palisade"]:
-		var progress: int = path_progress(hover_cell)
-		if progress >= 0:
-			_ring(trial.field.get_path_point(progress), trial.settings.hero_radius if action == &"skill" else 450, Color("f4dca0"))
+		var spot: Vector2i = road_spot(hover_cell)
+		if spot.y >= 0:
+			var point: Vector2i = trial.field.lane_point(spot.x, spot.y)
+			_ring(point, trial.settings.hero_radius if action == &"skill" else 450, Color("f4dca0"))
 			if action == &"skill":
 				for base: MobState in trial.field.mobs:
 					var mob: RitualMob = base as RitualMob
-					if trial.field._is_in_range(trial.field.get_path_point(progress),
+					if trial.field._is_in_range(point,
 							trial.field.get_mob_position(mob), trial.settings.hero_radius):
 						_text(_point(trial.field.get_mob_position(mob)) + Vector2(8, -12),
 							"−%d%s" % [trial.hero_damage(mob), " щит" if mob.ward_hp > 0 else ""], Color.WHITE)
 			else:
 				var candidate: MobState = null
+				var candidate_gap: int = 0
 				for mob: MobState in trial.field.mobs:
-					if mob.is_alive() and trial.eligible_for_palisade(mob) and mob.progress <= progress \
-							and (candidate == null or mob.progress > candidate.progress):
+					var mark: int = trial.spot_on_route(spot.x, spot.y, mob)
+					if mob.is_alive() and trial.eligible_for_palisade(mob) and mark >= 0 and mob.progress <= mark \
+							and (candidate == null or mark - mob.progress < candidate_gap):
 						candidate = mob
+						candidate_gap = mark - mob.progress
 				var hint: String = "Пока нет тяжёлых перед точкой"
 				if candidate != null:
 					hint = "Ближайший: %s #%d" % [candidate.data.display_name, candidate.id]

@@ -19,7 +19,13 @@ func _steps(trial: RitualTrial, count: int) -> void:
 		trial.tick()
 
 
-func test_calendar_starts_in_evening_then_nights_grow_and_days_stay_short() -> void:
+## До тика (ранний рассвет перематывает время — счёт шагов тут не годится).
+func _until(trial: RitualTrial, tick: int) -> void:
+	while trial.tick_count < tick and trial.phase == RitualTrial.Phase.RUNNING:
+		trial.tick()
+
+
+func test_calendar_starts_in_evening_then_nights_grow_and_days_stay_long() -> void:
 	assert_true(_nights.first_evening_ticks > 0, "Старт вечером: время на первые постройки")
 	assert_eq(_nights.night_start(1), _nights.first_evening_ticks)
 	assert_false(_nights.is_night(0))
@@ -28,8 +34,8 @@ func test_calendar_starts_in_evening_then_nights_grow_and_days_stay_short() -> v
 	for night: int in range(1, 30):
 		assert_true(_nights.night_length(night + 1) >= _nights.night_length(night), "Ночь не короче прежней")
 		var day: int = _nights.night_start(night + 1) - _nights.night_end(night)
-		assert_eq(day, _nights.day_ticks, "День одинаково короткий")
-		assert_true(day < _nights.night_length(night), "День короче ночи")
+		assert_eq(day, _nights.day_ticks, "День одной длины")
+		assert_true(day >= 20 * 20, "День — короткая передышка (плейтест: 25 с)")
 		assert_false(_nights.is_night(_nights.night_end(night)), "После ночи — день")
 	assert_true(_nights.night_length(10) > _nights.night_length(1), "Ночи растут")
 	assert_eq(_nights.night_length(500), _nights.night_max_ticks, "Длина ночи с пределом")
@@ -138,7 +144,7 @@ func test_spawns_follow_plan_only_at_night_and_day_is_quiet() -> void:
 	var expected: int = 0
 	for pack: RitualPack in plan.packs(1):
 		expected += pack.members.size()
-	_steps(trial, _nights.night_end(1) + 40)
+	_until(trial, _nights.night_end(1) + 40)
 	assert_eq(trial.field.battle_report.killed + trial.field.mobs.size() + _breach_count(trial), expected,
 		"Пришли все враги первой ночи и никто лишний")
 	var before_day: int = _spawn_count(trial)
@@ -172,7 +178,7 @@ func test_mob_health_grows_by_night() -> void:
 func test_run_ends_only_on_death_and_counts_nights() -> void:
 	var trial: RitualTrial = _trial(4)
 	trial.hp = 1000000
-	_steps(trial, _nights.night_end(2) + 5)
+	_until(trial, _nights.night_end(2) + 5)
 	assert_eq(trial.phase, RitualTrial.Phase.RUNNING, "Время само не заканчивает забег")
 	assert_eq(trial.nights_survived(), 2)
 	trial.hp = 1
@@ -194,7 +200,7 @@ func test_boss_kill_is_counted() -> void:
 func test_snapshot_restores_seeded_run_bit_for_bit() -> void:
 	var trial: RitualTrial = _trial(33)
 	trial.hp = 1000000
-	_steps(trial, _nights.night_start(1) + 200)
+	_until(trial, _nights.night_start(1) + 200)
 	var restored: RitualTrial = RitualTrial.from_snapshot(_settings, trial.snapshot())
 	assert_not_null(restored)
 	assert_eq(restored.run_seed, 33)
@@ -242,7 +248,7 @@ func test_queue_shows_whole_nearest_night() -> void:
 	trial.hp = 1000000
 	_steps(trial, night_one[1].at_tick + 1)
 	assert_eq(trial.night_queue(), night_one.slice(2), "Ночью — только ещё не вышедшие пачки этой ночи")
-	_steps(trial, _nights.night_end(1) - trial.tick_count + 5)
+	_until(trial, _nights.night_end(1) + 5)
 	assert_eq(trial.night_queue(), trial.plan().packs(2), "Днём — вся следующая ночь")
 
 
@@ -250,12 +256,12 @@ func test_boss_is_announced_ahead_of_the_queue() -> void:
 	var trial: RitualTrial = _trial(5)
 	trial.hp = 1000000
 	assert_null(trial.boss_warning(), "В начале босс далеко")
-	_steps(trial, _nights.night_end(_nights.boss_every - _nights.warn_nights - 1) + 1)
+	_until(trial, _nights.night_end(_nights.boss_every - _nights.warn_nights - 1) + 1)
 	var warning: RitualPack = trial.boss_warning()
 	assert_not_null(warning, "Босса видно за %d ночи" % _nights.warn_nights)
 	if warning != null:
 		assert_true(warning.boss and warning.night == _nights.boss_every)
-	_steps(trial, _nights.night_end(_nights.boss_every - 1) - trial.tick_count + 1)
+	_until(trial, _nights.night_end(_nights.boss_every - 1) + 1)
 	assert_null(trial.boss_warning(), "В ночь босса он уже в самой очереди")
 	var has_boss: bool = false
 	for pack: RitualPack in trial.night_queue():
@@ -284,7 +290,7 @@ func test_first_pack_with_new_enemy_type_is_important() -> void:
 func test_queue_is_time_ordered_and_skips_started_packs() -> void:
 	var trial: RitualTrial = _trial(5)
 	trial.hp = 1000000
-	_steps(trial, _nights.night_start(3) + 1)
+	_until(trial, _nights.night_start(3) + 1)
 	var queue: Array[RitualPack] = trial.night_queue()
 	for index: int in queue.size():
 		assert_true(queue[index].at_tick >= trial.tick_count, "Начавшиеся пачки не показываются")
@@ -296,7 +302,7 @@ func test_queue_is_time_ordered_and_skips_started_packs() -> void:
 func test_scout_tooltip_names_boss_resist_and_composition() -> void:
 	var trial: RitualTrial = _trial(5)
 	trial.hp = 1000000
-	_steps(trial, _nights.night_start(_nights.boss_every - _nights.warn_nights))
+	_until(trial, _nights.night_start(_nights.boss_every - _nights.warn_nights))
 	var boss: RitualPack = trial.boss_warning()
 	assert_not_null(boss, "Босс уже в очереди")
 	if boss == null:
@@ -335,11 +341,11 @@ func test_buying_needs_card_in_market_and_empties_its_slot() -> void:
 		if not trial.offers.has(index):
 			missing = index
 	if missing >= 0:
-		assert_eq(trial.execute(RitualCommand.new(RitualCommand.Action.BUY, missing, Vector2i(10, 3))),
+		assert_eq(trial.execute(RitualCommand.new(RitualCommand.Action.BUY, missing, Vector2i(8, 8))),
 			"Этой постройки нет в лавке")
 	var chosen: int = trial.offers[0]
 	var before: int = _offered(trial).size()
-	assert_eq(trial.execute(RitualCommand.new(RitualCommand.Action.BUY, chosen, Vector2i(10, 3))), "")
+	assert_eq(trial.execute(RitualCommand.new(RitualCommand.Action.BUY, chosen, Vector2i(8, 8))), "")
 	assert_eq(_offered(trial).size(), before - 1, "Купленная карточка уходит с прилавка")
 	assert_eq(trial.offers[0], -1, "Пустое место до обновления")
 
@@ -364,32 +370,65 @@ func test_dawn_brings_free_showcase_and_resets_reroll_price() -> void:
 	var trial: RitualTrial = _trial(14)
 	trial.hp = 1000000
 	trial.gold = 100
-	trial.execute(RitualCommand.new(RitualCommand.Action.BUY, trial.offers[0], Vector2i(10, 3)))
+	trial.execute(RitualCommand.new(RitualCommand.Action.BUY, trial.offers[0], Vector2i(8, 8)))
 	trial.execute(RitualCommand.new(RitualCommand.Action.REROLL))
 	trial.execute(RitualCommand.new(RitualCommand.Action.REROLL))
 	var gold: int = trial.gold
-	_steps(trial, _nights.night_end(1) - trial.tick_count + 1)
+	_until(trial, _nights.night_end(1) + 1)
 	assert_eq(_offered(trial).size(), _settings.market_offers, "На рассвете прилавок полный")
 	assert_eq(trial.reroll_cost(), _settings.reroll_cost, "Цена обновления сброшена")
 	assert_true(trial.gold >= gold, "Новый прилавок на рассвете бесплатный")
 
 
-func test_market_follows_pvp_shop_weights() -> void:
+func test_market_picks_every_element_equally() -> void:
 	var trial: RitualTrial = _trial(77)
-	var counts: Array[int] = []
-	counts.resize(_settings.combat.towers.size())
-	counts.fill(0)
+	var gods: Array[StringName] = trial.market_gods()
+	assert_eq(gods.size(), 7, "В лавке все семь стихий режима, с Перуном и проклятием")
+	var counts: Dictionary[StringName, int] = {}
+	var rites: Dictionary[StringName, int] = {}
 	for roll: int in 600:
 		trial.gold = 1000
 		trial.rerolls_today = 0
 		trial.execute(RitualCommand.new(RitualCommand.Action.REROLL))
-		for slot: int in range(_settings.market_shooter_slots, trial.offers.size()):
-			counts[trial.offers[slot]] += 1
-	for index: int in counts.size():
-		assert_true(counts[index] > 0, "%s попадается в лавке" % _settings.combat.towers[index].id)
-	var bolt: int = _settings.combat.towers.find(load("res://data/towers/bolt.tres"))
-	var water: int = _settings.combat.towers.find(load("res://data/towers/water.tres"))
-	assert_true(counts[water] < counts[bolt], "Вес лавки PvP: желоб (5) реже самострела (10)")
+		for index: int in trial.offers:
+			var god: StringName = _settings.combat.towers[index].god
+			counts[god] = counts.get(god, 0) + 1
+		for index: int in trial.rite_offers:
+			rites[_settings.rites[index].god] = rites.get(_settings.rites[index].god, 0) + 1
+	var mean: int = 600 * _settings.market_offers / gods.size()
+	var rite_mean: int = 600 / gods.size()
+	for god: StringName in gods:
+		var built: int = counts.get(god, 0)
+		var spoken: int = rites.get(god, 0)
+		assert_true(absi(built - mean) < mean / 4, "%s: %d из ~%d" % [god, built, mean])
+		assert_true(absi(spoken - rite_mean) < rite_mean / 3, "Заговор %s: %d из ~%d" % [god, spoken, rite_mean])
+
+
+func test_rite_card_sits_in_market_and_is_bought_from_it() -> void:
+	var trial: RitualTrial = _trial(3)
+	assert_eq(trial.rite_offers.size(), _settings.market_rite_slots, "Крайняя карточка — заговор")
+	var offered: int = trial.rite_offers[0]
+	var missing: int = (offered + 1) % _settings.rites.size()
+	trial.gold = 1000
+	assert_eq(trial.execute(RitualCommand.new(RitualCommand.Action.RITE, missing)), "Этого заговора нет в лавке")
+	assert_eq(trial.execute(RitualCommand.new(RitualCommand.Action.RITE, offered)), "")
+	assert_eq(trial.rite_offers[0], -1, "Купленный заговор уходит с прилавка")
+
+
+func test_night_cleared_early_brings_dawn_at_once() -> void:
+	var trial: RitualTrial = _trial(8)
+	var plan: RitualNightPlan = trial.plan()
+	var last: int = 0
+	for pack: RitualPack in plan.packs(1):
+		last = maxi(last, pack.last_tick())
+	_until(trial, last + 1)
+	for base: MobState in trial.field.mobs:
+		base.hp = 0
+	trial.tick()
+	trial.tick()
+	assert_false(_settings.is_night(trial.tick_count), "Нежить отбита — сразу рассвет")
+	assert_true(trial.tick_count >= _nights.night_end(1))
+	assert_eq(trial.nights_survived(), 1)
 
 
 func test_market_state_survives_snapshot() -> void:
@@ -407,7 +446,7 @@ func test_market_state_survives_snapshot() -> void:
 func test_endless_mode_has_no_enchantments() -> void:
 	var trial: RitualTrial = _trial(2)
 	assert_true(_settings.enchants.is_empty(), "Чары на постройки убраны (выбор автора)")
-	trial.execute(RitualCommand.new(RitualCommand.Action.BUY, trial.offers[0], Vector2i(10, 3)))
+	trial.execute(RitualCommand.new(RitualCommand.Action.BUY, trial.offers[0], Vector2i(8, 8)))
 	assert_eq(trial.execute(RitualCommand.new(RitualCommand.Action.ENCHANT, 0, Vector2i.ZERO, 0, 1)),
 		"В этом режиме чар нет")
 
@@ -438,7 +477,7 @@ func _place(trial: RitualTrial, id: StringName, cell: Vector2i, level: int) -> T
 
 
 ## Враги на верхней прямой дороги (y = 2), шаг 400 тысячных клетки; возвращает их.
-func _crowd(trial: RitualTrial, enemy: int, count: int, start: int = 8200) -> Array[RitualMob]:
+func _crowd(trial: RitualTrial, enemy: int, count: int, start: int = 4200) -> Array[RitualMob]:
 	var result: Array[RitualMob] = []
 	for index: int in count:
 		var mob: RitualMob = trial.field.spawn_mob(enemy, 1000)
@@ -468,7 +507,7 @@ func test_white_stone_fourth_level_only_in_ritual() -> void:
 func test_merge_chain_reaches_white_stone() -> void:
 	var trial: RitualTrial = _trial(1)
 	var bolt: StringName = &"bolt"
-	var cells: Array[Vector2i] = [Vector2i(3, 3), Vector2i(4, 3)]
+	var cells: Array[Vector2i] = [Vector2i(13, 9), Vector2i(14, 9)]
 	for level: int in range(1, 4):
 		var first: TowerState = _place(trial, bolt, cells[0], level)
 		var second: TowerState = _place(trial, bolt, cells[1], level)
@@ -495,8 +534,8 @@ func test_every_ritual_building_has_behavior_for_each_level() -> void:
 func test_water_house_wets_one_target_then_an_area() -> void:
 	for level: int in [1, 2]:
 		var trial: RitualTrial = _trial(1)
-		_place(trial, &"water", Vector2i(9, 3), level)
-		var mobs: Array[RitualMob] = _crowd(trial, 0, 3, 8600)
+		_place(trial, &"water", Vector2i(9, 9), level)
+		var mobs: Array[RitualMob] = _crowd(trial, 0, 3, 4600)
 		trial.field.fire_trial_towers()
 		var wet: int = 0
 		for mob: RitualMob in mobs:
@@ -507,8 +546,8 @@ func test_water_house_wets_one_target_then_an_area() -> void:
 func test_bolt_second_level_shoots_two_targets() -> void:
 	for level: int in [1, 2]:
 		var trial: RitualTrial = _trial(1)
-		_place(trial, &"bolt", Vector2i(10, 3), level)
-		var mobs: Array[RitualMob] = _crowd(trial, 0, 3, 9000)
+		_place(trial, &"bolt", Vector2i(10, 9), level)
+		var mobs: Array[RitualMob] = _crowd(trial, 0, 3, 5000)
 		trial.field.fire_trial_towers()
 		assert_eq(_hurt(mobs), level, "Самострел %d-го уровня бьёт %d целей" % [level, level])
 
@@ -517,7 +556,7 @@ func test_level_damage_follows_behavior_percent() -> void:
 	var trial: RitualTrial = _trial(1)
 	var bolt: TowerData = _settings.combat.towers[0]
 	for level: int in range(1, 5):
-		var tower: TowerState = _place(trial, &"bolt", Vector2i(2 + level * 2, 9), level)
+		var tower: TowerState = _place(trial, &"bolt", Vector2i(7 + level * 2, 12), level)
 		var behavior: RitualLevelBehavior = _settings.levels_for(bolt).levels[level - 1]
 		assert_eq(trial.field.get_tower_damage(tower), bolt.damage * behavior.damage_percent / 100 + behavior.damage_add)
 
@@ -528,8 +567,8 @@ func test_white_stone_bolt_pierces_armor() -> void:
 	var damages: Array[int] = []
 	for level: int in [3, 4]:
 		var trial: RitualTrial = _trial(1)
-		var tower: TowerState = _place(trial, &"bolt", Vector2i(10, 3), level)
-		var mob: RitualMob = _crowd(trial, latnik, 1, 9000)[0]
+		var tower: TowerState = _place(trial, &"bolt", Vector2i(10, 9), level)
+		var mob: RitualMob = _crowd(trial, latnik, 1, 5000)[0]
 		trial.field.fire_trial_towers()
 		damages.append(mob.max_hp - mob.hp)
 		var expected: int = trial.field.get_tower_damage(tower) - (_settings.enemies[latnik].armor if level == 3 else 0)
@@ -558,6 +597,8 @@ func _rite_index(id: StringName) -> int:
 func _buy_rite(trial: RitualTrial, id: StringName, times: int) -> void:
 	for count: int in times:
 		trial.gold = 100000
+		# Заговор выпадает в лавке — кладём его на прилавок.
+		trial.rite_offers.assign([_rite_index(id)])
 		assert_eq(trial.execute(RitualCommand.new(RitualCommand.Action.RITE, _rite_index(id))), "",
 			"Заговор %s №%d" % [id, count + 1])
 
@@ -583,7 +624,7 @@ func test_rites_have_no_purchase_limit() -> void:
 
 func test_damage_rite_is_linear_and_cost_grows_faster() -> void:
 	var trial: RitualTrial = _trial(1)
-	var tower: TowerState = _place(trial, &"bolt", Vector2i(10, 3), 1)
+	var tower: TowerState = _place(trial, &"bolt", Vector2i(10, 9), 1)
 	var base: int = trial.field.get_tower_damage(tower)
 	var index: int = _rite_index(&"war_power")
 	var costs: Array[int] = []
@@ -599,7 +640,7 @@ func test_damage_rite_is_linear_and_cost_grows_faster() -> void:
 
 func test_range_rite_decays_toward_cap() -> void:
 	var trial: RitualTrial = _trial(1)
-	var tower: TowerState = _place(trial, &"bolt", Vector2i(10, 3), 1)
+	var tower: TowerState = _place(trial, &"bolt", Vector2i(10, 9), 1)
 	var base: int = trial.field.get_tower_range(tower)
 	var curve: RitualRiteCurve = _settings.rite_curve(&"war_range")
 	assert_not_null(curve)
@@ -614,7 +655,7 @@ func test_range_rite_decays_toward_cap() -> void:
 
 func test_targets_and_status_rites_decay_through_idol() -> void:
 	var trial: RitualTrial = _trial(1)
-	var tower: TowerState = _place(trial, &"bolt", Vector2i(10, 3), 1)
+	var tower: TowerState = _place(trial, &"bolt", Vector2i(10, 9), 1)
 	_buy_rite(trial, &"war_volley", 2)
 	assert_eq(trial.field.get_tower_targets(tower), 1, "Пол-цели и ещё треть — пока не целая цель")
 	_buy_rite(trial, &"war_volley", 1)
@@ -628,7 +669,7 @@ func test_targets_and_status_rites_decay_through_idol() -> void:
 
 func test_tempo_rite_shortens_cooldown_with_decay() -> void:
 	var trial: RitualTrial = _trial(1)
-	var tower: TowerState = _place(trial, &"rime", Vector2i(10, 3), 1)
+	var tower: TowerState = _place(trial, &"rime", Vector2i(10, 9), 1)
 	var base: int = trial.field.get_tower_cooldown(tower)
 	_buy_rite(trial, &"ice_rhythm", 30)
 	trial.field.mark_towers_changed()
@@ -653,7 +694,7 @@ func test_own_element_discount_is_small_capped_and_applies_to_buying() -> void:
 	assert_eq(trial.building_cost(1), _settings.costs[1], "Чужая стихия без скидки")
 	trial.gold = 100
 	trial.offers[0] = bolt
-	assert_eq(trial.execute(RitualCommand.new(RitualCommand.Action.BUY, bolt, Vector2i(10, 3))), "")
+	assert_eq(trial.execute(RitualCommand.new(RitualCommand.Action.BUY, bolt, Vector2i(8, 8))), "")
 	assert_eq(trial.gold, 100 - discounted, "Покупка по цене со скидкой")
 	var tower: TowerState = trial.field.towers[0]
 	assert_eq(tower.invested_total, discounted, "В доме учтено реально заплаченное")
@@ -692,18 +733,18 @@ func _max_wear(level: int) -> int:
 func test_new_house_has_full_durability_by_level() -> void:
 	var trial: RitualTrial = _trial(1)
 	trial.gold = 100
-	assert_eq(trial.execute(RitualCommand.new(RitualCommand.Action.BUY, trial.offers[0], Vector2i(10, 3))), "")
+	assert_eq(trial.execute(RitualCommand.new(RitualCommand.Action.BUY, trial.offers[0], Vector2i(8, 8))), "")
 	assert_eq(trial.field.towers[0].durability, _max_wear(1))
 	assert_eq(_max_wear(2), _max_wear(1) * 2, "Прочность растёт как число копий")
 
 
 func test_house_wears_by_time_in_battle_not_per_shot() -> void:
 	var trial: RitualTrial = _trial(1)
-	var tower: TowerState = _place(trial, &"bolt", Vector2i(10, 3), 1)
+	var tower: TowerState = _place(trial, &"bolt", Vector2i(10, 9), 1)
 	tower.durability = _max_wear(1)
 	trial.field.fire_trial_towers()
 	assert_eq(tower.durability, _max_wear(1), "Без врагов дом не изнашивается")
-	_crowd(trial, 0, 1, 9000)
+	_crowd(trial, 0, 1, 5000)
 	trial.field.fire_trial_towers()
 	assert_eq(tower.durability, _max_wear(1) - trial.field.get_tower_cooldown(tower),
 		"Выстрел списывает время до следующего — быстрые дома не наказаны")
@@ -711,13 +752,13 @@ func test_house_wears_by_time_in_battle_not_per_shot() -> void:
 
 func test_worn_house_is_weaker_then_silent_but_stays() -> void:
 	var trial: RitualTrial = _trial(1)
-	var tower: TowerState = _place(trial, &"bolt", Vector2i(10, 3), 1)
+	var tower: TowerState = _place(trial, &"bolt", Vector2i(10, 9), 1)
 	tower.durability = _max_wear(1) / 2 + 1
 	var full: int = trial.field.get_tower_damage(tower)
 	tower.durability = _max_wear(1) / 2
 	assert_eq(trial.field.get_tower_damage(tower), full * _settings.worn_damage_percent / 100, "Ниже половины — слабее")
 	tower.durability = 0
-	var mob: RitualMob = _crowd(trial, 0, 1, 9000)[0]
+	var mob: RitualMob = _crowd(trial, 0, 1, 5000)[0]
 	trial.field.fire_trial_towers()
 	assert_eq(mob.hp, mob.max_hp, "На нуле дом молчит")
 	assert_eq(trial.field.towers.size(), 1, "…но стоит")
@@ -725,11 +766,11 @@ func test_worn_house_is_weaker_then_silent_but_stays() -> void:
 
 func test_splash_does_not_wear_other_houses() -> void:
 	var trial: RitualTrial = _trial(1)
-	var brazier: TowerState = _place(trial, &"brazier", Vector2i(9, 3), 2)
-	var idle: TowerState = _place(trial, &"wind", Vector2i(3, 9), 1)
+	var brazier: TowerState = _place(trial, &"brazier", Vector2i(9, 9), 2)
+	var idle: TowerState = _place(trial, &"wind", Vector2i(13, 12), 1)
 	brazier.durability = _max_wear(2)
 	idle.durability = _max_wear(1)
-	_crowd(trial, 0, 3, 8600)
+	_crowd(trial, 0, 3, 4600)
 	trial.field.fire_trial_towers()
 	assert_true(brazier.durability < _max_wear(2))
 	assert_eq(idle.durability, _max_wear(1), "Область и бой не трогают другие дома")
@@ -737,8 +778,8 @@ func test_splash_does_not_wear_other_houses() -> void:
 
 func test_repair_is_cheaper_than_new_and_repair_all_sums() -> void:
 	var trial: RitualTrial = _trial(1)
-	var first: TowerState = _place(trial, &"bolt", Vector2i(10, 3), 1)
-	var second: TowerState = _place(trial, &"bolt", Vector2i(4, 3), 1)
+	var first: TowerState = _place(trial, &"bolt", Vector2i(10, 9), 1)
+	var second: TowerState = _place(trial, &"bolt", Vector2i(14, 9), 1)
 	first.durability = 0
 	second.durability = _max_wear(1) / 2
 	var one: int = trial.repair_cost(first)
@@ -756,7 +797,7 @@ func test_repair_is_cheaper_than_new_and_repair_all_sums() -> void:
 
 func test_repair_gets_own_element_discount() -> void:
 	var trial: RitualTrial = _trial(1)
-	var tower: TowerState = _place(trial, &"bolt", Vector2i(10, 3), 1)
+	var tower: TowerState = _place(trial, &"bolt", Vector2i(10, 9), 1)
 	tower.durability = 0
 	var full: int = trial.repair_cost(tower)
 	_buy_rite(trial, &"war_range", 8)
@@ -765,8 +806,8 @@ func test_repair_gets_own_element_discount() -> void:
 
 func test_merge_adds_durability_and_rescales() -> void:
 	var trial: RitualTrial = _trial(1)
-	var first: TowerState = _place(trial, &"bolt", Vector2i(3, 3), 1)
-	var second: TowerState = _place(trial, &"bolt", Vector2i(4, 3), 1)
+	var first: TowerState = _place(trial, &"bolt", Vector2i(13, 9), 1)
+	var second: TowerState = _place(trial, &"bolt", Vector2i(14, 9), 1)
 	first.durability = 300
 	second.durability = 500
 	assert_eq(trial.execute(RitualCommand.new(RitualCommand.Action.MERGE, second.id, Vector2i.ZERO, 0, first.id)), "")
@@ -835,8 +876,8 @@ func _take(trial: RitualTrial, gift: int) -> void:
 	assert_eq(trial.execute(RitualCommand.new(RitualCommand.Action.GIFT, gift)), "")
 
 
-func test_gift_set_is_data_with_eight_to_twelve_gifts() -> void:
-	assert_true(_settings.gifts.size() >= 8 and _settings.gifts.size() <= 12)
+func test_gift_set_is_data_with_eight_to_fourteen_gifts() -> void:
+	assert_true(_settings.gifts.size() >= 8 and _settings.gifts.size() <= 14)
 	for gift: RitualGiftData in _settings.gifts:
 		assert_false(gift.display_name.is_empty() or gift.description.is_empty())
 
@@ -868,8 +909,8 @@ func test_boss_kill_pauses_with_three_distinct_seeded_gifts() -> void:
 
 func test_gift_damage_all_and_god_fury() -> void:
 	var trial: RitualTrial = _trial(1)
-	var bolt: TowerState = _place(trial, &"bolt", Vector2i(10, 3), 1)
-	var fire: TowerState = _place(trial, &"brazier", Vector2i(4, 3), 1)
+	var bolt: TowerState = _place(trial, &"bolt", Vector2i(10, 9), 1)
+	var fire: TowerState = _place(trial, &"brazier", Vector2i(14, 9), 1)
 	var bolt_base: int = trial.field.get_tower_damage(bolt)
 	var fire_base: int = trial.field.get_tower_damage(fire)
 	_take(trial, _gift_index(RitualGiftData.Effect.DAMAGE_ALL))
@@ -882,8 +923,8 @@ func test_gift_damage_all_and_god_fury() -> void:
 func test_gift_water_houses_hit_an_area() -> void:
 	var trial: RitualTrial = _trial(1)
 	_take(trial, _gift_index(RitualGiftData.Effect.SPLASH_GOD, &"water"))
-	_place(trial, &"water", Vector2i(9, 3), 1)
-	var mobs: Array[RitualMob] = _crowd(trial, 0, 3, 8600)
+	_place(trial, &"water", Vector2i(9, 9), 1)
+	var mobs: Array[RitualMob] = _crowd(trial, 0, 3, 4600)
 	trial.field.fire_trial_towers()
 	var wet: int = 0
 	for mob: RitualMob in mobs:
@@ -897,9 +938,9 @@ func test_gift_ilya_strikes_twice() -> void:
 	_take(double, _gift_index(RitualGiftData.Effect.HERO_TWICE))
 	var hurt: Array[int] = []
 	for trial: RitualTrial in [single, double]:
-		var mob: RitualMob = _crowd(trial, 2, 1, 9000)[0]
+		var mob: RitualMob = _crowd(trial, 2, 1, 5000)[0]
 		trial.tick_count = trial.hero_ready
-		assert_eq(trial.execute(RitualCommand.new(RitualCommand.Action.SKILL, 0, Vector2i.ZERO, 0, 0, 9000)), "")
+		assert_eq(trial.execute(RitualCommand.new(RitualCommand.Action.SKILL, 0, Vector2i.ZERO, 0, 0, 5000)), "")
 		trial.hp = 1000000
 		for step: int in _settings.hero_warning + 1:
 			trial.tick()
@@ -909,7 +950,7 @@ func test_gift_ilya_strikes_twice() -> void:
 
 func test_gift_free_repair_lasts_two_nights_and_double_discount() -> void:
 	var trial: RitualTrial = _trial(1)
-	var tower: TowerState = _place(trial, &"bolt", Vector2i(10, 3), 1)
+	var tower: TowerState = _place(trial, &"bolt", Vector2i(10, 9), 1)
 	tower.durability = 0
 	_buy_rite(trial, &"war_range", 4)
 	var discount: int = trial.discount_bp(&"war")
@@ -925,7 +966,7 @@ func test_gift_free_repair_lasts_two_nights_and_double_discount() -> void:
 
 func test_gifts_survive_snapshot() -> void:
 	var trial: RitualTrial = _trial(1)
-	var tower: TowerState = _place(trial, &"bolt", Vector2i(10, 3), 1)
+	var tower: TowerState = _place(trial, &"bolt", Vector2i(10, 9), 1)
 	_take(trial, _gift_index(RitualGiftData.Effect.DAMAGE_ALL))
 	var restored: RitualTrial = RitualTrial.from_snapshot(_settings, trial.snapshot())
 	assert_eq(restored.field.get_tower_damage(restored.field.get_tower(tower.id)), trial.field.get_tower_damage(tower))
@@ -962,8 +1003,8 @@ func test_night_building_costs_more_and_installs_longer() -> void:
 	assert_true(_settings.night_cost_percent > 100)
 	day.gold = 100
 	night.gold = 100
-	assert_eq(day.execute(RitualCommand.new(RitualCommand.Action.BUY, index, Vector2i(10, 3))), "")
-	assert_eq(night.execute(RitualCommand.new(RitualCommand.Action.BUY, index, Vector2i(10, 3))), "")
+	assert_eq(day.execute(RitualCommand.new(RitualCommand.Action.BUY, index, Vector2i(8, 8))), "")
+	assert_eq(night.execute(RitualCommand.new(RitualCommand.Action.BUY, index, Vector2i(8, 8))), "")
 	assert_eq(day.field.towers[0].action_lock_ticks, _settings.install_ticks)
 	assert_eq(night.field.towers[0].action_lock_ticks, _settings.night_install_ticks, "Ночью ставится дольше")
 	assert_true(_settings.night_install_ticks > _settings.install_ticks * 2)
@@ -971,11 +1012,11 @@ func test_night_building_costs_more_and_installs_longer() -> void:
 
 func test_night_move_takes_much_longer() -> void:
 	var trial: RitualTrial = _trial(3)
-	var tower: TowerState = _place(trial, &"bolt", Vector2i(10, 3), 1)
-	assert_eq(trial.execute(RitualCommand.new(RitualCommand.Action.MOVE, 0, Vector2i(4, 3), 0, tower.id)), "")
+	var tower: TowerState = _place(trial, &"bolt", Vector2i(10, 9), 1)
+	assert_eq(trial.execute(RitualCommand.new(RitualCommand.Action.MOVE, 0, Vector2i(12, 9), 0, tower.id)), "")
 	assert_eq(tower.action_lock_ticks, _settings.install_ticks, "Днём перенос быстрый")
 	_at_night(trial)
-	assert_eq(trial.execute(RitualCommand.new(RitualCommand.Action.MOVE, 0, Vector2i(6, 3), 0, tower.id)), "")
+	assert_eq(trial.execute(RitualCommand.new(RitualCommand.Action.MOVE, 0, Vector2i(14, 9), 0, tower.id)), "")
 	assert_eq(tower.action_lock_ticks, _settings.night_move_ticks, "Ночью перенос значительно дольше")
 	assert_true(_settings.night_move_ticks >= _settings.install_ticks * 5)
 
@@ -992,6 +1033,51 @@ func test_packs_are_big_and_mixed_from_first_night() -> void:
 
 
 func test_days_and_nights_are_long_enough_to_play() -> void:
-	assert_true(_nights.night_length(1) >= 20 * 80, "Первая ночь не короче 80 с")
-	assert_true(_nights.day_ticks >= 20 * 35, "День — время спокойно строить")
+	assert_true(_nights.night_length(1) >= 20 * 50, "Первая ночь не короче 50 с")
+	assert_true(_nights.day_ticks >= 20 * 20, "День — передышка на стройку")
 	assert_true(_nights.first_evening_ticks >= 20 * 25)
+
+
+func test_perun_and_curse_houses_fight_in_the_run() -> void:
+	for id: StringName in [&"spark", &"thunder", &"hex", &"plague"]:
+		var data: TowerData = null
+		for candidate: TowerData in _settings.combat.towers:
+			if candidate.id == id:
+				data = candidate
+		assert_not_null(data, "%s в наборе забега" % id)
+		var levels: RitualBuildingLevels = _settings.levels_for(data)
+		assert_not_null(levels, "Уровни для %s" % id)
+		assert_eq(levels.levels.size(), 4, "%s: деревянный → белокаменный" % id)
+	# Молния: по мокрым цепь почти всегда задевает второго.
+	var trial: RitualTrial = _trial(1)
+	var spark: TowerState = _place(trial, &"spark", Vector2i(9, 9), 1)
+	var wet: Array[RitualMob] = _crowd(trial, 2, 2, 4600)
+	for shot: int in 5:
+		for mob: RitualMob in wet:
+			mob.wet_ticks_left = 200
+		spark.cooldown_left = 0
+		trial.field.fire_trial_towers()
+	assert_eq(_hurt(wet), 2, "Искровик цепью бьёт и вторую мокрую цель")
+	# Чёрная метка 3-го уровня метит трёх сразу, метка взрывается.
+	var cursed: RitualTrial = _trial(1)
+	_place(cursed, &"hex", Vector2i(9, 9), 3)
+	var mobs: Array[RitualMob] = _crowd(cursed, 2, 3, 4600)
+	cursed.field.fire_trial_towers()
+	var marked: int = 0
+	for mob: RitualMob in mobs:
+		marked += int(mob.status_tags().has(&"curse"))
+	assert_eq(marked, 3, "Три метки на 3-м уровне")
+	var before: int = mobs[0].hp
+	for step: int in 70:
+		cursed.field.finish_tick()
+	assert_true(mobs[0].hp < before, "Метка взорвалась уроном")
+
+
+func test_perun_and_curse_rites_strengthen_their_idol() -> void:
+	var trial: RitualTrial = _trial(1)
+	_buy_rite(trial, &"perun_charge", 2)
+	_buy_rite(trial, &"curse_mark", 4)
+	var perun: IdolState = trial.field.get_idol(&"perun")
+	var curse: IdolState = trial.field.get_idol(&"curse")
+	assert_true(perun.chain_chance_bonus > 0 and perun.chain_chance_bonus < 40, "Шанс цепи растёт с затуханием")
+	assert_true(curse.extra_targets >= 1 and curse.extra_targets < 2, "Метка берёт больше целей, не до предела")

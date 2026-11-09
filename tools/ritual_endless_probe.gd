@@ -4,7 +4,7 @@ extends SceneTree
 ## Запуск: godot --headless --path . -s res://tools/ritual_endless_probe.gd [-- --seeds=1,2,3]
 
 ## Копия правил: аргументы `-- --hp=9 --budget=14 --boss=1800` меняют рост здоровья/бюджета ночей
-## и здоровье босса только в этом прогоне.
+## и здоровье босса; `--base`, `--gold`, `--spread`, `--kill=150` (награда в процентах) — тоже только в этом прогоне.
 var SETTINGS: RitualTrialConfig = (load("res://data/ritual/endless.tres") as RitualTrialConfig).duplicate(true)
 const TPS: int = 20
 const LIMIT_TICKS: int = 20 * 60 * 90
@@ -28,6 +28,13 @@ func _run() -> void:
 			SETTINGS.nights.budget_base = argument.trim_prefix("--base=").to_int()
 		if argument.begins_with("--boss="):
 			SETTINGS.enemies[SETTINGS.nights.boss_enemy].hp = argument.trim_prefix("--boss=").to_int()
+		if argument.begins_with("--gold="):
+			SETTINGS.start_gold = argument.trim_prefix("--gold=").to_int()
+		if argument.begins_with("--spread="):
+			SETTINGS.nights.spread_percent = argument.trim_prefix("--spread=").to_int()
+		if argument.begins_with("--kill="):
+			for enemy: MobData in SETTINGS.enemies:
+				enemy.kill_reward = maxi(1, enemy.kill_reward * argument.trim_prefix("--kill=").to_int() / 100)
 		if argument.begins_with("--only="):
 			only = argument.trim_prefix("--only=")
 		if argument.begins_with("--seeds="):
@@ -118,7 +125,7 @@ func _merge(trial: RitualTrial) -> bool:
 	return false
 
 
-## Заговор урона бога, у которого больше всего домов.
+## Заговор (с прилавка, если заговоры выпадают в лавке) для бога, у которого больше всего домов.
 func _main_rite(trial: RitualTrial) -> int:
 	var counts: Dictionary[StringName, int] = {}
 	for tower: TowerState in trial.field.towers:
@@ -126,9 +133,14 @@ func _main_rite(trial: RitualTrial) -> int:
 	var best: int = -1
 	var best_count: int = 0
 	for index: int in SETTINGS.rites.size():
+		if SETTINGS.market_rite_slots > 0 and not trial.rite_offers.has(index):
+			continue
 		var rite: RiteData = SETTINGS.rites[index]
+		if SETTINGS.market_rite_slots > 0 and not trial.has_idol_for(index):
+			continue
 		var count: int = counts.get(rite.god, 0)
-		if rite.effect == RiteData.Effect.DAMAGE and count > best_count:
+		var useful: bool = rite.effect == RiteData.Effect.DAMAGE or SETTINGS.market_rite_slots > 0
+		if useful and count > best_count:
 			best = index
 			best_count = count
 	return best

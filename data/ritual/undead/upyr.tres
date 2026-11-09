@@ -8,6 +8,6 @@ hp = 45
 speed_milli_per_tick = 80
 armor = 0
 breach_damage = 2
-kill_reward = 3
+kill_reward = 2
 tags = Array[StringName]([])
 description = "Быстрый и хрупкий: проскакивает, если дома бьют медленно."

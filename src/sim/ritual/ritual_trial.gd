@@ -23,10 +23,13 @@ var next_spawn: int = 0
 var last_dawn: int = 0
 var palisades: int = 0
 var palisade_progress: int = -1
+## Вход, на маршруте которого стоит частокол (общий отрезок дорог он перекрывает для всех).
+var palisade_lane: int = 0
 var palisade_ready: int = -1
 var hero_ready: int = 0
 var hero_due: int = -1
 var hero_progress: int = 0
+var hero_lane: int = 0
 var result: String = ""
 var title: String = ""
 var install_until: Dictionary[int, int] = {}
@@ -40,6 +43,8 @@ var run_seed: int = 0
 var bosses_killed: int = 0
 ## Прилавок лавки с азартом: индексы построек каталога, -1 — купленное место.
 var offers: Array[int] = []
+## Заговоры на прилавке (индексы settings.rites), -1 — купленное место.
+var rite_offers: Array[int] = []
 var rerolls_today: int = 0
 ## Состояние генератора лавки (RandomNumberGenerator.state) — переживает снимок.
 var market_rng_state: int = 0
@@ -49,6 +54,9 @@ var gift_choice: Array[int] = []
 var gift_rng_state: int = 0
 ## До конца какой ночи ремонт бесплатен (дар «Плотники»).
 var free_repair_until: int = 0
+## Пристроенные улицы (docs/34 §3): для каждой — ночь, с которой открыт её вход.
+## Места под дома открываются сразу при покупке.
+var street_nights: Array[int] = []
 var _plan: RitualNightPlan
 
 
@@ -123,7 +131,7 @@ func execute(command: RitualCommand) -> String:
 	var economic: bool = command.action in [RitualCommand.Action.BUY,
 		RitualCommand.Action.SELL, RitualCommand.Action.RITE, RitualCommand.Action.MERGE,
 		RitualCommand.Action.ENCHANT, RitualCommand.Action.REPAIR, RitualCommand.Action.REROLL,
-		RitualCommand.Action.REPAIR_HOUSE]
+		RitualCommand.Action.REPAIR_HOUSE, RitualCommand.Action.STREET]
 	if phase == Phase.RUNNING and economic and (economy_frozen or control_mode != ControlMode.OPEN):
 		return "В этой контрольной ветке состав зафиксирован"
 	if command.action in [RitualCommand.Action.MOVE, RitualCommand.Action.CANCEL_MOVE] \
@@ -140,9 +148,9 @@ func execute(command: RitualCommand) -> String:
 		RitualCommand.Action.RITE:
 			error = _rite(command.item)
 		RitualCommand.Action.SKILL:
-			error = _skill(command.progress)
+			error = _skill(command.item, command.progress)
 		RitualCommand.Action.PALISADE:
-			error = _palisade(command.progress)
+			error = _palisade(command.item, command.progress)
 		RitualCommand.Action.CANCEL_MOVE:
 			error = _cancel_move(command.tower_id)
 		RitualCommand.Action.MERGE:
@@ -155,6 +163,8 @@ func execute(command: RitualCommand) -> String:
 			error = _reroll()
 		RitualCommand.Action.REPAIR_HOUSE:
 			error = _repair_house(command.tower_id)
+		RitualCommand.Action.STREET:
+			error = _street()
 	if error.is_empty():
 		_record_command(command)
 	return error
@@ -267,10 +277,51 @@ func _roll_market() -> void:
 	offers.clear()
 	for slot: int in settings.market_offers:
 		offers.append(_random_building(rng, slot < settings.market_shooter_slots))
+	rite_offers.clear()
+	for slot: int in settings.market_rite_slots:
+		rite_offers.append(_random_rite(rng))
 	market_rng_state = rng.state
 
 
+## Стихии лавки: все боги построек, в порядке каталога.
+func market_gods() -> Array[StringName]:
+	var gods: Array[StringName] = []
+	for data: TowerData in settings.combat.towers:
+		if not gods.has(data.god):
+			gods.append(data.god)
+	return gods
+
+
+## Равновероятная стихия, затем равновероятный вариант из candidates (индексы с богом god_of).
+static func _by_element(rng: RandomNumberGenerator, gods: Array[StringName], candidates: Array[int],
+		god_of: Callable) -> int:
+	var god: StringName = gods[rng.randi_range(0, gods.size() - 1)]
+	var own: Array[int] = []
+	for index: int in candidates:
+		if god_of.call(index) == god:
+			own.append(index)
+	if own.is_empty():
+		own = candidates
+	return own[rng.randi_range(0, own.size() - 1)]
+
+
+func _random_rite(rng: RandomNumberGenerator) -> int:
+	var all: Array[int] = []
+	var gods: Array[StringName] = []
+	for index: int in settings.rites.size():
+		all.append(index)
+		if not gods.has(settings.rites[index].god):
+			gods.append(settings.rites[index].god)
+	return _by_element(rng, gods, all, func(index: int) -> StringName: return settings.rites[index].god)
+
+
 func _random_building(rng: RandomNumberGenerator, shooter_only: bool) -> int:
+	if settings.market_by_element and not shooter_only:
+		var all: Array[int] = []
+		for index: int in settings.combat.towers.size():
+			all.append(index)
+		return _by_element(rng, market_gods(), all,
+				func(index: int) -> StringName: return settings.combat.towers[index].god)
 	var total: int = 0
 	for data: TowerData in settings.combat.towers:
 		if not shooter_only or (data.attacks and data.damage > 0):
@@ -399,6 +450,9 @@ func _sell(id: int) -> String:
 func _rite(index: int) -> String:
 	if index < 0 or index >= settings.rites.size():
 		return "Нет такого заговора"
+	var slot: int = rite_offers.find(index)
+	if settings.market_rite_slots > 0 and slot < 0:
+		return "Этого заговора нет в лавке"
 	var data: RiteData = settings.rites[index]
 	if settings.rite_purchase_limit and rite_count(index) >= data.max_purchases:
 		return "Этот заговор уже усилен до предела"
@@ -425,8 +479,19 @@ func _rite(index: int) -> String:
 		idol.apply_rite(data)
 	gold -= cost
 	spent += cost
+	if slot >= 0:
+		rite_offers[slot] = -1
 	field.mark_towers_changed()
 	return ""
+
+
+## Есть ли идол под заговор: свой бог или ещё не посвящённый.
+func has_idol_for(index: int) -> bool:
+	var god: StringName = settings.rites[index].god
+	for idol: IdolState in field.idols:
+		if idol.god == god or idol.god == &"":
+			return true
+	return false
 
 
 ## Сколько раз уже куплен заговор (по его идолу).
@@ -542,33 +607,123 @@ func _repair() -> String:
 	return ""
 
 
-func _skill(progress: int) -> String:
+#region Улицы (docs/34 §3)
+
+## Цена следующей улицы; 0 — пристраивать больше нечего.
+func street_cost() -> int:
+	return settings.streets[street_nights.size()].cost if can_grow() else 0
+
+
+func can_grow() -> bool:
+	return street_nights.size() < settings.streets.size()
+
+
+## Новая улица: места под дома — сразу, вход — с ближайшей ещё не начавшейся ночи.
+func _street() -> String:
+	if not can_grow():
+		return "Дальше — проклятая земля"
+	var cost: int = street_cost()
+	if gold < cost:
+		return "Не хватает золота"
+	gold -= cost
+	spent += cost
+	var night: int = current_night() + (1 if settings.is_night(tick_count) else 0)
+	street_nights.append(night)
+	sync_streets()
+	_event(&"street", {"street": street_nights.size(), "night": night, "cost": cost})
+	return ""
+
+
+## Поле видит пристроенные улицы (после снимка — из street_nights).
+func sync_streets() -> void:
+	field.open_streets = street_nights.size()
+	field.mark_towers_changed()
+
+
+## Сколько входов открыто к этой ночи.
+func entrances(night: int) -> int:
+	var count: int = 1
+	for opened: int in street_nights:
+		count += int(opened <= night)
+	return count
+
+
+## Вход пачки: 0 — главная дорога, N — улица N.
+func pack_lane(pack: RitualPack) -> int:
+	return pack.lane_for(entrances(pack.night))
+
+
+## Маршруты пачки: прямо по своему входу и в каждый открытый к её ночи проулок.
+## Бойцы пачки идут по ним по очереди: первый прямо, второй в проулок и т. д.
+func pack_routes(pack: RitualPack) -> Array[int]:
+	var entrance: int = pack_lane(pack)
+	var routes: Array[int] = [entrance]
+	for index: int in street_nights.size():
+		if street_nights[index] > pack.night:
+			continue
+		var street: int = index + 1
+		if entrance == 0 or entrance == street:
+			var branch: int = field.branch_route(entrance, street)
+			if branch >= 0:
+				routes.append(branch)
+	return routes
+
+
+## Маршрут бойца пачки по его месту в строю.
+func member_route(pack: RitualPack, slot: int) -> int:
+	var routes: Array[int] = pack_routes(pack)
+	return routes[slot % routes.size()]
+
+
+## Прогресс точки (вход from_lane, progress) на маршруте врага; -1 — его дорога здесь не идёт.
+## Общий отрезок дорог у сторожки один для всех входов.
+func spot_on_route(from_lane: int, progress: int, mob: MobState) -> int:
+	var lane: int = RitualField.lane_of(mob)
+	if lane == from_lane:
+		return progress
+	var cells: Array[Vector2i] = field.route(from_lane)
+	var cell: Vector2i = cells[clampi(progress / FieldState.MILLI, 0, cells.size() - 1)]
+	var at: int = field.progress_on(lane, cell)
+	return at + progress % FieldState.MILLI if at >= 0 else -1
+
+
+## Где частокол на маршруте врага (-1 — нет частокола или его дорога мимо).
+func palisade_at(mob: MobState) -> int:
+	return spot_on_route(palisade_lane, palisade_progress, mob) if palisade_progress >= 0 else -1
+
+#endregion
+
+
+func _skill(lane: int, progress: int) -> String:
 	if phase != Phase.RUNNING or tick_count < hero_ready or hero_due >= 0:
 		return "Илья не готов"
-	if not valid_progress(progress):
+	if not valid_spot(lane, progress):
 		return "Выберите точку дороги"
+	hero_lane = lane
 	hero_progress = progress
 	hero_due = tick_count + settings.hero_warning
 	hero_ready = tick_count + settings.hero_cooldown
 	return ""
 
 
-func _palisade(progress: int) -> String:
+func _palisade(lane: int, progress: int) -> String:
 	if phase != Phase.RUNNING or palisades <= 0 or palisade_progress >= 0:
 		return "Нет свободного частокола"
-	if not valid_progress(progress):
+	if not valid_spot(lane, progress):
 		return "Выберите точку дороги"
 	for base: MobState in field.mobs:
-		if base.is_alive() and eligible_for_palisade(base) and base.progress == progress:
+		if base.is_alive() and eligible_for_palisade(base) and base.progress == spot_on_route(lane, progress, base):
 			return "Нельзя ставить частокол поверх тяжёлого врага"
 	palisades -= 1
+	palisade_lane = lane
 	palisade_progress = progress
 	palisade_ready = tick_count + settings.palisade_install
 	return ""
 
 
-func valid_progress(progress: int) -> bool:
-	return progress >= 0 and progress < field.get_path_end_progress()
+## Точка на открытой дороге: главной или пристроенной улицы (до сторожки, не на ней).
+func valid_spot(lane: int, progress: int) -> bool:
+	return field.is_route_open(lane) and progress >= 0 and progress < field.lane_end_progress(lane)
 
 
 func eligible_for_palisade(mob: MobState) -> bool:
@@ -590,7 +745,7 @@ func _resolve_hero() -> void:
 
 
 func _hero_strike() -> void:
-	var point: Vector2i = field.get_path_point(hero_progress)
+	var point: Vector2i = field.lane_point(hero_lane, hero_progress)
 	for mob: MobState in field.mobs:
 		if mob.is_alive() and field._is_in_range(point, field.get_mob_position(mob), settings.hero_radius):
 			var raw: int = mini(settings.hero_cap, mob.hp * settings.hero_percent / 100)
@@ -620,6 +775,7 @@ func tick() -> void:
 	field.pending_breaches.clear()
 	tick_count += 1
 	field.wave_tick = tick_count
+	_early_dawn()
 	_boundaries()
 	if phase == Phase.RUNNING and not settings.is_endless() and tick_count >= settings.end_tick:
 		phase = Phase.OVER
@@ -630,7 +786,9 @@ func _spawn_due() -> void:
 	if settings.is_endless():
 		for pack: RitualPack in plan().spawns_at(tick_count):
 			var member: int = pack.member_at(tick_count)
-			field.spawn_mob(member, pack.hp_for(member, settings.nights.boss_enemy), pack.resist)
+			var slot: int = (tick_count - pack.at_tick) / pack.spacing
+			field.spawn_mob(member, pack.hp_for(member, settings.nights.boss_enemy), pack.resist,
+					member_route(pack, slot))
 		return
 	while next_spawn < settings.spawns.size() and settings.spawns[next_spawn].at_tick <= tick_count:
 		field.spawn_mob(settings.spawns[next_spawn].mob_index)
@@ -675,6 +833,22 @@ func current_night() -> int:
 	return settings.nights.night_index_at(tick_count) if settings.is_endless() else last_dawn + 1
 
 
+## Ночь отбита раньше срока: все пачки этой ночи вышли и вся нежить мертва — время сразу
+## перематывается к рассвету (календарь ночей при этом прежний: следующие ночи по своим тикам).
+func _early_dawn() -> void:
+	if not settings.early_dawn or not settings.is_endless() or not settings.is_night(tick_count) \
+			or field.count_alive_mobs() > 0:
+		return
+	var night: int = current_night()
+	for pack: RitualPack in plan().packs(night):
+		if pack.last_tick() >= tick_count:
+			return
+	var dawn: int = settings.nights.night_end(night)
+	_event(&"early_dawn", {"night": night, "skipped": dawn - tick_count})
+	tick_count = dawn
+	field.wave_tick = tick_count
+
+
 func _finish_installations() -> void:
 	var finished: Array[int] = []
 	for id: int in install_until:
@@ -701,10 +875,11 @@ func _resolve_palisade() -> void:
 	var first_step: int = 1
 	for base: MobState in field.mobs:
 		var mob: RitualMob = base as RitualMob
-		if not mob.is_alive() or not eligible_for_palisade(mob) \
-				or mob.previous_progress > palisade_progress or mob.progress < palisade_progress:
+		var mark: int = palisade_at(mob)
+		if not mob.is_alive() or not eligible_for_palisade(mob) or mark < 0 \
+				or mob.previous_progress > mark or mob.progress < mark:
 			continue
-		var distance: int = palisade_progress - mob.previous_progress
+		var distance: int = mark - mob.previous_progress
 		var step: int = maxi(1, mob.step_distance)
 		# Сравниваем доли целочисленного шага без float. Равенство — меньший ID.
 		var earlier: bool = distance * first_step < first_distance * step
@@ -720,14 +895,15 @@ func _resolve_palisade() -> void:
 func _on_mob_moved(mob: RitualMob) -> void:
 	if palisade_progress < 0 or tick_count < palisade_ready:
 		return
-	if mob.is_alive() and eligible_for_palisade(mob) \
-			and mob.previous_progress <= palisade_progress and mob.progress >= palisade_progress:
+	var mark: int = palisade_at(mob)
+	if mob.is_alive() and eligible_for_palisade(mob) and mark >= 0 \
+			and mob.previous_progress <= mark and mob.progress >= mark:
 		var affected: bool = mob.immune_until <= tick_count
 		if affected:
-			mob.progress = palisade_progress
+			mob.progress = mark
 			affected = field.stop_mob(mob, settings.palisade_stun)
 		_event(&"palisade", {"mob": mob.id, "affected": affected, "progress": palisade_progress,
-			"crossing_distance": palisade_progress - mob.previous_progress, "step": mob.step_distance})
+			"crossing_distance": mark - mob.previous_progress, "step": mob.step_distance})
 		palisade_progress = -1
 		palisade_ready = -1
 
@@ -900,6 +1076,7 @@ static func from_snapshot(rules: RitualTrialConfig, state: Dictionary) -> Ritual
 		return null
 	RitualStateCodec.apply(trial, RitualStateCodec.dictionary(state["trial"]))
 	trial.sync_gifts()
+	trial.sync_streets()
 	for record: Dictionary in state["towers"]:
 		var data: TowerData = null
 		for candidate: TowerData in rules.combat.towers:

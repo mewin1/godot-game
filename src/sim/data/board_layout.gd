@@ -19,4 +19,9 @@ func get_path_length(shop_level: int) -> int:
 
 
 func is_inside(cell: Vector2i) -> bool:
-	return cell.x >= 0 and cell.y >= 0 and cell.x < width and cell.y < height
+	return get_rect().has_point(cell)
+
+
+## Вся сетка поля: width × height клеток от нулевой.
+func get_rect() -> Rect2i:
+	return Rect2i(Vector2i.ZERO, Vector2i(width, height))

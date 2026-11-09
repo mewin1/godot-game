@@ -8,6 +8,6 @@ hp = 700
 speed_milli_per_tick = 50
 armor = 0
 breach_damage = 25
-kill_reward = 30
+kill_reward = 26
 tags = Array[StringName]([&"heavy", &"boss"])
 description = "Босс: разгоняется на дороге, раз в пять ночей. Бывает неуязвим к одной стихии."

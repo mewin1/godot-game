@@ -10,6 +10,8 @@ signal sell_requested(tower_id: int)
 signal enchant_chosen(index: int)
 signal reroll_requested()
 var _ritual_rites: Array[MarketOffer] = []
+## Карточки-заговоры прилавка (в конце, после построек).
+var _market_rites: Array[MarketOffer] = []
 var _ritual_enchants: Array[MarketOffer] = []
 var _enchant_grid: GridContainer
 var _market: bool = false
@@ -54,6 +56,18 @@ func setup_ritual(settings: RitualTrialConfig) -> void:
 		_reroll.show()
 		(_reroll.get_parent() as Control).show()
 		_reroll.tooltip_text = "Новые карточки за золото. Дорожает с каждым обновлением; на рассвете — сброс и новый прилавок бесплатно."
+	if _market and settings.market_rite_slots > 0:
+		# Заговор выпадает крайней карточкой прилавка (плейтест 9 ноября); отдельной сетки нет.
+		for slot: int in settings.market_rite_slots:
+			var card: MarketOffer = MarketOffer.new()
+			card.custom_minimum_size = Vector2(96, 138)
+			card.show_rite(settings.rites[0].duplicate() as RiteData)
+			card.clicked.connect(func(chosen: int) -> void: rite_chosen.emit(chosen))
+			_offer_grid.add_child(card)
+			_market_rites.append(card)
+		(_army_title.get_parent() as Control).hide()
+		_army_grid.hide()
+		return
 	if settings.enchants.is_empty():
 		# Бесконечный забег: заговоров больше, карточки мельче — всё на одном экране.
 		_army_grid.columns = 4
@@ -179,6 +193,20 @@ func _refresh_market(trial: RitualTrial) -> void:
 			card.show_offer(trial.settings.combat.towers[index])
 		card.is_active = trial.gold >= price
 		card.queue_redraw()
+	for slot: int in _market_rites.size():
+		var rite_card: MarketOffer = _market_rites[slot]
+		var rite_index: int = trial.rite_offers[slot] if slot < trial.rite_offers.size() else -1
+		rite_card.visible = rite_index >= 0
+		if rite_index < 0:
+			continue
+		if rite_card.offer_index != rite_index or rite_card.rite.id != trial.settings.rites[rite_index].id:
+			rite_card.offer_index = rite_index
+			rite_card.show_rite(trial.settings.rites[rite_index].duplicate() as RiteData)
+		rite_card.rite.cost = trial.rite_cost(rite_index)
+		rite_card.is_active = trial.gold >= rite_card.rite.cost and trial.has_idol_for(rite_index)
+		rite_card.tooltip_text = rite_tooltip(trial, rite_index) if trial.has_idol_for(rite_index) \
+				else rite_tooltip(trial, rite_index) + "\nВсе три идола уже посвящены другим богам"
+		rite_card.queue_redraw()
 	var cost: int = trial.reroll_cost()
 	_reroll.text = "Обновить · %d" % cost
 	_reroll.disabled = trial.gold < cost

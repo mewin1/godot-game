@@ -221,6 +221,10 @@ var _perches: Array[Transform3D] = []
 var _post_top: float = -1.0
 ## Камни леса и берега (x, z, радиус) — для обхода зверями.
 var _rock_spots: PackedVector3Array = PackedVector3Array()
+## Входы дороги кроме главного (у «Городища» — входы пристроенных улиц): у каждого свои ворота.
+var _extra_entries: Array[Vector2] = []
+## Обочины дорог этих входов (подклеты огибают и их колею); заполняет _build_road наследника.
+var _extra_lanes: Array[PackedVector2Array] = []
 
 
 func _ready() -> void:
@@ -264,7 +268,7 @@ func build_for_layout(layout: ArenaLayout3D) -> void:
 func set_open(field: FieldState) -> void:
 	if _layout == null:
 		return
-	var key: int = hash([field.path_length, field.config.build_radius])
+	var key: int = hash([field.path_length, field.config.build_radius, field.get_buildable_cells().size()])
 	if key == _open_key:
 		return
 	_open_key = key
@@ -288,7 +292,7 @@ func set_open(field: FieldState) -> void:
 	_cellars = CellarGeometry.new()
 	var roofs: MeshInstance3D = MeshInstance3D.new()
 	roofs.name = "CellarRoofs"
-	roofs.mesh = _cellars.roofs(field, _layout, lane)
+	roofs.mesh = _cellars.roofs(field, _layout, lane, _extra_lanes)
 	roofs.material_override = paving
 	_yard.add_child(roofs)
 	_multimesh("cellar_arch", _cellars.arches, _yard)
@@ -750,16 +754,21 @@ func _build_walls(fine: Dictionary[Vector2i, bool], entry: Vector2, door: Vector
 		probe.free()
 	var runs: Array[Run] = _wall_runs(fine)
 	_perches = []
-	# ворота — на стене, ближайшей к входу дороги
-	var gate_point: Vector2 = entry
-	var gate_run: Run = null
-	var best: float = INF
-	for run: Run in runs:
-		var p: Vector2 = Geometry2D.get_closest_point_to_segment(entry, run.a, run.b)
-		if p.distance_to(entry) < best:
-			best = p.distance_to(entry)
-			gate_point = p
-			gate_run = run
+	# ворота — на стене, ближайшей к входу дороги (у каждого входа свои)
+	var gate_points: Array[Vector2] = []
+	var gate_runs: Array[Run] = []
+	for gate_entry: Vector2 in [entry] + _extra_entries:
+		var gate_point: Vector2 = gate_entry
+		var gate_run: Run = null
+		var best: float = INF
+		for run: Run in runs:
+			var p: Vector2 = Geometry2D.get_closest_point_to_segment(gate_entry, run.a, run.b)
+			if p.distance_to(gate_entry) < best:
+				best = p.distance_to(gate_entry)
+				gate_point = p
+				gate_run = run
+		gate_points.append(gate_point)
+		gate_runs.append(gate_run)
 	var corners: Dictionary[Vector2, bool] = {}
 	for run: Run in runs:
 		var wall: Vector2 = run.b - run.a
@@ -769,7 +778,7 @@ func _build_walls(fine: Dictionary[Vector2i, bool], entry: Vector2, door: Vector
 		var step: float = wall.length() / count
 		for k: int in count:
 			var center: Vector2 = run.a + direction * (step * (k + 0.5))
-			if center.distance_to(gate_point) < GATE_WIDTH * 0.5 + step * 0.5:
+			if _gap_near(center, gate_points) < GATE_WIDTH * 0.5 + step * 0.5:
 				continue
 			if center.distance_to(door) < 2.6:
 				continue
@@ -784,7 +793,7 @@ func _build_walls(fine: Dictionary[Vector2i, bool], entry: Vector2, door: Vector
 		var torches: int = int(wall.length() / TORCH_STEP)
 		for k: int in torches:
 			var p: Vector2 = run.a.lerp(run.b, (k + 0.5) / torches) - run.out * 0.55
-			if p.distance_to(gate_point) < GATE_WIDTH or p.distance_to(door) < 3.0:
+			if _gap_near(p, gate_points) < GATE_WIDTH or p.distance_to(door) < 3.0:
 				continue
 			# чаша посреди стены — только если так задано: огня во дворе хватает от угловых чаш
 			var bowl: bool = WALL_BOWLS and k == torches / 2
@@ -803,7 +812,7 @@ func _build_walls(fine: Dictionary[Vector2i, bool], entry: Vector2, door: Vector
 		while along < wall.length():
 			var foot: Vector2 = run.a + direction * along
 			along += 0.9
-			if foot.distance_to(gate_point) < GATE_WIDTH * 0.6:
+			if _gap_near(foot, gate_points) < GATE_WIDTH * 0.6:
 				continue
 			var outer: Array[String] = FERN_IDS if _rng.randf() < 0.5 else GRASS_IDS
 			_collect(_yard_grass, outer[_rng.randi() % outer.size()],
@@ -818,7 +827,11 @@ func _build_walls(fine: Dictionary[Vector2i, bool], entry: Vector2, door: Vector
 		var post_scale: float = 1.14 if _corner_inside_count(fine, corner) == 1 else 1.0
 		_place("palisade_post", Vector3(corner.x, 0, corner.y), 0.0, post_scale)
 		_add_perch(corner, post_scale, (corner - _yard_rect().get_center()).normalized())
-	if gate_run != null:
+	for index: int in gate_points.size():
+		var gate_run: Run = gate_runs[index]
+		var gate_point: Vector2 = gate_points[index]
+		if gate_run == null:
+			continue
 		var gate_yaw: float = 0.0 if gate_run.out.y != 0.0 else PI * 0.5
 		_place("gate", Vector3(gate_point.x, 0, gate_point.y), gate_yaw)
 		_warm_light(Vector3(gate_point.x, 2.15, gate_point.y), 2.2, 4.5)
@@ -829,6 +842,14 @@ func _build_walls(fine: Dictionary[Vector2i, bool], entry: Vector2, door: Vector
 			_add_flame(_place("fire_bowl", Vector3(spot.x, 0, spot.y), _rng.randf() * TAU, GATE_BOWL_SCALE),
 					FLAME_HEIGHT * GATE_BOWL_SCALE)
 			_warm_light(Vector3(spot.x, 1.5, spot.y), GATE_BOWL_ENERGY, 5.0)
+
+
+## Расстояние до ближайших ворот.
+static func _gap_near(point: Vector2, gates: Array[Vector2]) -> float:
+	var best: float = INF
+	for gate: Vector2 in gates:
+		best = minf(best, point.distance_to(gate))
+	return best
 
 
 ## Сколько из четырёх мелких клеток вокруг угла — двор (1 — выступающий угол, 3 — внутренний).
@@ -939,8 +960,9 @@ func _add_flame(bowl: Node3D, height: float) -> void:
 func _build_undergrowth(board: BoardLayout, cells: Dictionary[Vector2i, bool],
 		fine: Dictionary[Vector2i, bool]) -> void:
 	var per: int = int(CELL / FINE)
-	for y: int in board.height:
-		for x: int in board.width:
+	var rect: Rect2i = board.get_rect()
+	for y: int in range(rect.position.y, rect.end.y):
+		for x: int in range(rect.position.x, rect.end.x):
 			var cell: Vector2i = Vector2i(x, y)
 			if cells.has(cell):
 				continue

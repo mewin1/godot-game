@@ -138,6 +138,13 @@ func _generate(night: int) -> Array[RitualPack]:
 		result.append(pack)
 	if rules.is_boss_night(night):
 		_insert_boss(rng, night, budget, start + window / 2, result)
+	# Свой генератор входов: прежние ночи (состав, время) не меняются от появления улиц.
+	var lanes: RandomNumberGenerator = RandomNumberGenerator.new()
+	lanes.seed = run_seed * 1000033 + night * 104729
+	var shift: int = lanes.randi_range(0, 59)
+	for index: int in result.size():
+		result[index].slot = index
+		result[index].lane_shift = shift
 	return result
 
 

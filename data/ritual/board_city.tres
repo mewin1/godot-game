@@ -1,0 +1,8 @@
+[gd_resource type="Resource" script_class="BoardLayout" format=3]
+[ext_resource type="Script" path="res://src/sim/data/board_layout.gd" id="1"]
+[resource]
+script = ExtResource("1")
+width = 20
+height = 18
+path_cells = Array[Vector2i]([Vector2i(5, 10), Vector2i(6, 10), Vector2i(7, 10), Vector2i(8, 10), Vector2i(9, 10), Vector2i(10, 10), Vector2i(11, 10), Vector2i(12, 10), Vector2i(13, 10), Vector2i(14, 10), Vector2i(15, 10), Vector2i(16, 10), Vector2i(17, 10), Vector2i(18, 10)])
+path_length_by_level = Array[int]([14])

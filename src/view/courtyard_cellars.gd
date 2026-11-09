@@ -7,7 +7,9 @@ var arches: Array[Transform3D] = []
 var walls: Array[Transform3D] = []
 
 
-func roofs(field: FieldState, layout: ArenaLayout3D, lane: PackedVector2Array) -> Mesh:
+## lane — обочина главной дороги; extra — обочины других дорог (входы улиц «Городища»).
+func roofs(field: FieldState, layout: ArenaLayout3D, lane: PackedVector2Array,
+		extra: Array[PackedVector2Array] = []) -> Mesh:
 	var surface: SurfaceTool = SurfaceTool.new()
 	surface.begin(Mesh.PRIMITIVE_TRIANGLES)
 	surface.set_color(Color.BLACK)
@@ -20,6 +22,11 @@ func roofs(field: FieldState, layout: ArenaLayout3D, lane: PackedVector2Array) -
 		for corner: Vector2 in [Vector2(-1, -1), Vector2(1, -1), Vector2(1, 1), Vector2(-1, 1)]:
 			square.append(mid + corner * half_size)
 		var sections: Array[PackedVector2Array] = Geometry2D.clip_polygons(square, lane)
+		for road: PackedVector2Array in extra:
+			var clipped: Array[PackedVector2Array] = []
+			for section: PackedVector2Array in sections:
+				clipped.append_array(Geometry2D.clip_polygons(section, road))
+			sections = clipped
 		footprints[cell] = sections
 		for polygon: PackedVector2Array in sections:
 			if Geometry2D.is_polygon_clockwise(polygon):

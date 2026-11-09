@@ -8,6 +8,6 @@ hp = 160
 speed_milli_per_tick = 50
 armor = 0
 breach_damage = 4
-kill_reward = 6
+kill_reward = 5
 tags = Array[StringName]([&"banner"])
 description = "Стяг нави: нежить рядом получает меньше урона."

@@ -39,6 +39,8 @@ var _repair_button: Button
 var _defeat: PanelContainer
 var _scout: RitualScoutQueue
 var _repair_all_button: Button
+## Пристроить улицу (docs/34 §3); нет улиц в данных — кнопки нет.
+var _street_button: Button
 var _gift_panel: PanelContainer
 var _gift_buttons: VBoxContainer
 var _gift_key: String = ""
@@ -106,6 +108,8 @@ func _build_ui() -> void:
 		_repair_button.text = "Лечить Илью +%d · %d" % [settings.repair_hp, settings.repair_cost]
 		_repair_button.tooltip_text = "Илья в сторожке +%d HP за %d золота (не выше %d). Враг, дошедший до сторожки, бьёт Илью." % [
 			settings.repair_hp, settings.repair_cost, settings.hero_hp]
+	if not settings.streets.is_empty():
+		_street_button = _button(upkeep, "", _grow)
 	if settings.wear_ticks > 0:
 		var houses: HBoxContainer = HBoxContainer.new()
 		left.add_child(houses)
@@ -545,6 +549,28 @@ func _repair() -> void:
 	_issue(RitualCommand.new(RitualCommand.Action.REPAIR))
 
 
+func _grow() -> void:
+	if _issue(RitualCommand.new(RitualCommand.Action.STREET)):
+		var street: RitualStreetData = settings.streets[trial.street_nights.size() - 1]
+		_message.text = "%s пристроена: места под дома уже открыты, вход для нежити — с ночи %d" % [
+			street.title, trial.street_nights[-1]]
+
+
+## Кнопка улицы: цена следующей; город упёрся в предел — серая.
+func _refresh_streets() -> void:
+	if _street_button == null:
+		return
+	if not trial.can_grow():
+		_street_button.text = "Проклятая земля"
+		_street_button.tooltip_text = "Дальше — проклятая земля: больше улиц не пристроить."
+		_street_button.disabled = true
+		return
+	var street: RitualStreetData = settings.streets[trial.street_nights.size()]
+	_street_button.text = "Новая улица · %d" % street.cost
+	_street_button.tooltip_text = "%s: места под дома — сразу, новый вход для нежити — со следующей ночи.\nКвартал пустой: застройте его, иначе враги прорвутся." % street.title
+	_street_button.disabled = trial.phase != RitualTrial.Phase.RUNNING or trial.gold < street.cost
+
+
 func _choose_skill() -> void:
 	board.action = &"skill"
 	board.preview_index = -1
@@ -620,10 +646,10 @@ func _on_cell(cell: Vector2i, right: bool) -> void:
 				board.action = &""
 				board.selected_id = target.id
 		&"skill", &"palisade":
-			var progress: int = board.path_progress(cell)
+			var spot: Vector2i = board.road_spot(cell)
 			var kind: RitualCommand.Action = RitualCommand.Action.SKILL if board.action == &"skill" \
 					else RitualCommand.Action.PALISADE
-			if _issue(RitualCommand.new(kind, 0, Vector2i.ZERO, 0, 0, progress)):
+			if _issue(RitualCommand.new(kind, spot.x, Vector2i.ZERO, 0, 0, spot.y)):
 				board.action = &""
 		_:
 			var tower: TowerState = trial.field.get_tower_at(cell)
@@ -686,6 +712,7 @@ func _refresh() -> void:
 	var selected: TowerState = trial.field.get_tower(board.selected_id)
 	_selection.text = "Башня: не выбрана" if selected == null else _selection_text(selected)
 	_refresh_wear(selected)
+	_refresh_streets()
 	_repair_button.disabled = trial.phase != RitualTrial.Phase.RUNNING or trial.hp >= settings.hero_hp \
 			or trial.gold < settings.repair_cost
 	_shop._selection_panel.visible = selected != null

@@ -120,6 +120,18 @@ func get_path_end_progress() -> int:
 func get_mob_position(mob: MobState) -> Vector2i:
 	return get_path_point(mob.progress)
 
+
+## Прогресс, на котором этот моб доходит до героя. В PvP путь общий; в «Городище» у каждого
+## входа свой маршрут (RitualField).
+func get_mob_end_progress(_mob: MobState) -> int:
+	return get_path_end_progress()
+
+
+## Шаг пути (из клетки в клетку), по которому моб сейчас идёт, — для попутного/встречного ветра.
+func get_mob_step(mob: MobState) -> Vector2i:
+	var index: int = clampi(mob.progress / MILLI, 0, path_length - 2)
+	return layout.path_cells[index + 1] - layout.path_cells[index]
+
 #endregion
 
 
@@ -543,13 +555,18 @@ func _find_targets(tower: TowerState, center: Vector2i, range_milli: int) -> Arr
 			if mob.is_decoy:
 				priority = 2147483647
 			if best == null or priority > best_priority \
-					or (priority == best_priority and mob.progress > best.progress):
+					or (priority == best_priority and _remaining(mob) < _remaining(best)):
 				best = mob
 				best_priority = priority
 		if best == null:
 			break
 		targets.append(best)
 	return targets
+
+
+## Сколько мобу осталось до героя (тысячные клетки): «дальше всех прошедший» — у кого меньше.
+func _remaining(mob: MobState) -> int:
+	return get_mob_end_progress(mob) - mob.progress
 
 
 ## Видит ли башня моба: жив, в радиусе, не летает над ней, не прячется в невидимости.
@@ -871,7 +888,7 @@ func count_remaining_mobs() -> int:
 func _target_priority(tower: TowerState, mob: MobState) -> int:
 	if tower.data.target_priority == TowerData.TargetPriority.FRONT:
 		return 0
-	if mob.progress >= get_path_end_progress() - _config.reaction_target_emergency_milli:
+	if _remaining(mob) <= _config.reaction_target_emergency_milli:
 		return 2
 	if mob.shield_left > 0:
 		return 0

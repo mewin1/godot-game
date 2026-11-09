@@ -9,15 +9,86 @@ var settings: RitualTrialConfig
 var stopped: bool = false
 ## Взятые дары за боссов (собирает RitualTrial из своих индексов — они и попадают в снимок).
 var gifts: Array[RitualGiftData] = []
+## Сколько улиц пристроено (места под дома открыты); задаёт RitualTrial.sync_streets.
+var open_streets: int = 0
+## Все маршруты (каждый — Array[Vector2i] от входа до сторожки): 0 — главная дорога,
+## 1..N — улицы, дальше — ветки через проулки. RitualMob.lane — индекс отсюда.
+var _routes: Array = []
+## Для каждого маршрута: какой улице он нужен открытой (0 — всегда открыт).
+var _route_street: Array[int] = []
+## Ветка через проулок улицы k для входа e: ключ (e, k) → индекс маршрута.
+var _branches: Dictionary[Vector2i, int] = {}
 
 
 func _init(rules: RitualTrialConfig) -> void:
 	settings = rules
 	super(rules.combat)
+	_build_routes()
+
+
+## Маршруты по данным: главная, улицы и ветки через проулки (с главной на улицу и обратно).
+func _build_routes() -> void:
+	_routes.append(layout.path_cells)
+	_route_street.append(0)
+	for index: int in settings.streets.size():
+		_routes.append(settings.streets[index].path_cells)
+		_route_street.append(index + 1)
+	for index: int in settings.streets.size():
+		var street: RitualStreetData = settings.streets[index]
+		if street.alley_cells.is_empty():
+			continue
+		var back: Array[Vector2i] = street.alley_cells.duplicate()
+		back.reverse()
+		_add_branch(Vector2i(0, index + 1), layout.path_cells, street.alley_cells, street.path_cells)
+		_add_branch(Vector2i(index + 1, index + 1), street.path_cells, back, layout.path_cells)
+
+
+## Ветка: начало своей дороги до клетки у проулка, проулок, остаток другой дороги от клетки за ним.
+func _add_branch(key: Vector2i, from: Array[Vector2i], alley: Array[Vector2i], to: Array[Vector2i]) -> void:
+	var start: int = _neighbor_index(from, alley[0])
+	var finish: int = _neighbor_index(to, alley[alley.size() - 1])
+	assert(start >= 0 and finish >= 0, "Проулок должен соединять две дороги")
+	var cells: Array[Vector2i] = from.slice(0, start + 1)
+	cells.append_array(alley)
+	cells.append_array(to.slice(finish))
+	_branches[key] = _routes.size()
+	_routes.append(cells)
+	_route_street.append(key.y)
+
+
+static func _neighbor_index(cells: Array[Vector2i], cell: Vector2i) -> int:
+	for index: int in cells.size():
+		var gap: Vector2i = cells[index] - cell
+		if absi(gap.x) + absi(gap.y) == 1:
+			return index
+	return -1
+
+
+## Маршрут ветки входа entrance через проулок улицы street; -1 — проулка нет.
+func branch_route(entrance: int, street: int) -> int:
+	var index: int = _branches.get(Vector2i(entrance, street), -1)
+	return index
+
+
+## Проулок улицы как отрезок дороги: клетка главной, проулок, клетка улицы (для вида).
+func alley_path(street: int) -> Array[Vector2i]:
+	var data: RitualStreetData = settings.streets[street - 1]
+	var cells: Array[Vector2i] = []
+	if data.alley_cells.is_empty():
+		return cells
+	cells.append(layout.path_cells[_neighbor_index(layout.path_cells, data.alley_cells[0])])
+	cells.append_array(data.alley_cells)
+	cells.append(data.path_cells[_neighbor_index(data.path_cells, data.alley_cells[-1])])
+	return cells
+
+
+## Маршрут открыт: его улица (если нужна) уже пристроена.
+func is_route_open(lane: int) -> bool:
+	return lane >= 0 and lane < _routes.size() and _route_street[lane] <= open_streets
 
 
 func is_buildable(cell: Vector2i) -> bool:
-	for region: Rect2i in settings.build_regions:
+	for region: Rect2i in open_regions():
 		if region.has_point(cell):
 			return true
 	return false
@@ -25,16 +96,119 @@ func is_buildable(cell: Vector2i) -> bool:
 
 func get_buildable_cells() -> Array[Vector2i]:
 	var result: Array[Vector2i] = []
-	for region: Rect2i in settings.build_regions:
+	for region: Rect2i in open_regions():
 		for y: int in range(region.position.y, region.end.y):
 			for x: int in range(region.position.x, region.end.x):
 				result.append(Vector2i(x, y))
 	return result
 
 
+## Места двора и пристроенных улиц.
+func open_regions() -> Array[Rect2i]:
+	var regions: Array[Rect2i] = settings.build_regions.duplicate()
+	for index: int in mini(open_streets, settings.streets.size()):
+		regions.append_array(settings.streets[index].build_regions)
+	return regions
+
+
+#region Входы и маршруты (docs/34 §3): у каждого входа свой маршрут до сторожки.
+
+## Маршрут: 0 — главная дорога поля, N — улица N, дальше — ветки через проулки.
+func route(lane: int) -> Array[Vector2i]:
+	if lane <= 0 or lane >= _routes.size():
+		return layout.path_cells
+	var cells: Array[Vector2i] = _routes[lane]
+	return cells
+
+
+## Маршрутов по данным (открытых или нет).
+func lane_count() -> int:
+	return _routes.size()
+
+
+## Точка маршрута входа (тысячные клетки) для прогресса вдоль него.
+func lane_point(lane: int, progress: int) -> Vector2i:
+	var cells: Array[Vector2i] = route(lane)
+	var last: int = cells.size() - 1
+	var index: int = clampi(progress / MILLI, 0, last)
+	var from: Vector2i = _cell_center(cells[index])
+	if index >= last:
+		return from
+	var to: Vector2i = _cell_center(cells[index + 1])
+	var fraction: int = progress - index * MILLI
+	return from + (to - from) * fraction / MILLI
+
+
+func lane_end_progress(lane: int) -> int:
+	return (route(lane).size() - 1) * MILLI
+
+
+## Где на открытых дорогах эта клетка: (вход, прогресс) или (-1, -1). Главная дорога — первой.
+func locate_road(cell: Vector2i) -> Vector2i:
+	for lane: int in _routes.size():
+		if not is_route_open(lane):
+			continue
+		var index: int = route(lane).find(cell)
+		if index >= 0 and index < route(lane).size() - 1:
+			return Vector2i(lane, index * MILLI)
+	return Vector2i(-1, -1)
+
+
+## Прогресс клетки на маршруте входа (-1 — маршрут через неё не идёт).
+func progress_on(lane: int, cell: Vector2i) -> int:
+	var index: int = route(lane).find(cell)
+	return index * MILLI if index >= 0 else -1
+
+
+static func lane_of(mob: MobState) -> int:
+	var ritual: RitualMob = mob as RitualMob
+	return ritual.lane if ritual != null else 0
+
+
+func get_mob_position(mob: MobState) -> Vector2i:
+	return lane_point(lane_of(mob), mob.progress)
+
+
+func get_mob_end_progress(mob: MobState) -> int:
+	return lane_end_progress(lane_of(mob))
+
+
+func get_mob_step(mob: MobState) -> Vector2i:
+	var cells: Array[Vector2i] = route(lane_of(mob))
+	var index: int = clampi(mob.progress / MILLI, 0, cells.size() - 2)
+	return cells[index + 1] - cells[index]
+
+
+## Клетки всех открытых дорог (без повторов на общем отрезке).
+func open_road_cells() -> Array[Vector2i]:
+	var seen: Dictionary[Vector2i, bool] = {}
+	var result: Array[Vector2i] = []
+	for lane: int in _routes.size():
+		if not is_route_open(lane):
+			continue
+		for cell: Vector2i in route(lane):
+			if not seen.has(cell):
+				seen[cell] = true
+				result.append(cell)
+	return result
+
+
+## Сколько клеток всех открытых дорог башня достаёт (подсказки и боты).
+func count_path_cells_in_range(cells: Array[Vector2i], range_milli: int) -> int:
+	var center: Vector2i = TowerState.center_of(cells)
+	var count: int = 0
+	for cell: Vector2i in open_road_cells():
+		if _is_in_range(center, _cell_center(cell), range_milli):
+			count += 1
+	return count
+
+#endregion
+
+
 ## hp_percent < 0 — здоровье по суткам прежнего опыта; resist — стихийная неуязвимость пачки.
-func spawn_mob(index: int, hp_percent: int = -1, resist: StringName = &"") -> RitualMob:
+func spawn_mob(index: int, hp_percent: int = -1, resist: StringName = &"", lane: int = 0) -> RitualMob:
 	var mob: RitualMob = RitualMob.from_data(settings.enemies[index], settings)
+	mob.lane = lane
 	if hp_percent < 0:
 		var cycle: int = clampi(wave_tick / settings.cycle_ticks, 0, settings.cycle_hp_percent.size() - 1)
 		hp_percent = settings.cycle_hp_percent[cycle]
@@ -91,8 +265,9 @@ func finish_tick() -> void:
 			continue
 		if mob.boss_phase == RitualMob.BossPhase.RUSH and mob.progress >= settings.boss_end:
 			mob.boss_phase = RitualMob.BossPhase.SPENT
-		if mob.progress >= get_path_end_progress():
-			mob.progress = get_path_end_progress()
+		var end: int = get_mob_end_progress(mob)
+		if mob.progress >= end:
+			mob.progress = end
 			_breach(mob)
 	_remove_finished_mobs()
 
@@ -386,8 +561,7 @@ func _apply_trial_wind(mob: RitualMob) -> void:
 	mob.wind_slow_percent = 0
 	mob.wind_boost_percent = 0
 	mob.is_in_wind = false
-	var index: int = clampi(mob.progress / MILLI, 0, path_length - 2)
-	var movement: Vector2i = layout.path_cells[index + 1] - layout.path_cells[index]
+	var movement: Vector2i = get_mob_step(mob)
 	for tower: TowerState in towers:
 		if tower.is_action_blocked() or tower.data.wind_length_milli <= 0 \
 				or not DivineCombat.is_wind_blowing(tower) or not in_wind(tower, get_mob_position(mob)):

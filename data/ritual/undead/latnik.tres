@@ -8,6 +8,6 @@ hp = 260
 speed_milli_per_tick = 45
 armor = 4
 breach_damage = 6
-kill_reward = 8
+kill_reward = 6
 tags = Array[StringName]([])
 description = "Ржавая броня срезает каждый удар на 4: слабые частые удары почти не берут."

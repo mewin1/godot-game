@@ -33,7 +33,7 @@ static func apply(field: FieldState, mob: MobState) -> void:
 	if mob.freeze_ticks_left <= 0 and mob.stun_ticks_left <= 0:
 		# Толчок: положительный push_milli — вперёд, отрицательный — назад (не раньше старта).
 		if rule.push_milli >= 0:
-			mob.progress = mini(field.get_path_end_progress(), mob.progress + rule.push_milli)
+			mob.progress = mini(field.get_mob_end_progress(mob), mob.progress + rule.push_milli)
 		else:
 			mob.progress = maxi(0, mob.progress + rule.push_milli)
 	field.trigger_reaction(rule.id, mob)

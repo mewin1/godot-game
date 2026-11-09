@@ -9,6 +9,9 @@ extends Resource
 @export var spawns: Array[RitualSpawn] = []
 @export var loadouts: Array[RitualLoadout] = []
 @export var build_regions: Array[Rect2i] = []
+## Пристраиваемые улицы по порядку покупки (docs/34 §3); пусто — город не растёт.
+## Улица N даёт вход N + 1: главная дорога поля — вход 1.
+@export var streets: Array[RitualStreetData] = []
 @export var hero_hp: int = 50
 @export var start_gold: int = 92
 ## 0 — число башен не ограничено (редакция 3, docs/30 §15).
@@ -31,6 +34,14 @@ extends Resource
 @export var market_offers: int = 0
 ## Первые столько мест — только стреляющие постройки (как первые места лавки PvP).
 @export var market_shooter_slots: int = 2
+## Карточки-заговоры в конце прилавка (плейтест 9 ноября): заговор выпадает в лавке, а не висит
+## отдельной сеткой. 0 — все заговоры сразу (прежний опыт).
+@export var market_rite_slots: int = 0
+## Лавка выбирает сначала стихию (все равновероятно), потом её постройку/заговор: иначе стихии
+## с несколькими постройками выпадают чаще. false — веса shop_weight, как в PvP.
+@export var market_by_element: bool = false
+## Нежить ночи кончилась (все пачки вышли и убиты) — сразу рассвет, без пустого ожидания.
+@export var early_dawn: bool = false
 ## Обновление прилавка: цена + шаг за каждое обновление в эти сутки; на рассвете — сброс
 ## и новый прилавок бесплатно.
 @export var reroll_cost: int = 2

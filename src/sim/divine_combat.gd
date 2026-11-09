@@ -57,9 +57,7 @@ static func apply_wind(field: FieldState, mob: MobState) -> void:
 	mob.is_in_wind = false
 	if field.silence_ticks_left > 0:
 		return
-	var path_index: int = clampi(mob.progress / FieldState.MILLI, 0, field.path_length - 2)
-	var movement: Vector2i = field.layout.path_cells[path_index + 1] \
-			- field.layout.path_cells[path_index]
+	var movement: Vector2i = field.get_mob_step(mob)
 	for tower: TowerState in field.towers:
 		if tower.is_action_blocked() or tower.data.wind_length_milli <= 0 or not is_wind_blowing(tower) \
 				or not is_in_wind(field, tower, field.get_mob_position(mob)):

@@ -254,9 +254,9 @@ func cell_at(point: Vector2) -> Vector2i:
 	var best: Vector2i = Vector2i(-1, -1)
 	var best_t: float = INF
 	var noir: NoirArena3D = _world.get_node_or_null("Arena") as NoirArena3D
-	var board: BoardLayout = _field.layout
-	for y: int in board.height:
-		for x: int in board.width:
+	var board: Rect2i = _field.layout.get_rect()
+	for y: int in range(board.position.y, board.end.y):
+		for x: int in range(board.position.x, board.end.x):
 			var cell: Vector2i = Vector2i(x, y)
 			var roof: bool = _field.is_buildable(cell)
 			var height: float = layout.cell_height(cell) if noir == null or roof else 0.0

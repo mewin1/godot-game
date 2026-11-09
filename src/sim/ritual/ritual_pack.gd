@@ -15,6 +15,15 @@ var resist: StringName = &""
 var hp_percent: int = 100
 ## Здоровье самого босса (у свиты — hp_percent).
 var boss_hp_percent: int = 100
+## Место пачки в ночи и сдвиг входов этой ночи: пачки ночи по очереди раздаются по входам,
+## начиная со случайного. Сам вход зависит от числа открытых входов — lane_for.
+var slot: int = 0
+var lane_shift: int = 0
+
+
+## Вход пачки (0 — главная дорога), если к её ночи открыто entrances входов.
+func lane_for(entrances: int) -> int:
+	return (lane_shift + slot) % maxi(1, entrances)
 
 
 ## Здоровье врага пачки в процентах: босс растёт своим темпом.

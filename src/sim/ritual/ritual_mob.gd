@@ -13,6 +13,9 @@ var aura_percent: int = 100
 var movement_remainder: int = 0
 ## Полный целочисленный шаг до ограничения на повороте/преграде.
 var step_distance: int = 0
+## Вход, через который идёт враг: 0 — главная дорога, N — улица N (RitualField.route).
+## progress считается вдоль маршрута своего входа.
+var lane: int = 0
 
 
 static func from_data(mob_data: MobData, settings: RitualTrialConfig) -> RitualMob:

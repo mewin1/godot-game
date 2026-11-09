@@ -42,10 +42,10 @@ func _check_endless(scene: PackedScene) -> void:
 	_check(panel.trial.gold == gold - panel.settings.reroll_cost, "Обновление лавки не списало цену")
 	var offered: int = panel.trial.offers[0]
 	panel._choose_purchase(offered)
-	panel._on_cell(Vector2i(10, 3), false)
+	panel._on_cell(Vector2i(8, 8), false)
 	_check(panel.trial.field.towers.size() == 1, "Вечером нельзя строить с прилавка")
 	panel._refresh()
-	panel._on_cell(Vector2i(10, 3), false)
+	panel._on_cell(Vector2i(8, 8), false)
 	_check(panel._selection.text.contains(panel.settings.level_name(1)), "Не виден материал дома: " + panel._selection.text)
 	_check(panel._selection.text.contains("прочность 100%"), "Не видна прочность дома: " + panel._selection.text)
 	panel.trial.field.towers[0].durability = 0

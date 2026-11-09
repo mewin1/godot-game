@@ -1,6 +1,6 @@
 [gd_resource type="Resource" script_class="GameConfig" format=3]
 [ext_resource type="Script" path="res://src/sim/data/game_config.gd" id="game"]
-[ext_resource type="Resource" path="res://data/ritual/board.tres" id="board"]
+[ext_resource type="Resource" path="res://data/ritual/board_city.tres" id="board"]
 [ext_resource type="Script" path="res://src/sim/data/tower_data.gd" id="tower"]
 [ext_resource type="Script" path="res://src/sim/data/reaction_data.gd" id="reaction"]
 [ext_resource type="Resource" path="res://data/towers/bolt.tres" id="t_bolt"]
@@ -9,6 +9,10 @@
 [ext_resource type="Resource" path="res://data/towers/wind.tres" id="t_wind"]
 [ext_resource type="Resource" path="res://data/towers/water.tres" id="t_water"]
 [ext_resource type="Resource" path="res://data/towers/rime.tres" id="t_rime"]
+[ext_resource type="Resource" path="res://data/towers/spark.tres" id="t_spark"]
+[ext_resource type="Resource" path="res://data/towers/thunder.tres" id="t_thunder"]
+[ext_resource type="Resource" path="res://data/towers/hex.tres" id="t_hex"]
+[ext_resource type="Resource" path="res://data/towers/plague.tres" id="t_plague"]
 [ext_resource type="Resource" path="res://data/reactions/steam.tres" id="r_steam"]
 [ext_resource type="Resource" path="res://data/reactions/roast_reverse.tres" id="r_roast_reverse"]
 [ext_resource type="Resource" path="res://data/reactions/melt_reverse_cold.tres" id="r_melt_reverse_cold"]
@@ -31,7 +35,7 @@ board = ExtResource("board")
 chain_chance_percent = 20
 ticks_per_second = 20
 idol_slots = 3
-towers = Array[ExtResource("tower")]([ExtResource("t_bolt"), ExtResource("t_brazier"), ExtResource("t_furnace"), ExtResource("t_wind"), ExtResource("t_water"), ExtResource("t_rime")])
+towers = Array[ExtResource("tower")]([ExtResource("t_bolt"), ExtResource("t_brazier"), ExtResource("t_furnace"), ExtResource("t_wind"), ExtResource("t_water"), ExtResource("t_rime"), ExtResource("t_spark"), ExtResource("t_thunder"), ExtResource("t_hex"), ExtResource("t_plague")])
 reactions = Array[ExtResource("reaction")]([ExtResource("r_steam"), ExtResource("r_roast_reverse"), ExtResource("r_melt_reverse_cold"), ExtResource("r_melt_reverse_frozen"), ExtResource("r_roast"), ExtResource("r_melt"), ExtResource("r_freeze"), ExtResource("r_shatter"), ExtResource("r_execute"), ExtResource("r_chain"), ExtResource("r_infection"), ExtResource("r_conservation"), ExtResource("r_surge"), ExtResource("r_wildfire"), ExtResource("r_blizzard"), ExtResource("r_frozen_wind")])
 resist_percent = 100
 max_tower_level = 4
