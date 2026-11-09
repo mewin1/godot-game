@@ -34,3 +34,5 @@ idol_slots = 3
 towers = Array[ExtResource("tower")]([ExtResource("t_bolt"), ExtResource("t_brazier"), ExtResource("t_furnace"), ExtResource("t_wind"), ExtResource("t_water"), ExtResource("t_rime")])
 reactions = Array[ExtResource("reaction")]([ExtResource("r_steam"), ExtResource("r_roast_reverse"), ExtResource("r_melt_reverse_cold"), ExtResource("r_melt_reverse_frozen"), ExtResource("r_roast"), ExtResource("r_melt"), ExtResource("r_freeze"), ExtResource("r_shatter"), ExtResource("r_execute"), ExtResource("r_chain"), ExtResource("r_infection"), ExtResource("r_conservation"), ExtResource("r_surge"), ExtResource("r_wildfire"), ExtResource("r_blizzard"), ExtResource("r_frozen_wind")])
 resist_percent = 100
+max_tower_level = 4
+level_damage_percent = Array[int]([100, 200, 400, 800])

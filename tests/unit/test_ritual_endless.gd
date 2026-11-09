@@ -420,3 +420,125 @@ func test_old_trial_keeps_full_shop_and_enchantments() -> void:
 		"Прежний опыт покупает любую постройку")
 	assert_false(old.enchants.is_empty())
 	assert_eq(trial.execute(RitualCommand.new(RitualCommand.Action.REROLL)), "В этом режиме лавка не обновляется")
+
+
+# --- Шаг 4: слияние до 4-го уровня, поведение по уровню ---
+
+
+func _place(trial: RitualTrial, id: StringName, cell: Vector2i, level: int) -> TowerState:
+	var data: TowerData = null
+	for candidate: TowerData in _settings.combat.towers:
+		if candidate.id == id:
+			data = candidate
+	var tower: TowerState = trial.field.add_tower(data, cell, 0)
+	tower.level = level
+	trial.field.mark_towers_changed()
+	return tower
+
+
+## Враги на верхней прямой дороги (y = 2), шаг 400 тысячных клетки; возвращает их.
+func _crowd(trial: RitualTrial, enemy: int, count: int, start: int = 8200) -> Array[RitualMob]:
+	var result: Array[RitualMob] = []
+	for index: int in count:
+		var mob: RitualMob = trial.field.spawn_mob(enemy, 1000)
+		mob.progress = start + index * 400
+		mob.previous_progress = mob.progress
+		result.append(mob)
+	return result
+
+
+func _hurt(mobs: Array[RitualMob]) -> int:
+	var count: int = 0
+	for mob: RitualMob in mobs:
+		count += int(mob.hp < mob.max_hp or mob.status_tags().size() > 0)
+	return count
+
+
+func test_white_stone_fourth_level_only_in_ritual() -> void:
+	assert_eq(_settings.combat.max_tower_level, 4, "Белокаменный — 4-й уровень «Обряда»")
+	var old: RitualTrialConfig = load("res://data/ritual/trial.tres") as RitualTrialConfig
+	assert_eq(old.combat.max_tower_level, 3, "Прежний опыт — до 3")
+	var pvp: GameConfig = load("res://data/game_config.tres") as GameConfig
+	assert_eq(pvp.max_tower_level, 3, "PvP — до 3")
+	assert_eq(_settings.level_names.size(), 4)
+	assert_eq(_settings.level_names[3], "Белокаменный")
+
+
+func test_merge_chain_reaches_white_stone() -> void:
+	var trial: RitualTrial = _trial(1)
+	var bolt: StringName = &"bolt"
+	var cells: Array[Vector2i] = [Vector2i(3, 3), Vector2i(4, 3)]
+	for level: int in range(1, 4):
+		var first: TowerState = _place(trial, bolt, cells[0], level)
+		var second: TowerState = _place(trial, bolt, cells[1], level)
+		# MERGE: item — башня, которая растёт; tower_id — сливаемая копия.
+		assert_eq(trial.execute(RitualCommand.new(RitualCommand.Action.MERGE, second.id, Vector2i.ZERO, 0, first.id)), "")
+		assert_eq(second.level, level + 1)
+		trial.field.remove_tower(second)
+	var top: TowerState = _place(trial, bolt, cells[0], 4)
+	var twin: TowerState = _place(trial, bolt, cells[1], 4)
+	assert_eq(trial.execute(RitualCommand.new(RitualCommand.Action.MERGE, top.id, Vector2i.ZERO, 0, twin.id)),
+		"Уровень уже максимальный")
+
+
+func test_every_ritual_building_has_behavior_for_each_level() -> void:
+	for data: TowerData in _settings.combat.towers:
+		var levels: RitualBuildingLevels = _settings.levels_for(data)
+		assert_not_null(levels, "%s: нет поведения по уровням" % data.id)
+		if levels != null:
+			assert_eq(levels.levels.size(), _settings.combat.max_tower_level, "%s: по поведению на уровень" % data.id)
+			for behavior: RitualLevelBehavior in levels.levels:
+				assert_false(behavior.note.is_empty(), "%s: у уровня есть описание" % data.id)
+
+
+func test_water_house_wets_one_target_then_an_area() -> void:
+	for level: int in [1, 2]:
+		var trial: RitualTrial = _trial(1)
+		_place(trial, &"water", Vector2i(9, 3), level)
+		var mobs: Array[RitualMob] = _crowd(trial, 0, 3, 8600)
+		trial.field.fire_trial_towers()
+		var wet: int = 0
+		for mob: RitualMob in mobs:
+			wet += int(mob.status_tags().has(&"wet"))
+		assert_eq(wet, 1 if level == 1 else 3, "Водяной дом %d-го уровня мочит %d" % [level, 1 if level == 1 else 3])
+
+
+func test_bolt_second_level_shoots_two_targets() -> void:
+	for level: int in [1, 2]:
+		var trial: RitualTrial = _trial(1)
+		_place(trial, &"bolt", Vector2i(10, 3), level)
+		var mobs: Array[RitualMob] = _crowd(trial, 0, 3, 9000)
+		trial.field.fire_trial_towers()
+		assert_eq(_hurt(mobs), level, "Самострел %d-го уровня бьёт %d целей" % [level, level])
+
+
+func test_level_damage_follows_behavior_percent() -> void:
+	var trial: RitualTrial = _trial(1)
+	var bolt: TowerData = _settings.combat.towers[0]
+	for level: int in range(1, 5):
+		var tower: TowerState = _place(trial, &"bolt", Vector2i(2 + level * 2, 9), level)
+		var behavior: RitualLevelBehavior = _settings.levels_for(bolt).levels[level - 1]
+		assert_eq(trial.field.get_tower_damage(tower), bolt.damage * behavior.damage_percent / 100 + behavior.damage_add)
+
+
+func test_white_stone_bolt_pierces_armor() -> void:
+	var latnik: int = 6
+	assert_true(_settings.enemies[latnik].armor > 0)
+	var damages: Array[int] = []
+	for level: int in [3, 4]:
+		var trial: RitualTrial = _trial(1)
+		var tower: TowerState = _place(trial, &"bolt", Vector2i(10, 3), level)
+		var mob: RitualMob = _crowd(trial, latnik, 1, 9000)[0]
+		trial.field.fire_trial_towers()
+		damages.append(mob.max_hp - mob.hp)
+		var expected: int = trial.field.get_tower_damage(tower) - (_settings.enemies[latnik].armor if level == 3 else 0)
+		assert_eq(mob.max_hp - mob.hp, expected, "Уровень %d: броня %s" % [level, "срезает" if level == 3 else "пробита"])
+
+
+func test_old_trial_levels_are_unchanged() -> void:
+	var old: RitualTrialConfig = load("res://data/ritual/trial.tres") as RitualTrialConfig
+	var trial: RitualTrial = RitualTrial.new(old, 3)
+	var tower: TowerState = trial.field.add_tower(old.combat.towers[0], Vector2i(10, 3), 0)
+	tower.level = 2
+	assert_null(old.levels_for(tower.data))
+	assert_eq(trial.field.get_tower_damage(tower), old.combat.towers[0].damage * 2)

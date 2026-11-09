@@ -3,6 +3,8 @@
 [ext_resource type="Script" path="res://src/sim/data/ritual_night_rules.gd" id="night_rules"]
 [ext_resource type="Script" path="res://src/sim/data/ritual_enemy_rule.gd" id="enemy_rule"]
 [ext_resource type="Script" path="res://src/sim/data/rite_data.gd" id="rite"]
+[ext_resource type="Script" path="res://src/sim/data/ritual_level_behavior.gd" id="level_behavior"]
+[ext_resource type="Script" path="res://src/sim/data/ritual_building_levels.gd" id="building_levels"]
 [ext_resource type="Script" path="res://src/sim/data/mob_data.gd" id="mob"]
 [ext_resource type="Resource" path="res://data/ritual/combat_endless.tres" id="combat"]
 [ext_resource type="Resource" path="res://data/rites/war_power.tres" id="rite_0"]
@@ -65,6 +67,294 @@ threat = 7
 first_night = 8
 lead_weight = 6
 fill_weight = 3
+[sub_resource type="Resource" id="lvl_bolt_1"]
+script = ExtResource("level_behavior")
+note = "Одна цель"
+damage_percent = 100
+damage_add = 0
+extra_targets = 0
+splash_radius_milli = -1
+splash_percent = -1
+range_bonus_milli = 0
+armor_pierce = 0
+support_percent = 100
+[sub_resource type="Resource" id="lvl_bolt_2"]
+script = ExtResource("level_behavior")
+note = "Две цели"
+damage_percent = 200
+damage_add = 0
+extra_targets = 1
+splash_radius_milli = -1
+splash_percent = -1
+range_bonus_milli = 0
+armor_pierce = 0
+support_percent = 100
+[sub_resource type="Resource" id="lvl_bolt_3"]
+script = ExtResource("level_behavior")
+note = "Три цели, дальше на полклетки"
+damage_percent = 400
+damage_add = 0
+extra_targets = 2
+splash_radius_milli = -1
+splash_percent = -1
+range_bonus_milli = 500
+armor_pierce = 0
+support_percent = 100
+[sub_resource type="Resource" id="lvl_bolt_4"]
+script = ExtResource("level_behavior")
+note = "Три цели, пробивает броню 4"
+damage_percent = 800
+damage_add = 0
+extra_targets = 2
+splash_radius_milli = -1
+splash_percent = -1
+range_bonus_milli = 500
+armor_pierce = 4
+support_percent = 100
+[sub_resource type="Resource" id="levels_bolt"]
+script = ExtResource("building_levels")
+tower_id = &"bolt"
+levels = Array[ExtResource("level_behavior")]([SubResource("lvl_bolt_1"), SubResource("lvl_bolt_2"), SubResource("lvl_bolt_3"), SubResource("lvl_bolt_4")])
+[sub_resource type="Resource" id="lvl_brazier_1"]
+script = ExtResource("level_behavior")
+note = "Одна цель, поджигает"
+damage_percent = 100
+damage_add = 0
+extra_targets = 0
+splash_radius_milli = -1
+splash_percent = -1
+range_bonus_milli = 0
+armor_pierce = 0
+support_percent = 100
+[sub_resource type="Resource" id="lvl_brazier_2"]
+script = ExtResource("level_behavior")
+note = "Огненный горшок: область 0,8 клетки, 50% урона"
+damage_percent = 200
+damage_add = 0
+extra_targets = 0
+splash_radius_milli = 800
+splash_percent = 50
+range_bonus_milli = 0
+armor_pierce = 0
+support_percent = 100
+[sub_resource type="Resource" id="lvl_brazier_3"]
+script = ExtResource("level_behavior")
+note = "Область 1,2 клетки, 60% урона"
+damage_percent = 400
+damage_add = 0
+extra_targets = 0
+splash_radius_milli = 1200
+splash_percent = 60
+range_bonus_milli = 0
+armor_pierce = 0
+support_percent = 100
+[sub_resource type="Resource" id="lvl_brazier_4"]
+script = ExtResource("level_behavior")
+note = "Область 1,6 клетки, 75% урона"
+damage_percent = 800
+damage_add = 0
+extra_targets = 0
+splash_radius_milli = 1600
+splash_percent = 75
+range_bonus_milli = 0
+armor_pierce = 0
+support_percent = 100
+[sub_resource type="Resource" id="levels_brazier"]
+script = ExtResource("building_levels")
+tower_id = &"brazier"
+levels = Array[ExtResource("level_behavior")]([SubResource("lvl_brazier_1"), SubResource("lvl_brazier_2"), SubResource("lvl_brazier_3"), SubResource("lvl_brazier_4")])
+[sub_resource type="Resource" id="lvl_furnace_1"]
+script = ExtResource("level_behavior")
+note = "Мощный удар, сначала по горящим"
+damage_percent = 100
+damage_add = 0
+extra_targets = 0
+splash_radius_milli = -1
+splash_percent = -1
+range_bonus_milli = 0
+armor_pierce = 0
+support_percent = 100
+[sub_resource type="Resource" id="lvl_furnace_2"]
+script = ExtResource("level_behavior")
+note = "Две цели"
+damage_percent = 200
+damage_add = 0
+extra_targets = 1
+splash_radius_milli = -1
+splash_percent = -1
+range_bonus_milli = 0
+armor_pierce = 0
+support_percent = 100
+[sub_resource type="Resource" id="lvl_furnace_3"]
+script = ExtResource("level_behavior")
+note = "Две цели и взрыв: область 1 клетка, 50%"
+damage_percent = 400
+damage_add = 0
+extra_targets = 1
+splash_radius_milli = 1000
+splash_percent = 50
+range_bonus_milli = 0
+armor_pierce = 0
+support_percent = 100
+[sub_resource type="Resource" id="lvl_furnace_4"]
+script = ExtResource("level_behavior")
+note = "Две цели и взрыв 1,5 клетки, 60%"
+damage_percent = 800
+damage_add = 0
+extra_targets = 1
+splash_radius_milli = 1500
+splash_percent = 60
+range_bonus_milli = 0
+armor_pierce = 0
+support_percent = 100
+[sub_resource type="Resource" id="levels_furnace"]
+script = ExtResource("building_levels")
+tower_id = &"furnace"
+levels = Array[ExtResource("level_behavior")]([SubResource("lvl_furnace_1"), SubResource("lvl_furnace_2"), SubResource("lvl_furnace_3"), SubResource("lvl_furnace_4")])
+[sub_resource type="Resource" id="lvl_wind_1"]
+script = ExtResource("level_behavior")
+note = "Ветер; соседям темп +10%"
+damage_percent = 100
+damage_add = 0
+extra_targets = 0
+splash_radius_milli = -1
+splash_percent = -1
+range_bonus_milli = 0
+armor_pierce = 0
+support_percent = 100
+[sub_resource type="Resource" id="lvl_wind_2"]
+script = ExtResource("level_behavior")
+note = "Ветер сильнее и длиннее; соседям ×1,5"
+damage_percent = 100
+damage_add = 0
+extra_targets = 0
+splash_radius_milli = -1
+splash_percent = -1
+range_bonus_milli = 0
+armor_pierce = 0
+support_percent = 150
+[sub_resource type="Resource" id="lvl_wind_3"]
+script = ExtResource("level_behavior")
+note = "Ветер ещё сильнее; соседям ×2"
+damage_percent = 100
+damage_add = 0
+extra_targets = 0
+splash_radius_milli = -1
+splash_percent = -1
+range_bonus_milli = 0
+armor_pierce = 0
+support_percent = 200
+[sub_resource type="Resource" id="lvl_wind_4"]
+script = ExtResource("level_behavior")
+note = "Ветер сильнейший; соседям ×3"
+damage_percent = 100
+damage_add = 0
+extra_targets = 0
+splash_radius_milli = -1
+splash_percent = -1
+range_bonus_milli = 0
+armor_pierce = 0
+support_percent = 300
+[sub_resource type="Resource" id="levels_wind"]
+script = ExtResource("building_levels")
+tower_id = &"wind"
+levels = Array[ExtResource("level_behavior")]([SubResource("lvl_wind_1"), SubResource("lvl_wind_2"), SubResource("lvl_wind_3"), SubResource("lvl_wind_4")])
+[sub_resource type="Resource" id="lvl_water_1"]
+script = ExtResource("level_behavior")
+note = "Мочит одну цель"
+damage_percent = 100
+damage_add = 0
+extra_targets = 0
+splash_radius_milli = 0
+splash_percent = 0
+range_bonus_milli = 0
+armor_pierce = 0
+support_percent = 100
+[sub_resource type="Resource" id="lvl_water_2"]
+script = ExtResource("level_behavior")
+note = "Мочит всех в 1 клетке вокруг цели"
+damage_percent = 100
+damage_add = 0
+extra_targets = 0
+splash_radius_milli = 1000
+splash_percent = 100
+range_bonus_milli = 0
+armor_pierce = 0
+support_percent = 100
+[sub_resource type="Resource" id="lvl_water_3"]
+script = ExtResource("level_behavior")
+note = "Мочит в 1,2 клетки, две цели, урон 6; соседям ×1,5"
+damage_percent = 100
+damage_add = 6
+extra_targets = 1
+splash_radius_milli = 1200
+splash_percent = 100
+range_bonus_milli = 0
+armor_pierce = 0
+support_percent = 150
+[sub_resource type="Resource" id="lvl_water_4"]
+script = ExtResource("level_behavior")
+note = "Мочит в 1,5 клетки, три цели, урон 12; соседям ×2"
+damage_percent = 100
+damage_add = 12
+extra_targets = 2
+splash_radius_milli = 1500
+splash_percent = 100
+range_bonus_milli = 0
+armor_pierce = 0
+support_percent = 200
+[sub_resource type="Resource" id="levels_water"]
+script = ExtResource("building_levels")
+tower_id = &"water"
+levels = Array[ExtResource("level_behavior")]([SubResource("lvl_water_1"), SubResource("lvl_water_2"), SubResource("lvl_water_3"), SubResource("lvl_water_4")])
+[sub_resource type="Resource" id="lvl_rime_1"]
+script = ExtResource("level_behavior")
+note = "Холодит одну цель"
+damage_percent = 100
+damage_add = 0
+extra_targets = 0
+splash_radius_milli = -1
+splash_percent = -1
+range_bonus_milli = 0
+armor_pierce = 0
+support_percent = 100
+[sub_resource type="Resource" id="lvl_rime_2"]
+script = ExtResource("level_behavior")
+note = "Две цели"
+damage_percent = 200
+damage_add = 0
+extra_targets = 1
+splash_radius_milli = -1
+splash_percent = -1
+range_bonus_milli = 0
+armor_pierce = 0
+support_percent = 100
+[sub_resource type="Resource" id="lvl_rime_3"]
+script = ExtResource("level_behavior")
+note = "Морозное облако: область 1 клетка, 50%"
+damage_percent = 400
+damage_add = 0
+extra_targets = 0
+splash_radius_milli = 1000
+splash_percent = 50
+range_bonus_milli = 0
+armor_pierce = 0
+support_percent = 100
+[sub_resource type="Resource" id="lvl_rime_4"]
+script = ExtResource("level_behavior")
+note = "Две цели и облако 1,5 клетки, 70%"
+damage_percent = 800
+damage_add = 0
+extra_targets = 1
+splash_radius_milli = 1500
+splash_percent = 70
+range_bonus_milli = 0
+armor_pierce = 0
+support_percent = 100
+[sub_resource type="Resource" id="levels_rime"]
+script = ExtResource("building_levels")
+tower_id = &"rime"
+levels = Array[ExtResource("level_behavior")]([SubResource("lvl_rime_1"), SubResource("lvl_rime_2"), SubResource("lvl_rime_3"), SubResource("lvl_rime_4")])
 [sub_resource type="Resource" id="nights"]
 script = ExtResource("night_rules")
 first_evening_ticks = 400
@@ -108,6 +398,8 @@ market_offers = 4
 market_shooter_slots = 2
 reroll_cost = 2
 reroll_cost_step = 1
+level_names = Array[String](["Деревянный", "Каменный", "Кирпичный", "Белокаменный"])
+building_levels = Array[ExtResource("building_levels")]([SubResource("levels_bolt"), SubResource("levels_brazier"), SubResource("levels_furnace"), SubResource("levels_wind"), SubResource("levels_water"), SubResource("levels_rime")])
 repair_hp = 5
 repair_cost = 10
 nights = SubResource("nights")

@@ -112,6 +112,73 @@ func _advance_all_mobs() -> void:
 			mob.progress = mini(mob.progress, settings.boss_end)
 
 
+#region Поведение по уровню (docs/34 §2); без данных уровней — прежние формулы FieldState.
+
+func get_tower_damage(tower: TowerState) -> int:
+	var behavior: RitualLevelBehavior = settings.level_behavior(tower)
+	if behavior == null:
+		return super(tower)
+	if _are_bonuses_dirty:
+		_refresh_bonuses()
+	var damage: int = tower.data.damage * behavior.damage_percent / 100 + behavior.damage_add
+	var bonus: int = tower.bonus_damage_percent
+	var idol: IdolState = get_idol(tower.data.god)
+	if idol != null:
+		bonus += idol.damage_percent
+	return damage * (100 + bonus) / 100
+
+
+func get_tower_targets(tower: TowerState) -> int:
+	var behavior: RitualLevelBehavior = settings.level_behavior(tower)
+	return super(tower) + (behavior.extra_targets if behavior != null else 0)
+
+
+func get_tower_range(tower: TowerState) -> int:
+	var behavior: RitualLevelBehavior = settings.level_behavior(tower)
+	return super(tower) + (behavior.range_bonus_milli if behavior != null else 0)
+
+
+func get_tower_splash_radius(tower: TowerState) -> int:
+	var behavior: RitualLevelBehavior = settings.level_behavior(tower)
+	if behavior == null or behavior.splash_radius_milli < 0:
+		return super(tower)
+	return behavior.splash_radius_milli
+
+
+func _splash_percent(tower: TowerState) -> int:
+	var behavior: RitualLevelBehavior = settings.level_behavior(tower)
+	if behavior == null or behavior.splash_percent < 0:
+		return tower.data.splash_percent
+	return behavior.splash_percent
+
+
+## Выстрел с областью по уровню. Область бьёт только врагов — свои дома она не задевает.
+func _shoot(tower: TowerState, target: MobState) -> void:
+	var damage: int = get_tower_damage(tower)
+	tower_fired.emit(tower, target)
+	var target_position: Vector2i = get_mob_position(target)
+	_hit(target, damage, tower.data, tower)
+	var splash_radius: int = get_tower_splash_radius(tower)
+	if splash_radius <= 0:
+		return
+	var splash_damage: int = damage * _splash_percent(tower) / 100
+	for mob: MobState in mobs:
+		if mob == target or not mob.is_alive():
+			continue
+		if _is_in_range(target_position, get_mob_position(mob), splash_radius):
+			_hit(mob, splash_damage, tower.data, tower)
+
+
+func _level_pierce(tower_id: int) -> int:
+	if tower_id <= 0:
+		return 0
+	var tower: TowerState = get_tower(tower_id)
+	var behavior: RitualLevelBehavior = settings.level_behavior(tower) if tower != null else null
+	return behavior.armor_pierce if behavior != null else 0
+
+#endregion
+
+
 func _target_priority(tower: TowerState, mob: MobState) -> int:
 	return int(tower.data.burning_target_bonus_percent > 0 and mob.burn_ticks_left > 0)
 
@@ -159,6 +226,8 @@ func deal_mob_damage(base: MobState, damage: int, tower_id: int = 0,
 	var before: int = mob.hp
 	var sources: Array[int] = banner_sources(mob)
 	damage = _modified_body_damage(mob, raw, not sources.is_empty())
+	if kind == &"hit" or kind == &"chain":
+		armor_pierce += _level_pierce(tower_id)
 	super.deal_mob_damage(mob, damage, tower_id, kind, armor_pierce)
 	hit_observed.emit(_hit_details(mob, tower_id, kind, raw,
 		before - maxi(0, mob.hp), 0, sources))
@@ -234,10 +303,12 @@ func _refresh_bonuses() -> void:
 	for support: TowerState in towers:
 		if support.is_action_blocked():
 			continue
+		var behavior: RitualLevelBehavior = settings.level_behavior(support)
+		var power: int = behavior.support_percent if behavior != null else 100
 		for neighbor: TowerState in get_neighbors(support):
-			neighbor.bonus_damage_percent += support.data.neighbor_damage_percent
-			neighbor.bonus_fire_rate_percent += support.data.neighbor_fire_rate_percent
-			neighbor.bonus_range_milli += support.data.neighbor_range_milli
+			neighbor.bonus_damage_percent += support.data.neighbor_damage_percent * power / 100
+			neighbor.bonus_fire_rate_percent += support.data.neighbor_fire_rate_percent * power / 100
+			neighbor.bonus_range_milli += support.data.neighbor_range_milli * power / 100
 
 
 ## У контрольного Ветродуя нулевая стрелка влево, фигура остаётся 1×2.

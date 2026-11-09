@@ -194,8 +194,9 @@ func _build_ui() -> void:
 	toast.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
 	toast.offset_left = 356
 	toast.offset_right = -20
-	toast.offset_top = -152
-	toast.offset_bottom = -122
+	# Над панелью выбора постройки, чтобы не закрывать её строку.
+	toast.offset_top = -258
+	toast.offset_bottom = -228
 	_message = _label(toast, "", 12)
 	_message.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_message.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -598,9 +599,7 @@ func _refresh() -> void:
 		slot.trial = trial
 		slot.refresh(trial.field.idols[index], true, settings.combat.ticks_per_second)
 	var selected: TowerState = trial.field.get_tower(board.selected_id)
-	_selection.text = "Башня: не выбрана" if selected == null else "#%d %s · ур. %d%s\nВложено %d · %s" % [
-		selected.id, selected.data.display_name, selected.level, _enchant_names(selected),
-		selected.invested_total, "устанавливается" if selected.is_action_blocked() else "готова"]
+	_selection.text = "Башня: не выбрана" if selected == null else _selection_text(selected)
 	_repair_button.disabled = trial.phase != RitualTrial.Phase.RUNNING or trial.hp >= settings.hero_hp \
 			or trial.gold < settings.repair_cost
 	_shop._selection_panel.visible = selected != null
@@ -609,6 +608,22 @@ func _refresh() -> void:
 	var threats: PackedStringArray = _threat_names()
 	_threat.text = trial.result if trial.phase == RitualTrial.Phase.OVER else "Далее: " + " · ".join(threats)
 	board.queue_redraw()
+
+
+## Выбранная постройка: материал (уровень) и что он даёт, вложения и готовность.
+func _selection_text(tower: TowerState) -> String:
+	var behavior: RitualLevelBehavior = settings.level_behavior(tower)
+	var level: String = "ур. %d" % tower.level if behavior == null \
+			else "%s (%d)" % [settings.level_name(tower.level), tower.level]
+	var lines: PackedStringArray = ["#%d %s · %s%s" % [tower.id, tower.data.display_name, level,
+		_enchant_names(tower)]]
+	var state: String = "устанавливается" if tower.is_action_blocked() else "готова"
+	if behavior == null:
+		lines.append("Вложено %d · %s" % [tower.invested_total, state])
+		return "\n".join(lines)
+	# Одной строкой: вторая строка панели выбора уходит под всплывающее сообщение внизу поля.
+	return "%s — %s · вложено %d%s" % [lines[0], behavior.note, tower.invested_total,
+		" · устанавливается" if tower.is_action_blocked() else ""]
 
 
 func _threat_names() -> PackedStringArray:

@@ -27,6 +27,10 @@ extends Resource
 ## и новый прилавок бесплатно.
 @export var reroll_cost: int = 2
 @export var reroll_cost_step: int = 1
+## Материал = уровень слияния (docs/34 §2): дерево → камень → кирпич → белый камень.
+@export var level_names: Array[String] = []
+## Поведение построек по уровням; пусто — уровень меняет только урон (прежний опыт).
+@export var building_levels: Array[RitualBuildingLevels] = []
 @export var repair_hp: int = 5
 @export var repair_cost: int = 10
 ## Здоровье тела врагов по суткам, в процентах.
@@ -65,6 +69,24 @@ extends Resource
 @export var heavy_tag: StringName = &"heavy"
 ## Бесконечный забег (docs/34). Пусто — прежний опыт из четырёх суток по spawns.
 @export var nights: RitualNightRules
+
+
+func levels_for(data: TowerData) -> RitualBuildingLevels:
+	for levels: RitualBuildingLevels in building_levels:
+		if levels.tower_id == data.id:
+			return levels
+	return null
+
+
+func level_behavior(tower: TowerState) -> RitualLevelBehavior:
+	var levels: RitualBuildingLevels = levels_for(tower.data)
+	return levels.at_level(tower.level) if levels != null else null
+
+
+func level_name(level: int) -> String:
+	if level >= 1 and level <= level_names.size():
+		return level_names[level - 1]
+	return "ур. %d" % level
 
 
 func is_endless() -> bool:

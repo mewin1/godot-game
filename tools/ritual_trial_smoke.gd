@@ -45,6 +45,8 @@ func _check_endless(scene: PackedScene) -> void:
 	panel._on_cell(Vector2i(10, 3), false)
 	_check(panel.trial.field.towers.size() == 1, "Вечером нельзя строить с прилавка")
 	panel._refresh()
+	panel._on_cell(Vector2i(10, 3), false)
+	_check(panel._selection.text.contains(panel.settings.level_name(1)), "Не виден материал дома: " + panel._selection.text)
 	cards = panel.shop_report()["cards"]
 	_check(cards == panel.settings.market_offers - 1,
 		"Купленная карточка осталась на прилавке")
