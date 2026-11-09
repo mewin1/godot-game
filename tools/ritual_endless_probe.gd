@@ -4,9 +4,12 @@ extends SceneTree
 ## Запуск: godot --headless --path . -s res://tools/ritual_endless_probe.gd [-- --seeds=1,2,3]
 
 ## Копия правил: аргументы `-- --hp=9 --budget=14 --boss=1800` меняют рост здоровья/бюджета ночей
-## и здоровье босса; `--base`, `--gold`, `--spread`, `--kill=150` (награда в процентах) — тоже только в этом прогоне.
+## и здоровье босса; `--base`, `--gold`, `--spread`, `--kill=150` (награда в процентах), `--escort` (свита босса,
+## % бюджета ночи) — тоже только в этом прогоне.
 ## Бот покупает улицы (ключ `--streets`): днём, со 2-й ночи, если останется запас.
 var _streets: bool = false
+## `--trace`: кто ранил героя по ночам (вид врага → урон).
+var _trace: bool = false
 var SETTINGS: RitualTrialConfig = (load("res://data/ritual/endless.tres") as RitualTrialConfig).duplicate(true)
 const TPS: int = 20
 const LIMIT_TICKS: int = 20 * 60 * 90
@@ -42,6 +45,10 @@ func _run() -> void:
 			heroes.clear()
 			for part: String in argument.trim_prefix("--heroes=").split(","):
 				heroes.append(part.to_int())
+		if argument.begins_with("--escort="):
+			SETTINGS.nights.boss_escort_percent = argument.trim_prefix("--escort=").to_int()
+		if argument == "--trace":
+			_trace = true
 		if argument == "--streets":
 			_streets = true
 		if argument.begins_with("--only="):
@@ -86,6 +93,19 @@ func _play(policy: String, seed_value: int, hero: int = 0) -> void:
 		trial.result if not trial.result.is_empty() else "жив к пределу", trial.earned,
 		trial.field.towers.size(), trial.bosses_killed, trial.gifts_taken.size()])
 	print("ENDLESS:    " + " | ".join(timeline))
+	if _trace:
+		var hurt: Dictionary[int, Dictionary] = {}
+		for record: Dictionary in trial.journal:
+			if record.get("event", "") == "breach":
+				var tick: int = record["tick"]
+				var damage: int = record["damage"]
+				var night: int = SETTINGS.nights.night_index_at(tick)
+				var by_kind: Dictionary = hurt.get(night, {})
+				var before: int = by_kind.get(record["kind"], 0)
+				by_kind[record["kind"]] = before + damage
+				hurt[night] = by_kind
+		for night: int in hurt:
+			print("ENDLESS:    прорывы н%d: %s" % [night, str(hurt[night])])
 
 
 func _enemies(trial: RitualTrial, night: int) -> int:
