@@ -39,6 +39,9 @@ var _repair_button: Button
 var _defeat: PanelContainer
 var _scout: RitualScoutQueue
 var _repair_all_button: Button
+var _gift_panel: PanelContainer
+var _gift_buttons: VBoxContainer
+var _gift_key: String = ""
 var _repair_house_button: Button
 var _defeat_text: Label
 
@@ -217,6 +220,7 @@ func _build_ui() -> void:
 	_history.hide()
 	_build_schedule()
 	_build_defeat()
+	_build_gifts()
 
 
 ## Экран поражения бесконечного забега: ночи, рекорд на устройстве, убитые боссы.
@@ -237,6 +241,44 @@ func _build_defeat() -> void:
 	_button(buttons, "Ещё забег", _reset.bind(0))
 	_button(buttons, "В меню", _back)
 	_defeat.hide()
+
+
+## Выбор дара за босса: игра стоит (симуляция не идёт), пока не выбран один из трёх.
+func _build_gifts() -> void:
+	_gift_panel = PanelContainer.new()
+	_gift_panel.add_theme_stylebox_override("panel", DuskTheme.panel(Color("101b23"), DuskTheme.GOLD, 20))
+	_gift_panel.z_index = 10
+	add_child(_gift_panel)
+	var content: VBoxContainer = VBoxContainer.new()
+	content.add_theme_constant_override("separation", 10)
+	_gift_panel.add_child(content)
+	_label(content, "Босс повержен! Выберите дар:", 22).horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_gift_buttons = VBoxContainer.new()
+	_gift_buttons.add_theme_constant_override("separation", 8)
+	content.add_child(_gift_buttons)
+	_gift_panel.hide()
+
+
+func _refresh_gifts() -> void:
+	var key: String = str(trial.gift_choice)
+	if key == _gift_key:
+		return
+	_gift_key = key
+	for child: Node in _gift_buttons.get_children():
+		child.queue_free()
+	_gift_panel.visible = not trial.gift_choice.is_empty()
+	for index: int in trial.gift_choice:
+		var gift: RitualGiftData = settings.gifts[index]
+		var button: Button = _button(_gift_buttons, "%s — %s" % [gift.display_name, gift.description],
+			_choose_gift.bind(index))
+		button.custom_minimum_size = Vector2(560, 44)
+		button.add_theme_font_size_override("font_size", 18)
+	_gift_panel.reset_size()
+	_gift_panel.set_anchors_and_offsets_preset(Control.PRESET_CENTER, Control.PRESET_MODE_MINSIZE)
+
+
+func _choose_gift(index: int) -> void:
+	_issue(RitualCommand.new(RitualCommand.Action.GIFT, index))
 
 
 func _show_defeat() -> void:
@@ -625,6 +667,7 @@ func _refresh() -> void:
 	if trial == null:
 		return
 	_hud.refresh_ritual(trial, _paused)
+	_refresh_gifts()
 	_shop.refresh_ritual(trial)
 	for index: int in _idol_slots.size():
 		var slot: RitualIdolSlot = _idol_slots[index] as RitualIdolSlot

@@ -11,6 +11,7 @@
 [ext_resource type="Resource" path="res://data/rites/svarog_power.tres" id="rite_1"]
 [ext_resource type="Resource" path="res://data/rites/ice_power.tres" id="rite_2"]
 [ext_resource type="Script" path="res://src/sim/data/ritual_rite_curve.gd" id="rite_curve"]
+[ext_resource type="Script" path="res://src/sim/data/ritual_gift_data.gd" id="gift"]
 [ext_resource type="Resource" path="res://data/ritual/rites/war_range.tres" id="rite_3"]
 [ext_resource type="Resource" path="res://data/ritual/rites/war_volley.tres" id="rite_4"]
 [ext_resource type="Resource" path="res://data/ritual/rites/svarog_heat.tres" id="rite_5"]
@@ -443,6 +444,114 @@ step_bp = 2500
 unit = 1
 cost_step = 3
 cost_growth_percent = 0
+[sub_resource type="Resource" id="gift_might"]
+script = ExtResource("gift")
+id = &"might"
+display_name = "Сила богатырская"
+description = "Урон всех построек ×1,5."
+effect = 0
+god = &""
+value = 50
+extra = 0
+[sub_resource type="Resource" id="gift_svarog_fury"]
+script = ExtResource("gift")
+id = &"svarog_fury"
+display_name = "Гнев Сварога"
+description = "Дома Сварога бьют вдвое сильнее."
+effect = 1
+god = &"svarog"
+value = 100
+extra = 0
+[sub_resource type="Resource" id="gift_war_fury"]
+script = ExtResource("gift")
+id = &"war_fury"
+display_name = "Гнев войны"
+description = "Самострелы бьют вдвое сильнее."
+effect = 1
+god = &"war"
+value = 100
+extra = 0
+[sub_resource type="Resource" id="gift_ice_fury"]
+script = ExtResource("gift")
+id = &"ice_fury"
+display_name = "Гнев стужи"
+description = "Ледяные дома бьют вдвое сильнее."
+effect = 1
+god = &"ice"
+value = 100
+extra = 0
+[sub_resource type="Resource" id="gift_flood"]
+script = ExtResource("gift")
+id = &"flood"
+display_name = "Разлив"
+description = "Все дома воды бьют по области 1,2 клетки."
+effect = 2
+god = &"water"
+value = 1200
+extra = 100
+[sub_resource type="Resource" id="gift_fire_rain"]
+script = ExtResource("gift")
+id = &"fire_rain"
+display_name = "Огненный дождь"
+description = "Все дома Сварога бьют по области 1 клетка (60% урона)."
+effect = 2
+god = &"svarog"
+value = 1000
+extra = 60
+[sub_resource type="Resource" id="gift_ilya_twice"]
+script = ExtResource("gift")
+id = &"ilya_twice"
+display_name = "Два удара Ильи"
+description = "Удар Ильи бьёт дважды."
+effect = 3
+god = &""
+value = 0
+extra = 0
+[sub_resource type="Resource" id="gift_carpenters"]
+script = ExtResource("gift")
+id = &"carpenters"
+display_name = "Плотники"
+description = "Ремонт домов бесплатен эту и следующую ночь."
+effect = 4
+god = &""
+value = 2
+extra = 0
+[sub_resource type="Resource" id="gift_masters"]
+script = ExtResource("gift")
+id = &"masters"
+display_name = "Мастера стихий"
+description = "Скидка своей стихии удвоена."
+effect = 5
+god = &""
+value = 0
+extra = 0
+[sub_resource type="Resource" id="gift_far_sight"]
+script = ExtResource("gift")
+id = &"far_sight"
+display_name = "Зоркость"
+description = "Все дома бьют на клетку дальше."
+effect = 6
+god = &""
+value = 1000
+extra = 0
+[sub_resource type="Resource" id="gift_fury"]
+script = ExtResource("gift")
+id = &"fury"
+display_name = "Ярость"
+description = "Темп всех домов +40%."
+effect = 7
+god = &""
+value = 40
+extra = 0
+[sub_resource type="Resource" id="gift_living_water"]
+script = ExtResource("gift")
+id = &"living_water"
+display_name = "Живая вода"
+description = "Илья здоров и получает +25 HP сверх предела."
+effect = 8
+god = &""
+value = 25
+extra = 0
 [sub_resource type="Resource" id="nights"]
 script = ExtResource("night_rules")
 first_evening_ticks = 400
@@ -495,6 +604,8 @@ building_levels = Array[ExtResource("building_levels")]([SubResource("levels_bol
 wear_ticks = 1200
 worn_damage_percent = 60
 repair_percent = 40
+gifts = Array[ExtResource("gift")]([SubResource("gift_might"), SubResource("gift_svarog_fury"), SubResource("gift_war_fury"), SubResource("gift_ice_fury"), SubResource("gift_flood"), SubResource("gift_fire_rain"), SubResource("gift_ilya_twice"), SubResource("gift_carpenters"), SubResource("gift_masters"), SubResource("gift_far_sight"), SubResource("gift_fury"), SubResource("gift_living_water")])
+gift_choices = 3
 repair_hp = 5
 repair_cost = 10
 nights = SubResource("nights")

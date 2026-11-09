@@ -6,7 +6,7 @@ extends RefCounted
 ## BUY с tower_id — новая копия сразу сливается с этой башней 1-го уровня.
 ## REROLL — платно обновить прилавок лавки с азартом. REPAIR_HOUSE: tower_id — один дом, 0 — все.
 enum Action { START, BUY, MOVE, SELL, RITE, SKILL, PALISADE, CANCEL_MOVE, MERGE, ENCHANT, REPAIR, REROLL,
-		REPAIR_HOUSE }
+		REPAIR_HOUSE, GIFT }
 var action: Action
 var item: int
 var cell: Vector2i

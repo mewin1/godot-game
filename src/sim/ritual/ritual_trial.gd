@@ -43,6 +43,12 @@ var offers: Array[int] = []
 var rerolls_today: int = 0
 ## Состояние генератора лавки (RandomNumberGenerator.state) — переживает снимок.
 var market_rng_state: int = 0
+## Дары за боссов: взятые (индексы settings.gifts) и текущий выбор; пока выбор не пуст — пауза.
+var gifts_taken: Array[int] = []
+var gift_choice: Array[int] = []
+var gift_rng_state: int = 0
+## До конца какой ночи ремонт бесплатен (дар «Плотники»).
+var free_repair_until: int = 0
 var _plan: RitualNightPlan
 
 
@@ -63,6 +69,9 @@ func _init(rules: RitualTrialConfig, loadout_index: int = 0, seed_value: int = -
 		# Забег начинается вечером сразу, без кнопки «Начать» (docs/34 §8).
 		run_seed = seed_value if seed_value >= 0 else rules.nights.default_seed
 		phase = Phase.RUNNING
+		var gift_rng: RandomNumberGenerator = RandomNumberGenerator.new()
+		gift_rng.seed = run_seed * 31337 + 7
+		gift_rng_state = gift_rng.state
 		if rules.market_offers > 0:
 			var rng: RandomNumberGenerator = RandomNumberGenerator.new()
 			rng.seed = run_seed * 7777777 + 13
@@ -98,6 +107,11 @@ func _apply_loadout(loadout: RitualLoadout) -> void:
 func execute(command: RitualCommand) -> String:
 	if phase == Phase.OVER:
 		return "Опыт завершён"
+	if command.action == RitualCommand.Action.GIFT:
+		var gift_error: String = _take_gift(command.item)
+		if gift_error.is_empty():
+			_record_command(command)
+		return gift_error
 	if command.action == RitualCommand.Action.START:
 		if phase != Phase.PREP:
 			return "Опыт уже запущен"
@@ -221,7 +235,8 @@ func discount_bp(god: StringName) -> int:
 	var count: int = 0
 	for rite_id: StringName in idol.purchases:
 		count += idol.purchases[rite_id]
-	return RitualRiteCurve.decay(settings.discount_cap_bp, settings.discount_step_bp, count)
+	var discount: int = RitualRiteCurve.decay(settings.discount_cap_bp, settings.discount_step_bp, count)
+	return discount << gift_count(RitualGiftData.Effect.DOUBLE_DISCOUNT)
 
 
 ## Цена следующего обновления прилавка в эти сутки.
@@ -459,7 +474,7 @@ func _enchant(index: int, tower_id: int) -> String:
 
 ## Цена ремонта дома: доля цены постройки его уровня за недостающую прочность, со скидкой стихии.
 func repair_cost(tower: TowerState) -> int:
-	if tower.durability < 0:
+	if tower.durability < 0 or current_night() <= free_repair_until:
 		return 0
 	var full: int = settings.max_durability(tower.level)
 	var missing: int = full - tower.durability
@@ -487,9 +502,11 @@ func _repair_house(tower_id: int) -> String:
 			return "Выберите дом"
 		targets.append(tower)
 	var cost: int = 0
+	var worn: bool = false
 	for tower: TowerState in targets:
 		cost += repair_cost(tower)
-	if cost == 0:
+		worn = worn or (tower.durability >= 0 and tower.durability < settings.max_durability(tower.level))
+	if not worn:
 		return "Дом цел" if tower_id != 0 else "Все дома целы"
 	if gold < cost:
 		return "Не хватает золота"
@@ -560,6 +577,11 @@ func _resolve_hero() -> void:
 	if hero_due < 0 or tick_count < hero_due:
 		return
 	hero_due = -1
+	for strike: int in 1 + gift_count(RitualGiftData.Effect.HERO_TWICE):
+		_hero_strike()
+
+
+func _hero_strike() -> void:
 	var point: Vector2i = field.get_path_point(hero_progress)
 	for mob: MobState in field.mobs:
 		if mob.is_alive() and field._is_in_range(point, field.get_mob_position(mob), settings.hero_radius):
@@ -577,7 +599,7 @@ func _resolve_hero() -> void:
 
 
 func tick() -> void:
-	if phase != Phase.RUNNING:
+	if phase != Phase.RUNNING or not gift_choice.is_empty():
 		return
 	_boundaries()
 	_spawn_due()
@@ -713,9 +735,58 @@ func _boundaries() -> void:
 func _on_killed(mob: MobState) -> void:
 	if mob.data.tags.has(settings.boss_tag):
 		bosses_killed += 1
+		_offer_gifts()
 	gold += mob.kill_reward
 	earned += mob.kill_reward
 	_event(&"killed", {"mob": mob.id, "kind": String(mob.data.id), "reward": mob.kill_reward})
+
+
+## Победа над боссом: выбор из gift_choices даров без повторов (взятые не предлагаются).
+func _offer_gifts() -> void:
+	var pool: Array[int] = []
+	for index: int in settings.gifts.size():
+		if not gifts_taken.has(index):
+			pool.append(index)
+	if pool.is_empty():
+		return
+	var rng: RandomNumberGenerator = RandomNumberGenerator.new()
+	rng.state = gift_rng_state
+	gift_choice.clear()
+	while gift_choice.size() < settings.gift_choices and not pool.is_empty():
+		gift_choice.append(pool.pop_at(rng.randi_range(0, pool.size() - 1)))
+	gift_rng_state = rng.state
+	_event(&"gift_offer", {"choice": gift_choice.duplicate()})
+
+
+func _take_gift(index: int) -> String:
+	if not gift_choice.has(index):
+		return "Этого дара нет в выборе"
+	gift_choice.clear()
+	gifts_taken.append(index)
+	var gift: RitualGiftData = settings.gifts[index]
+	match gift.effect:
+		RitualGiftData.Effect.FREE_REPAIR:
+			free_repair_until = current_night() + gift.value - 1
+		RitualGiftData.Effect.HEAL_ILYA:
+			hp = maxi(hp, settings.hero_hp + gift.value)
+	sync_gifts()
+	_event(&"gift", {"gift": String(gift.id)})
+	return ""
+
+
+## Поле видит взятые дары (после снимка восстанавливаются из индексов).
+func sync_gifts() -> void:
+	field.gifts.clear()
+	for index: int in gifts_taken:
+		field.gifts.append(settings.gifts[index])
+	field.mark_towers_changed()
+
+
+func gift_count(effect: RitualGiftData.Effect) -> int:
+	var count: int = 0
+	for index: int in gifts_taken:
+		count += int(settings.gifts[index].effect == effect)
+	return count
 
 
 func _on_breached(mob: MobState) -> void:
@@ -803,6 +874,7 @@ static func from_snapshot(rules: RitualTrialConfig, state: Dictionary) -> Ritual
 	if RitualStateCodec.integer(state.get("rules_hash", -1), -1) != trial.rules_hash:
 		return null
 	RitualStateCodec.apply(trial, RitualStateCodec.dictionary(state["trial"]))
+	trial.sync_gifts()
 	for record: Dictionary in state["towers"]:
 		var data: TowerData = null
 		for candidate: TowerData in rules.combat.towers:

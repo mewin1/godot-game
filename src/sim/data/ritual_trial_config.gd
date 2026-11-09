@@ -46,6 +46,9 @@ extends Resource
 @export var worn_damage_percent: int = 60
 ## Полный ремонт стоит такую долю цены постройки этого уровня (со скидкой стихии).
 @export var repair_percent: int = 40
+## Дары за боссов: из списка без повторов предлагается gift_choices штук.
+@export var gifts: Array[RitualGiftData] = []
+@export var gift_choices: int = 3
 @export var repair_hp: int = 5
 @export var repair_cost: int = 10
 ## Здоровье тела врагов по суткам, в процентах.

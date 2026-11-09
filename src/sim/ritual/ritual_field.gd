@@ -7,6 +7,8 @@ signal movement_completed()
 signal hit_observed(details: Dictionary)
 var settings: RitualTrialConfig
 var stopped: bool = false
+## Взятые дары за боссов (собирает RitualTrial из своих индексов — они и попадают в снимок).
+var gifts: Array[RitualGiftData] = []
 
 
 func _init(rules: RitualTrialConfig) -> void:
@@ -119,7 +121,25 @@ func get_tower_damage(tower: TowerState) -> int:
 	var damage: int = _level_damage(tower)
 	if tower.durability >= 0 and tower.durability * 2 <= settings.max_durability(tower.level):
 		damage = damage * settings.worn_damage_percent / 100
-	return damage
+	var bonus: int = gift_total(RitualGiftData.Effect.DAMAGE_ALL) \
+			+ gift_total(RitualGiftData.Effect.DAMAGE_GOD, tower.data.god)
+	return damage * (100 + bonus) / 100
+
+
+## Сумма величин взятых даров с этим эффектом (для дара стихии — только этой стихии).
+func gift_total(effect: RitualGiftData.Effect, god: StringName = &"") -> int:
+	var total: int = 0
+	for gift: RitualGiftData in gifts:
+		if gift.effect == effect and (gift.god == &"" or gift.god == god):
+			total += gift.value
+	return total
+
+
+func _gift_splash(tower: TowerState) -> RitualGiftData:
+	for gift: RitualGiftData in gifts:
+		if gift.effect == RitualGiftData.Effect.SPLASH_GOD and gift.god == tower.data.god:
+			return gift
+	return null
 
 
 func _level_damage(tower: TowerState) -> int:
@@ -144,12 +164,14 @@ func get_tower_targets(tower: TowerState) -> int:
 func get_tower_range(tower: TowerState) -> int:
 	var behavior: RitualLevelBehavior = settings.level_behavior(tower)
 	var rite: int = settings.idol_curve_bonus(get_idol(tower.data.god), RiteData.Effect.ENCHANT_RANGE)
-	return super(tower) + rite + (behavior.range_bonus_milli if behavior != null else 0)
+	return super(tower) + rite + gift_total(RitualGiftData.Effect.RANGE_ALL) \
+			+ (behavior.range_bonus_milli if behavior != null else 0)
 
 
 ## Темп заговором идола (затухание). Без заговоров темпа — прежняя формула FieldState.
 func get_tower_cooldown(tower: TowerState) -> int:
-	var rite: int = settings.idol_curve_bonus(get_idol(tower.data.god), RiteData.Effect.ENCHANT_RATE)
+	var rite: int = settings.idol_curve_bonus(get_idol(tower.data.god), RiteData.Effect.ENCHANT_RATE) \
+			+ gift_total(RitualGiftData.Effect.RATE_ALL)
 	if rite == 0:
 		return super(tower)
 	if _are_bonuses_dirty:
@@ -162,16 +184,18 @@ func get_tower_cooldown(tower: TowerState) -> int:
 
 func get_tower_splash_radius(tower: TowerState) -> int:
 	var behavior: RitualLevelBehavior = settings.level_behavior(tower)
-	if behavior == null or behavior.splash_radius_milli < 0:
-		return super(tower)
-	return behavior.splash_radius_milli
+	var radius: int = super(tower) if behavior == null or behavior.splash_radius_milli < 0 \
+			else behavior.splash_radius_milli
+	var gift: RitualGiftData = _gift_splash(tower)
+	return maxi(radius, gift.value) if gift != null else radius
 
 
 func _splash_percent(tower: TowerState) -> int:
 	var behavior: RitualLevelBehavior = settings.level_behavior(tower)
-	if behavior == null or behavior.splash_percent < 0:
-		return tower.data.splash_percent
-	return behavior.splash_percent
+	var percent: int = tower.data.splash_percent if behavior == null or behavior.splash_percent < 0 \
+			else behavior.splash_percent
+	var gift: RitualGiftData = _gift_splash(tower)
+	return maxi(percent, gift.extra) if gift != null else percent
 
 
 ## Выстрел с областью по уровню. Область бьёт только врагов — свои дома она не задевает.

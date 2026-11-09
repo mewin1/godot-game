@@ -811,3 +811,120 @@ func test_old_terem_repair_heals_ilya() -> void:
 	assert_eq(trial.hp, 30 + _settings.repair_hp)
 	trial.hp = _settings.hero_hp
 	assert_eq(trial.execute(RitualCommand.new(RitualCommand.Action.REPAIR)), "Илья здоров")
+
+
+# --- Шаг 8: дары за боссов ---
+
+
+func _kill_boss(trial: RitualTrial) -> void:
+	var boss: RitualMob = trial.field.spawn_mob(_nights.boss_enemy)
+	trial.field.deal_mob_damage(boss, boss.hp * 10)
+
+
+func _gift_index(effect: RitualGiftData.Effect, god: StringName = &"") -> int:
+	for index: int in _settings.gifts.size():
+		var gift: RitualGiftData = _settings.gifts[index]
+		if gift.effect == effect and (god == &"" or gift.god == god):
+			return index
+	return -1
+
+
+func _take(trial: RitualTrial, gift: int) -> void:
+	trial.gift_choice = [gift]
+	assert_eq(trial.execute(RitualCommand.new(RitualCommand.Action.GIFT, gift)), "")
+
+
+func test_gift_set_is_data_with_eight_to_twelve_gifts() -> void:
+	assert_true(_settings.gifts.size() >= 8 and _settings.gifts.size() <= 12)
+	for gift: RitualGiftData in _settings.gifts:
+		assert_false(gift.display_name.is_empty() or gift.description.is_empty())
+
+
+func test_boss_kill_pauses_with_three_distinct_seeded_gifts() -> void:
+	var first: RitualTrial = _trial(31)
+	var second: RitualTrial = _trial(31)
+	_kill_boss(first)
+	_kill_boss(second)
+	assert_eq(first.gift_choice.size(), 3)
+	assert_eq(first.gift_choice, second.gift_choice, "Один сид — те же дары")
+	var unique: Dictionary[int, bool] = {}
+	for gift: int in first.gift_choice:
+		unique[gift] = true
+	assert_eq(unique.size(), 3, "Без повторов")
+	var tick: int = first.tick_count
+	first.tick()
+	assert_eq(first.tick_count, tick, "Пока дар не выбран — игра на паузе")
+	assert_eq(first.execute(RitualCommand.new(RitualCommand.Action.GIFT, 999)), "Этого дара нет в выборе")
+	var chosen: int = first.gift_choice[1]
+	assert_eq(first.execute(RitualCommand.new(RitualCommand.Action.GIFT, chosen)), "")
+	assert_true(first.gift_choice.is_empty())
+	assert_true(first.gifts_taken.has(chosen))
+	first.tick()
+	assert_eq(first.tick_count, tick + 1, "После выбора игра идёт")
+	_kill_boss(first)
+	assert_false(first.gift_choice.has(chosen), "Взятый дар больше не предлагается")
+
+
+func test_gift_damage_all_and_god_fury() -> void:
+	var trial: RitualTrial = _trial(1)
+	var bolt: TowerState = _place(trial, &"bolt", Vector2i(10, 3), 1)
+	var fire: TowerState = _place(trial, &"brazier", Vector2i(4, 3), 1)
+	var bolt_base: int = trial.field.get_tower_damage(bolt)
+	var fire_base: int = trial.field.get_tower_damage(fire)
+	_take(trial, _gift_index(RitualGiftData.Effect.DAMAGE_ALL))
+	assert_eq(trial.field.get_tower_damage(bolt), bolt_base * 150 / 100, "Урон всех ×1,5")
+	_take(trial, _gift_index(RitualGiftData.Effect.DAMAGE_GOD, &"svarog"))
+	assert_eq(trial.field.get_tower_damage(fire), fire_base * 250 / 100, "Гнев стихии складывается с общим")
+	assert_eq(trial.field.get_tower_damage(bolt), bolt_base * 150 / 100)
+
+
+func test_gift_water_houses_hit_an_area() -> void:
+	var trial: RitualTrial = _trial(1)
+	_take(trial, _gift_index(RitualGiftData.Effect.SPLASH_GOD, &"water"))
+	_place(trial, &"water", Vector2i(9, 3), 1)
+	var mobs: Array[RitualMob] = _crowd(trial, 0, 3, 8600)
+	trial.field.fire_trial_towers()
+	var wet: int = 0
+	for mob: RitualMob in mobs:
+		wet += int(mob.status_tags().has(&"wet"))
+	assert_eq(wet, 3, "С даром водяной дом 1-го уровня мочит область")
+
+
+func test_gift_ilya_strikes_twice() -> void:
+	var single: RitualTrial = _trial(1)
+	var double: RitualTrial = _trial(1)
+	_take(double, _gift_index(RitualGiftData.Effect.HERO_TWICE))
+	var hurt: Array[int] = []
+	for trial: RitualTrial in [single, double]:
+		var mob: RitualMob = _crowd(trial, 2, 1, 9000)[0]
+		trial.tick_count = trial.hero_ready
+		assert_eq(trial.execute(RitualCommand.new(RitualCommand.Action.SKILL, 0, Vector2i.ZERO, 0, 0, 9000)), "")
+		trial.hp = 1000000
+		for step: int in _settings.hero_warning + 1:
+			trial.tick()
+		hurt.append(mob.max_hp - mob.hp)
+	assert_true(hurt[1] > hurt[0] * 3 / 2, "Илья бьёт дважды: %s" % str(hurt))
+
+
+func test_gift_free_repair_lasts_two_nights_and_double_discount() -> void:
+	var trial: RitualTrial = _trial(1)
+	var tower: TowerState = _place(trial, &"bolt", Vector2i(10, 3), 1)
+	tower.durability = 0
+	_buy_rite(trial, &"war_range", 4)
+	var discount: int = trial.discount_bp(&"war")
+	_take(trial, _gift_index(RitualGiftData.Effect.DOUBLE_DISCOUNT))
+	assert_eq(trial.discount_bp(&"war"), discount * 2, "Скидка стихии удвоена")
+	_take(trial, _gift_index(RitualGiftData.Effect.FREE_REPAIR))
+	assert_eq(trial.repair_cost(tower), 0, "Ремонт бесплатен")
+	trial.tick_count = _nights.night_end(trial.current_night() + 1) - 1
+	assert_eq(trial.repair_cost(tower), 0, "…ещё в следующую ночь")
+	trial.tick_count = _nights.night_end(trial.current_night()) + 1
+	assert_true(trial.repair_cost(tower) > 0, "…а потом снова платный")
+
+
+func test_gifts_survive_snapshot() -> void:
+	var trial: RitualTrial = _trial(1)
+	var tower: TowerState = _place(trial, &"bolt", Vector2i(10, 3), 1)
+	_take(trial, _gift_index(RitualGiftData.Effect.DAMAGE_ALL))
+	var restored: RitualTrial = RitualTrial.from_snapshot(_settings, trial.snapshot())
+	assert_eq(restored.field.get_tower_damage(restored.field.get_tower(tower.id)), trial.field.get_tower_damage(tower))

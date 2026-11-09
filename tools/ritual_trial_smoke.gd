@@ -59,6 +59,15 @@ func _check_endless(scene: PackedScene) -> void:
 		panel.trial.tick()
 	panel._refresh()
 	_check(panel._clock.text.begins_with("Ночь 1"), "Ночь не наступила после вечера: " + panel._clock.text)
+	var boss: RitualMob = panel.trial.field.spawn_mob(nights.boss_enemy)
+	panel.trial.field.deal_mob_damage(boss, boss.hp * 10)
+	panel._refresh()
+	_check(panel._gift_panel.visible and panel._gift_buttons.get_child_count() == 3, "Нет выбора из 3 даров")
+	var stopped_at: int = panel.trial.tick_count
+	panel._process(0.5)
+	_check(panel.trial.tick_count == stopped_at, "Во время выбора дара игра идёт")
+	panel._choose_gift(panel.trial.gift_choice[0])
+	_check(not panel._gift_panel.visible and panel.trial.gifts_taken.size() == 1, "Дар не выбирается")
 	panel.trial.hp = 1
 	while panel.trial.phase == RitualTrial.Phase.RUNNING:
 		panel.trial.tick()
