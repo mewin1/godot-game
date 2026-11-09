@@ -93,6 +93,7 @@ boss_enemy = 5
 boss_escort_percent = 40
 boss_resist_gods = Array[StringName]([&"svarog", &"war", &"ice"])
 scout_packs = 3
+warn_nights = 2
 default_seed = 1
 [resource]
 script = ExtResource("settings")

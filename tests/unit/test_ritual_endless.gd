@@ -230,3 +230,78 @@ func test_local_record_keeps_best_run() -> void:
 	assert_true(RitualRunRecord.submit(4, 1, path), "Столько же ночей и больше боссов — рекорд")
 	assert_eq(RitualRunRecord.best(path), {"nights": 4, "bosses": 1})
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
+
+
+# --- Шаг 2: очередь разведки ---
+
+
+func test_scout_queue_size_is_a_data_field() -> void:
+	var trial: RitualTrial = _trial(8)
+	assert_eq(trial.scout_queue().size(), _nights.scout_packs, "В начале видно столько пачек, сколько в данных")
+	var wider: RitualTrialConfig = _settings.duplicate(true) as RitualTrialConfig
+	wider.nights.scout_packs = 5
+	assert_eq(RitualTrial.new(wider, 0, 8).scout_queue().size(), 5, "Уровень разведки меняет длину очереди")
+
+
+func test_boss_is_announced_ahead_of_ordinary_queue() -> void:
+	var plan: RitualNightPlan = RitualNightPlan.new(_settings, 5)
+	var boss_night: int = _nights.boss_every
+	var boss: RitualPack = null
+	for pack: RitualPack in plan.packs(boss_night):
+		if pack.boss:
+			boss = pack
+	assert_not_null(boss)
+	var early: int = _nights.night_start(boss_night - _nights.warn_nights)
+	assert_true(plan.scout(early, _nights.scout_packs, _nights.warn_nights).has(boss),
+		"Босса видно за %d ночи, раньше обычной очереди" % _nights.warn_nights)
+	var too_early: int = _nights.night_end(boss_night - _nights.warn_nights - 1) - 1
+	assert_false(plan.scout(too_early, _nights.scout_packs, _nights.warn_nights).has(boss),
+		"Слишком рано босса ещё не видно")
+
+
+func test_first_pack_with_new_enemy_type_is_important() -> void:
+	var plan: RitualNightPlan = RitualNightPlan.new(_settings, 6)
+	var seen: Dictionary[int, bool] = {}
+	var found_new: bool = false
+	for night: int in range(1, 12):
+		for pack: RitualPack in plan.packs(night):
+			var has_new: bool = false
+			for member: int in pack.members:
+				has_new = has_new or (not seen.has(member) and _nights.rule_for(member) != null
+						and _nights.rule_for(member).first_night > 1)
+			assert_eq(plan.is_important(pack), has_new or pack.boss,
+				"Ночь %d: важна пачка с новым (не стартовым) врагом или босс" % night)
+			found_new = found_new or (has_new and night > 1)
+			for member: int in pack.members:
+				seen[member] = true
+	assert_true(found_new, "Новые враги появляются по ходу забега")
+
+
+func test_scout_queue_is_time_ordered_and_skips_started_packs() -> void:
+	var trial: RitualTrial = _trial(5)
+	trial.hp = 1000000
+	_steps(trial, _nights.night_start(3) + 1)
+	var queue: Array[RitualPack] = trial.scout_queue()
+	assert_true(queue.size() >= _nights.scout_packs)
+	for index: int in queue.size():
+		assert_true(queue[index].at_tick >= trial.tick_count, "Начавшиеся пачки не показываются")
+		if index > 0:
+			assert_true(queue[index].at_tick >= queue[index - 1].at_tick, "Очередь по времени")
+
+
+func test_scout_tooltip_names_boss_resist_and_composition() -> void:
+	var trial: RitualTrial = _trial(5)
+	trial.hp = 1000000
+	_steps(trial, _nights.night_start(_nights.boss_every - _nights.warn_nights))
+	var boss: RitualPack = null
+	for pack: RitualPack in trial.scout_queue():
+		if pack.boss:
+			boss = pack
+	assert_not_null(boss, "Босс уже в очереди")
+	if boss == null:
+		return
+	var text: String = RitualScoutQueue.describe(trial, boss)
+	assert_string_contains(text, "БОСС: " + _settings.enemies[_nights.boss_enemy].display_name)
+	assert_string_contains(text, "Неуязвим к стихии")
+	assert_string_contains(text, "Состав (%d)" % boss.members.size())
+	assert_string_contains(text, "Придёт в ночь %d" % _nights.boss_every)

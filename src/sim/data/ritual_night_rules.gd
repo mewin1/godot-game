@@ -46,8 +46,10 @@ extends Resource
 @export var boss_resist_gods: Array[StringName] = []
 
 @export_group("Разведка")
-## Сколько ближайших пачек видно в очереди (docs/34 §9: 3, позже 5 и 7).
+## Сколько ближайших пачек видно в очереди (docs/34 §9: 3, позже 5 и 7 — с ростом города).
 @export var scout_packs: int = 3
+## Важные угрозы (босс, новый враг) видны за столько ночей, даже если дальше обычной очереди.
+@export var warn_nights: int = 2
 @export var default_seed: int = 1
 
 

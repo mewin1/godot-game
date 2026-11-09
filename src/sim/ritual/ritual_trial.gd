@@ -453,6 +453,11 @@ func plan() -> RitualNightPlan:
 	return _plan
 
 
+## Очередь разведки бесконечного забега: ближайшие пачки и важные угрозы заранее.
+func scout_queue() -> Array[RitualPack]:
+	return plan().scout(tick_count, settings.nights.scout_packs, settings.nights.warn_nights)
+
+
 ## Сколько ночей пережито (рассветов). У прежнего опыта — пройденные сутки.
 func nights_survived() -> int:
 	return last_dawn

@@ -37,6 +37,7 @@ var _schedule_was_paused: bool = true
 var _enchant_index: int = -1
 var _repair_button: Button
 var _defeat: PanelContainer
+var _scout: RitualScoutQueue
 var _defeat_text: Label
 
 
@@ -181,6 +182,10 @@ func _build_ui() -> void:
 	_button(controls, "В меню", _back)
 	_threat = _hud._siege_label
 	_hud._siege_panel.show()
+	_scout = RitualScoutQueue.new()
+	_hud._siege_panel.add_child(_scout)
+	_scout.visible = settings.is_endless()
+	_threat.visible = not settings.is_endless()
 	var toast: PanelContainer = PanelContainer.new()
 	toast.add_theme_stylebox_override("panel", DuskTheme.glass(0.82, 8))
 	toast.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -587,6 +592,8 @@ func _refresh() -> void:
 	_repair_button.disabled = trial.phase != RitualTrial.Phase.RUNNING or trial.hp >= settings.hero_hp \
 			or trial.gold < settings.repair_cost
 	_shop._selection_panel.visible = selected != null
+	if settings.is_endless():
+		_scout.refresh(trial)
 	var threats: PackedStringArray = _threat_names()
 	_threat.text = trial.result if trial.phase == RitualTrial.Phase.OVER else "Далее: " + " · ".join(threats)
 	board.queue_redraw()

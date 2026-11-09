@@ -7,6 +7,7 @@ var settings: RitualTrialConfig
 var rules: RitualNightRules
 var run_seed: int = 0
 var _cache: Dictionary[int, Array] = {}
+var _seen: Dictionary[int, Dictionary] = {}
 
 
 func _init(trial_settings: RitualTrialConfig, seed_value: int) -> void:
@@ -47,6 +48,60 @@ func upcoming(tick: int, count: int) -> Array[RitualPack]:
 				result.append(pack)
 		night += 1
 	return result
+
+
+## Очередь разведки: count ближайших пачек и, сверх них, важные угрозы ближайших warn_nights ночей —
+## чтобы контрмеру успели накопить (docs/34 §9).
+func scout(tick: int, count: int, warn_nights: int) -> Array[RitualPack]:
+	var queue: Array[RitualPack] = upcoming(tick, count)
+	var night: int = rules.night_index_at(tick)
+	for index: int in range(night, night + warn_nights + 1):
+		for pack: RitualPack in packs(index):
+			if pack.at_tick >= tick and not queue.has(pack) and is_important(pack):
+				queue.append(pack)
+	queue.sort_custom(func(first: RitualPack, second: RitualPack) -> bool:
+		return first.at_tick < second.at_tick or (first.at_tick == second.at_tick and second.boss and not first.boss))
+	return queue
+
+
+## Важная угроза: босс или пачка с врагом, которого в забеге ещё не было
+## (кроме стартовых врагов первой ночи — они не требуют контрмеры).
+func is_important(pack: RitualPack) -> bool:
+	if pack.boss:
+		return true
+	for member: int in new_types(pack):
+		var rule: RitualEnemyRule = rules.rule_for(member)
+		if rule != null and rule.first_night > 1:
+			return true
+	return false
+
+
+## Враги пачки, впервые появившиеся в этом забеге.
+func new_types(pack: RitualPack) -> Array[int]:
+	var seen: Dictionary[int, bool] = _seen_through(pack.night - 1).duplicate()
+	for earlier: RitualPack in packs(pack.night):
+		if earlier == pack:
+			break
+		for member: int in earlier.members:
+			seen[member] = true
+	var result: Array[int] = []
+	for member: int in pack.members:
+		if not seen.has(member) and not result.has(member):
+			result.append(member)
+	return result
+
+
+## Все враги, появлявшиеся до конца ночи night включительно (кэш по ночам — тоже только ускорение).
+func _seen_through(night: int) -> Dictionary[int, bool]:
+	if night < 1:
+		return {}
+	if not _seen.has(night):
+		var seen: Dictionary[int, bool] = _seen_through(night - 1).duplicate()
+		for pack: RitualPack in packs(night):
+			for member: int in pack.members:
+				seen[member] = true
+		_seen[night] = seen
+	return _seen[night]
 
 
 func total_hp(night: int) -> int:
