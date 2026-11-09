@@ -38,6 +38,11 @@ var commands: Array[Dictionary] = []
 ## Сид бесконечного забега: от него зависят все ночи (RitualNightPlan).
 var run_seed: int = 0
 var bosses_killed: int = 0
+## Прилавок лавки с азартом: индексы построек каталога, -1 — купленное место.
+var offers: Array[int] = []
+var rerolls_today: int = 0
+## Состояние генератора лавки (RandomNumberGenerator.state) — переживает снимок.
+var market_rng_state: int = 0
 var _plan: RitualNightPlan
 
 
@@ -58,6 +63,11 @@ func _init(rules: RitualTrialConfig, loadout_index: int = 0, seed_value: int = -
 		# Забег начинается вечером сразу, без кнопки «Начать» (docs/34 §8).
 		run_seed = seed_value if seed_value >= 0 else rules.nights.default_seed
 		phase = Phase.RUNNING
+		if rules.market_offers > 0:
+			var rng: RandomNumberGenerator = RandomNumberGenerator.new()
+			rng.seed = run_seed * 7777777 + 13
+			market_rng_state = rng.state
+			_roll_market()
 		return
 	if loadout_index >= 0 and loadout_index < settings.loadouts.size():
 		_apply_loadout(settings.loadouts[loadout_index])
@@ -98,7 +108,7 @@ func execute(command: RitualCommand) -> String:
 		return "Контроль: бой без команд"
 	var economic: bool = command.action in [RitualCommand.Action.BUY,
 		RitualCommand.Action.SELL, RitualCommand.Action.RITE, RitualCommand.Action.MERGE,
-		RitualCommand.Action.ENCHANT, RitualCommand.Action.REPAIR]
+		RitualCommand.Action.ENCHANT, RitualCommand.Action.REPAIR, RitualCommand.Action.REROLL]
 	if phase == Phase.RUNNING and economic and (economy_frozen or control_mode != ControlMode.OPEN):
 		return "В этой контрольной ветке состав зафиксирован"
 	if command.action in [RitualCommand.Action.MOVE, RitualCommand.Action.CANCEL_MOVE] \
@@ -126,6 +136,8 @@ func execute(command: RitualCommand) -> String:
 			error = _enchant(command.item, command.tower_id)
 		RitualCommand.Action.REPAIR:
 			error = _repair()
+		RitualCommand.Action.REROLL:
+			error = _reroll()
 	if error.is_empty():
 		_record_command(command)
 	return error
@@ -142,18 +154,26 @@ func _buy(index: int, cell: Vector2i, rotation: int, into_id: int = 0) -> String
 	if index < 0 or index >= settings.combat.towers.size():
 		return "Нет такой постройки"
 	var data: TowerData = settings.combat.towers[index]
+	var slot: int = offers.find(index)
+	if settings.market_offers > 0 and slot < 0:
+		return "Этой постройки нет в лавке"
 	if gold < settings.costs[index]:
 		return "Не хватает золота"
 	if into_id > 0:
 		var twin: TowerState = field.get_tower(into_id)
 		if twin == null or twin.data != data:
 			return "Сливается только с такой же постройкой"
-		return _buy_into(twin, settings.costs[index])
+		var error: String = _buy_into(twin, settings.costs[index])
+		if error.is_empty() and slot >= 0:
+			offers[slot] = -1
+		return error
 	if settings.tower_limit > 0 and field.towers.size() >= settings.tower_limit:
 		return "Все места заняты: замените постройку"
 	if not field.can_place_tower_data(data, cell, rotation):
 		return "Фигура не помещается на свободной площадке"
 	var tower: TowerState = field.add_tower(data, cell, posmod(rotation, TowerState.ROTATIONS))
+	if slot >= 0:
+		offers[slot] = -1
 	tower.invested_total = settings.costs[index]
 	gold -= tower.invested_total
 	spent += tower.invested_total
@@ -171,6 +191,50 @@ func _buy_into(twin: TowerState, cost: int) -> String:
 	twin.invested_total += cost
 	_raise_level(twin)
 	return ""
+
+
+## Цена следующего обновления прилавка в эти сутки.
+func reroll_cost() -> int:
+	return settings.reroll_cost + settings.reroll_cost_step * rerolls_today
+
+
+func _reroll() -> String:
+	if settings.market_offers <= 0:
+		return "В этом режиме лавка не обновляется"
+	var cost: int = reroll_cost()
+	if gold < cost:
+		return "Не хватает золота"
+	gold -= cost
+	spent += cost
+	rerolls_today += 1
+	_roll_market()
+	return ""
+
+
+## Новый прилавок: веса лавки PvP (shop_weight), первые места — стреляющие постройки.
+func _roll_market() -> void:
+	var rng: RandomNumberGenerator = RandomNumberGenerator.new()
+	rng.state = market_rng_state
+	offers.clear()
+	for slot: int in settings.market_offers:
+		offers.append(_random_building(rng, slot < settings.market_shooter_slots))
+	market_rng_state = rng.state
+
+
+func _random_building(rng: RandomNumberGenerator, shooter_only: bool) -> int:
+	var total: int = 0
+	for data: TowerData in settings.combat.towers:
+		if not shooter_only or (data.attacks and data.damage > 0):
+			total += data.shop_weight
+	var pick: int = rng.randi_range(1, maxi(1, total))
+	for index: int in settings.combat.towers.size():
+		var data: TowerData = settings.combat.towers[index]
+		if shooter_only and not (data.attacks and data.damage > 0):
+			continue
+		pick -= data.shop_weight
+		if pick <= 0:
+			return index
+	return 0
 
 
 func _merge(source_id: int, target_id: int) -> String:
@@ -310,6 +374,8 @@ func rite_cost(index: int) -> int:
 
 ## Почему чару нельзя наложить на башню (пусто — можно). Цена здесь не проверяется.
 func enchant_error(index: int, tower_id: int) -> String:
+	if settings.enchants.is_empty():
+		return "В этом режиме чар нет"
 	if index < 0 or index >= settings.enchants.size():
 		return "Нет такой чары"
 	var tower: TowerState = field.get_tower(tower_id)
@@ -535,6 +601,10 @@ func _boundaries() -> void:
 		# Частокол против тяжёлых — к ночи босса (решено в сессии, decisions.md).
 		if settings.nights.is_boss_night(dawn + 1):
 			palisades += 1
+		# Рассвет: новый прилавок бесплатно, обновление снова дешёвое.
+		if settings.market_offers > 0:
+			rerolls_today = 0
+			_roll_market()
 	elif dawn == 1:
 		palisades += 1
 	var record: Dictionary[String, Variant] = summary()

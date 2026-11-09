@@ -86,6 +86,7 @@ func _build_ui() -> void:
 	_shop.start_requested.connect(_start)
 	_shop.sell_requested.connect(_sell_tower)
 	_shop.enchant_chosen.connect(_choose_enchant)
+	_shop.reroll_requested.connect(_reroll)
 	var edit: HBoxContainer = HBoxContainer.new()
 	left.add_child(edit)
 	_button(edit, "Перенести", _choose_move)
@@ -442,6 +443,17 @@ func _choose_enchant(index: int) -> void:
 	board.action = &"enchant"
 	board.preview_index = -1
 	_message.text = "Выберите башню для чары «%s». ПКМ — отмена." % settings.enchants[index].display_name
+
+
+## Состояние лавки для проверок (smoke не обращается к лавке напрямую: так при выходе
+## оставались в памяти статические кэши иконок).
+func shop_report() -> Dictionary[String, Variant]:
+	return {"cards": _shop.visible_offer_count(), "reroll": _shop._reroll.is_visible_in_tree(),
+		"enchants": _shop.has_enchants()}
+
+
+func _reroll() -> void:
+	_issue(RitualCommand.new(RitualCommand.Action.REROLL))
 
 
 func _repair() -> void:

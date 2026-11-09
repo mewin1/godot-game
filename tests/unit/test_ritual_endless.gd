@@ -305,3 +305,118 @@ func test_scout_tooltip_names_boss_resist_and_composition() -> void:
 	assert_string_contains(text, "Неуязвим к стихии")
 	assert_string_contains(text, "Состав (%d)" % boss.members.size())
 	assert_string_contains(text, "Придёт в ночь %d" % _nights.boss_every)
+
+
+# --- Шаг 3: лавка с азартом, без резерва и чар ---
+
+
+func _offered(trial: RitualTrial) -> Array[int]:
+	var result: Array[int] = []
+	for index: int in trial.offers:
+		if index >= 0:
+			result.append(index)
+	return result
+
+
+func test_market_shows_few_random_cards_with_shooters_first() -> void:
+	var trial: RitualTrial = _trial(3)
+	assert_eq(trial.offers.size(), _settings.market_offers, "Мало карточек, а не все постройки")
+	assert_true(_settings.market_offers < _settings.combat.towers.size())
+	for slot: int in _settings.market_shooter_slots:
+		var data: TowerData = _settings.combat.towers[trial.offers[slot]]
+		assert_true(data.attacks and data.damage > 0, "Первые места — стреляющие постройки")
+
+
+func test_buying_needs_card_in_market_and_empties_its_slot() -> void:
+	var trial: RitualTrial = _trial(3)
+	var missing: int = -1
+	for index: int in _settings.combat.towers.size():
+		if not trial.offers.has(index):
+			missing = index
+	if missing >= 0:
+		assert_eq(trial.execute(RitualCommand.new(RitualCommand.Action.BUY, missing, Vector2i(10, 3))),
+			"Этой постройки нет в лавке")
+	var chosen: int = trial.offers[0]
+	var before: int = _offered(trial).size()
+	assert_eq(trial.execute(RitualCommand.new(RitualCommand.Action.BUY, chosen, Vector2i(10, 3))), "")
+	assert_eq(_offered(trial).size(), before - 1, "Купленная карточка уходит с прилавка")
+	assert_eq(trial.offers[0], -1, "Пустое место до обновления")
+
+
+func test_reroll_is_paid_grows_within_day_and_is_seeded() -> void:
+	var first: RitualTrial = _trial(12)
+	var second: RitualTrial = _trial(12)
+	first.gold = 100
+	second.gold = 100
+	var cost: int = first.reroll_cost()
+	assert_eq(cost, _settings.reroll_cost)
+	assert_eq(first.execute(RitualCommand.new(RitualCommand.Action.REROLL)), "")
+	assert_eq(first.gold, 100 - cost)
+	assert_eq(first.reroll_cost(), cost + _settings.reroll_cost_step, "Обновление дорожает в течение суток")
+	assert_eq(second.execute(RitualCommand.new(RitualCommand.Action.REROLL)), "")
+	assert_eq(first.offers, second.offers, "Один сид — одна лавка")
+	first.gold = 0
+	assert_eq(first.execute(RitualCommand.new(RitualCommand.Action.REROLL)), "Не хватает золота")
+
+
+func test_dawn_brings_free_showcase_and_resets_reroll_price() -> void:
+	var trial: RitualTrial = _trial(14)
+	trial.hp = 1000000
+	trial.gold = 100
+	trial.execute(RitualCommand.new(RitualCommand.Action.BUY, trial.offers[0], Vector2i(10, 3)))
+	trial.execute(RitualCommand.new(RitualCommand.Action.REROLL))
+	trial.execute(RitualCommand.new(RitualCommand.Action.REROLL))
+	var gold: int = trial.gold
+	_steps(trial, _nights.night_end(1) - trial.tick_count + 1)
+	assert_eq(_offered(trial).size(), _settings.market_offers, "На рассвете прилавок полный")
+	assert_eq(trial.reroll_cost(), _settings.reroll_cost, "Цена обновления сброшена")
+	assert_true(trial.gold >= gold, "Новый прилавок на рассвете бесплатный")
+
+
+func test_market_follows_pvp_shop_weights() -> void:
+	var trial: RitualTrial = _trial(77)
+	var counts: Array[int] = []
+	counts.resize(_settings.combat.towers.size())
+	counts.fill(0)
+	for roll: int in 600:
+		trial.gold = 1000
+		trial.rerolls_today = 0
+		trial.execute(RitualCommand.new(RitualCommand.Action.REROLL))
+		for slot: int in range(_settings.market_shooter_slots, trial.offers.size()):
+			counts[trial.offers[slot]] += 1
+	for index: int in counts.size():
+		assert_true(counts[index] > 0, "%s попадается в лавке" % _settings.combat.towers[index].id)
+	var bolt: int = _settings.combat.towers.find(load("res://data/towers/bolt.tres"))
+	var water: int = _settings.combat.towers.find(load("res://data/towers/water.tres"))
+	assert_true(counts[water] < counts[bolt], "Вес лавки PvP: желоб (5) реже самострела (10)")
+
+
+func test_market_state_survives_snapshot() -> void:
+	var trial: RitualTrial = _trial(21)
+	trial.gold = 100
+	trial.execute(RitualCommand.new(RitualCommand.Action.REROLL))
+	var restored: RitualTrial = RitualTrial.from_snapshot(_settings, trial.snapshot())
+	assert_eq(restored.offers, trial.offers)
+	trial.execute(RitualCommand.new(RitualCommand.Action.REROLL))
+	restored.execute(RitualCommand.new(RitualCommand.Action.REROLL))
+	assert_eq(restored.offers, trial.offers, "Генератор лавки продолжается одинаково")
+	assert_eq(restored.state_hash(), trial.state_hash())
+
+
+func test_endless_mode_has_no_enchantments() -> void:
+	var trial: RitualTrial = _trial(2)
+	assert_true(_settings.enchants.is_empty(), "Чары на постройки убраны (выбор автора)")
+	trial.execute(RitualCommand.new(RitualCommand.Action.BUY, trial.offers[0], Vector2i(10, 3)))
+	assert_eq(trial.execute(RitualCommand.new(RitualCommand.Action.ENCHANT, 0, Vector2i.ZERO, 0, 1)),
+		"В этом режиме чар нет")
+
+
+func test_old_trial_keeps_full_shop_and_enchantments() -> void:
+	var old: RitualTrialConfig = load("res://data/ritual/trial.tres") as RitualTrialConfig
+	var trial: RitualTrial = RitualTrial.new(old, 3)
+	assert_eq(old.market_offers, 0)
+	assert_true(trial.offers.is_empty())
+	assert_eq(trial.execute(RitualCommand.new(RitualCommand.Action.BUY, 4, Vector2i(7, 5))), "",
+		"Прежний опыт покупает любую постройку")
+	assert_false(old.enchants.is_empty())
+	assert_eq(trial.execute(RitualCommand.new(RitualCommand.Action.REROLL)), "В этом режиме лавка не обновляется")

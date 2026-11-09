@@ -18,6 +18,15 @@ extends Resource
 ## Чары на одну башню и их цены в этом опыте.
 @export var enchants: Array[RiteData] = []
 @export var enchant_costs: Array[int] = []
+## Лавка с азартом (docs/34 §13): 0 — все постройки сразу (прежний опыт), иначе столько
+## случайных карточек с весами лавки PvP (TowerData.shop_weight).
+@export var market_offers: int = 0
+## Первые столько мест — только стреляющие постройки (как первые места лавки PvP).
+@export var market_shooter_slots: int = 2
+## Обновление прилавка: цена + шаг за каждое обновление в эти сутки; на рассвете — сброс
+## и новый прилавок бесплатно.
+@export var reroll_cost: int = 2
+@export var reroll_cost_step: int = 1
 @export var repair_hp: int = 5
 @export var repair_cost: int = 10
 ## Здоровье тела врагов по суткам, в процентах.
