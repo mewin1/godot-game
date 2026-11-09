@@ -22,6 +22,10 @@ func _run() -> void:
 			SETTINGS.nights.hp_growth_percent = argument.trim_prefix("--hp=").to_int()
 		if argument.begins_with("--budget="):
 			SETTINGS.nights.budget_growth_percent = argument.trim_prefix("--budget=").to_int()
+		if argument.begins_with("--packs="):
+			SETTINGS.nights.packs_growth_every = argument.trim_prefix("--packs=").to_int()
+		if argument.begins_with("--base="):
+			SETTINGS.nights.budget_base = argument.trim_prefix("--base=").to_int()
 		if argument.begins_with("--boss="):
 			SETTINGS.enemies[SETTINGS.nights.boss_enemy].hp = argument.trim_prefix("--boss=").to_int()
 		if argument.begins_with("--only="):
@@ -30,8 +34,9 @@ func _run() -> void:
 			seeds.clear()
 			for part: String in argument.trim_prefix("--seeds=").split(","):
 				seeds.append(part.to_int())
-	print("ENDLESS: рост здоровья %d%%, бюджета %d%%, босс %d HP" % [SETTINGS.nights.hp_growth_percent,
-		SETTINGS.nights.budget_growth_percent, SETTINGS.enemies[SETTINGS.nights.boss_enemy].hp])
+	print("ENDLESS: рост здоровья %d%%, бюджета %d%% от %d, пачка +1 за %d ночи, босс %d HP" % [
+		SETTINGS.nights.hp_growth_percent, SETTINGS.nights.budget_growth_percent, SETTINGS.nights.budget_base,
+		SETTINGS.nights.packs_growth_every, SETTINGS.enemies[SETTINGS.nights.boss_enemy].hp])
 	for policy: String in ["ничего", "разумные траты"]:
 		if not only.is_empty() and not policy.contains(only):
 			continue
@@ -52,8 +57,9 @@ func _play(policy: String, seed_value: int) -> void:
 			_cast(trial)
 		if trial.nights_survived() > last_night:
 			last_night = trial.nights_survived()
-			timeline.append("н%d %d:%02d Илья%d з%d д%d" % [last_night, trial.tick_count / TPS / 60,
-				trial.tick_count / TPS % 60, trial.hp, trial.gold, trial.field.towers.size()])
+			timeline.append("н%d %d:%02d Илья%d з%d д%d в%d" % [last_night, trial.tick_count / TPS / 60,
+				trial.tick_count / TPS % 60, trial.hp, trial.gold, trial.field.towers.size(),
+				_enemies(trial, last_night)])
 		trial.tick()
 	var seconds: int = trial.tick_count / TPS
 	print("ENDLESS: %s, сид %d — ночей %d, %d:%02d, %s, добыто %d, домов %d, боссов %d, даров %d" % [
@@ -63,6 +69,13 @@ func _play(policy: String, seed_value: int) -> void:
 	print("ENDLESS:    " + " | ".join(timeline))
 
 
+func _enemies(trial: RitualTrial, night: int) -> int:
+	var count: int = 0
+	for pack: RitualPack in trial.plan().packs(night):
+		count += pack.members.size()
+	return count
+
+
 ## Разумные траты: лечение Ильи, ремонт, слияние, покупка стрелка с прилавка, заговор урона,
 ## обновление прилавка, если покупать нечего.
 func _spend(trial: RitualTrial) -> void:
@@ -70,6 +83,12 @@ func _spend(trial: RitualTrial) -> void:
 		trial.execute(RitualCommand.new(RitualCommand.Action.REPAIR))
 	if trial.repair_all_cost() > 0 and trial.repair_all_cost() * 3 <= trial.gold:
 		trial.execute(RitualCommand.new(RitualCommand.Action.REPAIR_HOUSE))
+	# Ночью стройка дороже и дольше — бот строит днём, ночью только чинит, сливает и копит.
+	if SETTINGS.is_night(trial.tick_count):
+		var rite_at_night: int = _main_rite(trial)
+		if rite_at_night >= 0 and trial.gold >= trial.rite_cost(rite_at_night) + 60:
+			trial.execute(RitualCommand.new(RitualCommand.Action.RITE, rite_at_night))
+		return
 	if _merge(trial):
 		return
 	var bought: bool = false

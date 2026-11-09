@@ -8,6 +8,6 @@ hp = 220
 speed_milli_per_tick = 75
 armor = 0
 breach_damage = 6
-kill_reward = 5
+kill_reward = 8
 tags = Array[StringName]([])
 description = "Быстрый и крепкий оборотень поздних ночей."

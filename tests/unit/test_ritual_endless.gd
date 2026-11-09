@@ -235,28 +235,32 @@ func test_local_record_keeps_best_run() -> void:
 # --- Шаг 2: очередь разведки ---
 
 
-func test_scout_queue_size_is_a_data_field() -> void:
+func test_queue_shows_whole_nearest_night() -> void:
 	var trial: RitualTrial = _trial(8)
-	assert_eq(trial.scout_queue().size(), _nights.scout_packs, "В начале видно столько пачек, сколько в данных")
-	var wider: RitualTrialConfig = _settings.duplicate(true) as RitualTrialConfig
-	wider.nights.scout_packs = 5
-	assert_eq(RitualTrial.new(wider, 0, 8).scout_queue().size(), 5, "Уровень разведки меняет длину очереди")
+	var night_one: Array[RitualPack] = trial.plan().packs(1)
+	assert_eq(trial.night_queue(), night_one, "Вечером видна вся первая ночь")
+	trial.hp = 1000000
+	_steps(trial, night_one[1].at_tick + 1)
+	assert_eq(trial.night_queue(), night_one.slice(2), "Ночью — только ещё не вышедшие пачки этой ночи")
+	_steps(trial, _nights.night_end(1) - trial.tick_count + 5)
+	assert_eq(trial.night_queue(), trial.plan().packs(2), "Днём — вся следующая ночь")
 
 
-func test_boss_is_announced_ahead_of_ordinary_queue() -> void:
-	var plan: RitualNightPlan = RitualNightPlan.new(_settings, 5)
-	var boss_night: int = _nights.boss_every
-	var boss: RitualPack = null
-	for pack: RitualPack in plan.packs(boss_night):
-		if pack.boss:
-			boss = pack
-	assert_not_null(boss)
-	var early: int = _nights.night_start(boss_night - _nights.warn_nights)
-	assert_true(plan.scout(early, _nights.scout_packs, _nights.warn_nights).has(boss),
-		"Босса видно за %d ночи, раньше обычной очереди" % _nights.warn_nights)
-	var too_early: int = _nights.night_end(boss_night - _nights.warn_nights - 1) - 1
-	assert_false(plan.scout(too_early, _nights.scout_packs, _nights.warn_nights).has(boss),
-		"Слишком рано босса ещё не видно")
+func test_boss_is_announced_ahead_of_the_queue() -> void:
+	var trial: RitualTrial = _trial(5)
+	trial.hp = 1000000
+	assert_null(trial.boss_warning(), "В начале босс далеко")
+	_steps(trial, _nights.night_end(_nights.boss_every - _nights.warn_nights - 1) + 1)
+	var warning: RitualPack = trial.boss_warning()
+	assert_not_null(warning, "Босса видно за %d ночи" % _nights.warn_nights)
+	if warning != null:
+		assert_true(warning.boss and warning.night == _nights.boss_every)
+	_steps(trial, _nights.night_end(_nights.boss_every - 1) - trial.tick_count + 1)
+	assert_null(trial.boss_warning(), "В ночь босса он уже в самой очереди")
+	var has_boss: bool = false
+	for pack: RitualPack in trial.night_queue():
+		has_boss = has_boss or pack.boss
+	assert_true(has_boss)
 
 
 func test_first_pack_with_new_enemy_type_is_important() -> void:
@@ -277,14 +281,14 @@ func test_first_pack_with_new_enemy_type_is_important() -> void:
 	assert_true(found_new, "Новые враги появляются по ходу забега")
 
 
-func test_scout_queue_is_time_ordered_and_skips_started_packs() -> void:
+func test_queue_is_time_ordered_and_skips_started_packs() -> void:
 	var trial: RitualTrial = _trial(5)
 	trial.hp = 1000000
 	_steps(trial, _nights.night_start(3) + 1)
-	var queue: Array[RitualPack] = trial.scout_queue()
-	assert_true(queue.size() >= _nights.scout_packs)
+	var queue: Array[RitualPack] = trial.night_queue()
 	for index: int in queue.size():
 		assert_true(queue[index].at_tick >= trial.tick_count, "Начавшиеся пачки не показываются")
+		assert_eq(queue[index].night, 3)
 		if index > 0:
 			assert_true(queue[index].at_tick >= queue[index - 1].at_tick, "Очередь по времени")
 
@@ -293,10 +297,7 @@ func test_scout_tooltip_names_boss_resist_and_composition() -> void:
 	var trial: RitualTrial = _trial(5)
 	trial.hp = 1000000
 	_steps(trial, _nights.night_start(_nights.boss_every - _nights.warn_nights))
-	var boss: RitualPack = null
-	for pack: RitualPack in trial.scout_queue():
-		if pack.boss:
-			boss = pack
+	var boss: RitualPack = trial.boss_warning()
 	assert_not_null(boss, "Босс уже в очереди")
 	if boss == null:
 		return
@@ -938,3 +939,59 @@ func test_boss_health_grows_per_appearance_not_per_night() -> void:
 		if pack.boss:
 			assert_eq(pack.hp_for(_nights.boss_enemy, _nights.boss_enemy), 100)
 			assert_true(pack.hp_for(pack.members[0], _nights.boss_enemy) > 100, "Свита растёт по ночам")
+
+
+# --- Плейтест 9 ноября: ночная стройка дороже и дольше, перенос ночью дольше ---
+
+
+func _at_night(trial: RitualTrial) -> void:
+	trial.hp = 1000000
+	while not _settings.is_night(trial.tick_count):
+		trial.tick()
+	trial.field.mobs.clear()
+
+
+func test_night_building_costs_more_and_installs_longer() -> void:
+	var day: RitualTrial = _trial(3)
+	var night: RitualTrial = _trial(3)
+	_at_night(night)
+	night.offers = day.offers.duplicate()
+	var index: int = day.offers[0]
+	assert_eq(night.building_cost(index), day.building_cost(index) * _settings.night_cost_percent / 100,
+		"Ночью дороже")
+	assert_true(_settings.night_cost_percent > 100)
+	day.gold = 100
+	night.gold = 100
+	assert_eq(day.execute(RitualCommand.new(RitualCommand.Action.BUY, index, Vector2i(10, 3))), "")
+	assert_eq(night.execute(RitualCommand.new(RitualCommand.Action.BUY, index, Vector2i(10, 3))), "")
+	assert_eq(day.field.towers[0].action_lock_ticks, _settings.install_ticks)
+	assert_eq(night.field.towers[0].action_lock_ticks, _settings.night_install_ticks, "Ночью ставится дольше")
+	assert_true(_settings.night_install_ticks > _settings.install_ticks * 2)
+
+
+func test_night_move_takes_much_longer() -> void:
+	var trial: RitualTrial = _trial(3)
+	var tower: TowerState = _place(trial, &"bolt", Vector2i(10, 3), 1)
+	assert_eq(trial.execute(RitualCommand.new(RitualCommand.Action.MOVE, 0, Vector2i(4, 3), 0, tower.id)), "")
+	assert_eq(tower.action_lock_ticks, _settings.install_ticks, "Днём перенос быстрый")
+	_at_night(trial)
+	assert_eq(trial.execute(RitualCommand.new(RitualCommand.Action.MOVE, 0, Vector2i(6, 3), 0, tower.id)), "")
+	assert_eq(tower.action_lock_ticks, _settings.night_move_ticks, "Ночью перенос значительно дольше")
+	assert_true(_settings.night_move_ticks >= _settings.install_ticks * 5)
+
+
+func test_packs_are_big_and_mixed_from_first_night() -> void:
+	for seed_value: int in range(1, 9):
+		var plan: RitualNightPlan = RitualNightPlan.new(_settings, seed_value)
+		for pack: RitualPack in plan.packs(1):
+			assert_true(pack.members.size() >= 8, "Сид %d: пачка первой ночи не мелкая (%d)" % [seed_value, pack.members.size()])
+			var kinds: Dictionary[int, bool] = {}
+			for member: int in pack.members:
+				kinds[member] = true
+			assert_true(kinds.size() >= 2, "Сид %d: в пачке разные враги" % seed_value)
+
+
+func test_days_and_nights_are_long_enough_to_play() -> void:
+	assert_true(_nights.night_length(1) >= 20 * 80, "Первая ночь не короче 80 с")
+	assert_true(_nights.day_ticks >= 20 * 35, "День — время спокойно строить")
+	assert_true(_nights.first_evening_ticks >= 20 * 25)

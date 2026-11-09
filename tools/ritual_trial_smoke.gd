@@ -23,8 +23,8 @@ func _check_endless(scene: PackedScene) -> void:
 	_check(panel.settings.is_endless(), "«Играть» ведёт не в бесконечный забег")
 	_check(panel.trial.phase == RitualTrial.Phase.RUNNING and not panel._paused, "Забег не идёт сам с вечера")
 	_check(panel.get_combined_minimum_size().y <= panel.size.y, "Бесконечный забег не помещается по высоте")
-	_check(panel._scout.visible and panel._scout._cards.size() >= panel.settings.nights.scout_packs,
-		"Нет очереди разведки из %d пачек" % panel.settings.nights.scout_packs)
+	_check(panel._scout.is_visible_in_tree() and panel._scout._cards.size() == panel.trial.night_queue().size(),
+		"Очередь не показывает всю первую ночь")
 	_check(panel._scout._cards[0].tooltip_text.contains("Состав"), "В подсказке пачки нет состава")
 	_check(panel._scout.get_global_rect().end.x <= panel.size.x, "Очередь разведки за краем экрана")
 	panel._paused = true

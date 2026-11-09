@@ -218,7 +218,10 @@ func _buy_into(twin: TowerState, cost: int) -> String:
 ## Цена постройки со скидкой своей стихии (docs/34 §7): чем больше заговоров на идоле
 ## этой стихии, тем дешевле, с пределом. Продажа вернёт половину реально заплаченного.
 func building_cost(index: int) -> int:
-	return discounted(settings.costs[index], settings.combat.towers[index].god)
+	var price: int = discounted(settings.costs[index], settings.combat.towers[index].god)
+	if settings.is_night(tick_count):
+		price = price * settings.night_cost_percent / 100
+	return price
 
 
 func discounted(price: int, god: StringName) -> int:
@@ -322,9 +325,14 @@ func _raise_level(tower: TowerState) -> void:
 	field.mark_towers_changed()
 
 
-func _lock(tower: TowerState) -> void:
-	install_until[tower.id] = tick_count + settings.install_ticks
-	tower.action_lock_ticks = settings.install_ticks
+## Установка/перестройка: ночью дольше (night_install_ticks), перенос ночью — ещё дольше.
+func _lock(tower: TowerState, moving: bool = false) -> void:
+	var ticks: int = settings.install_ticks
+	if settings.is_night(tick_count):
+		var night: int = settings.night_move_ticks if moving else settings.night_install_ticks
+		ticks = maxi(ticks, night)
+	install_until[tower.id] = tick_count + ticks
+	tower.action_lock_ticks = ticks
 	field.mark_towers_changed()
 
 
@@ -347,7 +355,7 @@ func _move(id: int, cell: Vector2i, rotation: int) -> String:
 	if phase == Phase.RUNNING:
 		move_origins[id] = origin
 		move_rotations[id] = old_rotation
-		_lock(tower)
+		_lock(tower, true)
 		_event(&"move", {"id": id, "from": origin, "to": cell})
 	return ""
 
@@ -636,9 +644,25 @@ func plan() -> RitualNightPlan:
 	return _plan
 
 
-## Очередь разведки бесконечного забега: ближайшие пачки и важные угрозы заранее.
-func scout_queue() -> Array[RitualPack]:
-	return plan().scout(tick_count, settings.nights.scout_packs, settings.nights.warn_nights)
+## Очередь разведки (плейтест автора): вся ближайшая ночь — днём следующая целиком,
+## ночью ещё не вышедшие пачки этой ночи.
+func night_queue() -> Array[RitualPack]:
+	var queue: Array[RitualPack] = []
+	for pack: RitualPack in plan().packs(current_night()):
+		if pack.at_tick >= tick_count:
+			queue.append(pack)
+	return queue
+
+
+## Босс в следующие warn_nights ночей (не в ближайшей — та видна в очереди), чтобы успеть
+## собрать стихию против его неуязвимости. null — босса впереди не видно.
+func boss_warning() -> RitualPack:
+	var night: int = current_night()
+	for index: int in range(night + 1, night + settings.nights.warn_nights + 1):
+		for pack: RitualPack in plan().packs(index):
+			if pack.boss:
+				return pack
+	return null
 
 
 ## Сколько ночей пережито (рассветов). У прежнего опыта — пройденные сутки.

@@ -50,20 +50,6 @@ func upcoming(tick: int, count: int) -> Array[RitualPack]:
 	return result
 
 
-## Очередь разведки: count ближайших пачек и, сверх них, важные угрозы ближайших warn_nights ночей —
-## чтобы контрмеру успели накопить (docs/34 §9).
-func scout(tick: int, count: int, warn_nights: int) -> Array[RitualPack]:
-	var queue: Array[RitualPack] = upcoming(tick, count)
-	var night: int = rules.night_index_at(tick)
-	for index: int in range(night, night + warn_nights + 1):
-		for pack: RitualPack in packs(index):
-			if pack.at_tick >= tick and not queue.has(pack) and is_important(pack):
-				queue.append(pack)
-	queue.sort_custom(func(first: RitualPack, second: RitualPack) -> bool:
-		return first.at_tick < second.at_tick or (first.at_tick == second.at_tick and second.boss and not first.boss))
-	return queue
-
-
 ## Важная угроза: босс или пачка с врагом, которого в забеге ещё не было
 ## (кроме стартовых врагов первой ночи — они не требуют контрмеры).
 func is_important(pack: RitualPack) -> bool:
@@ -167,7 +153,9 @@ func _compose(rng: RandomNumberGenerator, night: int, budget: int) -> RitualPack
 	var room: int = rules.pack_max_size - (1 if leader != null else 0)
 	var spent: int = budget - remaining
 	while pack.members.size() < room:
-		var rule: RitualEnemyRule = _pick(rng, night, remaining, false)
+		# Второй боец — другого вида, если есть из чего выбрать: пачка всегда смешанная.
+		var avoid: int = pack.members[0] if pack.members.size() == 1 else -1
+		var rule: RitualEnemyRule = _pick(rng, night, remaining, false, false, avoid)
 		if rule == null:
 			break
 		pack.members.append(rule.enemy_index)
@@ -207,13 +195,18 @@ func _insert_boss(rng: RandomNumberGenerator, night: int, budget: int, at_tick: 
 
 ## Взвешенный выбор среди открытых к этой ночи врагов, которые влезают в бюджет.
 func _pick(rng: RandomNumberGenerator, night: int, budget: int, lead: bool,
-		cheapest: bool = false) -> RitualEnemyRule:
+		cheapest: bool = false, avoid: int = -1) -> RitualEnemyRule:
 	var candidates: Array[RitualEnemyRule] = []
 	var total: int = 0
 	for rule: RitualEnemyRule in rules.enemies:
 		if rule.weight(lead) > 0 and rule.first_night <= night and rule.threat <= budget:
 			candidates.append(rule)
 			total += rule.weight(lead)
+	if avoid >= 0 and candidates.size() > 1:
+		for rule: RitualEnemyRule in candidates.duplicate():
+			if rule.enemy_index == avoid:
+				candidates.erase(rule)
+				total -= rule.weight(lead)
 	if candidates.is_empty():
 		return null
 	if cheapest:

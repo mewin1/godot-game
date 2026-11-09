@@ -60,6 +60,11 @@ extends Resource
 @export var end_tick: int = 8400
 @export var aura_percent: int = 125
 @export var install_ticks: int = 60
+## Ночью (плейтест автора 9 ноября): стройка дороже, установка/слияние и перенос дольше.
+## 100 / 0 — как днём (прежний опыт).
+@export var night_cost_percent: int = 100
+@export var night_install_ticks: int = 0
+@export var night_move_ticks: int = 0
 @export var sell_percent: int = 50
 @export var hero_warning: int = 20
 @export var hero_cooldown: int = 900

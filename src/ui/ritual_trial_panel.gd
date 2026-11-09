@@ -198,9 +198,19 @@ func _build_ui() -> void:
 	_button(controls, "В меню", _back)
 	_threat = _hud._siege_label
 	_hud._siege_panel.show()
-	_scout = RitualScoutQueue.new()
-	_hud._siege_panel.add_child(_scout)
-	_scout.visible = settings.is_endless()
+	if settings.is_endless():
+		# Очередь ближайшей ночи — своя полоса сверху над полем: пачек много, карточки шире.
+		_scout = RitualScoutQueue.new()
+		_hud._siege_panel.hide()
+		var strip: PanelContainer = PanelContainer.new()
+		strip.add_theme_stylebox_override("panel", DuskTheme.glass(0.62, 6))
+		strip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(strip)
+		strip.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+		strip.offset_left = 430
+		strip.offset_right = -230
+		strip.offset_top = 8
+		strip.add_child(_scout)
 	_threat.visible = not settings.is_endless()
 	var toast: PanelContainer = PanelContainer.new()
 	toast.add_theme_stylebox_override("panel", DuskTheme.glass(0.82, 8))
@@ -710,7 +720,7 @@ func _selection_text(tower: TowerState) -> String:
 func _threat_names() -> PackedStringArray:
 	var threats: PackedStringArray = []
 	if settings.is_endless():
-		for pack: RitualPack in trial.plan().upcoming(trial.tick_count, settings.nights.scout_packs):
+		for pack: RitualPack in trial.night_queue():
 			threats.append("%s ×%d" % [settings.enemies[pack.leader].display_name, pack.members.size()])
 		return threats
 	for index: int in range(trial.next_spawn, mini(trial.next_spawn + 3, settings.spawns.size())):

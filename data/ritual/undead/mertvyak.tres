@@ -8,6 +8,6 @@ hp = 70
 speed_milli_per_tick = 50
 armor = 0
 breach_damage = 2
-kill_reward = 2
+kill_reward = 3
 tags = Array[StringName]([])
 description = "Поднятый мертвец. Медленный и простой, идёт толпой."

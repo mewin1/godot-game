@@ -1,10 +1,10 @@
 class_name RitualScoutQueue
-extends HBoxContainer
-## Очередь разведки (docs/34 §9): пачка — иконка самого сильного врага, состав — подсказкой.
-## Без новой графики: спрайты мобов VisualCatalog и иконки богов GodSymbols.
+extends VBoxContainer
+## Очередь разведки (docs/34 §9, плейтест 9 ноября): вся ближайшая ночь. Карточка пачки — все виды
+## врагов со счётом, ведущий первым; состав подробно — подсказкой. Босс дальше ближайшей ночи —
+## отдельной строкой. Без новой графики: спрайты мобов и иконки богов GodSymbols.
 
-const CARD_SIZE: Vector2 = Vector2(42, 40)
-const ICON_SIZE: Vector2 = Vector2(34, 34)
+const ICON_SIZE: Vector2 = Vector2(26, 26)
 const BOSS_FRAME: Color = Color("d46c50")
 const NEW_FRAME: Color = Color("e0b45a")
 const PLAIN_FRAME: Color = Color("4b5a63")
@@ -14,29 +14,48 @@ const MOB_VISUALS: String = "res://data/visuals/mobs/%s.tres"
 var _key: String = ""
 var _cards: Array[Control] = []
 var _packs: Array[RitualPack] = []
+var _tips: PackedStringArray = []
 var _title: Label
+var _warning: Label
+var _flow: HFlowContainer
 
 
 func _init() -> void:
 	add_theme_constant_override("separation", 4)
-	mouse_filter = Control.MOUSE_FILTER_PASS
-	_title = Label.new()
-	_title.text = "Далее:"
-	_title.add_theme_font_size_override("font_size", 15)
-	_title.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	add_child(_title)
+	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var header: HBoxContainer = HBoxContainer.new()
+	header.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(header)
+	_title = _small_label(header, 16)
+	_warning = _small_label(header, 15)
+	_warning.add_theme_color_override("font_color", Color("ffab65"))
+	_flow = HFlowContainer.new()
+	_flow.add_theme_constant_override("h_separation", 4)
+	_flow.add_theme_constant_override("v_separation", 4)
+	_flow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_flow)
 
 
 func refresh(trial: RitualTrial) -> void:
-	var queue: Array[RitualPack] = trial.scout_queue()
-	var key: String = ""
+	var queue: Array[RitualPack] = trial.night_queue()
+	var night: int = trial.current_night()
+	var at_night: bool = trial.settings.is_night(trial.tick_count)
+	_title.text = "Ночь %d · %s: %d" % [night, "осталось пачек" if at_night else "пачек", queue.size()]
+	var boss: RitualPack = trial.boss_warning()
+	_warning.text = "" if boss == null else "  · Босс в ночь %d%s" % [boss.night,
+		"" if boss.resist == &"" else ", неуязвим: " + GodSymbols.get_power_name(boss.resist)]
+	var key: String = str(night)
 	for pack: RitualPack in queue:
-		key += "%d:%d;" % [pack.at_tick, pack.leader]
+		key += ";%d" % pack.at_tick
 	if key != _key:
 		_key = key
 		_rebuild(trial, queue)
+	# Подсказку меняем, только когда меняется текст (время прихода), а не каждый кадр.
 	for index: int in _cards.size():
-		_cards[index].tooltip_text = describe(trial, _packs[index])
+		var tip: String = describe(trial, _packs[index])
+		if tip != _tips[index]:
+			_tips[index] = tip
+			_cards[index].tooltip_text = tip
 
 
 ## Текст подсказки: кто ведёт, кто с ним, обереги, неуязвимость, когда придёт.
@@ -86,47 +105,69 @@ func _rebuild(trial: RitualTrial, queue: Array[RitualPack]) -> void:
 	for card: Control in _cards:
 		card.queue_free()
 	_cards.clear()
+	_tips.clear()
 	_packs = queue
 	for pack: RitualPack in queue:
 		var card: Control = _card(trial, pack)
-		add_child(card)
+		_flow.add_child(card)
 		_cards.append(card)
+		_tips.append("")
 
 
+## Карточка пачки: все виды врагов со счётом (ведущий первым), рамка босса/новой угрозы.
 func _card(trial: RitualTrial, pack: RitualPack) -> Control:
 	var frame: Color = BOSS_FRAME if pack.boss else NEW_FRAME if trial.plan().is_important(pack) else PLAIN_FRAME
 	var card: PanelContainer = PanelContainer.new()
-	card.custom_minimum_size = CARD_SIZE
 	card.mouse_filter = Control.MOUSE_FILTER_STOP
 	var style: StyleBoxFlat = StyleBoxFlat.new()
 	style.bg_color = Color(0.06, 0.09, 0.11, 0.85)
 	style.border_color = frame
 	style.set_border_width_all(3 if pack.boss else 2)
 	style.set_corner_radius_all(4)
-	style.set_content_margin_all(2)
+	style.set_content_margin_all(3)
 	card.add_theme_stylebox_override("panel", style)
-	var stack: Control = Control.new()
-	stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	card.add_child(stack)
-	var icon: TextureRect = TextureRect.new()
-	icon.texture = _icon(trial.settings.enemies[pack.leader])
-	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	icon.size = ICON_SIZE
-	icon.position = Vector2(2, 0)
-	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	stack.add_child(icon)
-	var count: Label = Label.new()
-	count.text = "×%d" % pack.members.size()
-	count.add_theme_font_size_override("font_size", 11)
-	count.add_theme_color_override("font_outline_color", Color.BLACK)
-	count.add_theme_constant_override("outline_size", 4)
-	count.position = Vector2(0, 20)
-	count.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	stack.add_child(count)
+	var row: HBoxContainer = HBoxContainer.new()
+	row.add_theme_constant_override("separation", 2)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	card.add_child(row)
+	for kind: Vector2i in kinds(pack):
+		var icon: TextureRect = TextureRect.new()
+		icon.texture = _icon(trial.settings.enemies[kind.x])
+		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		icon.custom_minimum_size = ICON_SIZE
+		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		row.add_child(icon)
+		var count: Label = _small_label(row, 13)
+		count.text = "×%d" % kind.y
 	if pack.resist != &"":
-		stack.add_child(_resist_badge(pack.resist))
+		row.add_child(_resist_badge(pack.resist))
 	return card
+
+
+## Виды врагов пачки: x — индекс врага, y — сколько; ведущий первым, дальше по убыванию числа.
+static func kinds(pack: RitualPack) -> Array[Vector2i]:
+	var counts: Dictionary[int, int] = {}
+	for member: int in pack.members:
+		counts[member] = counts.get(member, 0) + 1
+	var result: Array[Vector2i] = []
+	for member: int in counts:
+		result.append(Vector2i(member, counts[member]))
+	var leader: int = pack.leader
+	result.sort_custom(func(first: Vector2i, second: Vector2i) -> bool:
+		if (first.x == leader) != (second.x == leader):
+			return first.x == leader
+		return first.y > second.y or (first.y == second.y and first.x < second.x))
+	return result
+
+
+func _small_label(parent: Node, font_size: int) -> Label:
+	var label: Label = Label.new()
+	label.add_theme_font_size_override("font_size", font_size)
+	label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	parent.add_child(label)
+	return label
 
 
 ## Значок неуязвимости: иконка стихии в красной рамке, в углу карточки.
@@ -138,14 +179,13 @@ func _resist_badge(god: StringName) -> Control:
 	style.set_border_width_all(2)
 	style.set_corner_radius_all(9)
 	badge.add_theme_stylebox_override("panel", style)
-	badge.position = Vector2(20, 0)
 	badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var symbol: TextureRect = TextureRect.new()
 	symbol.texture = GodSymbols.get_icon(god)
 	symbol.modulate = GodSymbols.get_color(god)
 	symbol.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	symbol.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	symbol.custom_minimum_size = Vector2(14, 14)
+	symbol.custom_minimum_size = Vector2(16, 16)
 	symbol.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	badge.add_child(symbol)
 	return badge
