@@ -52,6 +52,8 @@ var _hero_choice: int = 0
 var _omen_night: int = 0
 ## Ряд припасов (docs/36 §4): смола, чаша, оберег.
 var _supply_buttons: Array[Button] = []
+var _fast_button: Button
+var _speed: int = 1
 
 
 func _ready() -> void:
@@ -83,6 +85,16 @@ func _build_ui() -> void:
 	_hud._speed_button.text = "Проверки"
 	_hud._speed_button.custom_minimum_size.x = 90
 	_hud._speed_button.tooltip_text = "Настройки опыта, расписание и снимки"
+	# Скорость ×1 → ×2 → ×3 (docs/36 §5): спокойные отрезки не тянутся. Клавиша X.
+	_fast_button = Button.new()
+	_fast_button.text = "×1"
+	_fast_button.tooltip_text = "Скорость игры: ×1, ×2, ×3 (клавиша X)"
+	_fast_button.custom_minimum_size = Vector2(44, 36)
+	_fast_button.focus_mode = Control.FOCUS_NONE
+	_fast_button.pressed.connect(_toggle_speed)
+	var hud_tools: Node = _hud._pause_button.get_parent()
+	hud_tools.add_child(_fast_button)
+	hud_tools.move_child(_fast_button, _hud._pause_button.get_index() + 1)
 	var body: HBoxContainer = HBoxContainer.new()
 	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	body.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -509,6 +521,11 @@ func _start() -> void:
 	_refresh()
 
 
+func _toggle_speed() -> void:
+	_speed = _speed % 3 + 1
+	_fast_button.text = "×%d" % _speed
+
+
 func _pause() -> void:
 	if _hero_panel != null and _hero_panel.visible:
 		return
@@ -537,7 +554,7 @@ func _process(delta: float) -> void:
 	if _paused and trial.phase == RitualTrial.Phase.RUNNING:
 		_paused_seconds += delta
 	if not _paused and trial.phase == RitualTrial.Phase.RUNNING:
-		_accumulator += delta * settings.combat.ticks_per_second
+		_accumulator += delta * settings.combat.ticks_per_second * _speed
 		var steps: int = mini(MAX_FRAME_TICKS, int(_accumulator))
 		for index: int in steps:
 			trial.tick()
@@ -558,6 +575,8 @@ func _unhandled_key_input(event: InputEvent) -> void:
 			_choose_palisade()
 		elif key.keycode == KEY_SPACE:
 			_pause()
+		elif key.keycode == KEY_X:
+			_toggle_speed()
 		elif key.keycode in [KEY_1, KEY_2, KEY_3] and _supply_buttons.size() == 3:
 			var kind: int = key.keycode - KEY_1
 			if not _supply_buttons[kind].disabled:

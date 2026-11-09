@@ -33,6 +33,16 @@ func _check_endless(scene: PackedScene) -> void:
 	_check(panel._scout._cards[0].tooltip_text.contains("Состав"), "В подсказке пачки нет состава")
 	_check(panel._scout.get_global_rect().end.x <= panel.size.x, "Очередь разведки за краем экрана")
 	_check(panel._supply_buttons.size() == 3, "Нет ряда припасов")
+	panel._toggle_speed()
+	_check(panel._speed == 2 and panel._fast_button.text == "×2", "Скорость не переключается")
+	var before_fast: int = panel.trial.tick_count
+	panel._paused = false
+	for frame: int in 5:
+		panel._process(0.1)
+	_check(panel.trial.tick_count - before_fast >= 18, "На ×2 за 0,5 с прошло меньше 18 тиков")
+	panel._toggle_speed()
+	panel._toggle_speed()
+	_check(panel._speed == 1, "После ×3 скорость не вернулась к ×1")
 	for button: Button in panel._supply_buttons:
 		_check(button.get_global_rect().end.y <= panel.size.y, "Припас за нижним краем экрана")
 	panel._paused = true
