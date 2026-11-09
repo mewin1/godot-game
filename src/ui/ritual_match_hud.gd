@@ -19,7 +19,8 @@ func refresh_ritual(trial: RitualTrial, paused: bool) -> void:
 	_phase_label.text = "%s · %d:%02d" % [trial.settings.period_name(trial.tick_count), seconds / 60, seconds % 60]
 	if trial.phase == RitualTrial.Phase.PREP:
 		_phase_label.text = "Подготовка"
-	_hp_label.text = str(trial.hp)
+	# Забег: HP принадлежит Илье в сторожке перед теремом (docs/34 §4).
+	_hp_label.text = "Илья · %d" % trial.hp if trial.settings.is_endless() else str(trial.hp)
 	_gold_label.text = str(trial.gold)
 	(_income_label.get_parent() as Control).hide()
 	_hero_name.text = "Илья Муромец"

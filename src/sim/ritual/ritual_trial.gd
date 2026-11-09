@@ -506,7 +506,8 @@ func _repair() -> String:
 	if phase != Phase.RUNNING:
 		return "Чинить можно только в бою"
 	if hp >= settings.hero_hp:
-		return "Терем цел"
+		# В бесконечном забеге HP — у Ильи в сторожке; «починка терема» стала лечением Ильи.
+		return "Илья здоров" if settings.is_endless() else "Терем цел"
 	if gold < settings.repair_cost:
 		return "Не хватает золота"
 	gold -= settings.repair_cost
@@ -722,7 +723,8 @@ func _on_breached(mob: MobState) -> void:
 	_event(&"breach", {"mob": mob.id, "kind": String(mob.data.id), "damage": mob.breach_damage})
 	if hp == 0:
 		phase = Phase.OVER
-		result = "Терем пал"
+		# Забег: враг дошёл до сторожки — удар по Илье; Илья погиб — сразу поражение.
+		result = "Илья пал" if settings.is_endless() else "Терем пал"
 		field.stopped = true
 
 

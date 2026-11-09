@@ -99,6 +99,10 @@ func _build_ui() -> void:
 	_repair_button = _button(upkeep, "Починить терем +%d · %d" % [settings.repair_hp, settings.repair_cost], _repair)
 	_repair_button.tooltip_text = "Терем +%d HP за %d золота (не выше %d)" % [
 		settings.repair_hp, settings.repair_cost, settings.hero_hp]
+	if settings.is_endless():
+		_repair_button.text = "Лечить Илью +%d · %d" % [settings.repair_hp, settings.repair_cost]
+		_repair_button.tooltip_text = "Илья в сторожке +%d HP за %d золота (не выше %d). Враг, дошедший до сторожки, бьёт Илью." % [
+			settings.repair_hp, settings.repair_cost, settings.hero_hp]
 	if settings.wear_ticks > 0:
 		var houses: HBoxContainer = HBoxContainer.new()
 		left.add_child(houses)

@@ -778,3 +778,36 @@ func test_old_trial_has_no_wear() -> void:
 	var trial: RitualTrial = RitualTrial.new(old, 0)
 	for tower: TowerState in trial.field.towers:
 		assert_eq(tower.durability, -1)
+
+
+# --- Шаг 7: сторожка Ильи ---
+
+
+func test_breach_hurts_ilya_and_enemy_vanishes() -> void:
+	var trial: RitualTrial = _trial(1)
+	var mob: RitualMob = trial.field.spawn_mob(0)
+	mob.progress = trial.field.get_path_end_progress() - 10
+	mob.previous_progress = mob.progress
+	trial.tick()
+	assert_eq(trial.hp, _settings.hero_hp - _settings.enemies[0].breach_damage, "Враг дошёл — Илья теряет HP")
+	assert_false(mob.is_alive(), "Враг исчез: его убил Илья")
+
+
+func test_ilya_death_is_immediate_defeat() -> void:
+	var trial: RitualTrial = _trial(1)
+	trial.hp = 1
+	var mob: RitualMob = trial.field.spawn_mob(0)
+	mob.progress = trial.field.get_path_end_progress() - 10
+	trial.tick()
+	assert_eq(trial.phase, RitualTrial.Phase.OVER)
+	assert_eq(trial.result, "Илья пал")
+
+
+func test_old_terem_repair_heals_ilya() -> void:
+	var trial: RitualTrial = _trial(1)
+	trial.hp = 30
+	trial.gold = 100
+	assert_eq(trial.execute(RitualCommand.new(RitualCommand.Action.REPAIR)), "")
+	assert_eq(trial.hp, 30 + _settings.repair_hp)
+	trial.hp = _settings.hero_hp
+	assert_eq(trial.execute(RitualCommand.new(RitualCommand.Action.REPAIR)), "Илья здоров")

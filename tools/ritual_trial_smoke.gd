@@ -64,6 +64,8 @@ func _check_endless(scene: PackedScene) -> void:
 		panel.trial.tick()
 	panel._process(0.0)
 	_check(panel._defeat.visible and panel._defeat_text.text.contains("Продержались ночей"), "Нет экрана поражения")
+	_check(panel._defeat_text.text.begins_with("Илья пал"), "Поражение не от гибели Ильи: " + panel._defeat_text.text)
+	_check(panel._status.text.begins_with("Илья · "), "В шапке нет «Илья · HP»: " + panel._status.text)
 	panel.queue_free()
 	await process_frame
 
