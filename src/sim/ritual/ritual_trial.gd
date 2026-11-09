@@ -157,13 +157,14 @@ func _buy(index: int, cell: Vector2i, rotation: int, into_id: int = 0) -> String
 	var slot: int = offers.find(index)
 	if settings.market_offers > 0 and slot < 0:
 		return "Этой постройки нет в лавке"
-	if gold < settings.costs[index]:
+	var cost: int = building_cost(index)
+	if gold < cost:
 		return "Не хватает золота"
 	if into_id > 0:
 		var twin: TowerState = field.get_tower(into_id)
 		if twin == null or twin.data != data:
 			return "Сливается только с такой же постройкой"
-		var error: String = _buy_into(twin, settings.costs[index])
+		var error: String = _buy_into(twin, cost)
 		if error.is_empty() and slot >= 0:
 			offers[slot] = -1
 		return error
@@ -174,7 +175,7 @@ func _buy(index: int, cell: Vector2i, rotation: int, into_id: int = 0) -> String
 	var tower: TowerState = field.add_tower(data, cell, posmod(rotation, TowerState.ROTATIONS))
 	if slot >= 0:
 		offers[slot] = -1
-	tower.invested_total = settings.costs[index]
+	tower.invested_total = cost
 	gold -= tower.invested_total
 	spent += tower.invested_total
 	if phase == Phase.RUNNING:
@@ -191,6 +192,29 @@ func _buy_into(twin: TowerState, cost: int) -> String:
 	twin.invested_total += cost
 	_raise_level(twin)
 	return ""
+
+
+## Цена постройки со скидкой своей стихии (docs/34 §7): чем больше заговоров на идоле
+## этой стихии, тем дешевле, с пределом. Продажа вернёт половину реально заплаченного.
+func building_cost(index: int) -> int:
+	return discounted(settings.costs[index], settings.combat.towers[index].god)
+
+
+func discounted(price: int, god: StringName) -> int:
+	return price * (10000 - discount_bp(god)) / 10000
+
+
+## Скидка стихии в базисных пунктах: от всех заговоров на идоле этого бога.
+func discount_bp(god: StringName) -> int:
+	if settings.discount_cap_bp <= 0:
+		return 0
+	var idol: IdolState = field.get_idol(god) if god != &"" else null
+	if idol == null:
+		return 0
+	var count: int = 0
+	for rite_id: StringName in idol.purchases:
+		count += idol.purchases[rite_id]
+	return RitualRiteCurve.decay(settings.discount_cap_bp, settings.discount_step_bp, count)
 
 
 ## Цена следующего обновления прилавка в эти сутки.
@@ -341,7 +365,7 @@ func _rite(index: int) -> String:
 	if index < 0 or index >= settings.rites.size():
 		return "Нет такого заговора"
 	var data: RiteData = settings.rites[index]
-	if rite_count(index) >= data.max_purchases:
+	if settings.rite_purchase_limit and rite_count(index) >= data.max_purchases:
 		return "Этот заговор уже усилен до предела"
 	var cost: int = rite_cost(index)
 	if gold < cost:
@@ -354,7 +378,16 @@ func _rite(index: int) -> String:
 				break
 	if idol == null:
 		return "Все идолы посвящены"
-	idol.apply_rite(data)
+	var curve: RitualRiteCurve = settings.rite_curve(data.id)
+	if curve != null and curve.cap > 0:
+		# Затухание: идол получает не постоянную прибавку, а разницу бонус(n+1) − бонус(n),
+		# поэтому весь общий боевой код читает уже затухший итог.
+		var applied: RiteData = data.duplicate() as RiteData
+		var count: int = rite_count(index)
+		applied.value = curve.bonus(count + 1) - curve.bonus(count)
+		idol.apply_rite(applied)
+	else:
+		idol.apply_rite(data)
 	gold -= cost
 	spent += cost
 	field.mark_towers_changed()
@@ -369,6 +402,9 @@ func rite_count(index: int) -> int:
 
 
 func rite_cost(index: int) -> int:
+	var curve: RitualRiteCurve = settings.rite_curve(settings.rites[index].id)
+	if curve != null:
+		return curve.cost(settings.rites[index].cost, rite_count(index))
 	return settings.rites[index].cost + settings.rite_cost_step * rite_count(index)
 
 

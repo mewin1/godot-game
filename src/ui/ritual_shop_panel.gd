@@ -55,18 +55,19 @@ func setup_ritual(settings: RitualTrialConfig) -> void:
 		(_reroll.get_parent() as Control).show()
 		_reroll.tooltip_text = "Новые карточки за золото. Дорожает с каждым обновлением; на рассвете — сброс и новый прилавок бесплатно."
 	if settings.enchants.is_empty():
-		_army_grid.columns = 3
-		_setup_rites(settings)
+		# Бесконечный забег: заговоров больше, карточки мельче — всё на одном экране.
+		_army_grid.columns = 4
+		_setup_rites(settings, Vector2(72, 84))
 		return
 	_setup_rites(settings)
 	_setup_enchants(settings)
 
 
-func _setup_rites(settings: RitualTrialConfig) -> void:
+func _setup_rites(settings: RitualTrialConfig, card_size: Vector2 = Vector2(96, 96)) -> void:
 	for index: int in settings.rites.size():
 		var card: MarketOffer = MarketOffer.new()
 		card.offer_index = index
-		card.custom_minimum_size = Vector2(96, 96)
+		card.custom_minimum_size = card_size
 		# Копия ресурса: цена на карточке растёт с каждой покупкой, общий .tres не меняется.
 		card.show_rite(settings.rites[index].duplicate() as RiteData)
 		card.clicked.connect(func(chosen: int) -> void: rite_chosen.emit(chosen))
@@ -115,16 +116,50 @@ func refresh_ritual(trial: RitualTrial) -> void:
 	for index: int in _ritual_rites.size():
 		var card: MarketOffer = _ritual_rites[index]
 		var count: int = trial.rite_count(index)
-		var maxed: bool = count >= trial.settings.rites[index].max_purchases
+		var maxed: bool = trial.settings.rite_purchase_limit \
+				and count >= trial.settings.rites[index].max_purchases
 		card.rite.cost = trial.rite_cost(index)
 		card.is_active = not maxed and trial.gold >= card.rite.cost
-		card.tooltip_text = "%s\nКуплено %d из %d, +%d%% урона за покупку" % [
-			trial.settings.rites[index].display_name, count,
-			trial.settings.rites[index].max_purchases, trial.settings.rites[index].value]
+		card.tooltip_text = rite_tooltip(trial, index)
 		card.queue_redraw()
 	for index: int in _ritual_enchants.size():
 		_ritual_enchants[index].is_active = trial.gold >= trial.settings.enchant_costs[index]
 		_ritual_enchants[index].queue_redraw()
+
+
+## Подсказка заговора: прежний опыт — «куплено n из предела»; забег — текущий и следующий бонус.
+static func rite_tooltip(trial: RitualTrial, index: int) -> String:
+	var rite: RiteData = trial.settings.rites[index]
+	var count: int = trial.rite_count(index)
+	var curve: RitualRiteCurve = trial.settings.rite_curve(rite.id)
+	if curve == null:
+		return "%s\nКуплено %d из %d, +%d%% урона за покупку" % [rite.display_name, count,
+			rite.max_purchases, rite.value]
+	var lines: PackedStringArray = [rite.display_name, rite.description]
+	if curve.cap <= 0:
+		lines.append("Куплено %d: +%d%% урона, следующий +%d%% (без предела, цена растёт)" % [
+			count, rite.value * count, rite.value])
+	else:
+		lines.append("Куплено %d: сейчас %s, со следующим %s (предел %s)" % [count,
+			_amount(rite.effect, RitualRiteCurve.decay(curve.cap, curve.step_bp, count)),
+			_amount(rite.effect, RitualRiteCurve.decay(curve.cap, curve.step_bp, count + 1)),
+			_amount(rite.effect, curve.cap)])
+	var discount: int = trial.discount_bp(rite.god)
+	if discount > 0:
+		lines.append("Скидка на постройки этой стихии: −%d%%" % (discount / 100))
+	return "\n".join(lines)
+
+
+## Величина бонуса в понятных единицах: клетки, цели, секунды, проценты.
+static func _amount(effect: RiteData.Effect, value: int) -> String:
+	match effect:
+		RiteData.Effect.ENCHANT_RANGE:
+			return "+%.2f клетки" % (value / 1000.0)
+		RiteData.Effect.TARGETS:
+			return "+%.2f цели" % (value / 1000.0)
+		RiteData.Effect.STATUS_DURATION, RiteData.Effect.WET_DURATION:
+			return "+%.1f с" % (value / 20.0)
+	return "+%d%%" % value
 
 
 ## Место прилавка показывает свою постройку; купленное место пустое до обновления или рассвета.
@@ -135,11 +170,14 @@ func _refresh_market(trial: RitualTrial) -> void:
 		card.visible = index >= 0
 		if index < 0:
 			continue
-		if card.offer_index != index or card.data != trial.settings.combat.towers[index]:
+		var price: int = trial.building_cost(index)
+		if card.offer_index != index or card.data != trial.settings.combat.towers[index] \
+				or card.tower_cost != price:
 			card.offer_index = index
-			card.tower_cost = trial.settings.costs[index]
+			# Цена со скидкой своей стихии (docs/34 §7).
+			card.tower_cost = price
 			card.show_offer(trial.settings.combat.towers[index])
-		card.is_active = trial.gold >= trial.settings.costs[index]
+		card.is_active = trial.gold >= price
 		card.queue_redraw()
 	var cost: int = trial.reroll_cost()
 	_reroll.text = "Обновить · %d" % cost

@@ -23,7 +23,7 @@ func _can_drop_data(_at_position: Vector2, value: Variant) -> bool:
 		reason = "Чару кладут на башню"
 	elif target != idol:
 		reason = "Выберите свободный идол этой силы"
-	elif trial.rite_count(index) >= trial.settings.rites[index].max_purchases:
+	elif trial.settings.rite_purchase_limit and trial.rite_count(index) >= trial.settings.rites[index].max_purchases:
 		reason = "Заговор уже усилен до предела"
 	elif trial.gold < trial.rite_cost(index):
 		reason = "Не хватает золота"

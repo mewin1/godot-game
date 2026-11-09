@@ -15,6 +15,14 @@ extends Resource
 @export var tower_limit: int = 0
 ## Повторный заговор идола дороже на шаг за каждую прежнюю покупку.
 @export var rite_cost_step: int = 3
+## false — заговоры без предела покупок (бесконечный забег); правила — rite_curves.
+@export var rite_purchase_limit: bool = true
+## Затухание/рост цены заговоров без предела (docs/34 §6).
+@export var rite_curves: Array[RitualRiteCurve] = []
+## Скидка своей стихии (docs/34 §7): от числа заговоров на идоле этой стихии, с затуханием,
+## в базисных пунктах. 0 — скидки нет.
+@export var discount_cap_bp: int = 0
+@export var discount_step_bp: int = 1500
 ## Чары на одну башню и их цены в этом опыте.
 @export var enchants: Array[RiteData] = []
 @export var enchant_costs: Array[int] = []
@@ -87,6 +95,28 @@ func level_name(level: int) -> String:
 	if level >= 1 and level <= level_names.size():
 		return level_names[level - 1]
 	return "ур. %d" % level
+
+
+func rite_curve(rite_id: StringName) -> RitualRiteCurve:
+	for curve: RitualRiteCurve in rite_curves:
+		if curve.rite_id == rite_id:
+			return curve
+	return null
+
+
+## Бонус заговоров идола с эффектом effect, которого нет в полях IdolState (дальность, темп).
+func idol_curve_bonus(idol: IdolState, effect: RiteData.Effect) -> int:
+	if idol == null:
+		return 0
+	var total: int = 0
+	for rite: RiteData in rites:
+		if rite.god != idol.god or rite.effect != effect:
+			continue
+		var curve: RitualRiteCurve = rite_curve(rite.id)
+		var count: int = idol.purchases.get(rite.id, 0)
+		if curve != null:
+			total += curve.bonus(count)
+	return total
 
 
 func is_endless() -> bool:

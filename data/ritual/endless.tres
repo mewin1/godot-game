@@ -10,6 +10,14 @@
 [ext_resource type="Resource" path="res://data/rites/war_power.tres" id="rite_0"]
 [ext_resource type="Resource" path="res://data/rites/svarog_power.tres" id="rite_1"]
 [ext_resource type="Resource" path="res://data/rites/ice_power.tres" id="rite_2"]
+[ext_resource type="Script" path="res://src/sim/data/ritual_rite_curve.gd" id="rite_curve"]
+[ext_resource type="Resource" path="res://data/ritual/rites/war_range.tres" id="rite_3"]
+[ext_resource type="Resource" path="res://data/ritual/rites/war_volley.tres" id="rite_4"]
+[ext_resource type="Resource" path="res://data/ritual/rites/svarog_heat.tres" id="rite_5"]
+[ext_resource type="Resource" path="res://data/ritual/rites/ice_rhythm.tres" id="rite_6"]
+[ext_resource type="Resource" path="res://data/ritual/rites/ice_cold.tres" id="rite_7"]
+[ext_resource type="Resource" path="res://data/ritual/rites/water_dew.tres" id="rite_8"]
+[ext_resource type="Resource" path="res://data/ritual/rites/stribog_gust.tres" id="rite_9"]
 [ext_resource type="Resource" path="res://data/ritual/undead/mertvyak.tres" id="mob_0"]
 [ext_resource type="Resource" path="res://data/ritual/undead/upyr.tres" id="mob_1"]
 [ext_resource type="Resource" path="res://data/ritual/undead/kostyak.tres" id="mob_2"]
@@ -355,6 +363,86 @@ support_percent = 100
 script = ExtResource("building_levels")
 tower_id = &"rime"
 levels = Array[ExtResource("level_behavior")]([SubResource("lvl_rime_1"), SubResource("lvl_rime_2"), SubResource("lvl_rime_3"), SubResource("lvl_rime_4")])
+[sub_resource type="Resource" id="curve_war_power"]
+script = ExtResource("rite_curve")
+rite_id = &"war_power"
+cap = 0
+step_bp = 2500
+unit = 1
+cost_step = 0
+cost_growth_percent = 25
+[sub_resource type="Resource" id="curve_svarog_power"]
+script = ExtResource("rite_curve")
+rite_id = &"svarog_power"
+cap = 0
+step_bp = 2500
+unit = 1
+cost_step = 0
+cost_growth_percent = 25
+[sub_resource type="Resource" id="curve_ice_power"]
+script = ExtResource("rite_curve")
+rite_id = &"ice_power"
+cap = 0
+step_bp = 2500
+unit = 1
+cost_step = 0
+cost_growth_percent = 25
+[sub_resource type="Resource" id="curve_war_range"]
+script = ExtResource("rite_curve")
+rite_id = &"war_range"
+cap = 2000
+step_bp = 2500
+unit = 1
+cost_step = 3
+cost_growth_percent = 0
+[sub_resource type="Resource" id="curve_war_volley"]
+script = ExtResource("rite_curve")
+rite_id = &"war_volley"
+cap = 2000
+step_bp = 2500
+unit = 1000
+cost_step = 4
+cost_growth_percent = 0
+[sub_resource type="Resource" id="curve_svarog_heat"]
+script = ExtResource("rite_curve")
+rite_id = &"svarog_heat"
+cap = 60
+step_bp = 2000
+unit = 1
+cost_step = 3
+cost_growth_percent = 0
+[sub_resource type="Resource" id="curve_ice_rhythm"]
+script = ExtResource("rite_curve")
+rite_id = &"ice_rhythm"
+cap = 50
+step_bp = 2000
+unit = 1
+cost_step = 3
+cost_growth_percent = 0
+[sub_resource type="Resource" id="curve_ice_cold"]
+script = ExtResource("rite_curve")
+rite_id = &"ice_cold"
+cap = 40
+step_bp = 2500
+unit = 1
+cost_step = 3
+cost_growth_percent = 0
+[sub_resource type="Resource" id="curve_water_dew"]
+script = ExtResource("rite_curve")
+rite_id = &"water_dew"
+cap = 60
+step_bp = 2500
+unit = 1
+cost_step = 3
+cost_growth_percent = 0
+[sub_resource type="Resource" id="curve_stribog_gust"]
+script = ExtResource("rite_curve")
+rite_id = &"stribog_gust"
+cap = 30
+step_bp = 2500
+unit = 1
+cost_step = 3
+cost_growth_percent = 0
 [sub_resource type="Resource" id="nights"]
 script = ExtResource("night_rules")
 first_evening_ticks = 400
@@ -385,13 +473,17 @@ default_seed = 1
 script = ExtResource("settings")
 combat = ExtResource("combat")
 costs = Array[int]([12, 8, 18, 12, 16, 10])
-rites = Array[ExtResource("rite")]([ExtResource("rite_0"), ExtResource("rite_1"), ExtResource("rite_2")])
+rites = Array[ExtResource("rite")]([ExtResource("rite_0"), ExtResource("rite_1"), ExtResource("rite_2"), ExtResource("rite_3"), ExtResource("rite_4"), ExtResource("rite_5"), ExtResource("rite_6"), ExtResource("rite_7"), ExtResource("rite_8"), ExtResource("rite_9")])
 enemies = Array[ExtResource("mob")]([ExtResource("mob_0"), ExtResource("mob_1"), ExtResource("mob_2"), ExtResource("mob_3"), ExtResource("mob_4"), ExtResource("mob_5"), ExtResource("mob_6"), ExtResource("mob_7")])
 build_regions = Array[Rect2i]([Rect2i(3, 3, 13, 3), Rect2i(3, 8, 13, 4)])
 hero_hp = 50
 start_gold = 50
 tower_limit = 0
 rite_cost_step = 3
+rite_purchase_limit = false
+rite_curves = Array[ExtResource("rite_curve")]([SubResource("curve_war_power"), SubResource("curve_svarog_power"), SubResource("curve_ice_power"), SubResource("curve_war_range"), SubResource("curve_war_volley"), SubResource("curve_svarog_heat"), SubResource("curve_ice_rhythm"), SubResource("curve_ice_cold"), SubResource("curve_water_dew"), SubResource("curve_stribog_gust")])
+discount_cap_bp = 3000
+discount_step_bp = 1500
 enchants = Array[ExtResource("rite")]([])
 enchant_costs = Array[int]([])
 market_offers = 4

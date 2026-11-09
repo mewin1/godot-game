@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="RiteData" format=3]
+[ext_resource type="Script" path="res://src/sim/data/rite_data.gd" id="1"]
+[resource]
+script = ExtResource("1")
+id = &"ice_rhythm"
+display_name = "Слово ритма"
+description = "Ледяные постройки бьют чаще: каждый заговор — пятая часть остатка до +50% темпа."
+god = &"ice"
+effect = 7
+value = 0
+cost = 6
+tier = 1
+max_purchases = 0

@@ -542,3 +542,140 @@ func test_old_trial_levels_are_unchanged() -> void:
 	tower.level = 2
 	assert_null(old.levels_for(tower.data))
 	assert_eq(trial.field.get_tower_damage(tower), old.combat.towers[0].damage * 2)
+
+
+# --- Шаг 5: заговоры без предела с затуханием, скидка своей стихии ---
+
+
+func _rite_index(id: StringName) -> int:
+	for index: int in _settings.rites.size():
+		if _settings.rites[index].id == id:
+			return index
+	return -1
+
+
+func _buy_rite(trial: RitualTrial, id: StringName, times: int) -> void:
+	for count: int in times:
+		trial.gold = 100000
+		assert_eq(trial.execute(RitualCommand.new(RitualCommand.Action.RITE, _rite_index(id))), "",
+			"Заговор %s №%d" % [id, count + 1])
+
+
+func test_decay_formula_matches_doc_example() -> void:
+	# docs/34 §6: предел +2 клетки, шаг 25% → +0,50 / +0,88 / +1,16 / … / +1,89 за 10.
+	var values: Array[int] = []
+	for n: int in [0, 1, 2, 3, 10]:
+		values.append(RitualRiteCurve.decay(2000, 2500, n))
+	assert_eq(values, [0, 500, 875, 1156, 1886])
+	var previous: int = 0
+	for n: int in range(1, 200):
+		var value: int = RitualRiteCurve.decay(2000, 2500, n)
+		assert_true(value >= previous and value < 2000, "Растёт и не достигает предела")
+		previous = value
+
+
+func test_rites_have_no_purchase_limit() -> void:
+	var trial: RitualTrial = _trial(1)
+	_buy_rite(trial, &"war_power", 12)
+	assert_eq(trial.rite_count(_rite_index(&"war_power")), 12)
+
+
+func test_damage_rite_is_linear_and_cost_grows_faster() -> void:
+	var trial: RitualTrial = _trial(1)
+	var tower: TowerState = _place(trial, &"bolt", Vector2i(10, 3), 1)
+	var base: int = trial.field.get_tower_damage(tower)
+	var index: int = _rite_index(&"war_power")
+	var costs: Array[int] = []
+	for n: int in 8:
+		costs.append(trial.rite_cost(index))
+		_buy_rite(trial, &"war_power", 1)
+		trial.field.mark_towers_changed()
+		assert_eq(trial.field.get_tower_damage(tower), base * (100 + 10 * (n + 1)) / 100, "Урон линейно +10%")
+	for n: int in range(1, costs.size()):
+		assert_true(costs[n] > costs[n - 1], "Цена урона растёт")
+	assert_true(costs[7] - costs[6] > costs[1] - costs[0], "И растёт всё быстрее")
+
+
+func test_range_rite_decays_toward_cap() -> void:
+	var trial: RitualTrial = _trial(1)
+	var tower: TowerState = _place(trial, &"bolt", Vector2i(10, 3), 1)
+	var base: int = trial.field.get_tower_range(tower)
+	var curve: RitualRiteCurve = _settings.rite_curve(&"war_range")
+	assert_not_null(curve)
+	_buy_rite(trial, &"war_range", 1)
+	trial.field.mark_towers_changed()
+	assert_eq(trial.field.get_tower_range(tower), base + 500, "Первый заговор дали — +0,5 клетки")
+	_buy_rite(trial, &"war_range", 29)
+	trial.field.mark_towers_changed()
+	assert_true(trial.field.get_tower_range(tower) < base + curve.cap, "Дом никогда не бьёт на всю арену")
+	assert_true(trial.field.get_tower_range(tower) > base + curve.cap * 95 / 100)
+
+
+func test_targets_and_status_rites_decay_through_idol() -> void:
+	var trial: RitualTrial = _trial(1)
+	var tower: TowerState = _place(trial, &"bolt", Vector2i(10, 3), 1)
+	_buy_rite(trial, &"war_volley", 2)
+	assert_eq(trial.field.get_tower_targets(tower), 1, "Пол-цели и ещё треть — пока не целая цель")
+	_buy_rite(trial, &"war_volley", 1)
+	assert_eq(trial.field.get_tower_targets(tower), 2, "После трёх заговоров — вторая цель")
+	_buy_rite(trial, &"war_volley", 40)
+	assert_eq(trial.field.get_tower_targets(tower), 2, "Предел 2 цели не достигается")
+	_buy_rite(trial, &"ice_cold", 30)
+	var ice: IdolState = trial.field.get_idol(&"ice")
+	assert_true(ice.status_ticks < _settings.rite_curve(&"ice_cold").cap, "Контроль с пределом")
+
+
+func test_tempo_rite_shortens_cooldown_with_decay() -> void:
+	var trial: RitualTrial = _trial(1)
+	var tower: TowerState = _place(trial, &"rime", Vector2i(10, 3), 1)
+	var base: int = trial.field.get_tower_cooldown(tower)
+	_buy_rite(trial, &"ice_rhythm", 30)
+	trial.field.mark_towers_changed()
+	var fast: int = trial.field.get_tower_cooldown(tower)
+	var cap: int = _settings.rite_curve(&"ice_rhythm").cap
+	assert_true(fast < base, "Темп растёт")
+	assert_true(fast >= base * 100 / (100 + cap), "Но не выше предела")
+
+
+func test_own_element_discount_is_small_capped_and_applies_to_buying() -> void:
+	var trial: RitualTrial = _trial(1)
+	var bolt: int = 0
+	var full: int = _settings.costs[bolt]
+	assert_eq(trial.building_cost(bolt), full)
+	_buy_rite(trial, &"war_power", 1)
+	assert_eq(trial.building_cost(bolt), full * (10000 - RitualRiteCurve.decay(_settings.discount_cap_bp,
+		_settings.discount_step_bp, 1)) / 10000)
+	_buy_rite(trial, &"war_range", 40)
+	var discounted: int = trial.building_cost(bolt)
+	assert_true(discounted > full * (100 - _settings.discount_cap_bp / 100) / 100 - 1, "Скидка не больше предела")
+	assert_true(discounted < full, "Скидка есть")
+	assert_eq(trial.building_cost(1), _settings.costs[1], "Чужая стихия без скидки")
+	trial.gold = 100
+	trial.offers[0] = bolt
+	assert_eq(trial.execute(RitualCommand.new(RitualCommand.Action.BUY, bolt, Vector2i(10, 3))), "")
+	assert_eq(trial.gold, 100 - discounted, "Покупка по цене со скидкой")
+	var tower: TowerState = trial.field.towers[0]
+	assert_eq(tower.invested_total, discounted, "В доме учтено реально заплаченное")
+	trial.execute(RitualCommand.new(RitualCommand.Action.SELL, 0, Vector2i.ZERO, 0, tower.id))
+	assert_eq(trial.gold, 100 - discounted + discounted * _settings.sell_percent / 100, "Продажа — половина заплаченного")
+
+
+func test_old_trial_rites_keep_their_limit() -> void:
+	var old: RitualTrialConfig = load("res://data/ritual/trial.tres") as RitualTrialConfig
+	var trial: RitualTrial = RitualTrial.new(old, 3)
+	for count: int in old.rites[0].max_purchases:
+		trial.gold = 1000
+		assert_eq(trial.execute(RitualCommand.new(RitualCommand.Action.RITE, 0)), "")
+	trial.gold = 1000
+	assert_eq(trial.execute(RitualCommand.new(RitualCommand.Action.RITE, 0)), "Этот заговор уже усилен до предела")
+	assert_eq(trial.building_cost(0), old.costs[0], "У прежнего опыта нет скидки стихии")
+
+
+func test_rite_tooltip_shows_current_next_and_cap() -> void:
+	var trial: RitualTrial = _trial(1)
+	_buy_rite(trial, &"war_range", 1)
+	var text: String = RitualShopPanel.rite_tooltip(trial, _rite_index(&"war_range"))
+	assert_string_contains(text, "сейчас +0.50 клетки, со следующим +0.88 клетки (предел +2.00 клетки)")
+	assert_string_contains(text, "Скидка на постройки этой стихии: −4%")
+	var damage: String = RitualShopPanel.rite_tooltip(trial, _rite_index(&"war_power"))
+	assert_string_contains(damage, "без предела")

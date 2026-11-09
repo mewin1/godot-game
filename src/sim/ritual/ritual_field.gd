@@ -135,7 +135,21 @@ func get_tower_targets(tower: TowerState) -> int:
 
 func get_tower_range(tower: TowerState) -> int:
 	var behavior: RitualLevelBehavior = settings.level_behavior(tower)
-	return super(tower) + (behavior.range_bonus_milli if behavior != null else 0)
+	var rite: int = settings.idol_curve_bonus(get_idol(tower.data.god), RiteData.Effect.ENCHANT_RANGE)
+	return super(tower) + rite + (behavior.range_bonus_milli if behavior != null else 0)
+
+
+## Темп заговором идола (затухание). Без заговоров темпа — прежняя формула FieldState.
+func get_tower_cooldown(tower: TowerState) -> int:
+	var rite: int = settings.idol_curve_bonus(get_idol(tower.data.god), RiteData.Effect.ENCHANT_RATE)
+	if rite == 0:
+		return super(tower)
+	if _are_bonuses_dirty:
+		_refresh_bonuses()
+	var rate: int = tower.bonus_fire_rate_percent + rite
+	if tower.haste_ticks > 0:
+		rate += tower.haste_percent
+	return maxi(1, tower.data.cooldown_ticks * 100 / (100 + rate))
 
 
 func get_tower_splash_radius(tower: TowerState) -> int:

@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="RiteData" format=3]
+[ext_resource type="Script" path="res://src/sim/data/rite_data.gd" id="1"]
+[resource]
+script = ExtResource("1")
+id = &"war_volley"
+display_name = "Залп"
+description = "Механизмы Бога войны выбирают больше целей: каждый заговор — четверть остатка до +2 целей."
+god = &"war"
+effect = 14
+value = 0
+cost = 8
+tier = 1
+max_purchases = 0
