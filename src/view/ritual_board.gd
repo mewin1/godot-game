@@ -9,6 +9,8 @@ var selected_id: int = 0
 var preview_index: int = -1
 var preview_rotation: int = 0
 var action: StringName = &""
+## Припас под прицелом (RitualTrial.Supply) при action == &"supply".
+var supply_kind: int = 0
 var hover_cell: Vector2i = Vector2i(-1, -1)
 var _cell: float = 32.0
 var _origin: Vector2 = Vector2.ZERO
@@ -172,6 +174,10 @@ func _draw() -> void:
 		_draw_mob(base as RitualMob)
 	if trial.hero_due >= 0:
 		_ring(field.lane_point(trial.hero_lane, trial.hero_progress), trial.skill_radius(), Color("f7d886"), 3)
+	if trial.tar_until > trial.tick_count:
+		_ring(field.lane_point(trial.tar_lane, trial.tar_progress), trial.settings.tar_radius_milli, Color("8a5a2b"), 4)
+	if trial.rain_tick >= 0 and trial.tick_count - trial.rain_tick < 20:
+		_ring(field.lane_point(trial.rain_lane, trial.rain_progress), trial.settings.rain_radius_milli, Color("6fb6e8"), 4)
 	for hit: Hit in _hits:
 		var endpoint: Vector2 = stage.project_milli(hit.finish, 1.0)
 		if hit.amount == "":
@@ -256,6 +262,12 @@ func _draw_mob(mob: RitualMob) -> void:
 
 func _draw_preview() -> void:
 	if not trial.field.layout.is_inside(hover_cell):
+		return
+	if action == &"supply":
+		var supply_spot: Vector2i = road_spot(hover_cell)
+		if supply_spot.y >= 0:
+			_ring(trial.field.lane_point(supply_spot.x, supply_spot.y), trial.supply_radius(supply_kind),
+				Color("8a5a2b") if supply_kind == RitualTrial.Supply.TAR else Color("6fb6e8"))
 		return
 	if action in [&"skill", &"palisade"]:
 		var spot: Vector2i = road_spot(hover_cell)

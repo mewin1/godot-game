@@ -12,6 +12,16 @@ extends Resource
 ## Пристраиваемые улицы по порядку покупки (docs/34 §3); пусто — город не растёт.
 ## Улица N даёт вход N + 1: главная дорога поля — вход 1.
 @export var streets: Array[RitualStreetData] = []
+## Припасы (docs/36 §4): каждый рассвет — один случайный в запас до supply_cap; 0 — припасов нет.
+@export_group("Припасы")
+@export var supply_cap: int = 0
+@export var tar_radius_milli: int = 1200
+@export var tar_ticks: int = 200
+@export var tar_slow_percent: int = 50
+@export var rain_radius_milli: int = 2000
+@export var rain_wet_ticks: int = 160
+@export var charm_blocks: int = 5
+@export_group("")
 ## Герои бесконечного забега на выбор (docs/36 §1); пусто — прежний опыт с Ильёй из полей hero_*.
 @export var heroes: Array[RitualHeroData] = []
 @export var hero_hp: int = 50

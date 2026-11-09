@@ -50,6 +50,8 @@ var _defeat_text: Label
 var _hero_panel: PanelContainer
 var _hero_choice: int = 0
 var _omen_night: int = 0
+## Ряд припасов (docs/36 §4): смола, чаша, оберег.
+var _supply_buttons: Array[Button] = []
 
 
 func _ready() -> void:
@@ -117,6 +119,11 @@ func _build_ui() -> void:
 		_repair_all_button = _button(houses, "Починить всё", _repair_houses.bind(0))
 		_repair_all_button.tooltip_text = "Вернуть полную прочность всем домам. Ремонт дешевле новой постройки."
 		_repair_house_button = _button(houses, "Починить дом", _repair_selected)
+	if settings.supply_cap > 0:
+		var supplies: HBoxContainer = HBoxContainer.new()
+		left.add_child(supplies)
+		for kind: int in RitualTrial.SUPPLY_NAMES.size():
+			_supply_buttons.append(_button(supplies, "", _choose_supply.bind(kind)))
 	var gap: Control = Control.new()
 	gap.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	gap.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -551,6 +558,10 @@ func _unhandled_key_input(event: InputEvent) -> void:
 			_choose_palisade()
 		elif key.keycode == KEY_SPACE:
 			_pause()
+		elif key.keycode in [KEY_1, KEY_2, KEY_3] and _supply_buttons.size() == 3:
+			var kind: int = key.keycode - KEY_1
+			if not _supply_buttons[kind].disabled:
+				_choose_supply(kind)
 	if event.is_action_pressed(&"ui_cancel"):
 		if _schedule.visible:
 			_hide_schedule()
@@ -639,6 +650,37 @@ func _refresh_streets() -> void:
 	_street_button.disabled = trial.phase != RitualTrial.Phase.RUNNING or trial.gold < street.cost
 
 
+const SUPPLY_SHORT: Array[String] = ["Смола", "Чаша", "Оберег"]
+const SUPPLY_TIPS: Array[String] = [
+	"Смоляная полоса (клавиша 1): на участке дороги враги вдвое медленнее 10 с.",
+	"Дождевая чаша (клавиша 2): вся группа в круге мокрая — молния бьёт цепью, проклятие заражает, мороз сковывает.",
+	"Оберег сторожки (клавиша 3): следующие 5 прорывов не ранят героя.",
+]
+
+
+func _choose_supply(kind: int) -> void:
+	if kind == RitualTrial.Supply.CHARM:
+		if _issue(RitualCommand.new(RitualCommand.Action.SUPPLY, 0, Vector2i.ZERO, kind)):
+			_message.text = "Оберег на сторожке: следующие %d прорывов не ранят героя." % settings.charm_blocks
+		return
+	board.action = &"supply"
+	board.supply_kind = kind
+	board.preview_index = -1
+	_message.text = "Укажите точку дороги: %s." % RitualTrial.SUPPLY_NAMES[kind].to_lower()
+
+
+func _refresh_supplies() -> void:
+	for kind: int in _supply_buttons.size():
+		var button: Button = _supply_buttons[kind]
+		var count: int = trial.supplies[kind]
+		button.text = "%s ×%d" % [SUPPLY_SHORT[kind], count]
+		if kind == RitualTrial.Supply.CHARM and trial.charm_left > 0:
+			button.text += " · щит %d" % trial.charm_left
+		button.tooltip_text = "%s\nКаждый рассвет — один случайный припас, в запасе до %d." % [
+			SUPPLY_TIPS[kind], settings.supply_cap]
+		button.disabled = trial.phase != RitualTrial.Phase.RUNNING or count <= 0
+
+
 func _choose_skill() -> void:
 	if trial.hero() != null and not trial.hero().needs_spot():
 		# Варево без прицела: действует на следующую купленную постройку.
@@ -683,7 +725,7 @@ func _on_cell(cell: Vector2i, right: bool) -> void:
 	if right:
 		if board.action in [&"buy", &"move"]:
 			board.preview_rotation = (board.preview_rotation + 1) % TowerState.ROTATIONS
-		elif board.action in [&"skill", &"palisade", &"enchant"]:
+		elif board.action in [&"skill", &"palisade", &"enchant", &"supply"]:
 			# ПКМ при прицеливании — отмена, а не поворот башни под курсором.
 			board.action = &""
 			_message.text = "Отменено"
@@ -720,6 +762,11 @@ func _on_cell(cell: Vector2i, right: bool) -> void:
 			elif _issue(RitualCommand.new(RitualCommand.Action.ENCHANT, _enchant_index, Vector2i.ZERO, 0, target.id)):
 				board.action = &""
 				board.selected_id = target.id
+		&"supply":
+			var supply_spot: Vector2i = board.road_spot(cell)
+			if _issue(RitualCommand.new(RitualCommand.Action.SUPPLY, supply_spot.x, Vector2i.ZERO,
+					board.supply_kind, 0, supply_spot.y)):
+				board.action = &""
 		&"skill", &"palisade":
 			var spot: Vector2i = board.road_spot(cell)
 			var kind: RitualCommand.Action = RitualCommand.Action.SKILL if board.action == &"skill" \
@@ -805,6 +852,7 @@ func _refresh() -> void:
 	_selection.text = "Башня: не выбрана" if selected == null else _selection_text(selected)
 	_refresh_wear(selected)
 	_refresh_streets()
+	_refresh_supplies()
 	if settings.is_endless():
 		var accusative: String = trial.hero().accusative if trial.hero() != null else "Илью"
 		_repair_button.text = "Лечить %s +%d · %d" % [accusative, settings.repair_hp, settings.repair_cost]

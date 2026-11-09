@@ -73,6 +73,7 @@ func _play(policy: String, seed_value: int, hero: int = 0) -> void:
 			_spend(trial)
 			_cast(trial)
 			_palisade(trial)
+			_use_supplies(trial)
 		if trial.nights_survived() > last_night:
 			last_night = trial.nights_survived()
 			timeline.append("н%d %d:%02d ♥%d з%d д%d в%d" % [last_night, trial.tick_count / TPS / 60,
@@ -239,3 +240,26 @@ func _palisade(trial: RitualTrial) -> void:
 			if trial.execute(RitualCommand.new(RitualCommand.Action.PALISADE, 0, Vector2i.ZERO, 0, 0,
 					mob.progress + 1500)).is_empty():
 				return
+
+
+## Припасы: оберег — когда герой ранен вдвое; смола и чаша — в гущу врагов (не меньше 4).
+func _use_supplies(trial: RitualTrial) -> void:
+	if trial.supplies[RitualTrial.Supply.CHARM] > 0 and trial.charm_left == 0 and trial.hp * 2 <= trial.max_hp():
+		trial.execute(RitualCommand.new(RitualCommand.Action.SUPPLY, 0, Vector2i.ZERO, RitualTrial.Supply.CHARM))
+	for kind: int in [RitualTrial.Supply.TAR, RitualTrial.Supply.RAIN]:
+		if trial.supplies[kind] <= 0 or (kind == RitualTrial.Supply.TAR and trial.tar_until > trial.tick_count):
+			continue
+		var end: int = trial.field.get_path_end_progress()
+		var best: int = 0
+		var best_progress: int = -1
+		for progress: int in range(end / 3, end, 500):
+			var point: Vector2i = trial.field.get_path_point(progress)
+			var count: int = 0
+			for mob: MobState in trial.field.mobs:
+				if mob.is_alive() and trial.field._is_in_range(point, trial.field.get_mob_position(mob), trial.supply_radius(kind)):
+					count += 1
+			if count > best:
+				best = count
+				best_progress = progress
+		if best >= 4:
+			trial.execute(RitualCommand.new(RitualCommand.Action.SUPPLY, 0, Vector2i.ZERO, kind, 0, best_progress))

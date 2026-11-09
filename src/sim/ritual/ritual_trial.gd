@@ -5,6 +5,10 @@ extends RefCounted
 
 enum Phase { PREP, RUNNING, OVER }
 enum ControlMode { OPEN, PASSIVE, ABILITIES, TRANSFERS }
+## Припасы: смоляная полоса (замедляет на участке), дождевая чаша (мочит группу),
+## оберег сторожки (гасит следующие прорывы).
+enum Supply { TAR, RAIN, CHARM }
+const SUPPLY_NAMES: Array[String] = ["Смоляная полоса", "Дождевая чаша", "Оберег сторожки"]
 const SNAPSHOT_VERSION: int = 2
 
 var rules_hash: int = 0
@@ -34,6 +38,18 @@ var hero_lane: int = 0
 var hero_index: int = 0
 ## Варево Яги: сколько следующих построек встанут сразу 2-го уровня.
 var brew_charges: int = 0
+## Запас припасов по видам Supply.
+var supplies: Array[int] = [0, 0, 0]
+## Действующая смола: вход, точка, до какого тика (-1 — нет).
+var tar_lane: int = 0
+var tar_progress: int = -1
+var tar_until: int = -1
+## Сколько ещё прорывов погасит оберег.
+var charm_left: int = 0
+## Где и когда пролилась чаша (для вспышки на поле).
+var rain_lane: int = 0
+var rain_progress: int = -1
+var rain_tick: int = -1
 var result: String = ""
 var title: String = ""
 var install_until: Dictionary[int, int] = {}
@@ -170,6 +186,8 @@ func execute(command: RitualCommand) -> String:
 			error = _repair_house(command.tower_id)
 		RitualCommand.Action.STREET:
 			error = _street()
+		RitualCommand.Action.SUPPLY:
+			error = _supply(command.rotation, command.item, command.progress)
 	if error.is_empty():
 		_record_command(command)
 	return error
@@ -649,6 +667,77 @@ func _street() -> String:
 	return ""
 
 
+#region Припасы
+## Рассвет приносит один случайный припас (сид забега и номер рассвета), если запас не полон.
+func _grant_supply(dawn: int) -> void:
+	if settings.supply_cap <= 0:
+		return
+	var total: int = 0
+	for count: int in supplies:
+		total += count
+	if total >= settings.supply_cap:
+		return
+	var rng: RandomNumberGenerator = RandomNumberGenerator.new()
+	rng.seed = run_seed * 1000117 + dawn * 3571
+	var kind: int = rng.randi_range(0, supplies.size() - 1)
+	supplies[kind] += 1
+	_event(&"supply_gained", {"kind": kind, "dawn": dawn})
+
+
+func supply_radius(kind: int) -> int:
+	match kind:
+		Supply.TAR:
+			return settings.tar_radius_milli
+		Supply.RAIN:
+			return settings.rain_radius_milli
+	return 0
+
+
+func _supply(kind: int, lane: int, progress: int) -> String:
+	if phase != Phase.RUNNING or kind < 0 or kind >= supplies.size():
+		return "Нет такого припаса"
+	if supplies[kind] <= 0:
+		return "Припаса «%s» нет в запасе" % SUPPLY_NAMES[kind]
+	match kind:
+		Supply.TAR:
+			if not valid_spot(lane, progress):
+				return "Выберите точку дороги"
+			tar_lane = lane
+			tar_progress = progress
+			tar_until = tick_count + settings.tar_ticks
+		Supply.RAIN:
+			if not valid_spot(lane, progress):
+				return "Выберите точку дороги"
+			rain_lane = lane
+			rain_progress = progress
+			rain_tick = tick_count
+			var point: Vector2i = field.lane_point(lane, progress)
+			for mob: MobState in field.mobs:
+				if mob.is_alive() and field._is_in_range(point, field.get_mob_position(mob), settings.rain_radius_milli) \
+						and mob.can_apply_status(&"wet"):
+					mob.wet_ticks_left = maxi(mob.wet_ticks_left, settings.rain_wet_ticks)
+		Supply.CHARM:
+			charm_left += settings.charm_blocks
+	supplies[kind] -= 1
+	_event(&"supply", {"kind": kind, "lane": lane, "progress": progress})
+	return ""
+
+
+## Смола: враги на участке замедлены, пока полоса не высохла.
+func _apply_tar() -> void:
+	if tar_until < 0:
+		return
+	if tick_count >= tar_until:
+		tar_until = -1
+		tar_progress = -1
+		return
+	var point: Vector2i = field.lane_point(tar_lane, tar_progress)
+	for mob: MobState in field.mobs:
+		if mob.is_alive() and field._is_in_range(point, field.get_mob_position(mob), settings.tar_radius_milli):
+			mob.apply_slow(settings.tar_slow_percent, 10)
+#endregion
+
+
 ## Подать с улиц: платит улица, чей вход был открыт в прошедшую ночь (пережили — получили).
 func _collect_tribute(dawn: int) -> void:
 	var total: int = tribute_due(dawn)
@@ -855,6 +944,7 @@ func tick() -> void:
 	field.prepare_tick(tick_count)
 	_finish_installations()
 	_resolve_hero()
+	_apply_tar()
 	field.fire_trial_towers()
 	field.finish_tick()
 	field.pending_kill_gold = 0
@@ -1005,6 +1095,7 @@ func _boundaries() -> void:
 		if settings.nights.is_boss_night(dawn + 1):
 			palisades += 1
 		_collect_tribute(dawn)
+		_grant_supply(dawn)
 		# Соловей: засеки — частокол каждый рассвет, пока запас не полон.
 		if hero() != null and hero().dawn_palisades > 0:
 			palisades = maxi(palisades, mini(hero().palisade_cap, palisades + hero().dawn_palisades))
@@ -1081,6 +1172,10 @@ func gift_count(effect: RitualGiftData.Effect) -> int:
 
 
 func _on_breached(mob: MobState) -> void:
+	if charm_left > 0:
+		charm_left -= 1
+		_event(&"charm", {"mob": mob.id, "left": charm_left})
+		return
 	hp = maxi(0, hp - mob.breach_damage)
 	_event(&"breach", {"mob": mob.id, "kind": String(mob.data.id), "damage": mob.breach_damage})
 	if hp == 0:

@@ -946,6 +946,7 @@ costs = Array[int]([12, 8, 18, 12, 16, 10, 10, 18, 8, 14])
 rites = Array[ExtResource("rite")]([ExtResource("rite_0"), ExtResource("rite_1"), ExtResource("rite_2"), ExtResource("rite_3"), ExtResource("rite_4"), ExtResource("rite_5"), ExtResource("rite_6"), ExtResource("rite_7"), ExtResource("rite_8"), ExtResource("rite_9"), ExtResource("rite_10"), ExtResource("rite_11"), ExtResource("rite_12"), ExtResource("rite_13")])
 enemies = Array[ExtResource("mob")]([ExtResource("mob_0"), ExtResource("mob_1"), ExtResource("mob_2"), ExtResource("mob_3"), ExtResource("mob_4"), ExtResource("mob_5"), ExtResource("mob_6"), ExtResource("mob_7")])
 build_regions = Array[Rect2i]([Rect2i(7, 8, 4, 2), Rect2i(12, 8, 5, 2), Rect2i(7, 11, 5, 2), Rect2i(13, 11, 4, 2)])
+supply_cap = 3
 heroes = Array[ExtResource("hero")]([SubResource("hero_ilya"), SubResource("hero_solovey"), SubResource("hero_baba_yaga")])
 streets = Array[ExtResource("street")]([SubResource("street_upper"), SubResource("street_lower")])
 hero_hp = 50

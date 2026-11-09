@@ -7,8 +7,9 @@ extends RefCounted
 ## REROLL — платно обновить прилавок лавки с азартом. REPAIR_HOUSE: tower_id — один дом, 0 — все.
 ## SKILL/PALISADE: item — вход (0 — главная дорога), progress — точка на его маршруте.
 ## STREET — пристроить следующую улицу.
+## SUPPLY: rotation — вид припаса (RitualTrial.Supply), item/progress — вход и точка (для смолы и чаши).
 enum Action { START, BUY, MOVE, SELL, RITE, SKILL, PALISADE, CANCEL_MOVE, MERGE, ENCHANT, REPAIR, REROLL,
-		REPAIR_HOUSE, GIFT, STREET }
+		REPAIR_HOUSE, GIFT, STREET, SUPPLY }
 var action: Action
 var item: int
 var cell: Vector2i
