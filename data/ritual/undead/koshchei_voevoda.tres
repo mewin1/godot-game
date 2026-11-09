@@ -4,7 +4,7 @@
 script = ExtResource("1")
 id = &"koshchei_voevoda"
 display_name = "Кощеев воевода"
-hp = 1800
+hp = 700
 speed_milli_per_tick = 50
 armor = 0
 breach_damage = 25

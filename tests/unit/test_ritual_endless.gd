@@ -928,3 +928,13 @@ func test_gifts_survive_snapshot() -> void:
 	_take(trial, _gift_index(RitualGiftData.Effect.DAMAGE_ALL))
 	var restored: RitualTrial = RitualTrial.from_snapshot(_settings, trial.snapshot())
 	assert_eq(restored.field.get_tower_damage(restored.field.get_tower(tower.id)), trial.field.get_tower_damage(tower))
+
+
+func test_boss_health_grows_per_appearance_not_per_night() -> void:
+	assert_eq(_nights.boss_hp_percent(_nights.boss_every), 100, "Первый босс — базовое здоровье")
+	assert_eq(_nights.boss_hp_percent(_nights.boss_every * 2), 100 + _nights.boss_hp_growth_percent)
+	var trial: RitualTrial = _trial(5)
+	for pack: RitualPack in trial.plan().packs(_nights.boss_every):
+		if pack.boss:
+			assert_eq(pack.hp_for(_nights.boss_enemy, _nights.boss_enemy), 100)
+			assert_true(pack.hp_for(pack.members[0], _nights.boss_enemy) > 100, "Свита растёт по ночам")

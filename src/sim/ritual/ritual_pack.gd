@@ -13,6 +13,13 @@ var boss: bool = false
 ## Стихийная неуязвимость (бог постройки), пусто — нет.
 var resist: StringName = &""
 var hp_percent: int = 100
+## Здоровье самого босса (у свиты — hp_percent).
+var boss_hp_percent: int = 100
+
+
+## Здоровье врага пачки в процентах: босс растёт своим темпом.
+func hp_for(enemy_index: int, boss_enemy: int) -> int:
+	return boss_hp_percent if boss and enemy_index == boss_enemy else hp_percent
 
 
 ## Номер врага пачки, выходящего ровно в этот тик, или -1.

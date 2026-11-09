@@ -108,7 +108,7 @@ func total_hp(night: int) -> int:
 	var total: int = 0
 	for pack: RitualPack in packs(night):
 		for member: int in pack.members:
-			total += settings.enemies[member].hp * pack.hp_percent / 100
+			total += settings.enemies[member].hp * pack.hp_for(member, rules.boss_enemy) / 100
 	return total
 
 
@@ -193,6 +193,7 @@ func _insert_boss(rng: RandomNumberGenerator, night: int, budget: int, at_tick: 
 	pack.members.append(rules.boss_enemy)
 	pack.leader = rules.boss_enemy
 	pack.boss = true
+	pack.boss_hp_percent = rules.boss_hp_percent(night)
 	pack.at_tick = at_tick
 	if not rules.boss_resist_gods.is_empty():
 		pack.resist = rules.boss_resist_gods[rng.randi_range(0, rules.boss_resist_gods.size() - 1)]

@@ -40,6 +40,9 @@ extends Resource
 @export var boss_every: int = 5
 ## Индекс босса в RitualTrialConfig.enemies.
 @export var boss_enemy: int = 5
+## Здоровье босса растёт своим темпом — за каждое появление, а не за ночь, иначе дары
+## за победу почти недостижимы (проба темпа, docs/34 §14 шаг 9).
+@export var boss_hp_growth_percent: int = 60
 ## Доля бюджета ночи на свиту босса (сверх обычных пачек).
 @export var boss_escort_percent: int = 40
 ## Стихийный босс неуязвим к одной из этих стихий (бог постройки).
@@ -132,6 +135,13 @@ func hp_percent(night: int) -> int:
 
 func pack_count(night: int) -> int:
 	return mini(packs_max, packs_base + maxi(0, night - 1) / maxi(1, packs_growth_every))
+
+
+func boss_hp_percent(night: int) -> int:
+	var value: int = 100
+	for index: int in maxi(0, night / maxi(1, boss_every) - 1):
+		value = value * (100 + boss_hp_growth_percent) / 100
+	return value
 
 
 func is_boss_night(night: int) -> bool:

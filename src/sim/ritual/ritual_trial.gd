@@ -621,7 +621,8 @@ func tick() -> void:
 func _spawn_due() -> void:
 	if settings.is_endless():
 		for pack: RitualPack in plan().spawns_at(tick_count):
-			field.spawn_mob(pack.member_at(tick_count), pack.hp_percent, pack.resist)
+			var member: int = pack.member_at(tick_count)
+			field.spawn_mob(member, pack.hp_for(member, settings.nights.boss_enemy), pack.resist)
 		return
 	while next_spawn < settings.spawns.size() and settings.spawns[next_spawn].at_tick <= tick_count:
 		field.spawn_mob(settings.spawns[next_spawn].mob_index)
