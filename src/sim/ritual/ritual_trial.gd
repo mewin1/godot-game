@@ -1,6 +1,7 @@
 class_name RitualTrial
 extends RefCounted
-## Четыре ночи: фиксированный тик, команды и полный независимый снимок.
+## «Обряд»: фиксированный тик, команды и полный независимый снимок.
+## Прежний опыт — четыре суток по расписанию; бесконечный забег (settings.nights) — ночи генератора.
 
 enum Phase { PREP, RUNNING, OVER }
 enum ControlMode { OPEN, PASSIVE, ABILITIES, TRANSFERS }
@@ -34,9 +35,13 @@ var move_rotations: Dictionary[int, int] = {}
 var journal: Array[Dictionary] = []
 var dawns: Array[Dictionary] = []
 var commands: Array[Dictionary] = []
+## Сид бесконечного забега: от него зависят все ночи (RitualNightPlan).
+var run_seed: int = 0
+var bosses_killed: int = 0
+var _plan: RitualNightPlan
 
 
-func _init(rules: RitualTrialConfig, loadout_index: int = 0) -> void:
+func _init(rules: RitualTrialConfig, loadout_index: int = 0, seed_value: int = -1) -> void:
 	settings = rules
 	var hasher: StateHasher = StateHasher.new()
 	RitualStateCodec.hash_value(hasher, RitualStateCodec.rules_state(rules))
@@ -49,6 +54,11 @@ func _init(rules: RitualTrialConfig, loadout_index: int = 0) -> void:
 	field.hit_observed.connect(_on_hit_observed)
 	hp = rules.hero_hp
 	gold = rules.start_gold
+	if rules.is_endless():
+		# Забег начинается вечером сразу, без кнопки «Начать» (docs/34 §8).
+		run_seed = seed_value if seed_value >= 0 else rules.nights.default_seed
+		phase = Phase.RUNNING
+		return
 	if loadout_index >= 0 and loadout_index < settings.loadouts.size():
 		_apply_loadout(settings.loadouts[loadout_index])
 		if tick_count > 0:
@@ -410,9 +420,7 @@ func tick() -> void:
 	if phase != Phase.RUNNING:
 		return
 	_boundaries()
-	while next_spawn < settings.spawns.size() and settings.spawns[next_spawn].at_tick <= tick_count:
-		field.spawn_mob(settings.spawns[next_spawn].mob_index)
-		next_spawn += 1
+	_spawn_due()
 	field.prepare_tick(tick_count)
 	_finish_installations()
 	_resolve_hero()
@@ -423,9 +431,36 @@ func tick() -> void:
 	tick_count += 1
 	field.wave_tick = tick_count
 	_boundaries()
-	if phase == Phase.RUNNING and tick_count >= settings.end_tick:
+	if phase == Phase.RUNNING and not settings.is_endless() and tick_count >= settings.end_tick:
 		phase = Phase.OVER
 		result = "Зачистка завершена" if field.count_alive_mobs() == 0 else "Зачистка не завершена"
+
+
+func _spawn_due() -> void:
+	if settings.is_endless():
+		for pack: RitualPack in plan().spawns_at(tick_count):
+			field.spawn_mob(pack.member_at(tick_count), pack.hp_percent, pack.resist)
+		return
+	while next_spawn < settings.spawns.size() and settings.spawns[next_spawn].at_tick <= tick_count:
+		field.spawn_mob(settings.spawns[next_spawn].mob_index)
+		next_spawn += 1
+
+
+## План ночей этого сида (после снимка пересоздаётся по восстановленному сиду).
+func plan() -> RitualNightPlan:
+	if _plan == null or _plan.run_seed != run_seed:
+		_plan = RitualNightPlan.new(settings, run_seed)
+	return _plan
+
+
+## Сколько ночей пережито (рассветов). У прежнего опыта — пройденные сутки.
+func nights_survived() -> int:
+	return last_dawn
+
+
+## Номер текущей или ближайшей ночи бесконечного забега.
+func current_night() -> int:
+	return settings.nights.night_index_at(tick_count) if settings.is_endless() else last_dawn + 1
 
 
 func _finish_installations() -> void:
@@ -486,11 +521,16 @@ func _on_mob_moved(mob: RitualMob) -> void:
 
 
 func _boundaries() -> void:
-	var dawn: int = mini(settings.cycles, tick_count / settings.cycle_ticks)
+	var dawn: int = settings.nights.completed_nights(tick_count) if settings.is_endless() \
+			else mini(settings.cycles, tick_count / settings.cycle_ticks)
 	if dawn <= last_dawn:
 		return
 	last_dawn = dawn
-	if dawn == 1:
+	if settings.is_endless():
+		# Частокол против тяжёлых — к ночи босса (решено в сессии, decisions.md).
+		if settings.nights.is_boss_night(dawn + 1):
+			palisades += 1
+	elif dawn == 1:
 		palisades += 1
 	var record: Dictionary[String, Variant] = summary()
 	record["dawn"] = dawn
@@ -502,6 +542,8 @@ func _boundaries() -> void:
 
 
 func _on_killed(mob: MobState) -> void:
+	if mob.data.tags.has(settings.boss_tag):
+		bosses_killed += 1
 	gold += mob.kill_reward
 	earned += mob.kill_reward
 	_event(&"killed", {"mob": mob.id, "kind": String(mob.data.id), "reward": mob.kill_reward})
@@ -562,7 +604,8 @@ func summary() -> Dictionary[String, Variant]:
 	return {"simulation_version": SNAPSHOT_VERSION, "rules_hash": rules_hash,
 		"tick": tick_count, "hp": hp, "gold": gold, "earned": earned,
 		"spent": spent, "refunded": refunded, "alive": field.count_alive_mobs(),
-		"result": result, "title": title}
+		"result": result, "title": title, "nights": nights_survived(), "bosses": bosses_killed,
+		"seed": run_seed}
 
 
 func snapshot() -> Dictionary[String, Variant]:

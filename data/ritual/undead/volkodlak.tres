@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="MobData" format=3]
+[ext_resource type="Script" path="res://src/sim/data/mob_data.gd" id="1"]
+[resource]
+script = ExtResource("1")
+id = &"volkodlak"
+display_name = "Волкодлак"
+hp = 220
+speed_milli_per_tick = 75
+armor = 0
+breach_damage = 6
+kill_reward = 5
+tags = Array[StringName]([])
+description = "Быстрый и крепкий оборотень поздних ночей."

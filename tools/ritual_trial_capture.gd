@@ -23,6 +23,7 @@ func _run() -> void:
 	assert(error == OK)
 	var scene: PackedScene = load("res://scenes/ritual_trial.tscn") as PackedScene
 	var panel: RitualTrialPanel = scene.instantiate() as RitualTrialPanel
+	panel.settings = RitualTrialPanel.TRIAL
 	root.add_child(panel)
 	await process_frame
 	panel._paused = true

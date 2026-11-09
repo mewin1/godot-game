@@ -14,9 +14,39 @@ func _check(condition: bool, message: String) -> void:
 		push_error(message)
 
 
+## Основной режим: бесконечный забег идёт сам, ночь приходит после вечера, конец — экран поражения.
+func _check_endless(scene: PackedScene) -> void:
+	var panel: RitualTrialPanel = scene.instantiate() as RitualTrialPanel
+	root.add_child(panel)
+	await process_frame
+	await process_frame
+	_check(panel.settings.is_endless(), "«Играть» ведёт не в бесконечный забег")
+	_check(panel.trial.phase == RitualTrial.Phase.RUNNING and not panel._paused, "Забег не идёт сам с вечера")
+	_check(panel.get_combined_minimum_size().y <= panel.size.y, "Бесконечный забег не помещается по высоте")
+	_check(panel._threat.text.begins_with("Далее: "), "Нет очереди ближайших пачек")
+	panel._paused = true
+	panel._choose_purchase(0)
+	panel._on_cell(Vector2i(10, 3), false)
+	_check(panel.trial.field.towers.size() == 1, "Вечером нельзя строить")
+	var nights: RitualNightRules = panel.settings.nights
+	while panel.trial.tick_count < nights.night_start(1) + 1:
+		panel.trial.tick()
+	panel._refresh()
+	_check(panel._clock.text.begins_with("Ночь 1"), "Ночь не наступила после вечера: " + panel._clock.text)
+	panel.trial.hp = 1
+	while panel.trial.phase == RitualTrial.Phase.RUNNING:
+		panel.trial.tick()
+	panel._process(0.0)
+	_check(panel._defeat.visible and panel._defeat_text.text.contains("Продержались ночей"), "Нет экрана поражения")
+	panel.queue_free()
+	await process_frame
+
+
 func _run() -> void:
 	var scene: PackedScene = load("res://scenes/ritual_trial.tscn") as PackedScene
+	await _check_endless(scene)
 	var panel: RitualTrialPanel = scene.instantiate() as RitualTrialPanel
+	panel.settings = RitualTrialPanel.TRIAL
 	root.add_child(panel)
 	await process_frame
 	await process_frame
@@ -47,7 +77,7 @@ func _run() -> void:
 	_check(panel.trial.hero_due >= 0, "Нет замаха Ильи")
 	panel._capture(RitualTrialRecord.DIRECTORY + "/smoke_checkpoint.bin")
 	var expected: int = panel.trial.state_hash()
-	var restored: RitualTrial = RitualTrialRecord.load_checkpoint(panel.SETTINGS, RitualTrialRecord.DIRECTORY + "/smoke_checkpoint.bin")
+	var restored: RitualTrial = RitualTrialRecord.load_checkpoint(panel.settings, RitualTrialRecord.DIRECTORY + "/smoke_checkpoint.bin")
 	_check(restored != null and restored.state_hash() == expected, "Файл снимка не восстанавливает состояние")
 	panel._branch.select(1)
 	panel._restore_branch()
@@ -77,5 +107,5 @@ func _run() -> void:
 	menu_node.queue_free()
 	await process_frame
 	if not _failed:
-		print("RITUAL SMOKE: OK — сцена, ввод, снимок, ветка, запись, старое меню")
+		print("RITUAL SMOKE: OK — бесконечный забег, сцена, ввод, снимок, ветка, запись, старое меню")
 	quit(1 if _failed else 0)

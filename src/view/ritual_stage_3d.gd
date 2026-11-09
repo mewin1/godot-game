@@ -4,7 +4,10 @@ extends ArenaStage3D
 
 const UNIT_IDS: Dictionary[StringName, StringName] = {
 	&"ratnik": &"basic", &"runner": &"fast", &"heavy": &"armored",
-	&"warded": &"knight", &"banner": &"courier", &"voevoda": &"boss"}
+	&"warded": &"knight", &"banner": &"courier", &"voevoda": &"boss",
+	# Нежить бесконечного забега — пока на моделях прежних врагов (автор заменит сам).
+	&"mertvyak": &"basic", &"upyr": &"fast", &"kostyak": &"armored", &"navi_shield": &"knight",
+	&"navi_banner": &"courier", &"koshchei_voevoda": &"boss", &"latnik": &"armored", &"volkodlak": &"fast"}
 var _hero: Node3D
 var _barrier: Node3D
 var _barrier_progress: int = -1
@@ -67,7 +70,7 @@ func _sync_units(delta: float, interpolation: float) -> void:
 			var unit: ArenaUnit3D = ArenaUnit3D.new()
 			_world.add_child(unit)
 			unit.build(STYLE.get_mob_model(id), STYLE.get_mob_tint(id), STYLE.get_mob_height(id), Color.TRANSPARENT, id)
-			if mob.data.id == &"banner":
+			if mob.data.tags.has(&"banner"):
 				ArenaMaterials3D.part(unit, ArenaMaterials3D.cylinder(0.025, 0.025, 1.6, 5),
 					ArenaMaterials3D.solid(ArenaMaterials3D.WOOD), Vector3(0.3, 0.8, 0))
 				ArenaMaterials3D.part(unit, ArenaMaterials3D.box(Vector3(0.5, 0.4, 0.03)),

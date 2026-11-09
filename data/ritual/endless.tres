@@ -1,0 +1,112 @@
+[gd_resource type="Resource" script_class="RitualTrialConfig" format=3]
+[ext_resource type="Script" path="res://src/sim/data/ritual_trial_config.gd" id="settings"]
+[ext_resource type="Script" path="res://src/sim/data/ritual_night_rules.gd" id="night_rules"]
+[ext_resource type="Script" path="res://src/sim/data/ritual_enemy_rule.gd" id="enemy_rule"]
+[ext_resource type="Script" path="res://src/sim/data/rite_data.gd" id="rite"]
+[ext_resource type="Script" path="res://src/sim/data/mob_data.gd" id="mob"]
+[ext_resource type="Resource" path="res://data/ritual/combat_endless.tres" id="combat"]
+[ext_resource type="Resource" path="res://data/rites/war_power.tres" id="rite_0"]
+[ext_resource type="Resource" path="res://data/rites/svarog_power.tres" id="rite_1"]
+[ext_resource type="Resource" path="res://data/rites/ice_power.tres" id="rite_2"]
+[ext_resource type="Resource" path="res://data/rites/enchant_damage.tres" id="enchant_0"]
+[ext_resource type="Resource" path="res://data/rites/enchant_rate.tres" id="enchant_1"]
+[ext_resource type="Resource" path="res://data/rites/enchant_range.tres" id="enchant_2"]
+[ext_resource type="Resource" path="res://data/rites/enchant_targets.tres" id="enchant_3"]
+[ext_resource type="Resource" path="res://data/ritual/undead/mertvyak.tres" id="mob_0"]
+[ext_resource type="Resource" path="res://data/ritual/undead/upyr.tres" id="mob_1"]
+[ext_resource type="Resource" path="res://data/ritual/undead/kostyak.tres" id="mob_2"]
+[ext_resource type="Resource" path="res://data/ritual/undead/navi_shield.tres" id="mob_3"]
+[ext_resource type="Resource" path="res://data/ritual/undead/navi_banner.tres" id="mob_4"]
+[ext_resource type="Resource" path="res://data/ritual/undead/koshchei_voevoda.tres" id="mob_5"]
+[ext_resource type="Resource" path="res://data/ritual/undead/latnik.tres" id="mob_6"]
+[ext_resource type="Resource" path="res://data/ritual/undead/volkodlak.tres" id="mob_7"]
+[sub_resource type="Resource" id="rule_0"]
+script = ExtResource("enemy_rule")
+enemy_index = 0
+threat = 2
+first_night = 1
+lead_weight = 0
+fill_weight = 10
+[sub_resource type="Resource" id="rule_1"]
+script = ExtResource("enemy_rule")
+enemy_index = 1
+threat = 2
+first_night = 1
+lead_weight = 0
+fill_weight = 8
+[sub_resource type="Resource" id="rule_2"]
+script = ExtResource("enemy_rule")
+enemy_index = 2
+threat = 8
+first_night = 2
+lead_weight = 10
+fill_weight = 2
+[sub_resource type="Resource" id="rule_3"]
+script = ExtResource("enemy_rule")
+enemy_index = 3
+threat = 10
+first_night = 3
+lead_weight = 8
+fill_weight = 0
+[sub_resource type="Resource" id="rule_4"]
+script = ExtResource("enemy_rule")
+enemy_index = 4
+threat = 6
+first_night = 4
+lead_weight = 6
+fill_weight = 0
+[sub_resource type="Resource" id="rule_5"]
+script = ExtResource("enemy_rule")
+enemy_index = 6
+threat = 7
+first_night = 6
+lead_weight = 8
+fill_weight = 3
+[sub_resource type="Resource" id="rule_6"]
+script = ExtResource("enemy_rule")
+enemy_index = 7
+threat = 7
+first_night = 8
+lead_weight = 6
+fill_weight = 3
+[sub_resource type="Resource" id="nights"]
+script = ExtResource("night_rules")
+first_evening_ticks = 400
+day_ticks = 500
+dusk_ticks = 100
+night_ticks = 900
+night_growth_ticks = 120
+night_max_ticks = 2400
+budget_base = 24
+budget_growth_percent = 14
+hp_growth_percent = 9
+packs_base = 3
+packs_growth_every = 2
+packs_max = 9
+pack_max_size = 14
+pack_spacing_ticks = 16
+spread_percent = 80
+leader_budget_percent = 50
+enemies = Array[ExtResource("enemy_rule")]([SubResource("rule_0"), SubResource("rule_1"), SubResource("rule_2"), SubResource("rule_3"), SubResource("rule_4"), SubResource("rule_5"), SubResource("rule_6")])
+boss_every = 5
+boss_enemy = 5
+boss_escort_percent = 40
+boss_resist_gods = Array[StringName]([&"svarog", &"war", &"ice"])
+scout_packs = 3
+default_seed = 1
+[resource]
+script = ExtResource("settings")
+combat = ExtResource("combat")
+costs = Array[int]([12, 8, 18, 12, 16, 10])
+rites = Array[ExtResource("rite")]([ExtResource("rite_0"), ExtResource("rite_1"), ExtResource("rite_2")])
+enemies = Array[ExtResource("mob")]([ExtResource("mob_0"), ExtResource("mob_1"), ExtResource("mob_2"), ExtResource("mob_3"), ExtResource("mob_4"), ExtResource("mob_5"), ExtResource("mob_6"), ExtResource("mob_7")])
+build_regions = Array[Rect2i]([Rect2i(3, 3, 13, 3), Rect2i(3, 8, 13, 4)])
+hero_hp = 50
+start_gold = 50
+tower_limit = 0
+rite_cost_step = 3
+enchants = Array[ExtResource("rite")]([ExtResource("enchant_0"), ExtResource("enchant_1"), ExtResource("enchant_2"), ExtResource("enchant_3")])
+enchant_costs = Array[int]([10, 10, 12, 12])
+repair_hp = 5
+repair_cost = 10
+nights = SubResource("nights")

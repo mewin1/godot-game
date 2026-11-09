@@ -216,25 +216,23 @@ func _draw_mob(mob: RitualMob) -> void:
 	var boss: bool = mob.data.tags.has(trial.settings.boss_tag)
 	var radius: float = _cell * 0.19
 	var color: Color = Color("e1c49c")
-	var glyph: String = "Р"
-	match mob.data.id:
-		&"runner":
+	# Буква — первая буква имени (нежить и прежние враги), облик — по роли модели-заглушки.
+	var glyph: String = mob.data.display_name.left(1)
+	match RitualStage3D.UNIT_IDS.get(mob.data.id, &"basic"):
+		&"fast":
 			radius = _cell * 0.23
 			color = Color("afd587")
-			glyph = "Б"
-		&"heavy", &"warded":
+		&"armored", &"knight":
 			radius = _cell * 0.28
 			color = Color("c89868")
-			glyph = "Щ" if mob.data.id == &"warded" else "Т"
-		&"banner":
+		&"courier":
 			radius = _cell * 0.22
 			color = Color("aa80ce")
-			glyph = "З"
-			_ring(trial.field.get_mob_position(mob), trial.settings.banner_radius, Color(color, 0.35), 1.0)
-		&"voevoda":
+		&"boss":
 			radius = _cell * 0.34
 			color = Color("d46c50")
-			glyph = "В"
+	if mob.data.tags.has(trial.settings.banner_tag):
+		_ring(trial.field.get_mob_position(mob), trial.settings.banner_radius, Color(color, 0.35), 1.0)
 	if mob.freeze_ticks_left > 0:
 		color = Color("a1e8f5")
 	_text(stage.mob_head(mob, 1.0) + Vector2(-5, -13), glyph, color, 13)

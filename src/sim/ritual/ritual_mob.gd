@@ -23,6 +23,8 @@ static func from_data(mob_data: MobData, settings: RitualTrialConfig) -> RitualM
 	mob.speed = mob_data.speed_milli_per_tick
 	mob.kill_reward = mob_data.kill_reward
 	mob.breach_damage = mob_data.breach_damage
+	mob.resist = mob_data.resist
+	mob.armor = mob_data.armor
 	if mob_data.tags.has(settings.ward_tag):
 		mob.ward_hp = settings.ward_hp
 	return mob

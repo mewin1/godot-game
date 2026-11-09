@@ -122,6 +122,7 @@ func _advance(tick: int) -> void:
 
 func _run() -> void:
 	panel = (load("res://scenes/ritual_trial.tscn") as PackedScene).instantiate() as RitualTrialPanel
+	panel.settings = RitualTrialPanel.TRIAL
 	root.add_child(panel)
 	await create_timer(0.7).timeout
 	panel._preset.select(3)
@@ -200,7 +201,7 @@ func _run() -> void:
 	await _press("Закрыть")
 	await _press("Проверки")
 	# Возврат к свободному контролю исходного снимка для последующих активок.
-	panel.trial = RitualTrial.from_snapshot(panel.SETTINGS, panel._checkpoint)
+	panel.trial = RitualTrial.from_snapshot(panel.settings, panel._checkpoint)
 	panel._board_reset()
 	await _advance(3000)
 	await _capture("ward")
@@ -214,11 +215,11 @@ func _run() -> void:
 	if boss != null:
 		await _press("Удар Ильи")
 		await _cell(panel.trial.field.layout.path_cells[boss.progress / 1000])
-		await _advance(panel.trial.tick_count + panel.SETTINGS.hero_warning + 1)
+		await _advance(panel.trial.tick_count + panel.settings.hero_warning + 1)
 		_check(panel.trial.hero_due < 0 and panel.trial.hero_ready > panel.trial.tick_count,
 			"Удар выполнен, восстановление идёт; Илья не оглушает")
 		await _capture("hero_boss")
-	panel.trial = RitualTrial.from_snapshot(panel.SETTINGS, supplies_checkpoint)
+	panel.trial = RitualTrial.from_snapshot(panel.settings, supplies_checkpoint)
 	panel._board_reset()
 	await _advance(6620)
 	for base: MobState in panel.trial.field.mobs:

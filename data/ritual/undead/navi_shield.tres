@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="MobData" format=3]
+[ext_resource type="Script" path="res://src/sim/data/mob_data.gd" id="1"]
+[resource]
+script = ExtResource("1")
+id = &"navi_shield"
+display_name = "Навий щитник"
+hp = 450
+speed_milli_per_tick = 40
+armor = 0
+breach_damage = 8
+kill_reward = 6
+tags = Array[StringName]([&"heavy", &"ward"])
+description = "Оберег держит удары, пока его не сбить огнём."

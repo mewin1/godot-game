@@ -10,8 +10,11 @@ func _init() -> void:
 
 
 func refresh_ritual(trial: RitualTrial, paused: bool) -> void:
-	var cycle: int = mini(trial.tick_count / trial.settings.cycle_ticks + 1, trial.settings.cycles)
-	_round_label.text = "Обряд · %d / %d" % [cycle, trial.settings.cycles]
+	if trial.settings.is_endless():
+		_round_label.text = "Обряд · ночь %d" % trial.current_night()
+	else:
+		var cycle: int = mini(trial.tick_count / trial.settings.cycle_ticks + 1, trial.settings.cycles)
+		_round_label.text = "Обряд · %d / %d" % [cycle, trial.settings.cycles]
 	var seconds: int = trial.tick_count / trial.settings.combat.ticks_per_second
 	_phase_label.text = "%s · %d:%02d" % [trial.settings.period_name(trial.tick_count), seconds / 60, seconds % 60]
 	if trial.phase == RitualTrial.Phase.PREP:

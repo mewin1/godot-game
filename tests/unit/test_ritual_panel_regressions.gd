@@ -5,6 +5,8 @@ extends GutTest
 func _panel() -> RitualTrialPanel:
 	var scene: PackedScene = load("res://scenes/ritual_trial.tscn") as PackedScene
 	var panel: RitualTrialPanel = scene.instantiate() as RitualTrialPanel
+	# Эти регрессии — о прежнем 4-суточном опыте; бесконечный забег — test_ritual_endless.
+	panel.settings = RitualTrialPanel.TRIAL
 	add_child_autofree(panel)
 	return panel
 
@@ -145,7 +147,7 @@ func test_move_onto_twin_merges_and_enchant_click_applies() -> void:
 	assert_eq(panel.trial.field.towers.size(), 1)
 	panel._choose_enchant(0)
 	panel._on_cell(target.anchor, false)
-	assert_true(target.has_enchantment(RitualTrialPanel.SETTINGS.enchants[0].effect))
+	assert_true(target.has_enchantment(RitualTrialPanel.TRIAL.enchants[0].effect))
 	assert_eq(panel.board.action, &"")
 
 
@@ -169,7 +171,7 @@ func test_idol_slot_accepts_repeated_rite_until_limit() -> void:
 	await get_tree().process_frame
 	panel._reset(3)
 	panel.trial.gold = 500
-	var rite: RiteData = RitualTrialPanel.SETTINGS.rites[0]
+	var rite: RiteData = RitualTrialPanel.TRIAL.rites[0]
 	assert_eq(panel.trial.execute(RitualCommand.new(RitualCommand.Action.RITE, 0)), "")
 	panel._refresh()
 	var idol: IdolState = panel.trial.field.get_idol(rite.god)
@@ -178,5 +180,5 @@ func test_idol_slot_accepts_repeated_rite_until_limit() -> void:
 	for index: int in 4:
 		panel.trial.execute(RitualCommand.new(RitualCommand.Action.RITE, 0))
 	assert_false(slot._can_drop_data(Vector2.ZERO, DragPayload.for_rite(0, rite)), "Предел 5")
-	var enchant: RiteData = RitualTrialPanel.SETTINGS.enchants[0]
+	var enchant: RiteData = RitualTrialPanel.TRIAL.enchants[0]
 	assert_false(slot._can_drop_data(Vector2.ZERO, DragPayload.for_rite(0, enchant)), "Чара не кладётся на идол")

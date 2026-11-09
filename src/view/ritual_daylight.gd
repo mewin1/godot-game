@@ -119,19 +119,23 @@ func _init(world: Node3D, clouds: CloudShadows3D) -> void:
 ## Где солнце (0 — восход, 1 — ушло за горизонт) и насколько ночь (0..1) в этот тик.
 static func sun_phase(trial: RitualTrial) -> Vector2:
 	var settings: RitualTrialConfig = trial.settings
-	if trial.tick_count >= settings.cycle_ticks * settings.cycles:
+	if settings.is_finished(trial.tick_count):
 		return Vector2(0.5, 0.0)  # обряд окончен — светлый день
-	var local: int = trial.tick_count % settings.cycle_ticks
-	if local < settings.dusk_tick:
-		var s: float = lerpf(MORNING_S, DAY_END_S, float(local) / settings.dusk_tick)
+	# [тик внутри суток, начало заката, начало ночи, номер суток]: у бесконечного забега сутки разной длины.
+	var clock: Array[int] = settings.cycle_view(trial.tick_count)
+	var local: int = clock[0]
+	var dusk_tick: int = clock[1]
+	var night_tick: int = clock[2]
+	if local < dusk_tick:
+		var s: float = lerpf(MORNING_S, DAY_END_S, float(local) / dusk_tick)
 		var dawn: float = 0.0
-		if trial.tick_count >= settings.cycle_ticks and local < DAWN_TICKS:
+		if clock[3] > 0 and local < DAWN_TICKS:
 			dawn = 1.0 - smoothstep(0.0, 1.0, float(local) / DAWN_TICKS)
 		return Vector2(s, dawn)
-	if local < settings.night_tick:
-		var dusk: float = float(local - settings.dusk_tick) / (settings.night_tick - settings.dusk_tick)
+	if local < night_tick:
+		var dusk: float = float(local - dusk_tick) / (night_tick - dusk_tick)
 		return Vector2(lerpf(DAY_END_S, 1.0, dusk), 0.45 * smoothstep(0.0, 1.0, dusk))
-	var twilight: float = clampf(float(local - settings.night_tick) / TWILIGHT_TICKS, 0.0, 1.0)
+	var twilight: float = clampf(float(local - night_tick) / TWILIGHT_TICKS, 0.0, 1.0)
 	return Vector2(1.0, lerpf(0.45, 1.0, smoothstep(0.0, 1.0, twilight)))
 
 

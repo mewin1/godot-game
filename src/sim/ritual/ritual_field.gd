@@ -30,10 +30,15 @@ func get_buildable_cells() -> Array[Vector2i]:
 	return result
 
 
-func spawn_mob(index: int) -> RitualMob:
+## hp_percent < 0 — здоровье по суткам прежнего опыта; resist — стихийная неуязвимость пачки.
+func spawn_mob(index: int, hp_percent: int = -1, resist: StringName = &"") -> RitualMob:
 	var mob: RitualMob = RitualMob.from_data(settings.enemies[index], settings)
-	var cycle: int = clampi(wave_tick / settings.cycle_ticks, 0, settings.cycle_hp_percent.size() - 1)
-	mob.max_hp = mob.max_hp * settings.cycle_hp_percent[cycle] / 100
+	if hp_percent < 0:
+		var cycle: int = clampi(wave_tick / settings.cycle_ticks, 0, settings.cycle_hp_percent.size() - 1)
+		hp_percent = settings.cycle_hp_percent[cycle]
+	mob.max_hp = maxi(1, mob.max_hp * hp_percent / 100)
+	if resist != &"":
+		mob.resist = resist
 	mob.hp = mob.max_hp
 	mob.id = _next_mob_id
 	_next_mob_id += 1

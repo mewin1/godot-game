@@ -1,9 +1,12 @@
 class_name RitualTrialPanel
 extends Control
-## Отдельный проверочный режим; основной матч не загружается и не изменяется.
+## Основной режим «Обряд»: бесконечный забег (endless.tres). Прежний 4-суточный опыт (trial.tres)
+## остаётся для тестов и инструментов: задать `settings = TRIAL` до добавления в дерево.
 
-const SETTINGS: RitualTrialConfig = preload("res://data/ritual/trial.tres")
+const TRIAL: RitualTrialConfig = preload("res://data/ritual/trial.tres")
+const ENDLESS: RitualTrialConfig = preload("res://data/ritual/endless.tres")
 const MAX_FRAME_TICKS: int = 8
+var settings: RitualTrialConfig = ENDLESS
 var trial: RitualTrial
 var board: RitualBoard
 var _hud: RitualMatchHud
@@ -33,6 +36,8 @@ var _schedule: PanelContainer
 var _schedule_was_paused: bool = true
 var _enchant_index: int = -1
 var _repair_button: Button
+var _defeat: PanelContainer
+var _defeat_text: Label
 
 
 func _ready() -> void:
@@ -74,7 +79,7 @@ func _build_ui() -> void:
 	_shop = RitualShopPanel.new()
 	_shop.custom_minimum_size.x = 324
 	left.add_child(_shop)
-	_shop.setup_ritual(SETTINGS)
+	_shop.setup_ritual(settings)
 	_shop.purchase_chosen.connect(_choose_purchase)
 	_shop.rite_chosen.connect(_buy_rite)
 	_shop.start_requested.connect(_start)
@@ -87,9 +92,9 @@ func _build_ui() -> void:
 	_button(edit, "Отмена", _cancel_move)
 	var upkeep: HBoxContainer = HBoxContainer.new()
 	left.add_child(upkeep)
-	_repair_button = _button(upkeep, "Починить терем +%d · %d" % [SETTINGS.repair_hp, SETTINGS.repair_cost], _repair)
+	_repair_button = _button(upkeep, "Починить терем +%d · %d" % [settings.repair_hp, settings.repair_cost], _repair)
 	_repair_button.tooltip_text = "Терем +%d HP за %d золота (не выше %d)" % [
-		SETTINGS.repair_hp, SETTINGS.repair_cost, SETTINGS.hero_hp]
+		settings.repair_hp, settings.repair_cost, settings.hero_hp]
 	var gap: Control = Control.new()
 	gap.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	gap.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -158,7 +163,7 @@ func _build_ui() -> void:
 	tools.add_child(controls)
 	_preset = OptionButton.new()
 	_preset.focus_mode = Control.FOCUS_NONE
-	for loadout: RitualLoadout in SETTINGS.loadouts:
+	for loadout: RitualLoadout in settings.loadouts:
 		_preset.add_item(loadout.title)
 	controls.add_child(_preset)
 	_button(controls, "Заново", _reset_selected)
@@ -172,7 +177,7 @@ func _build_ui() -> void:
 	controls.add_child(_branch)
 	_button(controls, "Ветка из снимка", _restore_branch)
 	_button(controls, "Сохранить итог", _save_result)
-	_button(controls, "Расписание · все сутки", _show_schedule)
+	_button(controls, "Расписание · все сутки", _show_schedule).visible = not settings.is_endless()
 	_button(controls, "В меню", _back)
 	_threat = _hud._siege_label
 	_hud._siege_panel.show()
@@ -192,6 +197,38 @@ func _build_ui() -> void:
 	_history = _label(controls, "", 10)
 	_history.hide()
 	_build_schedule()
+	_build_defeat()
+
+
+## Экран поражения бесконечного забега: ночи, рекорд на устройстве, убитые боссы.
+func _build_defeat() -> void:
+	_defeat = PanelContainer.new()
+	_defeat.add_theme_stylebox_override("panel", DuskTheme.panel(Color("101b23"), DuskTheme.GOLD, 20))
+	_defeat.z_index = 10
+	add_child(_defeat)
+	_defeat.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+	var content: VBoxContainer = VBoxContainer.new()
+	content.add_theme_constant_override("separation", 12)
+	_defeat.add_child(content)
+	_defeat_text = _label(content, "", 20)
+	_defeat_text.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	var buttons: HBoxContainer = HBoxContainer.new()
+	buttons.alignment = BoxContainer.ALIGNMENT_CENTER
+	content.add_child(buttons)
+	_button(buttons, "Ещё забег", _reset.bind(0))
+	_button(buttons, "В меню", _back)
+	_defeat.hide()
+
+
+func _show_defeat() -> void:
+	var nights: int = trial.nights_survived()
+	var record: bool = RitualRunRecord.submit(nights, trial.bosses_killed)
+	var best: Dictionary[String, int] = RitualRunRecord.best()
+	_defeat_text.text = "%s\nПродержались ночей: %d\nРекорд: %d%s\nБоссов убито: %d" % [
+		trial.result, nights, best["nights"], " — новый!" if record else "", trial.bosses_killed]
+	_defeat.reset_size()
+	_defeat.set_anchors_and_offsets_preset(Control.PRESET_CENTER, Control.PRESET_MODE_MINSIZE)
+	_defeat.show()
 
 
 func _build_schedule() -> void:
@@ -216,19 +253,19 @@ func _build_schedule() -> void:
 	columns.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	columns.add_theme_constant_override("separation", 16)
 	content.add_child(columns)
-	for cycle: int in SETTINGS.cycles:
+	for cycle: int in 0 if settings.is_endless() else settings.cycles:
 		var column: VBoxContainer = VBoxContainer.new()
 		column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		column.add_theme_constant_override("separation", 3)
 		columns.add_child(column)
 		_label(column, "Сутки %d" % (cycle + 1), 21)
-		for spawn: RitualSpawn in SETTINGS.spawns:
-			if spawn.at_tick / SETTINGS.cycle_ticks != cycle:
+		for spawn: RitualSpawn in settings.spawns:
+			if spawn.at_tick / settings.cycle_ticks != cycle:
 				continue
-			var seconds: int = spawn.at_tick / SETTINGS.combat.ticks_per_second
+			var seconds: int = spawn.at_tick / settings.combat.ticks_per_second
 			var row: Label = _label(column, "%d:%02d  %s" % [seconds / 60, seconds % 60,
-				SETTINGS.enemies[spawn.mob_index].display_name], 15)
-			row.tooltip_text = SETTINGS.enemies[spawn.mob_index].description
+				settings.enemies[spawn.mob_index].display_name], 15)
+			row.tooltip_text = settings.enemies[spawn.mob_index].description
 	_schedule.visible = false
 
 
@@ -281,9 +318,14 @@ func _reset_selected() -> void:
 
 
 func _reset(index: int) -> void:
-	trial = RitualTrial.new(SETTINGS, index)
-	_preset.select(index)
+	# Сид выбирает интерфейс (не симуляция): каждый забег — новые ночи, сид виден в записи.
+	trial = RitualTrial.new(settings, index, randi() % 1000000 if settings.is_endless() else -1)
+	if index < _preset.item_count:
+		_preset.select(index)
 	_board_reset()
+	if settings.is_endless():
+		_message.text = "Вечер: поставьте первые постройки, ночью придёт нежить. Пробел — пауза."
+		return
 	_message.text = "Подготовка: перетащите постройки из лавки. Башня на такую же — слияние, ПКМ — поворот, сброс на лавку — продажа." \
 		if trial.phase == RitualTrial.Phase.PREP else "Контрольный старт на паузе: перенос требует времени, продажа возвращает половину цены."
 
@@ -299,6 +341,10 @@ func _board_reset() -> void:
 	_paused_seconds = 0.0
 	_saved_result = false
 	_accumulator = 0.0
+	if _defeat != null:
+		_defeat.hide()
+	# Бесконечный забег идёт сразу: вечер и есть время на подготовку (docs/34 §8).
+	_paused = not settings.is_endless()
 	_refresh()
 
 
@@ -342,13 +388,15 @@ func _process(delta: float) -> void:
 	if _paused and trial.phase == RitualTrial.Phase.RUNNING:
 		_paused_seconds += delta
 	if not _paused and trial.phase == RitualTrial.Phase.RUNNING:
-		_accumulator += delta * SETTINGS.combat.ticks_per_second
+		_accumulator += delta * settings.combat.ticks_per_second
 		var steps: int = mini(MAX_FRAME_TICKS, int(_accumulator))
 		for index: int in steps:
 			trial.tick()
 		_accumulator -= steps
 	if trial.phase == RitualTrial.Phase.OVER and not _saved_result:
 		_save_result()
+		if settings.is_endless():
+			_show_defeat()
 	_refresh()
 
 
@@ -388,7 +436,7 @@ func _choose_enchant(index: int) -> void:
 	_enchant_index = index
 	board.action = &"enchant"
 	board.preview_index = -1
-	_message.text = "Выберите башню для чары «%s». ПКМ — отмена." % SETTINGS.enchants[index].display_name
+	_message.text = "Выберите башню для чары «%s». ПКМ — отмена." % settings.enchants[index].display_name
 
 
 func _repair() -> void:
@@ -447,7 +495,7 @@ func _on_cell(cell: Vector2i, right: bool) -> void:
 		&"buy":
 			var twin: TowerState = trial.field.get_tower_at(cell)
 			var into: int = twin.id if twin != null and twin.level == 1 \
-					and twin.data == SETTINGS.combat.towers[board.preview_index] else 0
+					and twin.data == settings.combat.towers[board.preview_index] else 0
 			if _issue(RitualCommand.new(RitualCommand.Action.BUY, board.preview_index, cell,
 					board.preview_rotation, into)):
 				board.action = &""
@@ -488,7 +536,7 @@ func _capture(path: String = RitualTrialRecord.SNAPSHOT_PATH) -> void:
 
 
 func _load_checkpoint() -> void:
-	var loaded: RitualTrial = RitualTrialRecord.load_checkpoint(SETTINGS)
+	var loaded: RitualTrial = RitualTrialRecord.load_checkpoint(settings)
 	if loaded == null:
 		_message.text = "Нет подходящего сохранённого снимка"
 		return
@@ -500,7 +548,7 @@ func _restore_branch() -> void:
 	if _checkpoint.is_empty():
 		_message.text = "Сначала сделайте или откройте снимок"
 		return
-	var restored: RitualTrial = RitualTrial.from_snapshot(SETTINGS, _checkpoint)
+	var restored: RitualTrial = RitualTrial.from_snapshot(settings, _checkpoint)
 	if restored == null:
 		_message.text = "Снимок несовместим"
 		return
@@ -531,26 +579,35 @@ func _refresh() -> void:
 	for index: int in _idol_slots.size():
 		var slot: RitualIdolSlot = _idol_slots[index] as RitualIdolSlot
 		slot.trial = trial
-		slot.refresh(trial.field.idols[index], true, SETTINGS.combat.ticks_per_second)
+		slot.refresh(trial.field.idols[index], true, settings.combat.ticks_per_second)
 	var selected: TowerState = trial.field.get_tower(board.selected_id)
 	_selection.text = "Башня: не выбрана" if selected == null else "#%d %s · ур. %d%s\nВложено %d · %s" % [
 		selected.id, selected.data.display_name, selected.level, _enchant_names(selected),
 		selected.invested_total, "устанавливается" if selected.is_action_blocked() else "готова"]
-	_repair_button.disabled = trial.phase != RitualTrial.Phase.RUNNING or trial.hp >= SETTINGS.hero_hp \
-			or trial.gold < SETTINGS.repair_cost
+	_repair_button.disabled = trial.phase != RitualTrial.Phase.RUNNING or trial.hp >= settings.hero_hp \
+			or trial.gold < settings.repair_cost
 	_shop._selection_panel.visible = selected != null
-	var threats: PackedStringArray = []
-	for index: int in range(trial.next_spawn, mini(trial.next_spawn + 3, SETTINGS.spawns.size())):
-		var spawn: RitualSpawn = SETTINGS.spawns[index]
-		threats.append("%d:%02d %s" % [spawn.at_tick / 1200, (spawn.at_tick / 20) % 60,
-			SETTINGS.enemies[spawn.mob_index].display_name])
+	var threats: PackedStringArray = _threat_names()
 	_threat.text = trial.result if trial.phase == RitualTrial.Phase.OVER else "Далее: " + " · ".join(threats)
 	board.queue_redraw()
 
 
+func _threat_names() -> PackedStringArray:
+	var threats: PackedStringArray = []
+	if settings.is_endless():
+		for pack: RitualPack in trial.plan().upcoming(trial.tick_count, settings.nights.scout_packs):
+			threats.append("%s ×%d" % [settings.enemies[pack.leader].display_name, pack.members.size()])
+		return threats
+	for index: int in range(trial.next_spawn, mini(trial.next_spawn + 3, settings.spawns.size())):
+		var spawn: RitualSpawn = settings.spawns[index]
+		threats.append("%d:%02d %s" % [spawn.at_tick / 1200, (spawn.at_tick / 20) % 60,
+			settings.enemies[spawn.mob_index].display_name])
+	return threats
+
+
 func _enchant_names(tower: TowerState) -> String:
 	var names: PackedStringArray = []
-	for rite: RiteData in SETTINGS.enchants:
+	for rite: RiteData in settings.enchants:
 		if tower.has_enchantment(rite.effect):
 			names.append(rite.display_name)
 	return "" if names.is_empty() else "\n" + ", ".join(names)

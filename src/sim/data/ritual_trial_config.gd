@@ -54,13 +54,23 @@ extends Resource
 @export var banner_tag: StringName = &"banner"
 @export var boss_tag: StringName = &"boss"
 @export var heavy_tag: StringName = &"heavy"
+## Бесконечный забег (docs/34). Пусто — прежний опыт из четырёх суток по spawns.
+@export var nights: RitualNightRules
+
+
+func is_endless() -> bool:
+	return nights != null
 
 
 func is_night(at_tick: int) -> bool:
+	if is_endless():
+		return nights.is_night(at_tick)
 	return at_tick < cycle_ticks * cycles and at_tick % cycle_ticks >= night_tick
 
 
 func period_name(at_tick: int) -> String:
+	if is_endless():
+		return nights.period_name(at_tick)
 	if at_tick >= cycle_ticks * cycles:
 		return "Рассвет · зачистка"
 	var local: int = at_tick % cycle_ticks
@@ -69,3 +79,15 @@ func period_name(at_tick: int) -> String:
 	if local >= dusk_tick:
 		return "Закат"
 	return "День"
+
+
+## Время для света: [тик внутри суток, начало заката, начало ночи, номер суток с 0].
+func cycle_view(at_tick: int) -> Array[int]:
+	if is_endless():
+		return nights.cycle_view(at_tick)
+	return [at_tick % cycle_ticks, dusk_tick, night_tick, at_tick / cycle_ticks]
+
+
+## Закончились ли сутки опыта (у бесконечного забега — никогда).
+func is_finished(at_tick: int) -> bool:
+	return not is_endless() and at_tick >= cycle_ticks * cycles
