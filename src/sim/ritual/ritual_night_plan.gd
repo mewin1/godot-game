@@ -8,6 +8,7 @@ var rules: RitualNightRules
 var run_seed: int = 0
 var _cache: Dictionary[int, Array] = {}
 var _seen: Dictionary[int, Dictionary] = {}
+var _omens: Dictionary[int, int] = {}
 
 
 func _init(trial_settings: RitualTrialConfig, seed_value: int) -> void:
@@ -123,10 +124,32 @@ func describe(night: int) -> String:
 	return "|".join(parts)
 
 
+## Примета ночи или null. Чистая функция сида и номера ночи; соседние ночи — разные приметы.
+func omen(night: int) -> RitualOmenData:
+	var index: int = omen_index(night)
+	return rules.omens[index] if index >= 0 else null
+
+
+func omen_index(night: int) -> int:
+	if rules.omens.is_empty() or night < rules.omen_from_night or rules.is_boss_night(night):
+		return -1
+	if not _omens.has(night):
+		var previous: int = omen_index(night - 1)
+		var open: Array[int] = []
+		for index: int in rules.omens.size():
+			if rules.omens[index].first_night <= night and index != previous:
+				open.append(index)
+		var rng: RandomNumberGenerator = RandomNumberGenerator.new()
+		rng.seed = run_seed * 1000081 + night * 6271
+		_omens[night] = open[rng.randi_range(0, open.size() - 1)] if not open.is_empty() else -1
+	return _omens[night]
+
+
 func _generate(night: int) -> Array[RitualPack]:
 	var rng: RandomNumberGenerator = RandomNumberGenerator.new()
 	rng.seed = run_seed * 1000003 + night * 7919
-	var count: int = rules.pack_count(night)
+	var night_omen: RitualOmenData = omen(night)
+	var count: int = maxi(1, rules.pack_count(night) + (night_omen.packs_add if night_omen != null else 0))
 	var budget: int = rules.budget(night)
 	var start: int = rules.night_start(night)
 	var window: int = rules.night_length(night) * rules.spread_percent / 100
@@ -204,16 +227,21 @@ func _insert_boss(rng: RandomNumberGenerator, night: int, budget: int, at_tick: 
 func _pick(rng: RandomNumberGenerator, night: int, budget: int, lead: bool,
 		cheapest: bool = false, avoid: int = -1) -> RitualEnemyRule:
 	var candidates: Array[RitualEnemyRule] = []
+	var weights: Array[int] = []
 	var total: int = 0
+	var night_omen: RitualOmenData = omen(night)
 	for rule: RitualEnemyRule in rules.enemies:
-		if rule.weight(lead) > 0 and rule.first_night <= night and rule.threat <= budget:
+		var weight: int = rule.weight(lead)
+		if night_omen != null and night_omen.favored.has(rule.enemy_index):
+			# Любимцы приметы и ведут, и идут рядовыми, и выпадают чаще.
+			weight = maxi(weight, maxi(rule.weight(true), rule.weight(false))) * night_omen.favor_multiplier
+		if weight > 0 and rule.first_night <= night and rule.threat <= budget \
+				and not (rule.enemy_index == avoid and avoid >= 0):
 			candidates.append(rule)
-			total += rule.weight(lead)
-	if avoid >= 0 and candidates.size() > 1:
-		for rule: RitualEnemyRule in candidates.duplicate():
-			if rule.enemy_index == avoid:
-				candidates.erase(rule)
-				total -= rule.weight(lead)
+			weights.append(weight)
+			total += weight
+	if candidates.is_empty() and avoid >= 0:
+		return _pick(rng, night, budget, lead, cheapest)
 	if candidates.is_empty():
 		return null
 	if cheapest:
@@ -223,10 +251,10 @@ func _pick(rng: RandomNumberGenerator, night: int, budget: int, lead: bool,
 				best = rule
 		return best
 	var roll: int = rng.randi_range(0, total - 1)
-	for rule: RitualEnemyRule in candidates:
-		roll -= rule.weight(lead)
+	for index: int in candidates.size():
+		roll -= weights[index]
 		if roll < 0:
-			return rule
+			return candidates[index]
 	return candidates[candidates.size() - 1]
 
 

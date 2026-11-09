@@ -14,6 +14,7 @@
 [ext_resource type="Script" path="res://src/sim/data/ritual_gift_data.gd" id="gift"]
 [ext_resource type="Script" path="res://src/sim/data/ritual_street_data.gd" id="street"]
 [ext_resource type="Script" path="res://src/sim/data/ritual_hero_data.gd" id="hero"]
+[ext_resource type="Script" path="res://src/sim/data/ritual_omen_data.gd" id="omen"]
 [ext_resource type="Resource" path="res://data/ritual/rites/war_range.tres" id="rite_3"]
 [ext_resource type="Resource" path="res://data/ritual/rites/war_volley.tres" id="rite_4"]
 [ext_resource type="Resource" path="res://data/ritual/rites/svarog_heat.tres" id="rite_5"]
@@ -800,6 +801,42 @@ effect = 1
 god = &"curse"
 value = 100
 extra = 0
+[sub_resource type="Resource" id="omen_horde"]
+script = ExtResource("omen")
+id = &"horde"
+title = "Орда"
+description = "Пачек больше, в них толпы мертвяков и упырей. Нужен урон по области."
+first_night = 3
+favored = Array[int]([0, 1])
+favor_multiplier = 4
+packs_add = 1
+[sub_resource type="Resource" id="omen_heavy"]
+script = ExtResource("omen")
+id = &"heavy"
+title = "Тяжёлая поступь"
+description = "Костяки и латники вместо мелочи, пачек меньше. Нужен сильный удар, пробой брони и частокол."
+first_night = 3
+favored = Array[int]([2, 6])
+favor_multiplier = 4
+packs_add = -1
+[sub_resource type="Resource" id="omen_flock"]
+script = ExtResource("omen")
+id = &"flock"
+title = "Волчья стая"
+description = "Быстрые упыри и волкодлаки проскакивают редкую оборону. Нужен холод, свист или плотный обстрел."
+first_night = 3
+favored = Array[int]([1, 7])
+favor_multiplier = 4
+packs_add = 0
+[sub_resource type="Resource" id="omen_banners"]
+script = ExtResource("omen")
+id = &"banners"
+title = "Навьи знамёна"
+description = "Щитники с оберегами и стяги, которые берегут соседей. Сбивайте обереги огнём, стяг — первым."
+first_night = 4
+favored = Array[int]([3, 4])
+favor_multiplier = 4
+packs_add = 0
 [sub_resource type="Resource" id="nights"]
 script = ExtResource("night_rules")
 first_evening_ticks = 900
@@ -824,6 +861,8 @@ boss_hp_growth_percent = 60
 boss_enemy = 5
 boss_escort_percent = 40
 boss_resist_gods = Array[StringName]([&"svarog", &"war", &"ice"])
+omens = Array[ExtResource("omen")]([SubResource("omen_horde"), SubResource("omen_heavy"), SubResource("omen_flock"), SubResource("omen_banners")])
+omen_from_night = 3
 warn_nights = 2
 default_seed = 1
 [sub_resource type="Resource" id="street_upper"]

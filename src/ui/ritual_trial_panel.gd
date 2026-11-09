@@ -49,6 +49,7 @@ var _defeat_text: Label
 ## Выбор героя перед бесконечным забегом (docs/36 §1).
 var _hero_panel: PanelContainer
 var _hero_choice: int = 0
+var _omen_night: int = 0
 
 
 func _ready() -> void:
@@ -772,11 +773,22 @@ func _save_result() -> void:
 	_message.text = "Запись: " + path.trim_prefix("res://")
 
 
+## Новая ночь с приметой — объявить её в строке сообщений, пока день и есть время готовиться.
+func _announce_omen() -> void:
+	if not settings.is_endless() or trial.current_night() == _omen_night:
+		return
+	_omen_night = trial.current_night()
+	var night_omen: RitualOmenData = trial.plan().omen(_omen_night)
+	if night_omen != null:
+		_message.text = "Примета ночи %d — %s. %s" % [_omen_night, night_omen.title, night_omen.description]
+
+
 func _refresh() -> void:
 	if trial == null:
 		return
 	_hud.refresh_ritual(trial, _paused)
 	_refresh_gifts()
+	_announce_omen()
 	_shop.refresh_ritual(trial)
 	for index: int in _idol_slots.size():
 		var slot: RitualIdolSlot = _idol_slots[index] as RitualIdolSlot

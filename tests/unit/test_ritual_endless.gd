@@ -70,6 +70,9 @@ func test_packs_fit_budget_unlocks_and_grow_denser() -> void:
 		var ordinary: int = 0
 		for pack: RitualPack in packs:
 			ordinary += 0 if pack.boss else 1
+		# Примета (docs/36 §2) может добавить или убрать пачку — сравниваем без неё.
+		var omen: RitualOmenData = plan.omen(night)
+		ordinary -= omen.packs_add if omen != null else 0
 		assert_true(ordinary >= previous_count, "Обычных пачек не меньше, чем в прошлую ночь")
 		previous_count = ordinary
 		for pack: RitualPack in packs:

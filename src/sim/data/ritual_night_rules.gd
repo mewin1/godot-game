@@ -48,6 +48,11 @@ extends Resource
 ## Стихийный босс неуязвим к одной из этих стихий (бог постройки).
 @export var boss_resist_gods: Array[StringName] = []
 
+@export_group("Приметы")
+## Приметы обычных ночей (не боссовых) с omen_from_night; одна примета не выпадает две ночи подряд.
+@export var omens: Array[RitualOmenData] = []
+@export var omen_from_night: int = 3
+
 @export_group("Разведка")
 ## Очередь показывает всю ближайшую ночь (плейтест автора 9 ноября); босс дальше неё
 ## объявляется отдельной строкой за столько ночей.

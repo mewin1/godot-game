@@ -20,6 +20,8 @@ var _packs: Array[RitualPack] = []
 var _tips: PackedStringArray = []
 var _title: Label
 var _warning: Label
+## Примета ночи (docs/36 §2): название, описание — в подсказке.
+var _omen: Label
 var _flow: HFlowContainer
 
 
@@ -30,6 +32,9 @@ func _init() -> void:
 	header.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(header)
 	_title = _small_label(header, 16)
+	_omen = _small_label(header, 16)
+	_omen.add_theme_color_override("font_color", Color("c9a6f2"))
+	_omen.mouse_filter = Control.MOUSE_FILTER_STOP
 	_warning = _small_label(header, 15)
 	_warning.add_theme_color_override("font_color", Color("ffab65"))
 	_flow = HFlowContainer.new()
@@ -44,6 +49,10 @@ func refresh(trial: RitualTrial) -> void:
 	var night: int = trial.current_night()
 	var at_night: bool = trial.settings.is_night(trial.tick_count)
 	_title.text = "Ночь %d · %s: %d" % [night, "осталось пачек" if at_night else "пачек", queue.size()]
+	var night_omen: RitualOmenData = trial.plan().omen(night)
+	_omen.text = "" if night_omen == null else "  · %s" % night_omen.title
+	_omen.tooltip_text = "" if night_omen == null else "Примета ночи %d — %s.\n%s" % [
+		night, night_omen.title, night_omen.description]
 	var boss: RitualPack = trial.boss_warning()
 	_warning.text = "" if boss == null else "  · Босс в ночь %d%s" % [boss.night,
 		"" if boss.resist == &"" else ", неуязвим: " + GodSymbols.get_power_name(boss.resist)]
