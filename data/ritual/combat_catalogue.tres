@@ -1,6 +1,6 @@
 [gd_resource type="Resource" script_class="GameConfig" format=3]
 [ext_resource type="Script" path="res://src/sim/data/game_config.gd" id="game"]
-[ext_resource type="Resource" path="res://data/ritual/board_city.tres" id="board"]
+[ext_resource type="Resource" path="res://data/ritual/board_city2.tres" id="board"]
 [ext_resource type="Script" path="res://src/sim/data/tower_data.gd" id="tower"]
 [ext_resource type="Script" path="res://src/sim/data/reaction_data.gd" id="reaction"]
 [ext_resource type="Resource" path="res://data/ritual/buildings/bolt.tres" id="t_bolt"]

@@ -55,6 +55,10 @@ func _initialize() -> void:
 		if argument.begins_with("--rules="):
 			rules_path = argument.trim_prefix("--rules=")
 	_settings = (load(rules_path) as RitualTrialConfig).duplicate(true)
+	# Эталонная прямая дорога: числа стенда не зависят от раскладки города (docs/37 P3).
+	_settings.combat.board = load("res://data/ritual/board_city.tres") as BoardLayout
+	_settings.alleys = []
+	_settings.streets = []
 	# Ночь, которая длиннее стенда: враги идут с ночной скоростью все время.
 	var night: int = 1
 	while _settings.nights.night_length(night) < TICKS:

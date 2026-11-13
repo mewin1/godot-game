@@ -1,6 +1,6 @@
 # 37 — Gorodishche (endless "Obryad") overhaul spec
 
-Date: 2026-11-12. Updated: 2026-11-13. Status: P0/P1/P2/P5 implemented (phase order changed by the author:
+Date: 2026-11-12. Updated: 2026-11-13. Status: P0/P1/P2/P5/P3 implemented (phase order changed by the author:
 P5 before P3/P4; D7 milestone effects are placeholders); author playtest pending.
 Language: English (author's request). Author-facing summary is given in Russian in chat.
 Review edits (2026-11-12): BLD-10 and RX-9 acceptance reworded; reaction changes in endless-only

@@ -31,6 +31,8 @@ var _profile_ready: bool = false
 var _idols: RitualIdols3D
 var idol_hovered: int = -1
 var idol_selected: int = -1
+## Завалы проулков (docs/37 ALY-1): узел на входе в проулок, пока он завален.
+var _barricades: Array[Node3D] = []
 
 
 func _init() -> void:
@@ -81,6 +83,10 @@ func show_field(field: FieldState, player_colors: Callable) -> void:
 				arena.yard_cells[cell] = true
 		for cell: Vector2i in field.get_buildable_cells() + field.layout.path_cells:
 			arena.yard_cells[cell] = true
+		for region: Rect2i in ritual.settings.build_regions:
+			for y: int in range(region.position.y, region.end.y):
+				for x: int in range(region.position.x, region.end.x):
+					arena.yard_cells[Vector2i(x, y)] = true
 		for street: RitualStreetData in ritual.settings.streets:
 			for cell: Vector2i in street.path_cells:
 				arena.yard_cells[cell] = true
@@ -88,6 +94,13 @@ func show_field(field: FieldState, player_colors: Callable) -> void:
 				for y: int in range(region.position.y, region.end.y):
 					for x: int in range(region.position.x, region.end.x):
 						arena.yard_cells[Vector2i(x, y)] = true
+		# Проулки-срезки (docs/37 ALY-1): дорога рисуется, когда город дорос до проулка.
+		for index: int in ritual.settings.alleys.size():
+			var cells: Array[Vector2i] = ritual.alley_cells_with_ends(index)
+			arena.shortcut_layouts.append(RitualLayout3D.new(cells))
+			arena.shortcut_levels.append(ritual.settings.alleys[index].city_level)
+			for cell: Vector2i in cells:
+				arena.yard_cells[cell] = true
 	super.show_field(field, player_colors)
 	if _hero == null:
 		_spawn_hero()
@@ -161,6 +174,7 @@ func update_ritual(trial: RitualTrial, delta: float) -> void:
 	_idols.visible = catalogue
 	if catalogue:
 		_idols.sync(trial.field.idols, idol_hovered, idol_selected)
+		_sync_barricades(trial)
 	if trial.palisade_progress != _barrier_progress or trial.palisade_lane != _barrier_lane:
 		_barrier_progress = trial.palisade_progress
 		_barrier_lane = trial.palisade_lane
@@ -183,11 +197,39 @@ func update_ritual(trial: RitualTrial, delta: float) -> void:
 	sync(delta, 1.0)
 
 
+func _sync_barricades(trial: RitualTrial) -> void:
+	var ritual: RitualField = trial.field
+	while _barricades.size() < trial.barricades.size():
+		_barricades.append(null)
+	for index: int in trial.barricades.size():
+		var closed: bool = trial.barricades[index]
+		if closed == (_barricades[index] != null):
+			continue
+		if not closed:
+			_barricades[index].queue_free()
+			_barricades[index] = null
+			continue
+		var cells: Array[Vector2i] = ritual.alley_cells_with_ends(index)
+		var road: ArenaLayout3D = RitualLayout3D.new(cells)
+		var along: float = road.path_length_at(1) * 0.75
+		var node: Node3D = Node3D.new()
+		node.position = road.road_point(along)
+		var direction: Vector3 = road.road_direction(along)
+		node.rotation.y = atan2(direction.x, direction.z)
+		for post: int in 5:
+			ArenaMaterials3D.part(node, ArenaMaterials3D.cylinder(0.11, 0.03, 1.0, 5),
+				ArenaMaterials3D.solid(ArenaMaterials3D.WOOD), Vector3((post - 2) * 0.34, 0.5, 0))
+		ArenaMaterials3D.part(node, ArenaMaterials3D.box(Vector3(1.8, 0.12, 0.14)),
+			ArenaMaterials3D.solid(ArenaMaterials3D.WOOD), Vector3(0, 0.55, 0.08), Vector3(0, 0, 0.35))
+		_world.add_child(node)
+		_barricades[index] = node
+
+
 ## Идол под точкой экрана (-1 — нет): круг вокруг середины фигуры.
 func idol_at(point: Vector2) -> int:
 	if not _idols.visible:
 		return -1
-	for index: int in RitualIdols3D.SPOTS.size():
+	for index: int in _idols.shown():
 		var center: Vector2 = project(RitualIdols3D.spot_at(index) + Vector3(0, 1.1, 0))
 		var top: Vector2 = project(RitualIdols3D.spot_at(index) + Vector3(0, 2.6, 0))
 		if point.distance_to(center) < maxf(18.0, center.distance_to(top) * 0.95):

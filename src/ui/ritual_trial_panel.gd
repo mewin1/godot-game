@@ -75,6 +75,7 @@ var _dock: RitualDock
 var _idol_popup: RitualIdolPopup
 var _selection_title: Label
 var _overlay: RitualHudOverlay
+var _barricade_buttons: Array[Button] = []
 ## Итоги забега для экрана поражения (docs/37 UI-14).
 var _stats: RitualRunStats = RitualRunStats.new()
 var _defeat_columns: HBoxContainer
@@ -362,6 +363,10 @@ func _build_dock(root_box: VBoxContainer) -> void:
 	_sell_button = _button(_dock.house_actions, "Продать", _sell)
 	if not settings.streets.is_empty():
 		_street_button = _button(_dock.city_actions, "", _grow)
+	for index: int in settings.alleys.size():
+		var barricade: Button = _button(_dock.city_actions, "", _toggle_barricade.bind(index))
+		barricade.name = "Barricade%d" % index
+		_barricade_buttons.append(barricade)
 	_repair_all_button = _button(_dock.city_actions, "Починить всё", _repair_houses.bind(0))
 	_repair_all_button.tooltip_text = "Вернуть полную прочность всем домам. Ремонт дешевле новой постройки."
 	_idol_popup = RitualIdolPopup.new()
@@ -810,7 +815,7 @@ func _unhandled_key_input(event: InputEvent) -> void:
 			_cycle_same_type()
 			get_viewport().set_input_as_handled()
 			return
-		if key.keycode in [KEY_4, KEY_5, KEY_6] and key.keycode - KEY_4 < trial.field.idols.size():
+		if key.keycode in [KEY_4, KEY_5, KEY_6, KEY_7] and key.keycode - KEY_4 < trial.field.idols.size():
 			_open_idol(key.keycode - KEY_4)
 			return
 	if key != null and key.pressed and not key.echo:
@@ -1075,8 +1080,33 @@ func _repair() -> void:
 func _grow() -> void:
 	if _issue(RitualCommand.new(RitualCommand.Action.STREET)):
 		var street: RitualStreetData = settings.streets[trial.street_nights.size() - 1]
+		if _dock != null:
+			var text: String = street.summary
+			if not street.path_cells.is_empty():
+				text += "\nНовый вход — с ночи %d" % trial.street_nights[-1]
+			_banner("Город %d · %s" % [trial.city_level(), street.title], text, DuskTheme.GOLD)
+			return
 		_message.text = "%s пристроена: места под дома уже открыты, вход для нежити — с ночи %d" % [
 			street.title, trial.street_nights[-1]]
+
+
+## Завал проулка (docs/37 ALY-1): быстрые враги больше не срезают; разбор бесплатный.
+func _toggle_barricade(index: int) -> void:
+	var closed: bool = index < trial.barricades.size() and trial.barricades[index]
+	if _issue(RitualCommand.new(RitualCommand.Action.BARRICADE, index)):
+		_message.text = "Завал разобран: проулок снова открыт" if closed \
+			else "Проулок завален: все идут по дороге"
+
+
+func _refresh_barricades() -> void:
+	for index: int in _barricade_buttons.size():
+		var button: Button = _barricade_buttons[index]
+		var alley: RitualAlley = settings.alleys[index]
+		button.visible = trial.city_level() >= alley.city_level
+		var closed: bool = index < trial.barricades.size() and trial.barricades[index]
+		button.text = "Разобрать завал" if closed else "Завалить проулок · %d" % alley.barricade_cost
+		button.tooltip_text = "Проулок срезает подкову западной дороги: быстрые враги (упыри, волкодлаки) идут им всегда, остальные — если впереди частокол или смола.\nЗавал закрывает проулок для всех; разбор бесплатный, без возврата."
+		button.disabled = trial.phase != RitualTrial.Phase.RUNNING or (not closed and trial.gold < alley.barricade_cost)
 
 
 ## Кнопка улицы: цена следующей; город упёрся в предел — серая.
@@ -1084,11 +1114,17 @@ func _refresh_streets() -> void:
 	if _street_button == null:
 		return
 	if not trial.can_grow():
-		_street_button.text = "Проклятая земля"
+		_street_button.text = "Город достроен" if _dock != null else "Проклятая земля"
 		_street_button.tooltip_text = "Дальше — проклятая земля: больше улиц не пристроить."
 		_street_button.disabled = true
 		return
 	var street: RitualStreetData = settings.streets[trial.street_nights.size()]
+	if _dock != null:
+		_street_button.text = "Укрепить город · %d" % street.cost
+		_street_button.tooltip_text = "Город %d — %s: %s.\nУчастки — сразу; новый вход для нежити — со следующей ночи." % [
+			trial.city_level() + 1, street.title, street.summary]
+		_street_button.disabled = trial.phase != RitualTrial.Phase.RUNNING or trial.gold < street.cost
+		return
 	_street_button.text = "Новая улица · %d" % street.cost
 	_street_button.tooltip_text = "%s: места под дома — сразу, новый вход для нежити — со следующей ночи.\nКвартал пустой: застройте его, иначе враги прорвутся.\nПодать: +%d золота каждый рассвет, когда ночь с новым входом пережита." % [
 		street.title, street.tribute]
@@ -1334,6 +1370,7 @@ func _refresh() -> void:
 	_refresh_wear(selected)
 	_announce_repairs()
 	_refresh_streets()
+	_refresh_barricades()
 	_refresh_supplies()
 	if settings.is_endless():
 		var accusative: String = trial.hero().accusative if trial.hero() != null else "Илью"

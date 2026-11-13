@@ -5,7 +5,9 @@ extends Node3D
 
 const ROOT: String = "res://assets/noir_h3d/idols/"
 ## Места пьедесталов в мире: по бокам крыльца терема и у ближнего угла площади.
-const SPOTS: Array[Vector3] = [Vector3(39.6, 0.0, -3.4), Vector3(39.6, 0.0, 5.4), Vector3(47.2, 0.0, 5.6)]
+## Четвёртое место — у дальнего угла площади, для идола детинца (docs/37 D5).
+const SPOTS: Array[Vector3] = [Vector3(39.6, 0.0, -3.4), Vector3(39.6, 0.0, 5.4), Vector3(47.2, 0.0, 5.6),
+	Vector3(47.2, 0.0, -3.8)]
 const MODEL_SCALE: float = 0.85
 ## Огонь у подножия: пустой идол — лампадка, каждый заговор чуть больше (до предела).
 const FLAME_BASE: float = 0.55
@@ -29,6 +31,7 @@ var _bands: Array[Node3D] = []
 ## Пороги вех: обруч за каждый пройденный (данные режима, RitualTrialConfig.idol_milestones).
 var milestone_steps: Array[int] = [5, 10, 15]
 var _style: Arena3DStyle
+var _shown: int = 3
 
 
 func _init(style: Arena3DStyle) -> void:
@@ -87,6 +90,9 @@ func _make_flame(index: int) -> MeshInstance3D:
 
 ## Модель — по посвящению, огонь — по числу заговоров; hovered/selected — кольцо.
 func sync(idols: Array[IdolState], hovered: int, selected: int) -> void:
+	_shown = mini(idols.size(), SPOTS.size())
+	for index: int in SPOTS.size():
+		(get_child(index) as Node3D).visible = index < _shown
 	for index: int in mini(idols.size(), SPOTS.size()):
 		var idol: IdolState = idols[index]
 		if idol.god != _gods[index]:
@@ -140,6 +146,11 @@ func _set_model(index: int, god: StringName) -> void:
 	ArenaTower3D._tune_materials(holder, _style.noir_model_glow, _style.noir_model_tone, _style.noir_model_rim)
 	(get_child(index) as Node3D).add_child(holder)
 	_models[index] = holder
+
+
+## Сколько пьедесталов стоит (3, с детинцем 4).
+func shown() -> int:
+	return _shown
 
 
 ## Точка идола для экранных подсказок и попадания мышью (мир).

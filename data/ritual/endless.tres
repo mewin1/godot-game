@@ -58,6 +58,7 @@
 [ext_resource type="Resource" path="res://data/ritual/buildings/porok_levels.tres" id="profile_porok"]
 
 [ext_resource type="Script" path="res://src/sim/data/ritual_idol_milestone.gd" id="milestone"]
+[ext_resource type="Script" path="res://src/sim/data/ritual_alley.gd" id="alley"]
 [sub_resource type="Resource" id="rule_0"]
 script = ExtResource("enemy_rule")
 enemy_index = 0
@@ -465,21 +466,38 @@ warn_nights = 2
 default_seed = 1
 [sub_resource type="Resource" id="street_upper"]
 script = ExtResource("street")
-title = "Верхняя улица"
-path_cells = Array[Vector2i]([Vector2i(5, 7), Vector2i(6, 7), Vector2i(7, 7), Vector2i(8, 7), Vector2i(9, 7), Vector2i(10, 7), Vector2i(11, 7), Vector2i(12, 7), Vector2i(13, 7), Vector2i(14, 7), Vector2i(15, 7), Vector2i(16, 7), Vector2i(17, 7), Vector2i(18, 7), Vector2i(18, 8), Vector2i(18, 9), Vector2i(18, 10)])
-build_regions = Array[Rect2i]([Rect2i(7, 5, 11, 2)])
-alley_cells = Array[Vector2i]([Vector2i(11, 9), Vector2i(11, 8)])
-cost = 40
+title = "Северные ворота"
+summary = "Северная улица и вход из леса, +6 участков, тир II, улучшения до кирпича, подать +10"
+path_cells = Array[Vector2i]([Vector2i(11, 1), Vector2i(11, 2), Vector2i(11, 3), Vector2i(11, 4), Vector2i(12, 4), Vector2i(13, 4), Vector2i(14, 4), Vector2i(15, 4), Vector2i(16, 4), Vector2i(17, 4), Vector2i(18, 4), Vector2i(18, 5), Vector2i(18, 6), Vector2i(18, 7), Vector2i(18, 8), Vector2i(18, 9), Vector2i(18, 10)])
+build_regions = Array[Rect2i]([Rect2i(8, 1, 11, 5)])
+cost = 60
 tribute = 10
 
 [sub_resource type="Resource" id="street_lower"]
 script = ExtResource("street")
-title = "Нижняя улица"
-path_cells = Array[Vector2i]([Vector2i(5, 13), Vector2i(6, 13), Vector2i(7, 13), Vector2i(8, 13), Vector2i(9, 13), Vector2i(10, 13), Vector2i(11, 13), Vector2i(12, 13), Vector2i(13, 13), Vector2i(14, 13), Vector2i(15, 13), Vector2i(16, 13), Vector2i(17, 13), Vector2i(18, 13), Vector2i(18, 12), Vector2i(18, 11), Vector2i(18, 10)])
-build_regions = Array[Rect2i]([Rect2i(7, 14, 11, 2)])
-alley_cells = Array[Vector2i]([Vector2i(12, 11), Vector2i(12, 12)])
-cost = 80
+title = "Южный брод"
+summary = "Южная улица и вход с брода, +6 участков, тир III, улучшения до белого камня, подать +15"
+path_cells = Array[Vector2i]([Vector2i(7, 17), Vector2i(7, 16), Vector2i(8, 16), Vector2i(9, 16), Vector2i(10, 16), Vector2i(11, 16), Vector2i(12, 16), Vector2i(13, 16), Vector2i(14, 16), Vector2i(15, 16), Vector2i(16, 16), Vector2i(17, 16), Vector2i(18, 16), Vector2i(18, 15), Vector2i(18, 14), Vector2i(18, 13), Vector2i(18, 12), Vector2i(18, 11), Vector2i(18, 10)])
+build_regions = Array[Rect2i]([Rect2i(4, 16, 15, 2)])
+cost = 150
 tribute = 15
+
+[sub_resource type="Resource" id="street_detinets"]
+script = ExtResource("street")
+title = "Белокаменный детинец"
+summary = "Без нового входа: +4 участка у терема, +10 здоровья герою, четвёртый идол"
+build_regions = Array[Rect2i]([Rect2i(19, 2, 1, 15)])
+cost = 320
+hero_hp = 10
+extra_idol = true
+
+[sub_resource type="Resource" id="alley_main"]
+script = ExtResource("alley")
+lane = 0
+cells = Array[Vector2i]([Vector2i(9, 10), Vector2i(10, 10), Vector2i(11, 10), Vector2i(12, 10)])
+city_level = 2
+barricade_cost = 15
+fast_speed_milli = 70
 
 [sub_resource type="Resource" id="hero_ilya"]
 script = ExtResource("hero")
@@ -539,107 +557,107 @@ cooldown_ticks = 1200
 free_rerolls = 2
 [sub_resource type="Resource" id="plot_0"]
 script = ExtResource("plot")
-cell = Vector2i(7, 8)
+cell = Vector2i(6, 6)
 city_level = 1
 [sub_resource type="Resource" id="plot_1"]
 script = ExtResource("plot")
-cell = Vector2i(9, 8)
+cell = Vector2i(5, 10)
 city_level = 1
 [sub_resource type="Resource" id="plot_2"]
 script = ExtResource("plot")
-cell = Vector2i(12, 8)
+cell = Vector2i(6, 12)
 city_level = 1
 [sub_resource type="Resource" id="plot_3"]
 script = ExtResource("plot")
-cell = Vector2i(14, 8)
+cell = Vector2i(11, 8)
 city_level = 1
 [sub_resource type="Resource" id="plot_4"]
 script = ExtResource("plot")
-cell = Vector2i(16, 8)
+cell = Vector2i(10, 11)
 city_level = 1
 [sub_resource type="Resource" id="plot_5"]
 script = ExtResource("plot")
-cell = Vector2i(7, 11)
+cell = Vector2i(12, 12)
 city_level = 1
 [sub_resource type="Resource" id="plot_6"]
 script = ExtResource("plot")
-cell = Vector2i(9, 11)
+cell = Vector2i(10, 15)
 city_level = 1
 [sub_resource type="Resource" id="plot_7"]
 script = ExtResource("plot")
-cell = Vector2i(11, 11)
+cell = Vector2i(15, 8)
 city_level = 1
 [sub_resource type="Resource" id="plot_8"]
 script = ExtResource("plot")
-cell = Vector2i(13, 11)
+cell = Vector2i(15, 12)
 city_level = 1
 [sub_resource type="Resource" id="plot_9"]
 script = ExtResource("plot")
-cell = Vector2i(15, 11)
+cell = Vector2i(17, 8)
 city_level = 1
 [sub_resource type="Resource" id="plot_10"]
 script = ExtResource("plot")
-cell = Vector2i(7, 5)
+cell = Vector2i(9, 2)
 city_level = 2
 [sub_resource type="Resource" id="plot_11"]
 script = ExtResource("plot")
-cell = Vector2i(9, 5)
+cell = Vector2i(13, 2)
 city_level = 2
 [sub_resource type="Resource" id="plot_12"]
 script = ExtResource("plot")
-cell = Vector2i(11, 5)
+cell = Vector2i(16, 2)
 city_level = 2
 [sub_resource type="Resource" id="plot_13"]
 script = ExtResource("plot")
-cell = Vector2i(13, 5)
+cell = Vector2i(9, 5)
 city_level = 2
 [sub_resource type="Resource" id="plot_14"]
 script = ExtResource("plot")
-cell = Vector2i(15, 5)
+cell = Vector2i(13, 6)
 city_level = 2
 [sub_resource type="Resource" id="plot_15"]
 script = ExtResource("plot")
-cell = Vector2i(17, 5)
+cell = Vector2i(16, 6)
 city_level = 2
 [sub_resource type="Resource" id="plot_16"]
 script = ExtResource("plot")
-cell = Vector2i(7, 15)
+cell = Vector2i(5, 15)
 city_level = 3
 [sub_resource type="Resource" id="plot_17"]
 script = ExtResource("plot")
-cell = Vector2i(9, 15)
+cell = Vector2i(7, 14)
 city_level = 3
 [sub_resource type="Resource" id="plot_18"]
 script = ExtResource("plot")
-cell = Vector2i(11, 15)
+cell = Vector2i(12, 15)
 city_level = 3
 [sub_resource type="Resource" id="plot_19"]
 script = ExtResource("plot")
-cell = Vector2i(13, 15)
+cell = Vector2i(14, 14)
 city_level = 3
 [sub_resource type="Resource" id="plot_20"]
 script = ExtResource("plot")
-cell = Vector2i(15, 15)
+cell = Vector2i(16, 14)
 city_level = 3
 [sub_resource type="Resource" id="plot_21"]
 script = ExtResource("plot")
-cell = Vector2i(17, 15)
+cell = Vector2i(13, 17)
 city_level = 3
 [sub_resource type="Resource" id="plot_22"]
 script = ExtResource("plot")
-cell = Vector2i(19, 6)
+cell = Vector2i(19, 3)
 city_level = 4
 [sub_resource type="Resource" id="plot_23"]
 script = ExtResource("plot")
-cell = Vector2i(19, 8)
+cell = Vector2i(19, 6)
 city_level = 4
 [sub_resource type="Resource" id="plot_24"]
 script = ExtResource("plot")
-cell = Vector2i(19, 12)
+cell = Vector2i(17, 12)
 city_level = 4
 [sub_resource type="Resource" id="plot_25"]
 script = ExtResource("plot")
-cell = Vector2i(19, 14)
+cell = Vector2i(19, 15)
 city_level = 4
 [sub_resource type="Resource" id="milestone_war_5"]
 script = ExtResource("milestone")
@@ -836,10 +854,11 @@ combat = ExtResource("combat")
 costs = Array[int]([14, 12, 34, 12, 30, 14, 14, 36, 14, 34, 36, 32, 32, 12, 80, 84, 84, 80, 72, 76, 84])
 rites = Array[ExtResource("rite")]([ExtResource("rite_0"), ExtResource("rite_1"), ExtResource("rite_2"), ExtResource("rite_3"), ExtResource("rite_4"), ExtResource("rite_5"), ExtResource("rite_6"), ExtResource("rite_7"), ExtResource("rite_8"), ExtResource("rite_9"), ExtResource("rite_10"), ExtResource("rite_11"), ExtResource("rite_12"), ExtResource("rite_13")])
 enemies = Array[ExtResource("mob")]([ExtResource("mob_0"), ExtResource("mob_1"), ExtResource("mob_2"), ExtResource("mob_3"), ExtResource("mob_4"), ExtResource("mob_5"), ExtResource("mob_6"), ExtResource("mob_7")])
-build_regions = Array[Rect2i]([Rect2i(7, 8, 4, 2), Rect2i(12, 8, 5, 2), Rect2i(7, 11, 5, 2), Rect2i(13, 11, 4, 2)])
+build_regions = Array[Rect2i]([Rect2i(3, 6, 16, 10)])
 supply_cap = 3
 heroes = Array[ExtResource("hero")]([SubResource("hero_ilya"), SubResource("hero_solovey"), SubResource("hero_baba_yaga")])
-streets = Array[ExtResource("street")]([SubResource("street_upper"), SubResource("street_lower")])
+streets = Array[ExtResource("street")]([SubResource("street_upper"), SubResource("street_lower"), SubResource("street_detinets")])
+alleys = Array[ExtResource("alley")]([SubResource("alley_main")])
 hero_hp = 50
 start_gold = 75
 ward_physical_percent = 100

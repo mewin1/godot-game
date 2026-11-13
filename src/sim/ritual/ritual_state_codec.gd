@@ -104,9 +104,13 @@ static func rules_state(source: Resource) -> Dictionary[String, Variant]:
 				continue
 			if nights.pressure_base > 0 and key == "hp_growth_percent":
 				continue
-		# Вехи идолов (docs/37 IDL-4): пустой список не меняет отпечаток прежних правил.
-		if source is RitualTrialConfig and key == "idol_milestones" \
-				and (source as RitualTrialConfig).idol_milestones.is_empty():
+		# Вехи идолов и проулки-срезки (docs/37 IDL-4, ALY-1): пустые списки не меняют отпечаток
+		# прежних правил; новые поля уровня города тоже, пока не заданы.
+		if source is RitualTrialConfig and key in ["idol_milestones", "alleys"] \
+				and array(source.get(key)).is_empty():
+			continue
+		if source is RitualStreetData and key in ["summary", "hero_hp", "extra_idol"] \
+				and (source.get(key) == null or str(source.get(key)) in ["", "0", "false"]):
 			continue
 		if source is RitualTrialConfig and not (source as RitualTrialConfig).uses_plots() \
 				and key in ["plots", "upgrade_cost_percent", "upgrade_city_levels",

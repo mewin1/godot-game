@@ -41,6 +41,8 @@ extends Resource
 @export var rite_purchase_limit: bool = true
 ## Затухание/рост цены заговоров без предела (docs/34 §6).
 @export var rite_curves: Array[RitualRiteCurve] = []
+## Проулки-срезки (docs/37 ALY-1); пусто — прежние проулки улиц (alley_cells).
+@export var alleys: Array[RitualAlley] = []
 ## Вехи идолов на 5/10/15 оплаченных заговорах (docs/37 IDL-4); пусто — вех нет.
 @export var idol_milestones: Array[RitualIdolMilestone] = []
 ## Скидка своей стихии (docs/34 §7): от числа заговоров на идоле этой стихии, с затуханием,

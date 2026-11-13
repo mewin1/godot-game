@@ -88,6 +88,14 @@ func _check_endless(scene: PackedScene) -> void:
 	_check(panel.trial.field.towers[0].durability == panel.settings.max_durability(1), "«Починить всё» не чинит")
 	cards = panel.shop_report()["cards"]
 	_check(cards == 21, "Покупка убрала постройку из постоянного каталога")
+	# Уровень города и завал проулка из панели города (docs/37 P3).
+	panel.trial.gold += 1000
+	panel._grow()
+	_check(panel.trial.city_level() == 2 and panel.trial.entrances(1000) == 2, "«Укрепить город» не открыл север")
+	panel._toggle_barricade(0)
+	_check(panel.trial.barricades[0] and not panel.trial.alley_open(0), "Проулок не завален")
+	panel._toggle_barricade(0)
+	_check(panel.trial.alley_open(0), "Завал не разобран")
 	var nights: RitualNightRules = panel.settings.nights
 	while panel.trial.tick_count < nights.night_start(1) + 1:
 		panel.trial.tick()

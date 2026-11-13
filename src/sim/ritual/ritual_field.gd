@@ -18,6 +18,9 @@ var _routes: Array = []
 var _route_street: Array[int] = []
 ## Ветка через проулок улицы k для входа e: ключ (e, k) → индекс маршрута.
 var _branches: Dictionary[Vector2i, int] = {}
+## Проулок-срезка k (docs/37 ALY-1): индекс его маршрута и прогресс развилки на дороге.
+var _alley_routes: Array[int] = []
+var _alley_forks: Array[int] = []
 
 
 func _init(rules: RitualTrialConfig) -> void:
@@ -41,6 +44,19 @@ func _build_routes() -> void:
 		back.reverse()
 		_add_branch(Vector2i(0, index + 1), layout.path_cells, street.alley_cells, street.path_cells)
 		_add_branch(Vector2i(index + 1, index + 1), street.path_cells, back, layout.path_cells)
+	# Срезки: начало дороги до развилки, проулок, конец той же дороги после срезанного отрезка.
+	for alley: RitualAlley in settings.alleys:
+		var base: Array[Vector2i] = route(alley.lane)
+		var start: int = _neighbor_index(base, alley.cells[0])
+		var finish: int = _neighbor_index(base, alley.cells[alley.cells.size() - 1])
+		assert(start >= 0 and finish > start, "Проулок должен срезать отрезок своей дороги")
+		var cells: Array[Vector2i] = base.slice(0, start + 1)
+		cells.append_array(alley.cells)
+		cells.append_array(base.slice(finish))
+		_alley_routes.append(_routes.size())
+		_alley_forks.append(start * MILLI)
+		_routes.append(cells)
+		_route_street.append(alley.city_level - 1)
 
 
 ## Ветка: начало своей дороги до клетки у проулка, проулок, остаток другой дороги от клетки за ним.
@@ -62,6 +78,32 @@ static func _neighbor_index(cells: Array[Vector2i], cell: Vector2i) -> int:
 		if absi(gap.x) + absi(gap.y) == 1:
 			return index
 	return -1
+
+
+## Маршрут срезки k (индекс маршрута поля).
+func alley_route(index: int) -> int:
+	return _alley_routes[index]
+
+
+## Прогресс развилки срезки k на её дороге: враг здесь ещё на общем отрезке.
+func alley_fork(index: int) -> int:
+	return _alley_forks[index]
+
+
+## Прогресс конца срезанного отрезка на дороге срезки k (где проулок снова сходится с ней).
+func alley_join(index: int) -> int:
+	var alley: RitualAlley = settings.alleys[index]
+	return _neighbor_index(route(alley.lane), alley.cells[alley.cells.size() - 1]) * MILLI
+
+
+## Клетки срезки k для вида: клетка дороги, проулок, клетка дороги.
+func alley_cells_with_ends(index: int) -> Array[Vector2i]:
+	var alley: RitualAlley = settings.alleys[index]
+	var base: Array[Vector2i] = route(alley.lane)
+	var cells: Array[Vector2i] = [base[_neighbor_index(base, alley.cells[0])]]
+	cells.append_array(alley.cells)
+	cells.append(base[_neighbor_index(base, alley.cells[alley.cells.size() - 1])])
+	return cells
 
 
 ## Маршрут ветки входа entrance через проулок улицы street; -1 — проулка нет.
@@ -164,7 +206,8 @@ func route(lane: int) -> Array[Vector2i]:
 	if lane <= 0 or lane >= _routes.size():
 		return layout.path_cells
 	var cells: Array[Vector2i] = _routes[lane]
-	return cells
+	# Уровень города без входа (детинец) — маршрута нет, по нему никто не идёт.
+	return cells if not cells.is_empty() else layout.path_cells
 
 
 ## Маршрутов по данным (открытых или нет).

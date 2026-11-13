@@ -77,6 +77,8 @@ var free_repair_until: int = 0
 ## Пристроенные улицы (docs/34 §3): для каждой — ночь, с которой открыт её вход.
 ## Места под дома открываются сразу при покупке.
 var street_nights: Array[int] = []
+## Заваленные проулки-срезки (docs/37 ALY-1): номер проулка → завален ли.
+var barricades: Array[bool] = []
 var _plan: RitualNightPlan
 
 
@@ -86,6 +88,7 @@ func _init(rules: RitualTrialConfig, loadout_index: int = 0, seed_value: int = -
 	var hasher: StateHasher = StateHasher.new()
 	RitualStateCodec.hash_value(hasher, RitualStateCodec.rules_state(rules))
 	rules_hash = hasher.value
+	barricades.resize(rules.alleys.size())
 	field = RitualField.new(rules)
 	field.mob_killed.connect(_on_killed)
 	field.mob_breached.connect(_on_breached)
@@ -153,7 +156,7 @@ func execute(command: RitualCommand) -> String:
 	var economic: bool = command.action in [RitualCommand.Action.BUY,
 		RitualCommand.Action.SELL, RitualCommand.Action.RITE, RitualCommand.Action.MERGE,
 		RitualCommand.Action.ENCHANT, RitualCommand.Action.REPAIR, RitualCommand.Action.REROLL,
-		RitualCommand.Action.REPAIR_HOUSE, RitualCommand.Action.STREET,
+		RitualCommand.Action.REPAIR_HOUSE, RitualCommand.Action.STREET, RitualCommand.Action.BARRICADE,
 		RitualCommand.Action.UPGRADE, RitualCommand.Action.SPECIALISE]
 	if phase == Phase.RUNNING and economic and (economy_frozen or control_mode != ControlMode.OPEN):
 		return "В этой контрольной ветке состав зафиксирован"
@@ -188,6 +191,8 @@ func execute(command: RitualCommand) -> String:
 			error = _repair_house(command.tower_id)
 		RitualCommand.Action.STREET:
 			error = _street()
+		RitualCommand.Action.BARRICADE:
+			error = _barricade(command.item)
 		RitualCommand.Action.SUPPLY:
 			error = _supply(command.rotation, command.item, command.progress)
 		RitualCommand.Action.UPGRADE:
@@ -833,6 +838,73 @@ func _street() -> String:
 	return ""
 
 
+#region Проулки-срезки (docs/37 ALY-1)
+
+## Проулок открыт для врагов: город дорос до него и он не завален.
+func alley_open(index: int) -> bool:
+	return index >= 0 and index < settings.alleys.size() and city_level() >= settings.alleys[index].city_level \
+		and not (index < barricades.size() and barricades[index])
+
+
+## Завал проулка за золото или разбор завала (бесплатно, без возврата).
+func _barricade(index: int) -> String:
+	if index < 0 or index >= settings.alleys.size():
+		return "Нет такого проулка"
+	var alley: RitualAlley = settings.alleys[index]
+	if city_level() < alley.city_level:
+		return "Проулок ещё за пределами города"
+	if barricades.size() != settings.alleys.size():
+		barricades.resize(settings.alleys.size())
+	if barricades[index]:
+		barricades[index] = false
+		_event(&"barricade", {"alley": index, "closed": false})
+		return ""
+	if gold < alley.barricade_cost:
+		return "Не хватает золота"
+	gold -= alley.barricade_cost
+	spent += alley.barricade_cost
+	barricades[index] = true
+	_event(&"barricade", {"alley": index, "closed": true, "cost": alley.barricade_cost})
+	return ""
+
+
+## Пойдёт ли враг этого вида проулком сразу (быстрые — всегда, когда проулок открыт).
+func takes_alley(index: int, enemy: MobData) -> bool:
+	return alley_open(index) and enemy.speed_milli_per_tick >= settings.alleys[index].fast_speed_milli
+
+
+## Проулок для врага, вошедшего по дороге lane: быстрый сворачивает в первый открытый.
+func _alley_for_spawn(lane: int, enemy: MobData) -> int:
+	for index: int in settings.alleys.size():
+		if settings.alleys[index].lane == lane and takes_alley(index, enemy):
+			return field.alley_route(index)
+	return lane
+
+
+## Медленный враг у развилки сворачивает в проулок, если впереди на срезаемом отрезке
+## стоит частокол или разлита смола (docs/37 ALY-1). Общий отрезок до развилки одинаков,
+## поэтому прогресс сохраняется.
+func _reroute_at_forks() -> void:
+	for index: int in settings.alleys.size():
+		if not alley_open(index):
+			continue
+		var alley: RitualAlley = settings.alleys[index]
+		var fork: int = field.alley_fork(index)
+		var join: int = field.alley_join(index)
+		var blocked: bool = (palisade_progress >= 0 and palisade_lane == alley.lane
+				and palisade_progress > fork and palisade_progress < join) \
+			or (tar_until > tick_count and tar_lane == alley.lane and tar_progress > fork and tar_progress < join)
+		if not blocked:
+			continue
+		for base: MobState in field.mobs:
+			var mob: RitualMob = base as RitualMob
+			if mob.is_alive() and mob.lane == alley.lane and mob.progress >= fork - FieldState.MILLI \
+					and mob.progress <= fork:
+				mob.lane = field.alley_route(index)
+
+#endregion
+
+
 #region Припасы
 ## Рассвет приносит один случайный припас (сид забега и номер рассвета), если запас не полон.
 func _grant_supply(dawn: int) -> void:
@@ -924,14 +996,21 @@ func tribute_due(dawn: int) -> int:
 ## Поле видит пристроенные улицы (после снимка — из street_nights).
 func sync_streets() -> void:
 	field.open_streets = street_nights.size()
+	var idols: int = field.config.idol_slots
+	for index: int in mini(street_nights.size(), settings.streets.size()):
+		idols += int(settings.streets[index].extra_idol)
+	while field.idols.size() < idols:
+		field.idols.append(IdolState.new())
+	if barricades.size() != settings.alleys.size():
+		barricades.resize(settings.alleys.size())
 	field.mark_towers_changed()
 
 
 ## Сколько входов открыто к этой ночи.
 func entrances(night: int) -> int:
 	var count: int = 1
-	for opened: int in street_nights:
-		count += int(opened <= night)
+	for index: int in street_nights.size():
+		count += int(street_nights[index] <= night and not settings.streets[index].path_cells.is_empty())
 	return count
 
 
@@ -1008,7 +1087,10 @@ func hero() -> RitualHeroData:
 
 
 func max_hp() -> int:
-	return hero().hp if hero() != null else settings.hero_hp
+	var bonus: int = 0
+	for index: int in mini(street_nights.size(), settings.streets.size()):
+		bonus += settings.streets[index].hero_hp
+	return (hero().hp if hero() != null else settings.hero_hp) + bonus
 
 
 func hero_name() -> String:
@@ -1111,6 +1193,8 @@ func tick() -> void:
 	_finish_installations()
 	_resolve_hero()
 	_apply_tar()
+	if not settings.alleys.is_empty():
+		_reroute_at_forks()
 	field.fire_trial_towers()
 	field.finish_tick()
 	field.pending_kill_gold = 0
@@ -1136,8 +1220,11 @@ func _spawn_due() -> void:
 
 ## Враг пачки на своем месте: здоровье и награда по кривым ночи, элита с короной.
 func spawn_from_pack(pack: RitualPack, slot: int) -> RitualMob:
+	var lane: int = member_route(pack, slot)
+	if not settings.alleys.is_empty():
+		lane = _alley_for_spawn(lane, settings.enemies[pack.members[slot]])
 	var mob: RitualMob = field.spawn_mob(pack.members[slot], pack.hp_at(slot, settings.nights.boss_enemy),
-			pack.resist, member_route(pack, slot))
+			pack.resist, lane)
 	mob.kill_reward = pack.bounties[slot]
 	mob.elite_rank = pack.elite[slot]
 	return mob

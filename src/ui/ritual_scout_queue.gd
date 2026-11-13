@@ -121,13 +121,41 @@ static func describe(trial: RitualTrial, pack: RitualPack) -> String:
 	if routes.size() > 1:
 		var straight: int = (pack.members.size() + routes.size() - 1) / routes.size()
 		lines.append("Делится у проулка: %d прямо, %d в проулок" % [straight, pack.members.size() - straight])
+	var alley_note: String = alley_users(trial, pack)
+	if not alley_note.is_empty():
+		lines.append(alley_note)
 	lines.append(_eta(trial, pack))
 	return "\n".join(lines)
 
 
+## Кто из пачки срежет проулком (docs/37 ALY-3): быстрые — всегда, если проулок открыт.
+static func alley_users(trial: RitualTrial, pack: RitualPack) -> String:
+	var settings: RitualTrialConfig = trial.settings
+	var lane: int = trial.pack_lane(pack)
+	for index: int in settings.alleys.size():
+		var alley: RitualAlley = settings.alleys[index]
+		if alley.lane != lane or trial.city_level() < alley.city_level:
+			continue
+		if not trial.alley_open(index):
+			return "Проулок завален: все идут по дороге"
+		var counts: Dictionary[int, int] = {}
+		for member: int in pack.members:
+			if trial.takes_alley(index, settings.enemies[member]):
+				counts[member] = counts.get(member, 0) + 1
+		if counts.is_empty():
+			return "Проулком никто не срежет (свернут, только если впереди частокол или смола)"
+		var parts: PackedStringArray = []
+		for member: int in counts:
+			parts.append("%s ×%d" % [settings.enemies[member].display_name, counts[member]])
+		return "Проулком срежут: " + ", ".join(parts)
+	return ""
+
+
 ## Вход по имени: главная дорога или название улицы.
 static func lane_name(trial: RitualTrial, lane: int) -> String:
-	return "главная дорога" if lane <= 0 else trial.settings.streets[lane - 1].title
+	if lane <= 0:
+		return "западные ворота" if not trial.settings.alleys.is_empty() else "главная дорога"
+	return trial.settings.streets[lane - 1].title if lane <= trial.settings.streets.size() else "проулок"
 
 
 static func _eta(trial: RitualTrial, pack: RitualPack) -> String:

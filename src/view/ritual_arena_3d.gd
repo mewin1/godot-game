@@ -33,6 +33,10 @@ var yard_cells: Dictionary[Vector2i, bool] = {}
 var lane_layouts: Array[ArenaLayout3D] = []
 ## Проулок каждой улицы (вид; null — проулка нет): рисуется дорогой, когда улица пристроена.
 var alley_layouts: Array[ArenaLayout3D] = []
+## Проулки-срезки (вид) и уровень города, с которого каждый рисуется (docs/37 ALY-1).
+var shortcut_layouts: Array[ArenaLayout3D] = []
+var shortcut_levels: Array[int] = []
+var _city_level: int = 1
 ## Сколько входов открыто сейчас и какие клетки двора уже открыты (подлесок их обходит).
 var _open_lanes: int = 1
 var _open_now: Dictionary[Vector2i, bool] = {}
@@ -100,7 +104,13 @@ func _in_cells(p: Vector2, cells: Dictionary[Vector2i, bool]) -> bool:
 ## Двор растёт улицами: открытые дороги и места всех пристроенных кварталов.
 func set_open(field: FieldState) -> void:
 	var ritual: RitualField = field as RitualField
-	_open_lanes = 1 + (mini(ritual.open_streets, ritual.settings.streets.size()) if ritual != null else 0)
+	_open_lanes = 1
+	_city_level = 1
+	if ritual != null:
+		_city_level = 1 + ritual.open_streets
+		# Уровень без входа (детинец) своей дороги не рисует.
+		for index: int in mini(ritual.open_streets, ritual.settings.streets.size()):
+			_open_lanes += int(not ritual.settings.streets[index].path_cells.is_empty())
 	super.set_open(field)
 
 
@@ -111,6 +121,13 @@ func _open_cells(field: FieldState, path: Array[Vector2i]) -> Dictionary[Vector2
 		roads = (field as RitualField).open_road_cells()
 	for cell: Vector2i in field.get_buildable_cells() + roads:
 		cells[cell] = true
+	# Участки (docs/37 P3) стоят в цельных кварталах уровня города: частокол обходит квартал,
+	# а не каждый участок отдельно.
+	if field is RitualField and (field as RitualField).settings.uses_plots():
+		for region: Rect2i in (field as RitualField).open_regions():
+			for y: int in range(region.position.y, region.end.y):
+				for x: int in range(region.position.x, region.end.x):
+					cells[Vector2i(x, y)] = true
 	for y: int in range(PLAZA.position.y, PLAZA.end.y):
 		for x: int in range(PLAZA.position.x, PLAZA.end.x):
 			cells[Vector2i(x, y)] = true
@@ -157,6 +174,13 @@ func _build_road(finish: float, _door: Vector3, out3: Vector3) -> PackedVector2A
 			var tail: float = alley.road_end_length()
 			var along: Vector3 = alley.road_direction(tail)
 			_extra_lanes.append(super._build_road(tail, alley.road_point(tail) + along * 0.05, along))
+	for index: int in shortcut_layouts.size():
+		if shortcut_levels[index] > _city_level:
+			continue
+		_layout = shortcut_layouts[index]
+		var tail: float = _layout.road_end_length()
+		var along: Vector3 = _layout.road_direction(tail)
+		_extra_lanes.append(super._build_road(tail, _layout.road_point(tail) + along * 0.05, along))
 	_layout = main
 	return main_bank
 

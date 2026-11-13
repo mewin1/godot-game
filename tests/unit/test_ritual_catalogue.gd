@@ -399,8 +399,19 @@ func test_combat_damage_per_invested_gold_stays_in_upgrade_band() -> void:
 				previous_damage = damage
 
 
+## Стенд меряет на эталонной прямой дороге (board_city.tres), а не на карте города: так числа
+## BLD-10/12 не зависят от раскладки улиц и проулков (docs/37 P3).
+func _bench_rules() -> RitualTrialConfig:
+	var rules: RitualTrialConfig = _settings.duplicate() as RitualTrialConfig
+	rules.combat = _settings.combat.duplicate() as GameConfig
+	rules.combat.board = load("res://data/ritual/board_city.tres") as BoardLayout
+	rules.alleys = []
+	rules.streets = []
+	return rules
+
+
 func _fight_damage(data: TowerData, level: int, branch: int, spacing: int) -> int:
-	var field: RitualField = RitualField.new(_settings)
+	var field: RitualField = RitualField.new(_bench_rules())
 	var house: RitualTower = field.add_tower(data, Vector2i(12, 8), 0) as RitualTower
 	house.level = level
 	house.branch = branch if level >= 3 else -1
@@ -425,7 +436,7 @@ func test_support_of_two_same_tier_houses_matches_damage_investment() -> void:
 
 
 func _support_damage(attacker: TowerData, level: int, support: TowerData = null, branch: int = -1) -> int:
-	var field: RitualField = RitualField.new(_settings)
+	var field: RitualField = RitualField.new(_bench_rules())
 	for cell: Vector2i in [Vector2i(12, 8), Vector2i(16, 8)]:
 		var house: RitualTower = field.add_tower(attacker, cell, 0) as RitualTower
 		house.level = level
