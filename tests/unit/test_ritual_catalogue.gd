@@ -282,22 +282,18 @@ func test_branch_changes_role_and_upgrade_discount_uses_idol() -> void:
 	assert_true(_trial.upgrade_cost(house) < full_cost)
 
 
-func test_catalogue_panel_changes_god_and_keeps_cards_after_purchase() -> void:
+## docs/37 UI-3: весь каталог в нижнем доке сразу (7 богов × 3 тира), покупка его не меняет.
+func test_dock_shows_whole_catalogue_and_keeps_cards_after_purchase() -> void:
 	var panel: RitualTrialPanel = _panel()
 	await get_tree().process_frame
 	panel._pick_hero(0)
 	panel._paused = true
-	assert_eq(RitualStateCodec.integer(panel.shop_report()["cards"]), 3)
-	assert_eq(RitualStateCodec.integer(panel.shop_report()["gods"]), 7)
+	assert_eq(RitualStateCodec.integer(panel.shop_report()["cards"]), 21)
 	assert_false(RitualStateCodec.boolean(panel.shop_report()["reroll"]))
-	_button_in(panel, "Catalogue_water").pressed.emit()
-	assert_eq(RitualStateCodec.integer(panel.shop_report()["cards"]), 3)
-	assert_eq(RitualStateCodec.text(panel.shop_report()["catalogue_god"]), "water")
-	_button_in(panel, "Catalogue_war").pressed.emit()
 	panel._choose_purchase(0)
 	panel._on_cell(panel.trial.field.get_buildable_cells()[0], false)
 	assert_eq(panel.trial.field.towers.size(), 1)
-	assert_eq(RitualStateCodec.integer(panel.shop_report()["cards"]), 3)
+	assert_eq(RitualStateCodec.integer(panel.shop_report()["cards"]), 21)
 
 
 func test_panel_exposes_upgrade_branches_and_night_price_explanation() -> void:
@@ -324,14 +320,14 @@ func test_panel_exposes_upgrade_branches_and_night_price_explanation() -> void:
 	assert_true(_button_in(panel, "SpecialiseHouse0").disabled, "Город 1 еще не открывает специализацию")
 	panel.trial.tick_count = _settings.nights.night_start(1)
 	panel._refresh()
-	var visible: int = 0
-	for node: Node in panel.find_children("NightSurcharge", "Label", true, false):
-		var badge: Label = node as Label
-		if badge.is_visible_in_tree():
-			visible += 1
-			assert_string_contains(badge.tooltip_text, "Ночной вызов")
-			assert_string_contains(badge.tooltip_text, "+50%")
-	assert_eq(visible, 3)
+	var night: int = 0
+	for node: Node in panel.find_children("CatalogueChip_*", "", true, false):
+		var chip: RitualBuildChip = node as RitualBuildChip
+		if chip.locked_text.is_empty():
+			night += int(chip.at_night)
+			assert_string_contains(chip.tooltip_text, "Ночной вызов")
+			assert_string_contains(chip.tooltip_text, "+50%")
+	assert_eq(night, 7, "Ночная цена у всех открытых домов первого тира")
 	var upgrade_badge: Label = panel.find_child("UpgradeNightSurcharge", true, false) as Label
 	assert_not_null(upgrade_badge, "Наценка видна и возле улучшений")
 	if upgrade_badge != null:
@@ -345,12 +341,12 @@ func test_right_click_on_catalogue_card_cancels_without_rotation() -> void:
 	panel._pick_hero(0)
 	panel._paused = true
 	panel._choose_purchase(0)
-	var card: Control = panel.find_child("CatalogueCard_bolt", true, false) as Control
+	var card: Control = panel.find_child("CatalogueChip_bolt", true, false) as Control
 	var event: InputEventMouseButton = InputEventMouseButton.new()
 	event.button_index = MOUSE_BUTTON_RIGHT
 	event.pressed = true
 	card.call("_gui_input", event)
-	assert_eq(RitualStateCodec.integer(card.get("rotation_turns")), 0)
+	assert_eq(panel.board.preview_rotation, 0)
 	assert_eq(panel.board.action, &"")
 
 
@@ -493,3 +489,24 @@ func _buy_house() -> RitualTower:
 func _finish_build(house: TowerState) -> void:
 	while house.action_lock_ticks > 0:
 		_trial.tick()
+
+
+## docs/37 IDL-2: заговор покупают у выбранного идола; пустой идол посвящается богу заговора.
+func test_rite_goes_to_chosen_idol() -> void:
+	var rite: int = 0
+	var god: StringName = _settings.rites[rite].god
+	assert_eq(_trial.execute(RitualCommand.new(RitualCommand.Action.RITE, rite, Vector2i.ZERO, 0, 3)), "")
+	assert_eq(_trial.field.idols[2].god, god, "Посвящён третий идол, а не первый свободный")
+	assert_eq(_trial.field.idols[0].god, &"", "Первый идол остался пустым")
+	var other: int = -1
+	for index: int in _settings.rites.size():
+		if _settings.rites[index].god != god:
+			other = index
+			break
+	assert_ne(_trial.execute(RitualCommand.new(RitualCommand.Action.RITE, other, Vector2i.ZERO, 0, 3)), "",
+		"Идол другого бога не берёт чужой заговор")
+	assert_ne(_trial.execute(RitualCommand.new(RitualCommand.Action.RITE, rite, Vector2i.ZERO, 0, 1)), "",
+		"Второй идол того же бога не посвятить: бог уже живёт в третьем")
+	assert_ne(_trial.execute(RitualCommand.new(RitualCommand.Action.RITE, rite, Vector2i.ZERO, 0, 9)), "")
+	assert_eq(_trial.execute(RitualCommand.new(RitualCommand.Action.RITE, rite, Vector2i.ZERO, 0, 3)), "")
+	assert_eq(_trial.rite_count(rite), 2)

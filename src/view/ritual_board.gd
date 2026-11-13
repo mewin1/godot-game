@@ -4,6 +4,8 @@ extends Control
 
 signal command_requested(command: RitualCommand)
 signal cell_clicked(cell: Vector2i, right: bool)
+## Щелчок по идолу на площади (docs/37 IDL-2): номер идола.
+signal idol_clicked(index: int)
 
 const ELITE_CROWN: Texture2D = preload("res://assets/ui/elite_crown.svg")
 
@@ -15,6 +17,14 @@ var action: StringName = &""
 ## Припас под прицелом (RitualTrial.Supply) при action == &"supply".
 var supply_kind: int = 0
 var hover_cell: Vector2i = Vector2i(-1, -1)
+## Отступы карты от краёв окна: слева/сверху — position, справа/снизу — size. По умолчанию —
+## прежняя раскладка с лавкой слева; док забега задаёт свои (RitualTrialPanel).
+var map_inset: Rect2 = Rect2(338, 76, 20, 134)
+## Тип постройки, наведённой в каталоге (docs/37 UI-9): все такие дома обводятся, участки мерцают.
+var highlight_data: TowerData
+## Alt зажат: уровень и стихия над каждым домом (docs/37 UI-10).
+var show_all_marks: bool = false
+var _pulse: float = 0.0
 var _cell: float = 32.0
 var _origin: Vector2 = Vector2.ZERO
 var stage: RitualStage3D
@@ -52,7 +62,8 @@ func _process(delta: float) -> void:
 		_next_hit_text.clear()
 		_last_hero_due = -1
 	stage.size = size
-	stage.frame_board(Rect2(Vector2(338, 76), size - Vector2(358, 210)))
+	stage.frame_board(Rect2(map_inset.position, size - map_inset.position - map_inset.size))
+	_pulse = fmod(_pulse + delta, 1.6)
 	stage.update_ritual(trial, delta)
 	if _last_hero_due >= 0 and trial.hero_due < 0 and trial.tick_count >= _last_hero_due:
 		effects.play_burst(_point(trial.field.lane_point(trial.hero_lane, trial.hero_progress)), Color("ffe1a0"))
@@ -122,10 +133,18 @@ func _gui_input(event: InputEvent) -> void:
 	if event is InputEventMouseMotion:
 		var motion: InputEventMouseMotion = event as InputEventMouseMotion
 		hover_cell = stage.cell_at(motion.position)
+		stage.idol_hovered = stage.idol_at(motion.position) if action == &"" else -1
+		mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND if stage.idol_hovered >= 0 \
+			else Control.CURSOR_ARROW
 		queue_redraw()
 	elif event is InputEventMouseButton:
 		var button: InputEventMouseButton = event as InputEventMouseButton
 		if button.pressed and button.button_index in [MOUSE_BUTTON_LEFT, MOUSE_BUTTON_RIGHT]:
+			var idol: int = stage.idol_at(button.position) if action == &"" else -1
+			if idol >= 0 and button.button_index == MOUSE_BUTTON_LEFT:
+				idol_clicked.emit(idol)
+				accept_event()
+				return
 			var cell: Vector2i = stage.cell_at(button.position)
 			cell_clicked.emit(cell, button.button_index == MOUSE_BUTTON_RIGHT)
 			accept_event()
@@ -169,15 +188,20 @@ func _draw() -> void:
 	_geometry()
 	var field: RitualField = trial.field
 	if trial.settings.uses_plots():
+		var wanted: bool = action == &"buy" or highlight_data != null
+		var glow: float = 0.55 + 0.45 * absf(sin(_pulse / 1.6 * TAU)) if wanted else 1.0
 		for cell: Vector2i in field.get_buildable_cells():
 			if field.get_tower_at(cell) == null:
 				_tile(cell, Color(0.3, 0.34, 0.33, 0.45))
-				_tile(cell, Color("f0c27a") if action == &"buy" else Color("7f8a85"), false)
+				_tile(cell, Color(Color("f0c27a"), glow) if wanted else Color("7f8a85"), false)
 	elif action in [&"buy", &"move"]:
 		for cell: Vector2i in field.get_buildable_cells():
 			_tile(cell, Color(0.6, 0.8, 0.75, 0.13), false)
 	for tower: TowerState in field.towers:
 		_draw_tower(tower)
+	if trial.settings.uses_plots():
+		for tower: TowerState in field.towers:
+			_draw_kin(tower)
 	for base: MobState in field.mobs:
 		_draw_mob(base as RitualMob)
 	if trial.hero_due >= 0:
@@ -198,7 +222,7 @@ func _draw() -> void:
 func _draw_tower(tower: TowerState) -> void:
 	var color: Color = GodSymbols.get_color(tower.data.god)
 	for cell: Vector2i in tower.cells():
-		if tower.id == selected_id:
+		if tower.id == selected_id and not trial.settings.uses_plots():
 			_tile(cell, Color("ffe4a5"), false)
 		if tower.is_action_blocked():
 			_tile(cell, Color(0.1, 0.15, 0.2, 0.65))
@@ -233,7 +257,52 @@ func _draw_tower(tower: TowerState) -> void:
 	if tower.is_action_blocked():
 		_text(stage.tower_top(tower.id), "Установка…", Color.WHITE, 14)
 	if tower.id == selected_id:
-		_ring(tower.center_milli(), trial.field.get_tower_range(tower), Color(color, 0.6), 1.5)
+		var width: float = 2.5 if trial.settings.uses_plots() else 1.5
+		_ring(tower.center_milli(), trial.field.get_tower_range(tower), Color(color, 0.7), width)
+
+
+## Дома того же типа, что выбранный или наведённый в каталоге (docs/37 UI-8, UI-9): обводка,
+## уровень и стрелка улучшения (золотая — хватает золота, серая — нет). С Alt — над всеми домами.
+func _draw_kin(tower: TowerState) -> void:
+	var selected: TowerState = trial.field.get_tower(selected_id)
+	var kin: bool = (selected != null and selected.data == tower.data) \
+		or (highlight_data != null and highlight_data == tower.data)
+	if tower.id == selected_id:
+		for cell: Vector2i in tower.cells():
+			_tile(cell, Color(1, 0.86, 0.5, 0.18))
+			_tile_outline(cell, Color("ffe4a5"), 4.0)
+	elif kin:
+		for cell: Vector2i in tower.cells():
+			_tile_outline(cell, Color(GodSymbols.get_color(tower.data.god), 0.95), 3.0)
+	if not (kin or show_all_marks):
+		return
+	var top: Vector2 = stage.tower_top(tower.id) + Vector2(0, -6)
+	_level_pips(top, tower.level, GodSymbols.get_color(tower.data.god))
+	if tower.level < trial.settings.combat.max_tower_level and kin:
+		var ready: bool = trial.upgrade_error(tower, 0 if tower.level == 2 else -1).is_empty() \
+			and trial.gold >= trial.upgrade_cost(tower)
+		_text(top + Vector2(20, 6), "↑", Color("ffd36b") if ready else Color(0.6, 0.6, 0.6, 0.8), 18)
+
+
+## Четыре ступени уровня (дерево, камень, кирпич, белый камень): закрашено столько, сколько уровень.
+func _level_pips(at: Vector2, level: int, color: Color) -> void:
+	var count: int = trial.settings.combat.max_tower_level
+	var step: float = 9.0
+	var x: float = at.x - step * (count - 1) * 0.5
+	draw_rect(Rect2(Vector2(x - 7, at.y - 6), Vector2(step * count + 5, 12)), Color(0.02, 0.04, 0.06, 0.75))
+	for index: int in count:
+		var point: Vector2 = Vector2(x + step * index, at.y)
+		if index < level:
+			draw_circle(point, 3.4, Color("ffe4a5"))
+		else:
+			draw_arc(point, 3.0, 0, TAU, 12, Color(color, 0.7), 1.2)
+
+
+func _tile_outline(cell: Vector2i, color: Color, width: float) -> void:
+	var points: PackedVector2Array = []
+	for corner: Vector2 in [Vector2.ZERO, Vector2.RIGHT, Vector2.ONE, Vector2.DOWN, Vector2.ZERO]:
+		points.append(stage.project_cell_corner(cell, corner, 0.13))
+	draw_polyline(points, color, width, true)
 
 
 func _draw_mob(mob: RitualMob) -> void:
@@ -395,7 +464,14 @@ func _draw_preview() -> void:
 func _get_tooltip(at_position: Vector2) -> String:
 	if trial == null or stage == null or stage.layout == null:
 		return ""
+	if stage.idol_at(at_position) >= 0:
+		return "Идол: щёлкните — посвятить богу или купить заговор"
 	var tower: TowerState = trial.field.get_tower_at(stage.cell_at(at_position))
+	if tower != null and trial.settings.uses_plots():
+		var levels: RitualBuildingLevels = trial.settings.levels_for(tower.data)
+		return "%s · %s\n%s\nЛКМ: выбрать · Tab: следующий такой же · Alt: уровни всех домов" % [
+			tower.data.display_name, trial.settings.level_name(tower.level),
+			levels.role if levels != null else tower.data.description]
 	if tower != null:
 		return "%s #%d · ур. %d\n%s\nЛКМ: выбор · ПКМ: поворот · перетащить на такую же — слияние" % [
 			tower.data.display_name, tower.id, tower.level, tower.data.description]
@@ -414,7 +490,7 @@ func _get_tooltip(at_position: Vector2) -> String:
 
 
 func _get_drag_data(at_position: Vector2) -> Variant:
-	if trial == null or stage == null:
+	if trial == null or stage == null or trial.settings.uses_plots():
 		return null
 	var tower: TowerState = trial.field.get_tower_at(stage.cell_at(at_position))
 	if tower == null:

@@ -169,7 +169,7 @@ func execute(command: RitualCommand) -> String:
 		RitualCommand.Action.SELL:
 			error = _sell(command.tower_id)
 		RitualCommand.Action.RITE:
-			error = _rite(command.item)
+			error = _rite(command.item, command.tower_id)
 		RitualCommand.Action.SKILL:
 			error = _skill(command.item, command.progress)
 		RitualCommand.Action.PALISADE:
@@ -600,7 +600,8 @@ func _sell(id: int) -> String:
 	return ""
 
 
-func _rite(index: int) -> String:
+## idol_slot: 0 — свой или первый свободный идол (прежние записи), N — идол N-1 (docs/37 IDL-2).
+func _rite(index: int, idol_slot: int = 0) -> String:
 	if index < 0 or index >= settings.rites.size():
 		return "Нет такого заговора"
 	var slot: int = rite_offers.find(index)
@@ -613,6 +614,15 @@ func _rite(index: int) -> String:
 	if gold < cost:
 		return "Не хватает золота"
 	var idol: IdolState = field.get_idol(data.god)
+	if idol_slot > 0:
+		if idol_slot > field.idols.size():
+			return "Нет такого идола"
+		var chosen: IdolState = field.idols[idol_slot - 1]
+		if idol != null and idol != chosen:
+			return "Этот бог уже живёт в другом идоле"
+		if chosen.god != &"" and chosen.god != data.god:
+			return "Идол посвящён другому богу"
+		idol = chosen
 	if idol == null:
 		for candidate: IdolState in field.idols:
 			if candidate.god == &"":

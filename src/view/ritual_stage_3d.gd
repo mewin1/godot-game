@@ -27,6 +27,10 @@ const CAMERA_YAW_RITUAL: float = 0.3
 var _daylight: RitualDaylight
 var _catalogue_profile: bool = false
 var _profile_ready: bool = false
+## Идолы на площади (docs/37 §8) — только в забеге с участками; -1 — нет подсветки/выбора.
+var _idols: RitualIdols3D
+var idol_hovered: int = -1
+var idol_selected: int = -1
 
 
 func _init() -> void:
@@ -50,6 +54,9 @@ func _init() -> void:
 	clouds.center = Vector3(24.0, 0.0, -5.0)  # середина двора
 	_world.add_child(clouds)
 	_daylight = RitualDaylight.new(_world, clouds)
+	_idols = RitualIdols3D.new(STYLE)
+	_idols.visible = false
+	_world.add_child(_idols)
 
 
 func _exit_tree() -> void:
@@ -151,6 +158,9 @@ func update_ritual(trial: RitualTrial, delta: float) -> void:
 			_spawn_hero()
 	_daylight.camera_distance = _camera.position.distance_to((_frame_min + _frame_max) * 0.5)
 	_daylight.apply(trial)
+	_idols.visible = catalogue
+	if catalogue:
+		_idols.sync(trial.field.idols, idol_hovered, idol_selected)
 	if trial.palisade_progress != _barrier_progress or trial.palisade_lane != _barrier_lane:
 		_barrier_progress = trial.palisade_progress
 		_barrier_lane = trial.palisade_lane
@@ -171,6 +181,23 @@ func update_ritual(trial: RitualTrial, delta: float) -> void:
 	if _barrier != null:
 		_barrier.scale.y = 1.0 if trial.tick_count >= trial.palisade_ready else 0.4
 	sync(delta, 1.0)
+
+
+## Идол под точкой экрана (-1 — нет): круг вокруг середины фигуры.
+func idol_at(point: Vector2) -> int:
+	if not _idols.visible:
+		return -1
+	for index: int in RitualIdols3D.SPOTS.size():
+		var center: Vector2 = project(RitualIdols3D.spot_at(index) + Vector3(0, 1.1, 0))
+		var top: Vector2 = project(RitualIdols3D.spot_at(index) + Vector3(0, 2.6, 0))
+		if point.distance_to(center) < maxf(18.0, center.distance_to(top) * 0.95):
+			return index
+	return -1
+
+
+## Подножие идола на экране — сюда крепится окно идола.
+func idol_screen(index: int, lift: float = 0.0) -> Vector2:
+	return project(RitualIdols3D.spot_at(index) + Vector3(0, lift, 0))
 
 
 func _update_frame_bounds() -> void:

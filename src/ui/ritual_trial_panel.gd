@@ -70,6 +70,10 @@ var _upgrade_surcharge: Label
 var _specialise_buttons: Array[Button] = []
 var _sell_button: Button
 var _wear_dawn: int = -1
+## Нижний док и окно идола забега с участками (docs/37 §8, §10); null — прежняя раскладка.
+var _dock: RitualDock
+var _idol_popup: RitualIdolPopup
+var _selection_title: Label
 
 
 func _ready() -> void:
@@ -118,6 +122,102 @@ func _build_ui() -> void:
 	hud_tools.move_child(_fast_button, _hud._pause_button.get_index() + 1)
 	# Ряд привязан к правому краю: лишняя кнопка сдвигает его влево, а не за край экрана.
 	_hud._prep_tools.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	if settings.uses_plots():
+		_build_dock(root_box)
+	else:
+		_build_legacy(root_box)
+	_skill_button = _hud._skill_button
+	_palisade_button = _hud._reserve_button
+	_pause_button = _hud._pause_button
+	_start_button = _shop._ready if _shop != null else null
+	_clock = _hud._phase_label
+	_status = _hud._hp_label
+	_idols = _label(self, "", 10)
+	_idols.hide()
+	# Временный счётчик кадров: справа под кнопками «Пауза» и «Проверки».
+	_fps = FpsLabel.new()
+	_fps.viewport = board.stage._viewport if board.stage != null else null
+	add_child(_fps)
+	_fps.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
+	_fps.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_fps.offset_left = -190.0
+	_fps.offset_right = -16.0
+	_fps.offset_top = 52.0
+	if settings.is_endless():
+		_fps.hide()
+		_hud._speed_button.hide()
+	# Техническая строка опыта сохранена отдельно от интерфейса PvP.
+	var tools: VBoxContainer = VBoxContainer.new()
+	root_box.add_child(tools)
+	var controls: HFlowContainer = HFlowContainer.new()
+	controls.name = "TrialTools"
+	controls.visible = false
+	tools.add_child(controls)
+	_preset = OptionButton.new()
+	_preset.focus_mode = Control.FOCUS_NONE
+	for loadout: RitualLoadout in settings.loadouts:
+		_preset.add_item(loadout.title)
+	controls.add_child(_preset)
+	_button(controls, "Заново", _reset_selected)
+	_button(controls, "Один тик", _step)
+	_button(controls, "Снимок", _capture)
+	_button(controls, "Открыть снимок", _load_checkpoint)
+	_branch = OptionButton.new()
+	_branch.focus_mode = Control.FOCUS_NONE
+	for text: String in ["Свободное продолжение", "Без команд", "Только приёмы", "Приёмы + переносы"]:
+		_branch.add_item(text)
+	controls.add_child(_branch)
+	_button(controls, "Ветка из снимка", _restore_branch)
+	_button(controls, "Сохранить итог", _save_result)
+	_button(controls, "Расписание · все сутки", _show_schedule).visible = not settings.is_endless()
+	_button(controls, "В меню", _back)
+	_threat = _hud._siege_label
+	_hud._siege_panel.show()
+	if settings.is_endless():
+		# Очередь ближайшей ночи — своя полоса сверху над полем: пачек много, карточки шире.
+		_scout = RitualScoutQueue.new()
+		_hud._siege_panel.hide()
+		var strip: PanelContainer = PanelContainer.new()
+		strip.add_theme_stylebox_override("panel", DuskTheme.glass(0.62, 6))
+		strip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(strip)
+		strip.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+		strip.offset_left = 430
+		strip.offset_right = -230
+		strip.offset_top = 8
+		strip.add_child(_scout)
+	_threat.visible = not settings.is_endless()
+	_toast = PanelContainer.new()
+	_toast.add_theme_stylebox_override("panel", DuskTheme.glass(0.82, 8))
+	_toast.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_toast)
+	_toast.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
+	_toast.offset_left = 356
+	_toast.offset_right = -20
+	# Над панелью выбора постройки, чтобы не закрывать её строку.
+	_toast.offset_top = -258
+	_toast.offset_bottom = -228
+	if _dock != null:
+		# Забег: сообщения сверху по центру под шапкой (docs/37 UI-12), карту снизу не закрывают.
+		_toast.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
+		_toast.offset_left = -380
+		_toast.offset_right = 380
+		_toast.offset_top = 64
+		_toast.offset_bottom = 94
+	_message = _label(_toast, "", 12)
+	_message.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_message.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_message.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	_history = _label(controls, "", 10)
+	_history.hide()
+	_build_schedule()
+	_build_defeat()
+	_build_gifts()
+	_build_heroes()
+
+
+## Прежняя раскладка (4-суточный опыт): лавка и правка слева, идолы и герой под картой.
+func _build_legacy(root_box: VBoxContainer) -> void:
 	var body: HBoxContainer = HBoxContainer.new()
 	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	body.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -216,87 +316,56 @@ func _build_ui() -> void:
 	hero_row.add_theme_constant_override("separation", 10)
 	hero_dock.add_child(hero_row)
 	_hud.move_hero_controls(hero_row)
-	_skill_button = _hud._skill_button
-	_palisade_button = _hud._reserve_button
-	_pause_button = _hud._pause_button
-	_start_button = _shop._ready
-	_clock = _hud._phase_label
-	_status = _hud._hp_label
-	_idols = _label(self, "", 10)
-	_idols.hide()
-	# Временный счётчик кадров: справа под кнопками «Пауза» и «Проверки».
-	_fps = FpsLabel.new()
-	_fps.viewport = board.stage._viewport if board.stage != null else null
-	add_child(_fps)
-	_fps.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
-	_fps.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	_fps.offset_left = -190.0
-	_fps.offset_right = -16.0
-	_fps.offset_top = 52.0
-	if settings.is_endless():
-		_fps.hide()
-		_hud._speed_button.hide()
-	# Техническая строка опыта сохранена отдельно от интерфейса PvP.
-	var tools: VBoxContainer = VBoxContainer.new()
-	root_box.add_child(tools)
-	var controls: HFlowContainer = HFlowContainer.new()
-	controls.name = "TrialTools"
-	controls.visible = false
-	tools.add_child(controls)
-	_preset = OptionButton.new()
-	_preset.focus_mode = Control.FOCUS_NONE
-	for loadout: RitualLoadout in settings.loadouts:
-		_preset.add_item(loadout.title)
-	controls.add_child(_preset)
-	_button(controls, "Заново", _reset_selected)
-	_button(controls, "Один тик", _step)
-	_button(controls, "Снимок", _capture)
-	_button(controls, "Открыть снимок", _load_checkpoint)
-	_branch = OptionButton.new()
-	_branch.focus_mode = Control.FOCUS_NONE
-	for text: String in ["Свободное продолжение", "Без команд", "Только приёмы", "Приёмы + переносы"]:
-		_branch.add_item(text)
-	controls.add_child(_branch)
-	_button(controls, "Ветка из снимка", _restore_branch)
-	_button(controls, "Сохранить итог", _save_result)
-	_button(controls, "Расписание · все сутки", _show_schedule).visible = not settings.is_endless()
-	_button(controls, "В меню", _back)
-	_threat = _hud._siege_label
-	_hud._siege_panel.show()
-	if settings.is_endless():
-		# Очередь ближайшей ночи — своя полоса сверху над полем: пачек много, карточки шире.
-		_scout = RitualScoutQueue.new()
-		_hud._siege_panel.hide()
-		var strip: PanelContainer = PanelContainer.new()
-		strip.add_theme_stylebox_override("panel", DuskTheme.glass(0.62, 6))
-		strip.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		add_child(strip)
-		strip.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
-		strip.offset_left = 430
-		strip.offset_right = -230
-		strip.offset_top = 8
-		strip.add_child(_scout)
-	_threat.visible = not settings.is_endless()
-	_toast = PanelContainer.new()
-	_toast.add_theme_stylebox_override("panel", DuskTheme.glass(0.82, 8))
-	_toast.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(_toast)
-	_toast.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
-	_toast.offset_left = 356
-	_toast.offset_right = -20
-	# Над панелью выбора постройки, чтобы не закрывать её строку.
-	_toast.offset_top = -258
-	_toast.offset_bottom = -228
-	_message = _label(_toast, "", 12)
-	_message.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_message.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_message.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	_history = _label(controls, "", 10)
-	_history.hide()
-	_build_schedule()
-	_build_defeat()
-	_build_gifts()
-	_build_heroes()
+
+
+## Забег с участками (docs/37 §10): карта на весь экран между шапкой и нижним доком,
+## идолы — на площади у терема (окно по щелчку), правка дома — в правой части дока.
+func _build_dock(root_box: VBoxContainer) -> void:
+	var field_space: Control = Control.new()
+	field_space.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	field_space.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	root_box.add_child(field_space)
+	_dock = RitualDock.new()
+	root_box.add_child(_dock)
+	_dock.setup_catalogue(settings)
+	_dock.building_chosen.connect(_choose_purchase)
+	_dock.building_hovered.connect(_hover_building)
+	_dock.placement_cancelled.connect(_cancel_from_catalogue)
+	_hud.hero_name_width = 118.0
+	_hud.move_hero_controls(_dock.hero_row)
+	# Портрет мельче прежнего блока героя: док делит ширину экрана с каталогом.
+	_hud._hero_portrait.custom_minimum_size = Vector2.ONE * 64
+	for button: Button in [_hud._skill_button, _hud._reserve_button]:
+		button.custom_minimum_size = Vector2(150, 34)
+	_repair_button = _button(_dock.utility_row, "", _repair)
+	_repair_button.name = "HealHero"
+	for kind: int in RitualTrial.SUPPLY_NAMES.size():
+		_supply_buttons.append(_button(_dock.utility_row, "", _choose_supply.bind(kind)))
+	_selection = _dock.context_text
+	_selection_title = _dock.context_title
+	_upgrade_button = _button(_dock.house_actions, "Улучшить", _upgrade_selected.bind(-1))
+	_upgrade_button.name = "UpgradeHouse"
+	for branch_index: int in 2:
+		_specialise_buttons.append(_button(_dock.house_actions, "", _upgrade_selected.bind(branch_index)))
+		_specialise_buttons[-1].name = "SpecialiseHouse%d" % branch_index
+	_upgrade_surcharge = Label.new()
+	_upgrade_surcharge.name = "UpgradeNightSurcharge"
+	_upgrade_surcharge.text = "↑"
+	_upgrade_surcharge.mouse_filter = Control.MOUSE_FILTER_PASS
+	_upgrade_surcharge.add_theme_color_override("font_color", Color("ff6258"))
+	_dock.house_actions.add_child(_upgrade_surcharge)
+	_repair_house_button = _button(_dock.house_actions, "Починить дом", _repair_selected)
+	_sell_button = _button(_dock.house_actions, "Продать", _sell)
+	if not settings.streets.is_empty():
+		_street_button = _button(_dock.city_actions, "", _grow)
+	_repair_all_button = _button(_dock.city_actions, "Починить всё", _repair_houses.bind(0))
+	_repair_all_button.tooltip_text = "Вернуть полную прочность всем домам. Ремонт дешевле новой постройки."
+	_idol_popup = RitualIdolPopup.new()
+	add_child(_idol_popup)
+	_idol_popup.rite_requested.connect(_buy_rite_at)
+	_idol_popup.closed.connect(_on_idol_closed)
+	board.idol_clicked.connect(_open_idol)
+	board.map_inset = Rect2(12, 58, 12, RitualDock.HEIGHT + 6)
 
 
 ## Экран поражения бесконечного забега: ночи, рекорд на устройстве, убитые боссы.
@@ -635,6 +704,17 @@ func _age_toast(delta: float) -> void:
 
 func _unhandled_key_input(event: InputEvent) -> void:
 	var key: InputEventKey = event as InputEventKey
+	if key != null and key.keycode == KEY_ALT and settings.uses_plots():
+		board.show_all_marks = key.pressed
+		board.queue_redraw()
+	if key != null and key.pressed and not key.echo and _dock != null:
+		if key.keycode == KEY_TAB:
+			_cycle_same_type()
+			get_viewport().set_input_as_handled()
+			return
+		if key.keycode in [KEY_4, KEY_5, KEY_6] and key.keycode - KEY_4 < trial.field.idols.size():
+			_open_idol(key.keycode - KEY_4)
+			return
 	if key != null and key.pressed and not key.echo:
 		if key.keycode == KEY_Q and not _skill_button.disabled:
 			_choose_skill()
@@ -657,6 +737,10 @@ func _unhandled_key_input(event: InputEvent) -> void:
 	if event.is_action_pressed(&"ui_cancel"):
 		if _schedule.visible:
 			_hide_schedule()
+			get_viewport().set_input_as_handled()
+			return
+		if _idol_popup != null and _idol_popup.visible:
+			_idol_popup.close_popup()
 			get_viewport().set_input_as_handled()
 			return
 		_cancel_aim()
@@ -693,6 +777,63 @@ func _buy_rite(index: int) -> void:
 	_issue(RitualCommand.new(RitualCommand.Action.RITE, index))
 
 
+## Заговор у выбранного идола (docs/37 IDL-2): номер идола едет в команде (tower_id = номер + 1).
+func _buy_rite_at(index: int, idol_index: int) -> void:
+	if _issue(RitualCommand.new(RitualCommand.Action.RITE, index, Vector2i.ZERO, 0, idol_index + 1)):
+		_message.text = "%s: заговор «%s»" % [GodSymbols.get_power_name(settings.rites[index].god),
+			settings.rites[index].display_name]
+
+
+func _open_idol(index: int) -> void:
+	if _idol_popup == null or board.action != &"":
+		return
+	board.selected_id = 0
+	_idol_popup.open(index)
+	if board.stage != null:
+		board.stage.idol_selected = index
+	_refresh()
+
+
+func _on_idol_closed() -> void:
+	if board.stage != null:
+		board.stage.idol_selected = -1
+
+
+## Окно идола сбоку от его фигуры (сама фигура и её огонь остаются видны); в пределах карты.
+func _place_idol_popup() -> void:
+	if _idol_popup == null or not _idol_popup.visible or board.stage == null:
+		return
+	_idol_popup.refresh(trial)
+	_idol_popup.reset_size()
+	var middle: Vector2 = board.stage.idol_screen(_idol_popup.idol_index, 1.4)
+	var box: Vector2 = _idol_popup.size
+	var at: Vector2 = Vector2(middle.x - box.x - 40.0, middle.y - box.y * 0.5)
+	var limit: Rect2 = Rect2(board.map_inset.position, size - board.map_inset.position - board.map_inset.size)
+	if at.x < limit.position.x:
+		at.x = middle.x + 40.0
+	at.x = clampf(at.x, limit.position.x, limit.end.x - box.x)
+	at.y = clampf(at.y, limit.position.y, limit.end.y - box.y)
+	_idol_popup.position = at
+
+
+func _hover_building(index: int) -> void:
+	board.highlight_data = settings.combat.towers[index] if index >= 0 else null
+	board.queue_redraw()
+
+
+## Tab: следующий дом того же типа, что выбранный (docs/37 UI-11).
+func _cycle_same_type() -> void:
+	var current: TowerState = trial.field.get_tower(board.selected_id)
+	if current == null:
+		return
+	var kin: Array[TowerState] = []
+	for tower: TowerState in trial.field.towers:
+		if tower.data == current.data:
+			kin.append(tower)
+	board.selected_id = kin[(kin.find(current) + 1) % kin.size()].id
+	_refresh()
+
+
 func _choose_enchant(index: int) -> void:
 	_enchant_index = index
 	board.action = &"enchant"
@@ -703,6 +844,10 @@ func _choose_enchant(index: int) -> void:
 ## Состояние лавки для проверок (smoke не обращается к лавке напрямую: так при выходе
 ## оставались в памяти статические кэши иконок).
 func shop_report() -> Dictionary[String, Variant]:
+	if _dock != null:
+		return {"cards": _dock.chip_count(), "reroll": false, "enchants": false, "gods": 0,
+			"catalogue_god": "", "idol_popup": _idol_popup.visible,
+			"dock_bottom": _dock.get_global_rect().end.y, "dock_right": _dock.get_global_rect().end.x}
 	return {"cards": _shop.visible_offer_count(), "reroll": _shop._reroll.is_visible_in_tree(),
 		"enchants": _shop.has_enchants(), "gods": _shop._god_buttons.size(),
 		"catalogue_god": String(_shop._catalogue_god)}
@@ -916,6 +1061,10 @@ func _cancel_move() -> void:
 
 
 func _on_cell(cell: Vector2i, right: bool) -> void:
+	if _idol_popup != null and _idol_popup.visible:
+		_idol_popup.close_popup()
+		if right or board.action == &"":
+			return
 	if right and settings.is_endless() and board.action in [&"buy", &"move"]:
 		# В забеге ПКМ отменяет выбор места; поворот фигуры - клавиша R (docs/37 UI-6).
 		_cancel_aim()
@@ -1056,14 +1205,20 @@ func _refresh() -> void:
 	_hud.refresh_ritual(trial, _paused)
 	_refresh_gifts()
 	_announce_omen()
-	_shop.refresh_ritual(trial)
-	_shop.mark_chosen(board.preview_index if board.action == &"buy" else -1)
+	if _dock != null:
+		_dock.refresh_catalogue(trial, board.preview_index if board.action == &"buy" else -1)
+		_place_idol_popup()
+	else:
+		_shop.refresh_ritual(trial)
+		_shop.mark_chosen(board.preview_index if board.action == &"buy" else -1)
 	for index: int in _idol_slots.size():
 		var slot: RitualIdolSlot = _idol_slots[index] as RitualIdolSlot
 		slot.trial = trial
 		slot.refresh(trial.field.idols[index], true, settings.combat.ticks_per_second)
 	var selected: TowerState = trial.field.get_tower(board.selected_id)
 	_selection.text = "Башня: не выбрана" if selected == null else _selection_text(selected)
+	if _dock != null:
+		_refresh_context(selected)
 	_refresh_building_actions(selected)
 	_refresh_wear(selected)
 	_announce_repairs()
@@ -1071,17 +1226,36 @@ func _refresh() -> void:
 	_refresh_supplies()
 	if settings.is_endless():
 		var accusative: String = trial.hero().accusative if trial.hero() != null else "Илью"
-		_repair_button.text = "Лечить %s +%d · %d" % [accusative, settings.repair_hp, settings.repair_cost]
+		_repair_button.text = "Лечить %s +%d · %d" % [accusative, settings.repair_hp, settings.repair_cost] \
+			if _dock == null else "♥ +%d · %d" % [settings.repair_hp, settings.repair_cost]
 		_repair_button.tooltip_text = "%s в сторожке +%d HP за %d золота (не выше %d). Враг, дошедший до сторожки, бьёт героя." % [
 			trial.hero_name(), settings.repair_hp, settings.repair_cost, trial.max_hp()]
 	_repair_button.disabled = trial.phase != RitualTrial.Phase.RUNNING or trial.hp >= trial.max_hp() \
 			or trial.gold < settings.repair_cost
-	_shop._selection_panel.visible = selected != null
+	if _dock == null:
+		_shop._selection_panel.visible = selected != null
 	if settings.is_endless():
 		_scout.refresh(trial)
 	var threats: PackedStringArray = _threat_names()
 	_threat.text = trial.result if trial.phase == RitualTrial.Phase.OVER else "Далее: " + " · ".join(threats)
 	board.queue_redraw()
+
+
+## Правая часть дока: выбранный дом (название и уровень отдельно, детали ниже) или город.
+func _refresh_context(selected: TowerState) -> void:
+	_dock.house_actions.visible = selected != null
+	_dock.city_actions.visible = selected == null
+	if selected != null:
+		var lines: PackedStringArray = _selection_text(selected).split("\n", true, 1)
+		_selection_title.text = lines[0]
+		_selection.text = lines[1] if lines.size() > 1 else ""
+		return
+	var free: int = 0
+	for cell: Vector2i in trial.field.get_buildable_cells():
+		free += int(trial.field.get_tower_at(cell) == null)
+	_selection_title.text = "Город · уровень %d" % trial.city_level()
+	_selection.text = "Свободных участков: %d · домов: %d\nИдолы — на площади у терема: щёлкните идол (или 4/5/6).\nДом на карте — выбор и улучшение; Alt — уровни всех домов." % [
+		free, trial.field.towers.size()]
 
 
 ## Выбранная постройка: материал (уровень) и что он даёт, вложения и готовность.

@@ -193,9 +193,8 @@ func _endless_panel() -> RitualTrialPanel:
 
 func _chosen_cards(panel: RitualTrialPanel) -> int:
 	var count: int = 0
-	for card: OfferCard in panel._shop._cards:
-		var offer: MarketOffer = card as MarketOffer
-		count += int(offer != null and offer.is_chosen)
+	for chip: RitualBuildChip in panel._dock.chips:
+		count += int(chip.is_chosen)
 	return count
 
 
@@ -207,9 +206,11 @@ func test_endless_purchase_is_highlighted_and_cancelled_by_mouse() -> void:
 	var offer: int = 0
 	panel._choose_purchase(offer)
 	assert_eq(panel.board.action, &"buy")
+	panel._refresh()
 	assert_eq(_chosen_cards(panel), 1, "Выбранная карточка подсвечена")
 	panel._on_cell(Vector2i(8, 8), true)
 	assert_eq(panel.board.action, &"", "ПКМ отменяет выбор")
+	panel._refresh()
 	assert_eq(_chosen_cards(panel), 0)
 	assert_eq(panel.trial.field.towers.size(), 0)
 	panel._choose_purchase(offer)

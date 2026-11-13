@@ -3,6 +3,8 @@ extends MatchHud
 ## Существующая шапка и нижний блок героя PvP; меняется только источник состояния.
 
 var _portrait_path: String = ""
+## Ширина имени героя: в нижнем доке забега уже, чем у прежнего блока героя.
+var hero_name_width: float = 185.0
 
 
 func _init() -> void:
@@ -38,7 +40,7 @@ func refresh_ritual(trial: RitualTrial, paused: bool) -> void:
 	(_income_label.get_parent() as Control).hide()
 	_hero_name.text = hero.display_name if hero != null else "Илья Муромец"
 	_hero_name.add_theme_font_size_override("font_size", 17)
-	_hero_name.custom_minimum_size.x = 185
+	_hero_name.custom_minimum_size.x = hero_name_width
 	var portrait: String = hero.portrait if hero != null else "res://data/visuals/portraits/ilya.tres"
 	if portrait != _portrait_path:
 		_portrait_path = portrait

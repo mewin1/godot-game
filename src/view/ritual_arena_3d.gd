@@ -1,6 +1,6 @@
 class_name RitualArena3D
 extends NoirArena3D
-## Двор «Обряда» (мостовая, частокол, терем, чаши — свои) внутри леса PvP-двора.
+## Двор «Обряда» (мостовая, частокол, терем — свои; свет площади — огни идолов) внутри леса PvP-двора.
 ## Лес, камни, ручей, луг, туман и звери — из мастер-сцены PvP, повёрнуты на четверть
 ## оборота и сдвинуты: ручей идёт слева у ворот, терем справа, как в кадре PvP.
 ## Где PvP-камера не смотрела и мастер-сцена ничего не ставила, лес, камни и траву досаживает
@@ -204,39 +204,10 @@ func _build_mist() -> void:
 	volume.size = Vector3(volume.size.z, volume.size.y, volume.size.x)
 
 
+## Чаш на поле нет (docs/37 VIS-2): свет площади дают огни идолов (RitualIdols3D),
+## огромные чаши закрывали участки и были ярче всего игрового.
 func _build_fires(_fine: Dictionary[Vector2i, bool], _terem: Vector2) -> void:
-	# по углам двора и по сторонам крыльца терема
-	var porch: Vector3 = TEREM_AT + TEREM_FRONT * 4.2
-	var points: Array[Vector2] = _corner_bowls()
-	points.append_array([Vector2(porch.x + 1.2, porch.z - 4.2), Vector2(porch.x + 1.2, porch.z + 4.6)])
-	for point: Vector2 in points:
-		var at: Vector3 = Vector3(point.x, 0, point.y)
-		var bowl: Node3D = _place("fire_bowl", at, 0, 1.6)
-		_add_flame(bowl, 1.25)
-		_warm_light(at + Vector3(0, 1.2, 0), 3.2, 7.0)
-
-
-## Чаши по углам открытой части города — у концов верхнего и нижнего ряда клеток (без площади
-## терема): двор растёт улицами — чаши переезжают к новым углам.
-func _corner_bowls() -> Array[Vector2]:
-	var rows: Dictionary[int, Vector2i] = {}
-	for cell: Vector2i in _open_now:
-		if PLAZA.has_point(cell):
-			continue
-		var span: Vector2i = rows.get(cell.y, Vector2i(cell.x, cell.x))
-		rows[cell.y] = Vector2i(mini(span.x, cell.x), maxi(span.y, cell.x))
-	var result: Array[Vector2] = []
-	if rows.is_empty():
-		return result
-	var top: int = rows.keys().min()
-	var bottom: int = rows.keys().max()
-	for row: int in [top, bottom]:
-		var outward: float = -1.0 if row == top else 1.0
-		for end: int in [rows[row].x, rows[row].y]:
-			var side: float = -1.0 if end == rows[row].x else 1.0
-			var center: Vector2 = Vector2((end + 0.5) * CELL, (row + 0.5) * CELL + BOARD_MIN.y)
-			result.append(center + Vector2(side, outward) * (CELL * 0.5 - CORNER_FIRE_INSET))
-	return result
+	pass
 
 
 func _build_paving(fine: Dictionary[Vector2i, bool]) -> Material:

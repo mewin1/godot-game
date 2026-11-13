@@ -1,6 +1,7 @@
 # 37 — Gorodishche (endless "Obryad") overhaul spec
 
-Date: 2026-11-12. Updated: 2026-11-13. Status: P0/P1/P2 implemented; author playtest pending.
+Date: 2026-11-12. Updated: 2026-11-13. Status: P0/P1/P2 implemented; P5 dock + idols on the plaza
+implemented (rest of P5 open, phase order changed by the author: P5 before P3/P4); author playtest pending.
 Language: English (author's request). Author-facing summary is given in Russian in chat.
 Review edits (2026-11-12): BLD-10 and RX-9 acceptance reworded; reaction changes in endless-only
 data (RX-12); BUG-28 moved from P0 to P4; minimal UI in P2 and a playable game after every phase;

@@ -55,7 +55,20 @@ func _check_endless(scene: PackedScene) -> void:
 	var cards: int = shop["cards"]
 	var reroll: bool = shop["reroll"]
 	var enchants: bool = shop["enchants"]
-	_check(cards == 3, "Каталог не показывает три тира выбранного бога")
+	_check(cards == 21, "Нижний док не показывает весь каталог: %d" % cards)
+	var dock_bottom: float = shop["dock_bottom"]
+	var dock_right: float = shop["dock_right"]
+	_check(dock_bottom <= panel.size.y + 1 and dock_right <= panel.size.x + 1, "Док за краем экрана")
+	# Идолы на площади (docs/37 IDL-2): окно по щелчку, заговор уходит выбранному идолу.
+	panel._open_idol(1)
+	var popup_open: bool = panel.shop_report()["idol_popup"]
+	_check(popup_open, "Окно идола не открылось")
+	panel._buy_rite_at(0, 1)
+	_check(panel.trial.field.idols[1].god == panel.settings.rites[0].god and panel.trial.field.idols[0].god == &"",
+		"Заговор ушёл не тому идолу")
+	panel._on_cell(Vector2i(-1, -1), true)
+	popup_open = panel.shop_report()["idol_popup"]
+	_check(not popup_open, "ПКМ по карте не закрыл окно идола")
 	_check(not reroll, "В каталоге осталась кнопка обновления")
 	_check(not enchants, "Ряд чар остался в бесконечном забеге")
 	var gold: int = panel.trial.gold
@@ -68,13 +81,13 @@ func _check_endless(scene: PackedScene) -> void:
 	_check(panel.trial.field.towers.size() == 1, "Вечером нельзя строить с прилавка")
 	panel._refresh()
 	panel._on_cell(plot, false)
-	_check(panel._selection.text.contains(panel.settings.level_name(1)), "Не виден материал дома: " + panel._selection.text)
+	_check(panel._selection_title.text.contains(panel.settings.level_name(1)), "Не виден материал дома: " + panel._selection_title.text)
 	_check(panel._selection.text.contains("прочность 100%"), "Не видна прочность дома: " + panel._selection.text)
 	panel.trial.field.towers[0].durability = 0
 	panel._repair_houses(0)
 	_check(panel.trial.field.towers[0].durability == panel.settings.max_durability(1), "«Починить всё» не чинит")
 	cards = panel.shop_report()["cards"]
-	_check(cards == 3, "Покупка убрала постройку из постоянного каталога")
+	_check(cards == 21, "Покупка убрала постройку из постоянного каталога")
 	var nights: RitualNightRules = panel.settings.nights
 	while panel.trial.tick_count < nights.night_start(1) + 1:
 		panel.trial.tick()
