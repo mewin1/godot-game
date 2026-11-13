@@ -104,6 +104,10 @@ static func rules_state(source: Resource) -> Dictionary[String, Variant]:
 				continue
 			if nights.pressure_base > 0 and key == "hp_growth_percent":
 				continue
+		# Вехи идолов (docs/37 IDL-4): пустой список не меняет отпечаток прежних правил.
+		if source is RitualTrialConfig and key == "idol_milestones" \
+				and (source as RitualTrialConfig).idol_milestones.is_empty():
+			continue
 		if source is RitualTrialConfig and not (source as RitualTrialConfig).uses_plots() \
 				and key in ["plots", "upgrade_cost_percent", "upgrade_city_levels",
 					"plot_sell_percent", "sell_undo_ticks", "plot_support_radius_milli"]:

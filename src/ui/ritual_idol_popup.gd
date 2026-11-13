@@ -166,9 +166,34 @@ func _fill_rites(trial: RitualTrial, god: StringName, preview: bool) -> void:
 		buy.tooltip_text = "Заговор уже на пределе" if maxed else "Не хватает золота" if trial.gold < cost else ""
 		buy.pressed.connect(func() -> void: rite_requested.emit(index, idol_index))
 		row.add_child(buy)
+	_fill_milestones(trial, god)
 	var discount: int = trial.discount_bp(god)
 	if discount > 0:
 		_note("Скидка на постройки и улучшения %s: −%d%%" % [GodSymbols.get_power_name(god), discount / 100])
+
+
+## Вехи бога (docs/37 IDL-4): пройденные — золотом, следующая — сколько заговоров осталось.
+func _fill_milestones(trial: RitualTrial, god: StringName) -> void:
+	var milestones: Array[RitualIdolMilestone] = trial.settings.milestones_for(god)
+	if milestones.is_empty():
+		return
+	var idol: IdolState = trial.field.idols[idol_index]
+	var count: int = trial.idol_rites(idol) if idol.god == god else 0
+	var title: Label = Label.new()
+	title.text = "Вехи идола · заговоров %d" % count
+	title.add_theme_font_size_override("font_size", 13)
+	title.add_theme_color_override("font_color", Color("e9cea2"))
+	_body.add_child(title)
+	for milestone: RitualIdolMilestone in milestones:
+		var line: Label = Label.new()
+		var reached: bool = count >= milestone.rites
+		line.text = "%s %d · %s — %s%s" % ["✓" if reached else "○", milestone.rites, milestone.title,
+			milestone.description, "" if reached else " (ещё %d)" % (milestone.rites - count)]
+		line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		line.custom_minimum_size.x = WIDTH - 24.0
+		line.add_theme_font_size_override("font_size", 12)
+		line.add_theme_color_override("font_color", Color("f0c869") if reached else Color("b9c4c9"))
+		_body.add_child(line)
 
 
 func _note(text: String) -> void:

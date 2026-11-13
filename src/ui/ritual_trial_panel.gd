@@ -74,6 +74,10 @@ var _wear_dawn: int = -1
 var _dock: RitualDock
 var _idol_popup: RitualIdolPopup
 var _selection_title: Label
+var _overlay: RitualHudOverlay
+## Итоги забега для экрана поражения (docs/37 UI-14).
+var _stats: RitualRunStats = RitualRunStats.new()
+var _defeat_columns: HBoxContainer
 
 
 func _ready() -> void:
@@ -366,6 +370,23 @@ func _build_dock(root_box: VBoxContainer) -> void:
 	_idol_popup.closed.connect(_on_idol_closed)
 	board.idol_clicked.connect(_open_idol)
 	board.map_inset = Rect2(12, 58, 12, RitualDock.HEIGHT + 6)
+	_overlay = RitualHudOverlay.new()
+	add_child(_overlay)
+	_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_overlay.skill_button = _hud._skill_button
+	_overlay.sound_bank = _sound_bank
+	_overlay.bottom_inset = RitualDock.HEIGHT + 6
+	# «?» в шапке - легенда меток и реакций (docs/37 UI-15).
+	var legend: Button = Button.new()
+	legend.text = "?"
+	legend.name = "LegendButton"
+	legend.tooltip_text = "Метки на врагах и реакции стихий"
+	legend.custom_minimum_size = Vector2(36, 36)
+	legend.focus_mode = Control.FOCUS_NONE
+	legend.pressed.connect(func() -> void: _overlay.toggle_legend(settings))
+	var hud_tools: Node = _hud._pause_button.get_parent()
+	hud_tools.add_child(legend)
+	hud_tools.move_child(legend, 0)
 
 
 ## Экран поражения бесконечного забега: ночи, рекорд на устройстве, убитые боссы.
@@ -380,10 +401,16 @@ func _build_defeat() -> void:
 	_defeat.add_child(content)
 	_defeat_text = _label(content, "", 20)
 	_defeat_text.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_defeat_columns = HBoxContainer.new()
+	_defeat_columns.add_theme_constant_override("separation", 28)
+	content.add_child(_defeat_columns)
 	var buttons: HBoxContainer = HBoxContainer.new()
 	buttons.alignment = BoxContainer.ALIGNMENT_CENTER
+	buttons.add_theme_constant_override("separation", 10)
 	content.add_child(buttons)
-	_button(buttons, "Ещё забег", _again)
+	_button(buttons, "Ещё забег", _again).tooltip_text = "Новый забег тем же героем"
+	if settings.heroes.size() > 1:
+		_button(buttons, "Сменить героя", _change_hero)
 	_button(buttons, "В меню", _back)
 	_defeat.hide()
 
@@ -418,6 +445,11 @@ func _build_heroes() -> void:
 		var title: Label = _label(card, hero.display_name, 20)
 		title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		title.add_theme_color_override("font_color", DuskTheme.GOLD)
+		# HP и перезарядка - главное отличие героев в забеге (docs/37 HER-4).
+		var vitals: Label = _label(card, "♥ %d · умение раз в %d с" % [hero.hp,
+			hero.cooldown_ticks / settings.combat.ticks_per_second], 15)
+		vitals.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		vitals.add_theme_color_override("font_color", Color("e7b2a4"))
 		for text: String in [hero.passive_text, hero.skill_text]:
 			var line: Label = _label(card, text, 15)
 			line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -446,7 +478,12 @@ func _pick_hero(index: int) -> void:
 	_reset(0)
 
 
+## Ещё забег тем же героем (docs/37 HER-4); сменить героя - отдельная кнопка.
 func _again() -> void:
+	_reset(0)
+
+
+func _change_hero() -> void:
 	_reset(0)
 	_show_heroes()
 
@@ -477,12 +514,39 @@ func _refresh_gifts() -> void:
 	_gift_panel.visible = not trial.gift_choice.is_empty()
 	for index: int in trial.gift_choice:
 		var gift: RitualGiftData = settings.gifts[index]
-		var button: Button = _button(_gift_buttons, "%s — %s" % [gift.display_name, gift.description],
-			_choose_gift.bind(index))
-		button.custom_minimum_size = Vector2(560, 44)
-		button.add_theme_font_size_override("font_size", 18)
+		var text: String = "%s — %s" % [gift.display_name, gift.description]
+		var hint: String = _gift_hint(gift)
+		if not hint.is_empty():
+			text += "\n" + hint
+		var button: Button = _button(_gift_buttons, text, _choose_gift.bind(index))
+		button.custom_minimum_size = Vector2(600, 56)
+		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		button.add_theme_font_size_override("font_size", 17)
+		if gift.god != &"":
+			button.icon = GodSymbols.get_icon(gift.god)
+			button.expand_icon = true
+			button.add_theme_constant_override("icon_max_width", 40)
 	_gift_panel.reset_size()
 	_gift_panel.set_anchors_and_offsets_preset(Control.PRESET_CENTER, Control.PRESET_MODE_MINSIZE)
+
+
+## Подсказка к дару (docs/37 BOS-4): сколько своих домов этой стихии или чем он поможет городу.
+func _gift_hint(gift: RitualGiftData) -> String:
+	if gift.god != &"":
+		var houses: int = 0
+		for tower: TowerState in trial.field.towers:
+			houses += int(tower.data.god == gift.god)
+		var idol: bool = trial.field.get_idol(gift.god) != null
+		var element: String = RitualScoutQueue.element_name(gift.god)
+		if houses == 0 and not idol:
+			return "У вас нет домов стихии «%s»" % element
+		return "Ваших домов стихии «%s»: %d%s" % [element, houses, " · есть её идол" if idol else ""]
+	match gift.effect:
+		RitualGiftData.Effect.FREE_REPAIR:
+			return "Сейчас ремонт всех домов стоит %d" % trial.repair_all_cost()
+		RitualGiftData.Effect.HEAL_ILYA:
+			return "Здоровье героя: %d из %d" % [trial.hp, trial.max_hp()]
+	return "Действует на все %d домов" % trial.field.towers.size()
 
 
 func _choose_gift(index: int) -> void:
@@ -493,11 +557,35 @@ func _show_defeat() -> void:
 	var nights: int = trial.nights_survived()
 	var record: bool = RitualRunRecord.submit(nights, trial.bosses_killed)
 	var best: Dictionary[String, int] = RitualRunRecord.best()
-	_defeat_text.text = "%s\nПродержались ночей: %d\nРекорд: %d%s\nБоссов убито: %d" % [
-		trial.result, nights, best["nights"], " — новый!" if record else "", trial.bosses_killed]
+	var seconds: int = trial.tick_count / settings.combat.ticks_per_second
+	_defeat_text.text = "%s\nПродержались ночей: %d · рекорд: %d%s\nВремя забега %d:%02d · боссов убито: %d" % [
+		trial.result, nights, best["nights"], " — новый!" if record else "", seconds / 60, seconds % 60,
+		trial.bosses_killed]
+	for child: Node in _defeat_columns.get_children():
+		_defeat_columns.remove_child(child)
+		child.queue_free()
+	var reaction: String = RitualRunStats.best_reaction(trial)
+	_defeat_column("Золото: заработано %d, потрачено %d" % [trial.earned, trial.spent], _stats.spend_lines())
+	_defeat_column("Урон по домам", _stats.top_damage(5))
+	var leaks: PackedStringArray = RitualRunStats.leak_lines(trial)
+	if not reaction.is_empty():
+		leaks.append("")
+		leaks.append("Чаще всего: %s" % reaction)
+	_defeat_column("Прорвались", leaks)
 	_defeat.reset_size()
 	_defeat.set_anchors_and_offsets_preset(Control.PRESET_CENTER, Control.PRESET_MODE_MINSIZE)
 	_defeat.show()
+
+
+func _defeat_column(title: String, lines: PackedStringArray) -> void:
+	var column: VBoxContainer = VBoxContainer.new()
+	column.custom_minimum_size.x = 230
+	_defeat_columns.add_child(column)
+	var head: Label = _label(column, title, 15)
+	head.add_theme_color_override("font_color", DuskTheme.GOLD)
+	head.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	head.custom_minimum_size.x = 230
+	_label(column, "\n".join(lines) if not lines.is_empty() else "—", 14)
 
 
 func _build_schedule() -> void:
@@ -601,6 +689,10 @@ func _reset(index: int) -> void:
 
 func _board_reset() -> void:
 	_wear_dawn = -1
+	_stats = RitualRunStats.new()
+	_stats.watch(trial.field)
+	if _overlay != null:
+		_overlay.reset()
 	board.trial = trial
 	board.selected_id = 0
 	board.preview_index = -1
@@ -619,7 +711,10 @@ func _board_reset() -> void:
 
 
 func _issue(command: RitualCommand) -> bool:
+	var before: int = trial.gold
 	var error: String = trial.execute(command)
+	if error.is_empty():
+		_stats.add_spend(command.action, before - trial.gold)
 	_message.text = error if not error.is_empty() else "Приказ принят"
 	_sound_bank.play(_command_sound(command) if error.is_empty() else &"click")
 	_refresh()
@@ -690,6 +785,9 @@ func _process(delta: float) -> void:
 			_show_defeat()
 	_refresh()
 	_age_toast(delta)
+	if _overlay != null:
+		var modal: bool = (_hero_panel != null and _hero_panel.visible) or _gift_panel.visible or _defeat.visible
+		_overlay.refresh(trial, _paused, modal, delta)
 
 
 ## Сообщение гаснет через TOAST_SECONDS после последней смены текста; подсказка выбора цели
@@ -780,8 +878,13 @@ func _buy_rite(index: int) -> void:
 ## Заговор у выбранного идола (docs/37 IDL-2): номер идола едет в команде (tower_id = номер + 1).
 func _buy_rite_at(index: int, idol_index: int) -> void:
 	if _issue(RitualCommand.new(RitualCommand.Action.RITE, index, Vector2i.ZERO, 0, idol_index + 1)):
-		_message.text = "%s: заговор «%s»" % [GodSymbols.get_power_name(settings.rites[index].god),
-			settings.rites[index].display_name]
+		var god: StringName = settings.rites[index].god
+		_message.text = "%s: заговор «%s»" % [GodSymbols.get_power_name(god), settings.rites[index].display_name]
+		var count: int = trial.idol_rites(trial.field.get_idol(god))
+		for milestone: RitualIdolMilestone in settings.milestones_for(god):
+			if milestone.rites == count:
+				_banner("Веха идола · %s" % milestone.title, milestone.description, GodSymbols.get_color(god))
+				_sound_bank.play(&"merge", 0.0)
 
 
 func _open_idol(index: int) -> void:
@@ -814,6 +917,14 @@ func _place_idol_popup() -> void:
 	at.x = clampf(at.x, limit.position.x, limit.end.x - box.x)
 	at.y = clampf(at.y, limit.position.y, limit.end.y - box.y)
 	_idol_popup.position = at
+
+
+## Баннер важного события: в доке - плашка сверху, в прежней раскладке - строка сообщений.
+func _banner(title: String, text: String, color: Color) -> void:
+	if _overlay != null:
+		_overlay.show_banner(title, text, color)
+	else:
+		_message.text = "%s. %s" % [title, text]
 
 
 func _hover_building(index: int) -> void:
@@ -1181,7 +1292,7 @@ func _save_result() -> void:
 
 ## Новая ночь с приметой — объявить её в строке сообщений, пока день и есть время готовиться.
 func _announce_omen() -> void:
-	if not settings.is_endless() or trial.current_night() == _omen_night:
+	if not settings.is_endless() or trial.current_night() == _omen_night or _overlay != null:
 		return
 	_omen_night = trial.current_night()
 	var parts: PackedStringArray = []

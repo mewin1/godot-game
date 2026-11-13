@@ -510,3 +510,36 @@ func test_rite_goes_to_chosen_idol() -> void:
 	assert_ne(_trial.execute(RitualCommand.new(RitualCommand.Action.RITE, rite, Vector2i.ZERO, 0, 9)), "")
 	assert_eq(_trial.execute(RitualCommand.new(RitualCommand.Action.RITE, rite, Vector2i.ZERO, 0, 3)), "")
 	assert_eq(_trial.rite_count(rite), 2)
+
+
+## docs/37 IDL-4 (D7): на 5/10/15 оплаченных заговорах идол бесплатно получает эффект своего бога.
+func test_idol_milestones_grant_free_god_effect() -> void:
+	assert_false(_settings.idol_milestones.is_empty(), "Вехи описаны в данных")
+	var rite: int = 0
+	var god: StringName = _settings.rites[rite].god
+	var five: RitualIdolMilestone = null
+	for milestone: RitualIdolMilestone in _settings.idol_milestones:
+		if milestone.god == god and milestone.rites == 5:
+			five = milestone
+	assert_not_null(five, "У бога первого заговора есть веха 5")
+	for index: int in 4:
+		assert_eq(_trial.execute(RitualCommand.new(RitualCommand.Action.RITE, rite)), "")
+	var idol: IdolState = _trial.field.get_idol(god)
+	var before: Dictionary = RitualStateCodec.capture(idol)
+	assert_eq(_trial.idol_rites(idol), 4)
+	assert_eq(_trial.execute(RitualCommand.new(RitualCommand.Action.RITE, rite)), "")
+	var after: Dictionary = RitualStateCodec.capture(idol)
+	assert_eq(_trial.idol_rites(idol), 5, "Веха не считается оплаченным заговором")
+	var probe: IdolState = IdolState.new()
+	probe.apply_rite(five.as_rite(), false)
+	var empty: Dictionary = RitualStateCodec.capture(IdolState.new())
+	var granted: Dictionary = RitualStateCodec.capture(probe)
+	var checked: int = 0
+	for key: String in granted:
+		if key in ["god", "purchases"] or str(granted[key]) == str(empty[key]):
+			continue
+		checked += 1
+		assert_eq(RitualStateCodec.integer(after[key]) - RitualStateCodec.integer(before[key]),
+			RitualStateCodec.integer(granted[key]), "Веха добавила %s" % key)
+	assert_eq(checked, 1, "Веха меняет ровно одно свойство идола")
+	assert_eq(_trial.next_milestone(idol).rites, 10)

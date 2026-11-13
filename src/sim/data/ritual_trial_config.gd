@@ -41,6 +41,8 @@ extends Resource
 @export var rite_purchase_limit: bool = true
 ## Затухание/рост цены заговоров без предела (docs/34 §6).
 @export var rite_curves: Array[RitualRiteCurve] = []
+## Вехи идолов на 5/10/15 оплаченных заговорах (docs/37 IDL-4); пусто — вех нет.
+@export var idol_milestones: Array[RitualIdolMilestone] = []
 ## Скидка своей стихии (docs/34 §7): от числа заговоров на идоле этой стихии, с затуханием,
 ## в базисных пунктах. 0 — скидки нет.
 @export var discount_cap_bp: int = 0
@@ -169,6 +171,16 @@ func idol_curve_bonus(idol: IdolState, effect: RiteData.Effect) -> int:
 		if curve != null:
 			total += curve.bonus(count)
 	return total
+
+
+## Вехи бога по возрастанию порога.
+func milestones_for(god: StringName) -> Array[RitualIdolMilestone]:
+	var result: Array[RitualIdolMilestone] = []
+	for milestone: RitualIdolMilestone in idol_milestones:
+		if milestone.god == god:
+			result.append(milestone)
+	result.sort_custom(func(a: RitualIdolMilestone, b: RitualIdolMilestone) -> bool: return a.rites < b.rites)
+	return result
 
 
 func max_durability(level: int) -> int:

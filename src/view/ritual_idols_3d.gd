@@ -24,6 +24,10 @@ var _models: Array[Node3D] = []
 var _flames: Array[MeshInstance3D] = []
 var _lights: Array[OmniLight3D] = []
 var _rings: Array[MeshInstance3D] = []
+## Золотые обручи на пьедестале: по одному за пройденную веху 5/10/15 (docs/37 IDL-3).
+var _bands: Array[Node3D] = []
+## Пороги вех: обруч за каждый пройденный (данные режима, RitualTrialConfig.idol_milestones).
+var milestone_steps: Array[int] = [5, 10, 15]
 var _style: Arena3DStyle
 
 
@@ -62,6 +66,9 @@ func _init(style: Arena3DStyle) -> void:
 		ring.visible = false
 		base.add_child(ring)
 		_rings.append(ring)
+		var bands: Node3D = Node3D.new()
+		base.add_child(bands)
+		_bands.append(bands)
 
 
 func _make_flame(index: int) -> MeshInstance3D:
@@ -95,9 +102,28 @@ func sync(idols: Array[IdolState], hovered: int, selected: int) -> void:
 			_lights[index].light_energy = minf(LIGHT_MAX, LIGHT_BASE + LIGHT_STEP * count)
 			var tint: Color = GodSymbols.get_color(idol.god) if idol.god != &"" else NoirArena3D.FIRE_COLOR
 			_lights[index].light_color = NoirArena3D.FIRE_COLOR.lerp(tint, 0.35)
+			_set_bands(index, count, tint)
 		_rings[index].visible = index == hovered or index == selected
 		(_rings[index].material_override as StandardMaterial3D).emission_energy_multiplier = \
 				3.2 if index == selected else 1.6
+
+
+func _set_bands(index: int, count: int, tint: Color) -> void:
+	for child: Node in _bands[index].get_children():
+		child.queue_free()
+	var reached: int = 0
+	for step: int in milestone_steps:
+		reached += int(count >= step)
+	for band: int in reached:
+		var torus: TorusMesh = TorusMesh.new()
+		torus.inner_radius = 0.42 - band * 0.04
+		torus.outer_radius = 0.5 - band * 0.04
+		var mesh: MeshInstance3D = MeshInstance3D.new()
+		mesh.mesh = torus
+		mesh.material_override = ArenaMaterials3D.glow(ArenaMaterials3D.GOLD.lerp(tint, 0.3), 2.4)
+		mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		mesh.position.y = 0.55 + band * 0.55
+		_bands[index].add_child(mesh)
 
 
 func _set_model(index: int, god: StringName) -> void:

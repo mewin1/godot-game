@@ -56,6 +56,8 @@
 [ext_resource type="Resource" path="res://data/ritual/buildings/rain_levels.tres" id="profile_rain"]
 [ext_resource type="Resource" path="res://data/ritual/buildings/vortex_levels.tres" id="profile_vortex"]
 [ext_resource type="Resource" path="res://data/ritual/buildings/porok_levels.tres" id="profile_porok"]
+
+[ext_resource type="Script" path="res://src/sim/data/ritual_idol_milestone.gd" id="milestone"]
 [sub_resource type="Resource" id="rule_0"]
 script = ExtResource("enemy_rule")
 enemy_index = 0
@@ -639,6 +641,195 @@ city_level = 4
 script = ExtResource("plot")
 cell = Vector2i(19, 14)
 city_level = 4
+[sub_resource type="Resource" id="milestone_war_5"]
+script = ExtResource("milestone")
+god = &"war"
+rites = 5
+title = "Меткий глаз"
+description = "Механизмы Бога войны: +1 цель."
+effect = 14
+value = 1
+
+[sub_resource type="Resource" id="milestone_war_10"]
+script = ExtResource("milestone")
+god = &"war"
+rites = 10
+title = "Тяжёлая рука"
+description = "Механизмы Бога войны: +15% урона."
+effect = 0
+value = 15
+
+[sub_resource type="Resource" id="milestone_war_15"]
+script = ExtResource("milestone")
+god = &"war"
+rites = 15
+title = "Град стрел"
+description = "Механизмы Бога войны: ещё +1 цель."
+effect = 14
+value = 1
+
+[sub_resource type="Resource" id="milestone_svarog_5"]
+script = ExtResource("milestone")
+god = &"svarog"
+rites = 5
+title = "Жаркое пламя"
+description = "Горение Сварога: +20% удара."
+effect = 3
+value = 20
+
+[sub_resource type="Resource" id="milestone_svarog_10"]
+script = ExtResource("milestone")
+god = &"svarog"
+rites = 10
+title = "Кузнечный жар"
+description = "Постройки Сварога: +15% урона."
+effect = 0
+value = 15
+
+[sub_resource type="Resource" id="milestone_svarog_15"]
+script = ExtResource("milestone")
+god = &"svarog"
+rites = 15
+title = "Неугасимый огонь"
+description = "Горение и другие статусы Сварога: +1 с."
+effect = 13
+value = 20
+
+[sub_resource type="Resource" id="milestone_ice_5"]
+script = ExtResource("milestone")
+god = &"ice"
+rites = 5
+title = "Крепкий мороз"
+description = "Холод ледяных построек: +1 с."
+effect = 13
+value = 20
+
+[sub_resource type="Resource" id="milestone_ice_10"]
+script = ExtResource("milestone")
+god = &"ice"
+rites = 10
+title = "Ледяная кромка"
+description = "Ледяные постройки: +15% урона."
+effect = 0
+value = 15
+
+[sub_resource type="Resource" id="milestone_ice_15"]
+script = ExtResource("milestone")
+god = &"ice"
+rites = 15
+title = "Метель"
+description = "Ледяные постройки: +1 цель."
+effect = 14
+value = 1
+
+[sub_resource type="Resource" id="milestone_water_5"]
+script = ExtResource("milestone")
+god = &"water"
+rites = 5
+title = "Сырость"
+description = "Мокрота держится +1 с."
+effect = 12
+value = 20
+
+[sub_resource type="Resource" id="milestone_water_10"]
+script = ExtResource("milestone")
+god = &"water"
+rites = 10
+title = "Половодье"
+description = "Мокрота держится ещё +1 с."
+effect = 12
+value = 20
+
+[sub_resource type="Resource" id="milestone_water_15"]
+script = ExtResource("milestone")
+god = &"water"
+rites = 15
+title = "Широкий разлив"
+description = "Постройки воды: +1 цель."
+effect = 14
+value = 1
+
+[sub_resource type="Resource" id="milestone_stribog_5"]
+script = ExtResource("milestone")
+god = &"stribog"
+rites = 5
+title = "Порыв"
+description = "Поток Стрибога: +10% силы."
+effect = 4
+value = 10
+
+[sub_resource type="Resource" id="milestone_stribog_10"]
+script = ExtResource("milestone")
+god = &"stribog"
+rites = 10
+title = "Долгий выдох"
+description = "Поток Стрибога длиннее на 1 клетку."
+effect = 5
+value = 1000
+
+[sub_resource type="Resource" id="milestone_stribog_15"]
+script = ExtResource("milestone")
+god = &"stribog"
+rites = 15
+title = "Буря"
+description = "Поток Стрибога: ещё +10% силы."
+effect = 4
+value = 10
+
+[sub_resource type="Resource" id="milestone_perun_5"]
+script = ExtResource("milestone")
+god = &"perun"
+rites = 5
+title = "Гроза близко"
+description = "Шанс цепной молнии: +10%."
+effect = 11
+value = 10
+
+[sub_resource type="Resource" id="milestone_perun_10"]
+script = ExtResource("milestone")
+god = &"perun"
+rites = 10
+title = "Гнев Перуна"
+description = "Постройки Перуна: +15% урона."
+effect = 0
+value = 15
+
+[sub_resource type="Resource" id="milestone_perun_15"]
+script = ExtResource("milestone")
+god = &"perun"
+rites = 15
+title = "Ветвистая молния"
+description = "Цепь Перуна: +1 переход."
+effect = 2
+value = 1
+
+[sub_resource type="Resource" id="milestone_curse_5"]
+script = ExtResource("milestone")
+god = &"curse"
+rites = 5
+title = "Долгая порча"
+description = "Проклятие Чернобога: +1 с."
+effect = 13
+value = 20
+
+[sub_resource type="Resource" id="milestone_curse_10"]
+script = ExtResource("milestone")
+god = &"curse"
+rites = 10
+title = "Чёрное слово"
+description = "Постройки Чернобога: +15% урона."
+effect = 0
+value = 15
+
+[sub_resource type="Resource" id="milestone_curse_15"]
+script = ExtResource("milestone")
+god = &"curse"
+rites = 15
+title = "Мор"
+description = "Постройки Чернобога: +1 цель."
+effect = 14
+value = 1
+
 [resource]
 script = ExtResource("settings")
 combat = ExtResource("combat")
@@ -661,6 +852,7 @@ tower_limit = 0
 rite_cost_step = 3
 rite_purchase_limit = false
 rite_curves = Array[ExtResource("rite_curve")]([SubResource("curve_war_power"), SubResource("curve_svarog_power"), SubResource("curve_ice_power"), SubResource("curve_war_range"), SubResource("curve_war_volley"), SubResource("curve_svarog_heat"), SubResource("curve_ice_rhythm"), SubResource("curve_ice_cold"), SubResource("curve_water_dew"), SubResource("curve_stribog_gust"), SubResource("curve_perun_power"), SubResource("curve_perun_charge"), SubResource("curve_curse_power"), SubResource("curve_curse_mark")])
+idol_milestones = Array[ExtResource("milestone")]([SubResource("milestone_war_5"), SubResource("milestone_war_10"), SubResource("milestone_war_15"), SubResource("milestone_svarog_5"), SubResource("milestone_svarog_10"), SubResource("milestone_svarog_15"), SubResource("milestone_ice_5"), SubResource("milestone_ice_10"), SubResource("milestone_ice_15"), SubResource("milestone_water_5"), SubResource("milestone_water_10"), SubResource("milestone_water_15"), SubResource("milestone_stribog_5"), SubResource("milestone_stribog_10"), SubResource("milestone_stribog_15"), SubResource("milestone_perun_5"), SubResource("milestone_perun_10"), SubResource("milestone_perun_15"), SubResource("milestone_curse_5"), SubResource("milestone_curse_10"), SubResource("milestone_curse_15")])
 discount_cap_bp = 3000
 discount_step_bp = 1500
 enchants = Array[ExtResource("rite")]([])

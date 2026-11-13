@@ -108,10 +108,15 @@ func _check_endless(scene: PackedScene) -> void:
 	panel._process(0.0)
 	_check(panel._defeat.visible and panel._defeat_text.text.contains("Продержались ночей"), "Нет экрана поражения")
 	_check(panel._defeat_text.text.begins_with("Илья пал"), "Поражение не от гибели Ильи: " + panel._defeat_text.text)
+	_check(panel._defeat_columns.get_child_count() == 3, "На экране поражения нет разбивки")
 	_check(panel._status.text.begins_with("Илья · "), "В шапке нет «Илья · HP»: " + panel._status.text)
 	# Ещё забег — снова выбор героя; Яга: своё HP и варево без прицела.
+	# Ещё забег — тот же герой сразу; «Сменить героя» — выбор (docs/37 HER-4).
 	panel._again()
-	_check(panel._hero_panel.visible and panel._paused, "«Ещё забег» не предлагает героя")
+	_check(not panel._hero_panel.visible and panel.trial.hero_index == 0 and panel.trial.phase == RitualTrial.Phase.RUNNING,
+		"«Ещё забег» не продолжил тем же героем")
+	panel._change_hero()
+	_check(panel._hero_panel.visible and panel._paused, "«Сменить героя» не предлагает героя")
 	panel._pick_hero(2)
 	panel._refresh()
 	_check(panel._status.text.begins_with("Яга · 40"), "В шапке не Яга: " + panel._status.text)

@@ -640,12 +640,43 @@ func _rite(index: int, idol_slot: int = 0) -> String:
 		idol.apply_rite(applied)
 	else:
 		idol.apply_rite(data)
+	_grant_milestones(idol)
 	gold -= cost
 	spent += cost
 	if slot >= 0:
 		rite_offers[slot] = -1
 	field.mark_towers_changed()
 	return ""
+
+
+## Веха, порог которой ровно достигнут этим заговором, даёт свой эффект бесплатно (docs/37 IDL-4).
+func _grant_milestones(idol: IdolState) -> void:
+	var count: int = idol_rites(idol)
+	for milestone: RitualIdolMilestone in settings.milestones_for(idol.god):
+		if milestone.rites == count:
+			idol.apply_rite(milestone.as_rite(), false)
+			_event(&"milestone", {"god": String(idol.god), "rites": count})
+
+
+## Сколько заговоров оплачено у идола (вехи не считаются).
+func idol_rites(idol: IdolState) -> int:
+	var count: int = 0
+	if idol == null:
+		return count
+	for rite_id: StringName in idol.purchases:
+		count += idol.purchases[rite_id]
+	return count
+
+
+## Следующая веха идола (null — все пройдены или вех нет).
+func next_milestone(idol: IdolState) -> RitualIdolMilestone:
+	if idol == null or idol.god == &"":
+		return null
+	var count: int = idol_rites(idol)
+	for milestone: RitualIdolMilestone in settings.milestones_for(idol.god):
+		if milestone.rites > count:
+			return milestone
+	return null
 
 
 ## Есть ли идол под заговор: свой бог или ещё не посвящённый.
