@@ -19,3 +19,4 @@ burning_target_bonus_percent = 25
 
 tags = Array[StringName]([&"fire"])
 target_priority = 1
+status_apply_cooldown_ticks = 40

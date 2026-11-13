@@ -16,3 +16,4 @@ description = "Финишер. Приоритет: цель для реакци�
 cold_ticks = 40
 cold_slow_percent = 25
 target_priority = 1
+status_apply_cooldown_ticks = 40

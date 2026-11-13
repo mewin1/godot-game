@@ -17,6 +17,8 @@ signal tower_pulsed(tower: TowerState)
 ## &"knockback" (леший отбросил моба), &"heal" (знахарка), &"chest" (сундук Кощея),
 ## &"hero_heal" (пирожки), &"hero_skill" (прочие навыки героя хозяина поля).
 signal effect_played(effect_id: StringName, mob: MobState)
+## Реакцию вызвал удар этого дома (для счётчиков у выбранного дома, docs/37 RX-6; на состояние не влияет).
+signal tower_reaction(tower_id: int, reaction_id: StringName)
 
 const MILLI: int = 1000
 const NEIGHBOR_SIDES: Array[Vector2i] = [Vector2i.UP, Vector2i.RIGHT, Vector2i.DOWN, Vector2i.LEFT]

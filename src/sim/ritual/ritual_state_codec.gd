@@ -109,6 +109,12 @@ static func rules_state(source: Resource) -> Dictionary[String, Variant]:
 		if source is RitualTrialConfig and key in ["idol_milestones", "alleys"] \
 				and array(source.get(key)).is_empty():
 			continue
+		# Перезарядки реакций (docs/37 RX-1..3, RX-9): нули не меняют отпечаток прежних правил.
+		if ((source is ReactionData and key in ["cooldown_ticks", "pay_out_consumed"])
+				or (source is GameConfig and key == "reaction_gate_ticks")
+				or (source is TowerData and key == "status_apply_cooldown_ticks")) \
+				and str(source.get(key)) in ["0", "false"]:
+			continue
 		if source is RitualStreetData and key in ["summary", "hero_hp", "extra_idol"] \
 				and (source.get(key) == null or str(source.get(key)) in ["", "0", "false"]):
 			continue

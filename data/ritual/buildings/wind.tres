@@ -25,3 +25,4 @@ shop_weight = 5
 
 tags = Array[StringName]([&"wind"])
 wind_half_width_milli = 2500
+status_apply_cooldown_ticks = 40

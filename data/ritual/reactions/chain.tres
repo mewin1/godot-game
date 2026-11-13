@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="ReactionData" format=3]
+[ext_resource type="Script" path="res://src/sim/data/reaction_data.gd" id="1"]
+[resource]
+script = ExtResource("1")
+id = &"chain"
+incoming = &"lightning"
+required = &"wet"
+chain_chance_bonus = 100
+display_name = "Цепь"
+explanation = "Мокрота → Молния: шанс цепи +60 п.п., урон ×1.1; до 100% с идолом."
+damage_percent = 110
+cooldown_ticks = 40

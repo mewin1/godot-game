@@ -20,3 +20,4 @@ wind_power_percent = 25
 wind_on_ticks = 40
 wind_off_ticks = 40
 neighbor_fire_rate_percent = 20
+status_apply_cooldown_ticks = 40

@@ -17,3 +17,4 @@ description = "Тяжелый урон по области. Медленный �
 splash_radius_milli = 900
 splash_percent = 50
 god = &"war"
+status_apply_cooldown_ticks = 40

@@ -17,3 +17,4 @@ targets_per_shot = 2
 target_priority = 1
 can_hit_flying = false
 armor_pierce = 2
+status_apply_cooldown_ticks = 40

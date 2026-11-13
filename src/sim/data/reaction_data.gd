@@ -26,3 +26,8 @@ extends Resource
 @export var stored_damage_percent: int = 0
 @export var slow_percent: int = 0
 @export var slow_ticks: int = 0
+## docs/37 RX-2: перезарядка этой реакции на одном враге (тики); 0 — без перезарядки (как в PvP).
+## Пока реакция перезаряжается, входящая стихия просто ставит свой статус.
+@export var cooldown_ticks: int = 0
+## docs/37 RX-9: поглощённые горение и проклятие отдают оставшийся урон сразу, а не пропадают.
+@export var pay_out_consumed: bool = false

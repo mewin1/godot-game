@@ -15,3 +15,4 @@ range_milli = 3000
 description = "Холод. Зачинщик: холод на 3 с, замедление 20%. По мокрой цели - заморозка."
 cold_ticks = 60
 cold_slow_percent = 20
+status_apply_cooldown_ticks = 40

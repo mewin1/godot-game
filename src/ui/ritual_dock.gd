@@ -23,6 +23,9 @@ var house_actions: HFlowContainer
 ## Кнопки города, когда ничего не выбрано (новая улица, починить всё).
 var city_actions: HBoxContainer
 var _grid: GridContainer
+## Вкладки тиров каталога (просьба автора 13 ноября): на вкладке — 7 крупных карточек богов.
+var _tier_tabs: Array[Button] = []
+var shown_tier: int = 1
 
 
 func _init() -> void:
@@ -48,6 +51,20 @@ func _init() -> void:
 	middle.alignment = BoxContainer.ALIGNMENT_CENTER
 	middle.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(middle)
+	var tabs: HBoxContainer = HBoxContainer.new()
+	tabs.alignment = BoxContainer.ALIGNMENT_CENTER
+	tabs.add_theme_constant_override("separation", 6)
+	middle.add_child(tabs)
+	for index: int in 3:
+		var tab: Button = Button.new()
+		tab.name = "TierTab%d" % (index + 1)
+		tab.toggle_mode = true
+		tab.focus_mode = Control.FOCUS_NONE
+		tab.custom_minimum_size = Vector2(150, 26)
+		tab.add_theme_font_size_override("font_size", 13)
+		tab.pressed.connect(show_tier.bind(index + 1))
+		tabs.add_child(tab)
+		_tier_tabs.append(tab)
 	var center: CenterContainer = CenterContainer.new()
 	middle.add_child(center)
 	_grid = GridContainer.new()
@@ -97,9 +114,9 @@ func setup_catalogue(settings: RitualTrialConfig) -> void:
 		if not gods.has(tower.god):
 			gods.append(tower.god)
 	_grid.columns = gods.size()
-	for tier: int in range(1, 4):
+	for level: int in range(1, 4):
 		for god: StringName in gods:
-			var index: int = _find(settings, god, tier)
+			var index: int = _find(settings, god, level)
 			if index < 0:
 				var gap: Control = Control.new()
 				gap.custom_minimum_size = RitualBuildChip.CHIP_SIZE
@@ -112,6 +129,19 @@ func setup_catalogue(settings: RitualTrialConfig) -> void:
 			chip.cancelled.connect(placement_cancelled.emit)
 			_grid.add_child(chip)
 			chips.append(chip)
+	show_tier(1)
+
+
+## Показать карточки тира level (1–3); остальные скрыты, но обновляются.
+func show_tier(level: int) -> void:
+	shown_tier = level
+	for chip: RitualBuildChip in chips:
+		chip.visible = clampi(chip.data.tier, 1, 3) == level
+	for gap: Node in _grid.get_children():
+		if not gap is RitualBuildChip:
+			(gap as Control).visible = false
+	for index: int in _tier_tabs.size():
+		_tier_tabs[index].set_pressed_no_signal(index + 1 == level)
 
 
 static func _find(settings: RitualTrialConfig, god: StringName, tier: int) -> int:
@@ -130,6 +160,12 @@ func refresh_catalogue(trial: RitualTrial, chosen: int) -> void:
 			free = true
 			break
 	var at_night: bool = trial.settings.is_night(trial.tick_count)
+	var city: int = trial.city_level()
+	var names: Array[String] = ["I", "II", "III"]
+	for index: int in _tier_tabs.size():
+		var open: bool = city >= index + 1
+		_tier_tabs[index].text = "Тир %s" % names[index] if open else "Тир %s · город %d" % [names[index], index + 1]
+		_tier_tabs[index].modulate = Color.WHITE if open else Color(1, 1, 1, 0.55)
 	for chip: RitualBuildChip in chips:
 		var price: int = trial.building_cost(chip.index)
 		var unlock: String = trial.building_unlock_error(chip.index)
@@ -154,8 +190,11 @@ static func _chip_tooltip(trial: RitualTrial, chip: RitualBuildChip, unlock: Str
 		GodSymbols.get_power_name(chip.data.god), RitualBuildChip.TIER_NAMES[clampi(chip.data.tier, 1, 3) - 1]]]
 	if levels != null and not levels.role.is_empty():
 		lines.append(levels.role)
-	lines.append(first.note if first != null and not first.note.is_empty() else chip.data.description)
-	lines.append("Цена %d · один дом на свободный участок" % chip.price)
+	var note: String = first.note if first != null and not first.note.is_empty() else chip.data.description
+	if levels == null or note != levels.role:
+		lines.append(note)
+	lines.append("Цена %d · один дом на свободный участок · %s" % [chip.price,
+		RitualTrialPanel.ward_note(settings, chip.data)])
 	var discount: int = trial.discount_bp(chip.data.god)
 	if discount > 0:
 		lines.append("Скидка %s: −%d%%" % [GodSymbols.get_power_name(chip.data.god), discount / 100])

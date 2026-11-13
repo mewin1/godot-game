@@ -19,3 +19,4 @@ tags = Array[StringName]([&"lightning"])
 charge_ticks = 60
 target_priority = 1
 armor_pierce = 3
+status_apply_cooldown_ticks = 40

@@ -25,3 +25,4 @@ wind_power_per_level = 5
 wind_length_per_level_milli = 500
 neighbor_fire_rate_percent = 20
 wind_half_width_milli = 2500
+status_apply_cooldown_ticks = 40

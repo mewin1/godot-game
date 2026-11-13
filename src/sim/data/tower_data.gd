@@ -14,6 +14,9 @@ enum TargetPriority { FRONT, REACTION }
 @export var god: StringName = &""
 @export var curse_ticks: int = 0
 @export var curse_percent: int = 0
+## docs/37 RX-1: дом ставит свой статус одному врагу не чаще раза за столько тиков (урон — всегда);
+## 0 — при каждом попадании (как в PvP).
+@export var status_apply_cooldown_ticks: int = 0
 @export var charge_ticks: int = 0
 @export var cold_ticks: int = 0
 @export var cold_slow_percent: int = 0

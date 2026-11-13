@@ -64,9 +64,16 @@ func _initialize() -> void:
 	while _settings.nights.night_length(night) < TICKS:
 		night += 1
 	_base_tick = _settings.nights.night_start(night)
-	_print_solo()
-	_print_pairs()
-	_print_support()
+	var only: String = ""
+	for argument: String in OS.get_cmdline_user_args():
+		if argument.begins_with("--only="):
+			only = argument.trim_prefix("--only=")
+	if only in ["", "solo"]:
+		_print_solo()
+	if only in ["", "pairs"]:
+		_print_pairs()
+	if only in ["", "support"]:
+		_print_support()
 	quit()
 
 

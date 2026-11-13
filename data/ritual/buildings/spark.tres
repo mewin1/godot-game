@@ -17,3 +17,4 @@ description = "Заряд. Шанс цепи 20%, по мокрой цели 80%
 
 tags = Array[StringName]([&"lightning"])
 charge_ticks = 60
+status_apply_cooldown_ticks = 40

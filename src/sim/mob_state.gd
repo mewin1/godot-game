@@ -39,6 +39,11 @@ var curse_delay: int = 0
 var is_contagious: bool = false
 var is_conserved: bool = false
 var wind_reaction_cooldown: int = 0
+## docs/37 RX-1..3 (только забег «Обряда»): тик, с которого реакция снова может сработать,
+## общий запрет любых реакций и когда дом снова может поставить статус (по id дома).
+var reaction_ready: Dictionary[StringName, int] = {}
+var reaction_gate_until: int = 0
+var status_ready: Dictionary[int, int] = {}
 var cold_ticks_left: int = 0
 var cold_slow_percent: int = 0
 var freeze_ticks_left: int = 0

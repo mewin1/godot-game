@@ -80,6 +80,8 @@ func _play(policy: String, seed_value: int, hero: int = 0) -> void:
 	var trial: RitualTrial = RitualTrial.new(SETTINGS, 0, seed_value, hero)
 	var timeline: PackedStringArray = []
 	var last_night: int = 0
+	var reactions_before: int = 0
+	var rates: PackedStringArray = []
 	while trial.phase == RitualTrial.Phase.RUNNING and trial.tick_count < LIMIT_TICKS \
 			and (_night_limit == 0 or trial.nights_survived() < _night_limit):
 		if not trial.gift_choice.is_empty():
@@ -91,6 +93,13 @@ func _play(policy: String, seed_value: int, hero: int = 0) -> void:
 			_use_supplies(trial)
 		if trial.nights_survived() > last_night:
 			last_night = trial.nights_survived()
+			# Реакций в секунду за ночь (docs/37 P4: поздние ночи — не больше 4 в среднем).
+			var total: int = 0
+			for id: StringName in trial.field.reaction_counts:
+				total += trial.field.reaction_counts[id]
+			var night_seconds: float = float(SETTINGS.nights.night_length(last_night)) / TPS
+			rates.append("н%d %.1f" % [last_night, (total - reactions_before) / night_seconds])
+			reactions_before = total
 			timeline.append("н%d %d:%02d ♥%d з%d д%d в%d" % [last_night, trial.tick_count / TPS / 60,
 				trial.tick_count / TPS % 60, trial.hp, trial.gold, trial.field.towers.size(),
 				_enemies(trial, last_night)])
@@ -101,6 +110,7 @@ func _play(policy: String, seed_value: int, hero: int = 0) -> void:
 		trial.result if not trial.result.is_empty() else "жив к пределу", trial.earned,
 		trial.field.towers.size(), trial.bosses_killed, trial.gifts_taken.size()])
 	print("ENDLESS:    " + " | ".join(timeline))
+	print("REACTIONS/с: " + " | ".join(rates))
 	if SETTINGS.uses_plots():
 		var upgrades: int = 0
 		var branches: int = 0

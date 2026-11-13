@@ -13,4 +13,4 @@ damage = 36
 cooldown_ticks = 20
 range_milli = 3100
 description = "Прямой урон. Механизм: прямой физический урон. По двум статусам - добивание ×1.4."
-
+status_apply_cooldown_ticks = 40

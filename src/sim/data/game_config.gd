@@ -116,6 +116,8 @@ extends Resource
 @export_group("Башни")
 ## Реактивный финишер сначала спасает последнюю клетку от прорыва.
 @export var reaction_target_emergency_milli: int = 1000
+## docs/37 RX-3: на одном враге не чаще одной реакции за столько тиков; 0 — без ограничения.
+@export var reaction_gate_ticks: int = 0
 @export var max_tower_level: int = 3
 ## «Тройка → открытие»: постройка дошла до максимального уровня — выбор 1 из стольких в подарок.
 @export var discover_offer_count: int = 3

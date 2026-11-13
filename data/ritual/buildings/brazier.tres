@@ -17,3 +17,4 @@ description = "Поджог. Поджигает на 3 секунды. Вете�
 burn_percent = 50
 
 tags = Array[StringName]([&"fire"])
+status_apply_cooldown_ticks = 40

@@ -17,3 +17,4 @@ cold_ticks = 80
 cold_slow_percent = 30
 splash_radius_milli = 1000
 splash_percent = 70
+status_apply_cooldown_ticks = 40

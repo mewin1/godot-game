@@ -114,18 +114,26 @@ static func hit(field: FieldState, tower: TowerState, mob: MobState, damage: int
 		return
 	var idol_bonus: IdolState = field.get_idol(tower.data.god)
 	var status_bonus: int = idol_bonus.status_ticks if idol_bonus != null else 0
-	var chain_roll_chance: int = chain_chance(field, mob)
 	var was_shielded: bool = mob.shield_left > 0
 	var reaction: ReactionData = null
+	var blocked: bool = false
 	if not was_shielded:
 		for tag: StringName in tower.data.tags:
 			reaction = ReactionResolver.resolve(tag, mob.status_tags(), field.config.reactions)
 			if reaction != null:
 				break
+	# docs/37 RX-2/RX-3: реакция на перезарядке или общий запрет — удар идёт как обычный,
+	# стихия просто ставит свой статус.
+	if reaction != null and is_reaction_blocked(field, mob, reaction):
+		reaction = null
+		blocked = true
+	var chain_roll_chance: int = chain_chance(field, mob, blocked)
 	if reaction != null:
 		var stored: int = mob.get_stored_damage(field.config.ticks_per_second)
+		var payout: int = consumed_dot(field, mob, reaction) if reaction.pay_out_consumed else 0
 		damage = damage * reaction.damage_percent / 100 \
-				+ stored * reaction.stored_damage_percent / 100
+				+ stored * reaction.stored_damage_percent / 100 + payout
+		_start_reaction_cooldown(field, mob, reaction)
 		for status: StringName in reaction.consume:
 			mob.remove_status(status)
 		mob.stun_ticks_left = maxi(mob.stun_ticks_left, reaction.stun_ticks)
@@ -140,6 +148,7 @@ static func hit(field: FieldState, tower: TowerState, mob: MobState, damage: int
 			has_reacted = CurseCombat.conserve(mob, reaction)
 		if has_reacted and reaction.chain_chance_bonus == 0:
 			field.trigger_reaction(reaction.id, mob)
+			field.tower_reaction.emit(tower.id, reaction.id)
 	var was_burning: bool = mob.burn_ticks_left > 0
 	if was_burning:
 		damage += damage * tower.data.burning_target_bonus_percent / 100
@@ -148,6 +157,10 @@ static func hit(field: FieldState, tower: TowerState, mob: MobState, damage: int
 	damage = mob.reduce_by_resist(damage, tower.data.god, field.config.resist_percent)
 	field.deal_mob_damage(mob, damage, tower.id, &"hit", tower.data.armor_pierce)
 	if was_shielded:
+		return
+	# docs/37 RX-1: дом ставит статус одному врагу не чаще раза за перезарядку; урон — всегда.
+	if not _may_apply_status(field, tower, mob):
+		_lightning(field, tower, mob, chain_damage, chain_roll_chance, reaction)
 		return
 	if tower.data.wet_ticks > 0 and mob.is_alive() and mob.can_apply_status(&"wet"):
 		var duration: int = tower.data.wet_ticks \
@@ -181,6 +194,12 @@ static func hit(field: FieldState, tower: TowerState, mob: MobState, damage: int
 	if tower.data.charge_ticks > 0 and mob.is_alive() and mob.can_apply_status(&"charge"):
 		mob.charge_ticks_left = maxi(mob.charge_ticks_left, tower.data.charge_ticks + status_bonus)
 		field.battle_report.record_mark(tower.id)
+	_lightning(field, tower, mob, chain_damage, chain_roll_chance, reaction)
+
+
+## Цепная молния Перуна после удара (и по щиту, и когда статус дома ещё перезаряжается).
+static func _lightning(field: FieldState, tower: TowerState, mob: MobState, chain_damage: int,
+		chain_roll_chance: int, reaction: ReactionData) -> void:
 	if tower.data.tags.has(&"lightning") or tower.data.god == &"perun":
 		if field.config.chain_chance_percent < 0:
 			_charge(field, tower, mob, chain_damage)
@@ -189,11 +208,50 @@ static func hit(field: FieldState, tower: TowerState, mob: MobState, damage: int
 					reaction != null and reaction.chain_chance_bonus > 0)
 
 
+## Реакция не срабатывает: её перезарядка на этом враге или общий запрет реакций (docs/37 RX-2/3).
+static func is_reaction_blocked(field: FieldState, mob: MobState, reaction: ReactionData) -> bool:
+	if reaction.cooldown_ticks > 0 and mob.reaction_ready.get(reaction.id, 0) > field.wave_tick:
+		return true
+	return field.config.reaction_gate_ticks > 0 and mob.reaction_gate_until > field.wave_tick
+
+
+static func _start_reaction_cooldown(field: FieldState, mob: MobState, reaction: ReactionData) -> void:
+	if reaction.cooldown_ticks > 0:
+		mob.reaction_ready[reaction.id] = field.wave_tick + reaction.cooldown_ticks
+	if field.config.reaction_gate_ticks > 0:
+		mob.reaction_gate_until = field.wave_tick + field.config.reaction_gate_ticks
+
+
+static func _may_apply_status(field: FieldState, tower: TowerState, mob: MobState) -> bool:
+	var cooldown: int = tower.data.status_apply_cooldown_ticks
+	if cooldown <= 0:
+		return true
+	if mob.status_ready.get(tower.id, 0) > field.wave_tick:
+		return false
+	mob.status_ready[tower.id] = field.wave_tick + cooldown
+	return true
+
+
+## Оставшийся урон горения и проклятия, которые реакция поглощает (docs/37 RX-9): он выплачивается
+## сразу, поэтому реакция никогда не съедает чужой урон.
+static func consumed_dot(field: FieldState, mob: MobState, reaction: ReactionData) -> int:
+	var amount: int = 0
+	if reaction.consume.has(&"burn") and mob.burn_ticks_left > 0:
+		var first: int = maxi(1, mob.burn_cooldown)
+		if mob.burn_ticks_left >= first:
+			amount += mob.burn_damage * (1 + (mob.burn_ticks_left - first) / field.config.ticks_per_second)
+	if reaction.consume.has(&"curse") and mob.curse_ticks_left > 0:
+		amount += mob.curse_damage
+	return amount
+
+
 ## Шанс запуска определяется основной целью; мокрые дополнительные цели не бросают снова.
-static func chain_chance(field: FieldState, mob: MobState) -> int:
+static func chain_chance(field: FieldState, mob: MobState, reaction_blocked: bool = false) -> int:
 	var chance: int = field.config.chain_chance_percent
 	var rule: ReactionData = ReactionResolver.resolve(&"lightning", mob.status_tags(),
 			field.config.reactions)
+	if rule != null and reaction_blocked:
+		return clampi(chance, 0, 100)
 	if rule != null:
 		chance += rule.chain_chance_bonus
 	elif mob.wet_ticks_left > 0:
@@ -237,6 +295,7 @@ static func _chain(field: FieldState, tower: TowerState, mob: MobState, damage: 
 			return
 		if visited.size() == 1 and is_reaction:
 			field.trigger_reaction(&"chain", mob)
+			field.tower_reaction.emit(tower.id, &"chain")
 		visited.append(next_target)
 		field.lightning_fired.emit(field.get_mob_position(previous),
 				field.get_mob_position(next_target))

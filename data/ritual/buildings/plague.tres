@@ -17,3 +17,4 @@ curse_percent = 200
 description = "Проклятие группы. Усилитель: помечает группу. Проклятие перескакивает на соседнего мокрого."
 splash_radius_milli = 1000
 splash_percent = 100
+status_apply_cooldown_ticks = 40

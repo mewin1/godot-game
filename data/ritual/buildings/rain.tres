@@ -16,3 +16,4 @@ description = "Мокрота всей зоны. Усилитель: ороша�
 wet_ticks = 80
 neighbor_damage_percent = 30
 hits_all_in_range = true
+status_apply_cooldown_ticks = 40

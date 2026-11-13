@@ -46,6 +46,19 @@ class Hit:
 
 var _hits: Array[Hit] = []
 var _next_hit_text: Dictionary[int, int] = {}
+## Числа урона (docs/37 RX-8, решение D11): 0 — нет, 1 — важные (по умолчанию), 2 — все.
+enum Numbers { NONE, IMPORTANT, ALL }
+const NUMBER_NAMES: Array[String] = ["нет", "важные", "все"]
+const NUMBERS_CAP: int = 12
+## Важный удар без реакции и не по боссу: не меньше этой доли наибольшего здоровья врага, %.
+const BIG_HIT_PERCENT: int = 25
+const SETTINGS_PATH: String = "user://settings.cfg"
+var damage_numbers: Numbers = Numbers.IMPORTANT
+## Урон по врагу, накопленный до следующего числа (одно число на врага за 0,5 с).
+var _pending_damage: Dictionary[int, int] = {}
+var _pending_ward: Dictionary[int, bool] = {}
+## Враг, по которому только что сработала реакция: следующий удар — «важный».
+var _reaction_until: Dictionary[int, int] = {}
 var _last_hero_due: int = -1
 
 
@@ -57,6 +70,9 @@ func _process(delta: float) -> void:
 		stage.show_field(_shown_field, Callable())
 		_shown_field.tower_fired.connect(_tower_fired)
 		_shown_field.hit_observed.connect(_hit)
+		_shown_field.effect_played.connect(_on_reaction)
+		_pending_damage.clear()
+		_reaction_until.clear()
 		_hits.clear()
 		effects.set_field(_shown_field)
 		_next_hit_text.clear()
@@ -83,20 +99,65 @@ func _tower_fired(tower: TowerState, _mob: MobState) -> void:
 
 
 
+func _on_reaction(_effect_id: StringName, mob: MobState) -> void:
+	if mob != null:
+		_reaction_until[mob.id] = trial.tick_count + 3
+
+
+## Число над врагом: копится по врагу и всплывает раз в 0,5 с; в режиме «важные» — только после
+## реакции, по боссу или крупный удар (docs/37 RX-8).
 func _hit(details: Dictionary) -> void:
+	if damage_numbers == Numbers.NONE:
+		return
+	var id: int = RitualStateCodec.integer(details["mob"])
+	var ward: int = RitualStateCodec.integer(details["ward_damage"])
+	var damage: int = RitualStateCodec.integer(details["hp_damage"]) + ward
+	if damage <= 0:
+		return
 	for mob: MobState in trial.field.mobs:
-		if mob.id == details["mob"]:
-			if trial.tick_count < _next_hit_text.get(mob.id, 0):
+		if mob.id != id:
+			continue
+		if damage_numbers == Numbers.IMPORTANT:
+			var boss: bool = mob.data.tags.has(trial.settings.boss_tag)
+			var reacted: bool = trial.tick_count <= _reaction_until.get(id, -1)
+			if not boss and not reacted and damage * 100 < mob.max_hp * BIG_HIT_PERCENT:
 				return
-			_next_hit_text[mob.id] = trial.tick_count + 5
-			var ward: int = RitualStateCodec.integer(details["ward_damage"])
-			var damage: int = RitualStateCodec.integer(details["hp_damage"]) + ward
-			_hits.append(Hit.new(Vector2.ZERO, Vector2(trial.field.get_mob_position(mob)),
-				0.5, Color("a6e7ff") if ward > 0 else Color("ffe4a5"), str(damage)))
+		_pending_damage[id] = _pending_damage.get(id, 0) + damage
+		_pending_ward[id] = _pending_ward.get(id, false) or ward > 0
+		if trial.tick_count < _next_hit_text.get(id, 0):
 			return
+		_next_hit_text[id] = trial.tick_count + 10
+		var reacted_now: bool = trial.tick_count <= _reaction_until.get(id, -1)
+		var color: Color = Color("a6e7ff") if _pending_ward[id] else Color("ffb36b") if reacted_now \
+			else Color("ffe4a5")
+		if _hits.size() >= NUMBERS_CAP:
+			_hits.remove_at(0)
+		_hits.append(Hit.new(Vector2.ZERO, Vector2(trial.field.get_mob_position(mob)),
+			0.6, color, str(_pending_damage[id])))
+		_pending_damage[id] = 0
+		_pending_ward[id] = false
+		return
+
+
+## Следующий режим чисел урона; запоминается в настройках игрока.
+func cycle_damage_numbers() -> String:
+	damage_numbers = ((damage_numbers + 1) % 3) as Numbers
+	var config: ConfigFile = ConfigFile.new()
+	config.load(SETTINGS_PATH)
+	config.set_value("ritual", "damage_numbers", int(damage_numbers))
+	config.save(SETTINGS_PATH)
+	return NUMBER_NAMES[damage_numbers]
+
+
+func _load_damage_numbers() -> void:
+	var config: ConfigFile = ConfigFile.new()
+	if config.load(SETTINGS_PATH) == OK:
+		var saved: int = RitualStateCodec.integer(config.get_value("ritual", "damage_numbers", 1), 1)
+		damage_numbers = clampi(saved, 0, 2) as Numbers
 
 
 func _ready() -> void:
+	_load_damage_numbers()
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	clip_contents = true
 	if DisplayServer.get_name() == "headless":
@@ -202,6 +263,7 @@ func _draw() -> void:
 	if trial.settings.uses_plots():
 		for tower: TowerState in field.towers:
 			_draw_kin(tower)
+		_draw_combo_links()
 	for base: MobState in field.mobs:
 		_draw_mob(base as RitualMob)
 	if trial.hero_due >= 0:
@@ -282,6 +344,81 @@ func _draw_kin(tower: TowerState) -> void:
 		var ready: bool = trial.upgrade_error(tower, 0 if tower.level == 2 else -1).is_empty() \
 			and trial.gold >= trial.upgrade_cost(tower)
 		_text(top + Vector2(20, 6), "↑", Color("ffd36b") if ready else Color(0.6, 0.6, 0.6, 0.8), 18)
+
+
+## Связки реакций (docs/37 RX-5): от выбранного дома или от участка под покупку — линии к соседям
+## в досягаемости, с которыми он даёт реакцию, и её название посередине.
+func _draw_combo_links() -> void:
+	var data: TowerData = null
+	var center: Vector2i = Vector2i.ZERO
+	var reach: int = 0
+	var self_id: int = 0
+	var selected: TowerState = trial.field.get_tower(selected_id)
+	if action == &"buy" and preview_index >= 0 and trial.field.is_buildable(hover_cell) \
+			and trial.field.get_tower_at(hover_cell) == null:
+		data = trial.settings.combat.towers[preview_index]
+		center = TowerState.center_of([hover_cell])
+		reach = data.range_milli
+	elif selected != null and action == &"":
+		data = selected.data
+		center = selected.center_milli()
+		reach = trial.field.get_tower_range(selected)
+		self_id = selected.id
+	if data == null:
+		return
+	var from: Vector2 = _point(center) + Vector2(0, -_cell * 0.6)
+	for other: TowerState in trial.field.towers:
+		if other.id == self_id:
+			continue
+		var gap: Vector2 = Vector2(other.center_milli() - center)
+		if gap.length() > reach + trial.field.get_tower_range(other):
+			continue
+		var reaction: ReactionData = reaction_between(data, other.data, trial.settings.combat.reactions)
+		if reaction == null:
+			continue
+		var to: Vector2 = _point(other.center_milli()) + Vector2(0, -_cell * 0.6)
+		var tint: Color = GodSymbols.get_color(data.god).lerp(GodSymbols.get_color(other.data.god), 0.5)
+		draw_line(from, to, Color(tint, 0.85), 3.0, true)
+		var middle: Vector2 = (from + to) * 0.5
+		var font: Font = ThemeDB.fallback_font
+		var width: float = font.get_string_size(reaction.display_name, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
+		draw_rect(Rect2(middle - Vector2(width * 0.5 + 4, 11), Vector2(width + 8, 16)), Color(0.03, 0.05, 0.08, 0.85))
+		draw_string(font, middle + Vector2(-width * 0.5, 2), reaction.display_name, HORIZONTAL_ALIGNMENT_LEFT,
+			-1, 13, tint.lightened(0.45))
+
+
+## Статус, который ставит постройка (для подсказок о реакциях), или пусто.
+static func applied_status(data: TowerData) -> StringName:
+	if data.wet_ticks > 0:
+		return &"wet"
+	if data.burn_percent > 0:
+		return &"burn"
+	if data.cold_ticks > 0:
+		return &"cold"
+	if data.curse_ticks > 0:
+		return &"curse"
+	if data.charge_ticks > 0:
+		return &"charge"
+	return &""
+
+
+## Реакция пары построек: стихия одной по статусу другой (в любую сторону); null — нет.
+static func reaction_between(a: TowerData, b: TowerData, reactions: Array[ReactionData]) -> ReactionData:
+	var rule: ReactionData = _one_way(a, b, reactions)
+	return rule if rule != null else _one_way(b, a, reactions)
+
+
+## Стихия incoming по статусу, который ставит holder.
+static func _one_way(incoming: TowerData, holder: TowerData, reactions: Array[ReactionData]) -> ReactionData:
+	var status: StringName = applied_status(holder)
+	if status == &"":
+		return null
+	var statuses: Array[StringName] = [status]
+	for tag: StringName in incoming.tags:
+		var rule: ReactionData = ReactionResolver.resolve(tag, statuses, reactions)
+		if rule != null:
+			return rule
+	return null
 
 
 ## Четыре ступени уровня (дерево, камень, кирпич, белый камень): закрашено столько, сколько уровень.

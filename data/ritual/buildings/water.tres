@@ -22,3 +22,4 @@ shop_weight = 5
 description = "Мокрота и поддержка. Мокрота по группе и усиление соседних домов."
 
 tags = Array[StringName]([&"water"])
+status_apply_cooldown_ticks = 40

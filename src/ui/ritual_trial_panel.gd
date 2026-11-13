@@ -76,6 +76,9 @@ var _idol_popup: RitualIdolPopup
 var _selection_title: Label
 var _overlay: RitualHudOverlay
 var _barricade_buttons: Array[Button] = []
+## Реакции, вызванные каждым домом за текущую ночь (docs/37 RX-6): id дома → id реакции → число.
+var _tower_reactions: Dictionary[int, Dictionary] = {}
+var _numbers_button: Button
 ## Итоги забега для экрана поражения (docs/37 UI-14).
 var _stats: RitualRunStats = RitualRunStats.new()
 var _defeat_columns: HBoxContainer
@@ -392,6 +395,16 @@ func _build_dock(root_box: VBoxContainer) -> void:
 	var hud_tools: Node = _hud._pause_button.get_parent()
 	hud_tools.add_child(legend)
 	hud_tools.move_child(legend, 0)
+	# Числа урона: нет / важные / все (docs/37 RX-8, D11).
+	_numbers_button = Button.new()
+	_numbers_button.name = "DamageNumbers"
+	_numbers_button.text = "Числа: %s" % RitualBoard.NUMBER_NAMES[board.damage_numbers]
+	_numbers_button.tooltip_text = "Числа урона над врагами: нет / важные (реакции, боссы, крупные удары) / все"
+	_numbers_button.custom_minimum_size = Vector2(0, 36)
+	_numbers_button.focus_mode = Control.FOCUS_NONE
+	_numbers_button.pressed.connect(func() -> void: _numbers_button.text = "Числа: " + board.cycle_damage_numbers())
+	hud_tools.add_child(_numbers_button)
+	hud_tools.move_child(_numbers_button, 1)
 
 
 ## Экран поражения бесконечного забега: ночи, рекорд на устройстве, убитые боссы.
@@ -696,6 +709,8 @@ func _board_reset() -> void:
 	_wear_dawn = -1
 	_stats = RitualRunStats.new()
 	_stats.watch(trial.field)
+	_tower_reactions.clear()
+	trial.field.tower_reaction.connect(_count_tower_reaction)
 	if _overlay != null:
 		_overlay.reset()
 	board.trial = trial
@@ -1081,6 +1096,9 @@ func _grow() -> void:
 	if _issue(RitualCommand.new(RitualCommand.Action.STREET)):
 		var street: RitualStreetData = settings.streets[trial.street_nights.size() - 1]
 		if _dock != null:
+			# Новый тир открылся — сразу показать его вкладку каталога.
+			if trial.city_level() <= 3:
+				_dock.show_tier(trial.city_level())
 			var text: String = street.summary
 			if not street.path_cells.is_empty():
 				text += "\nНовый вход — с ночи %d" % trial.street_nights[-1]
@@ -1346,6 +1364,8 @@ func _refresh() -> void:
 	if trial == null:
 		return
 	var at_night: bool = settings.is_endless() and settings.is_night(trial.tick_count)
+	if at_night and not _was_night:
+		_tower_reactions.clear()
 	if at_night != _was_night and trial.phase == RitualTrial.Phase.RUNNING:
 		_sound_bank.play(&"wave" if at_night else &"round", 0.0)
 	_was_night = at_night
@@ -1423,9 +1443,11 @@ func _selection_text(tower: TowerState) -> String:
 		var damage: String = "Урон/с по целям %d" % _display_dps(tower)
 		if next != null:
 			damage += ", после улучшения %d" % _display_dps(next)
-		return "%s · %s%s\n%s · %s\n%s · прочность %d%% · ремонт %d" % [tower.data.display_name,
-			settings.level_name(tower.level), branch_name, profile.role, damage, condition,
-			tower.durability * 100 / maxi(1, full), trial.repair_cost(tower)]
+		var text: String = "%s · %s%s\n%s · %s · %s\n%s · прочность %d%% · ремонт %d" % [tower.data.display_name,
+			settings.level_name(tower.level), branch_name, profile.role, damage, ward_note(settings, tower.data),
+			condition, tower.durability * 100 / maxi(1, full), trial.repair_cost(tower)]
+		var reactions: String = _reaction_note(tower.id)
+		return text + ("\n" + reactions if not reactions.is_empty() else "")
 	var behavior: RitualLevelBehavior = settings.level_behavior(tower)
 	var level: String = "ур. %d" % tower.level if behavior == null \
 			else "%s (%d)" % [settings.level_name(tower.level), tower.level]
@@ -1443,6 +1465,41 @@ func _selection_text(tower: TowerState) -> String:
 			" — молчит" if tower.durability == 0 else " — ослаб" if tower.durability * 2 <= full else ""]
 	return "%s — %s%s · вложено %d%s" % [lines[0], behavior.note, wear, tower.invested_total,
 		" · устанавливается" if tower.is_action_blocked() else ""]
+
+
+func _count_tower_reaction(tower_id: int, reaction_id: StringName) -> void:
+	var counts: Dictionary = _tower_reactions.get(tower_id, {})
+	counts[reaction_id] = RitualStateCodec.integer(counts.get(reaction_id, 0)) + 1
+	_tower_reactions[tower_id] = counts
+
+
+## «Реакции за ночь: Цепь ×34, Пар ×12» для выбранного дома (docs/37 RX-6).
+func _reaction_note(tower_id: int) -> String:
+	var counts: Dictionary = _tower_reactions.get(tower_id, {})
+	if counts.is_empty():
+		return ""
+	var parts: PackedStringArray = []
+	for id: Variant in counts:
+		var title: String = str(id)
+		for reaction: ReactionData in settings.combat.reactions:
+			if reaction.id == StringName(str(id)):
+				title = reaction.display_name
+		parts.append("%s ×%d" % [title, RitualStateCodec.integer(counts[id])])
+	return "Реакции за ночь: " + ", ".join(parts)
+
+
+## Как дом бьёт по оберегу навьих щитов (docs/37 RX-11): та же таблица, что в RitualField._hit.
+static func ward_note(rules: RitualTrialConfig, data: TowerData) -> String:
+	if not data.attacks or data.damage <= 0:
+		return "оберег не пробивает"
+	var percent: int = rules.ward_other_percent
+	if data.tags.has(&"fire"):
+		percent = rules.ward_fire_percent
+	elif data.tags.has(&"physical"):
+		percent = rules.ward_physical_percent
+	elif data.tags.has(&"lightning"):
+		percent = rules.ward_lightning_percent
+	return "по оберегу %d%%" % percent if percent > 0 else "оберег не пробивает"
 
 
 func _threat_names() -> PackedStringArray:

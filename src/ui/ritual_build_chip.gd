@@ -7,7 +7,8 @@ signal chosen(index: int)
 signal hovered(index: int)
 signal cancelled()
 
-const CHIP_SIZE: Vector2 = Vector2(104, 40)
+## Крупная карточка вкладки тира (просьба автора 13 ноября: иконки крупнее, на весь отсек).
+const CHIP_SIZE: Vector2 = Vector2(104, 112)
 const TIER_NAMES: Array[String] = ["I", "II", "III"]
 const TIER_COLORS: Array[Color] = [Color("b9814f"), Color("b8c3cc"), Color("f0c869")]
 const NIGHT_PRICE: Color = Color("ffe066")
@@ -75,31 +76,33 @@ func _draw() -> void:
 	var hovered_now: bool = rect.has_point(get_local_mouse_position())
 	draw_style_box(_chosen if is_chosen else _hover if hovered_now else _normal, rect)
 	var color: Color = GodSymbols.get_color(data.god)
-	draw_rect(Rect2(2, 3, 4, size.y - 6), color)
-	var side: float = size.y - 10.0
-	if _icon != null:
-		# Квадрат из середины картинки: постройка крупно, без пустого неба.
-		var source: Vector2 = Vector2(_icon.get_size())
-		var crop: float = minf(source.x, source.y)
-		var region: Rect2 = Rect2(Vector2((source.x - crop) * 0.5, (source.y - crop) * 0.55), Vector2.ONE * crop)
-		draw_texture_rect_region(_icon, Rect2(9, 5, side, side), region)
+	draw_rect(Rect2(4, 2, size.x - 8, 4), color)
 	var font: Font = get_theme_default_font()
-	var text_x: float = 12.0 + side
-	var width: float = size.x - text_x - 4.0
-	draw_string(font, Vector2(text_x, 15), data.display_name, HORIZONTAL_ALIGNMENT_LEFT, width, 11, NAME_COLOR)
-	var tier: int = clampi(data.tier, 1, 3)
+	var art: Rect2 = Rect2(6, 9, size.x - 12, size.y - 44)
+	if _icon != null:
+		# Середина картинки по пропорции поля: постройка крупно, без пустого неба.
+		var source: Vector2 = Vector2(_icon.get_size())
+		var scale: float = minf(source.x / art.size.x, source.y / art.size.y)
+		var crop: Vector2 = art.size * scale
+		var region: Rect2 = Rect2(Vector2((source.x - crop.x) * 0.5, (source.y - crop.y) * 0.55), crop)
+		draw_texture_rect_region(_icon, art, region)
+	var symbol: Texture2D = GodSymbols.get_icon(data.god)
+	if symbol != null:
+		draw_rect(Rect2(art.position + Vector2(2, 2), Vector2(20, 20)), Color(0.02, 0.04, 0.06, 0.75))
+		draw_texture_rect(symbol, Rect2(art.position + Vector2(3, 3), Vector2(18, 18)), false)
+	draw_string(font, Vector2(6, size.y - 22), data.display_name, HORIZONTAL_ALIGNMENT_CENTER, size.x - 12, 12,
+		NAME_COLOR)
 	if locked_text.is_empty():
+		var label: String = "◉ %d" % price
 		var price_color: Color = NIGHT_PRICE if at_night else PRICE_COLOR
-		draw_string(font, Vector2(text_x, size.y - 7), "◉ %d" % price, HORIZONTAL_ALIGNMENT_LEFT,
-				width, 13, price_color)
+		var width: float = font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, 15).x
+		var x: float = (size.x - width - (12.0 if at_night else 0.0)) * 0.5
+		draw_string(font, Vector2(x, size.y - 6), label, HORIZONTAL_ALIGNMENT_LEFT, -1, 15, price_color)
 		if at_night:
-			var arrow_x: float = text_x + font.get_string_size("◉ %d" % price, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x + 3
-			draw_string(font, Vector2(arrow_x, size.y - 7), "↑", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, NIGHT_ARROW)
-	draw_string(font, Vector2(size.x - 22, size.y - 7), TIER_NAMES[tier - 1], HORIZONTAL_ALIGNMENT_RIGHT,
-			18, 11, TIER_COLORS[tier - 1])
+			draw_string(font, Vector2(x + width + 2, size.y - 6), "↑", HORIZONTAL_ALIGNMENT_LEFT, -1, 15, NIGHT_ARROW)
 	if not locked_text.is_empty():
-		draw_rect(rect.grow(-1), Color(0, 0, 0, 0.62))
-		draw_string(font, Vector2(text_x, size.y - 7), locked_text, HORIZONTAL_ALIGNMENT_LEFT, width, 10,
-				Color(0.8, 0.8, 0.8, 0.85))
+		draw_rect(rect.grow(-1), Color(0, 0, 0, 0.6))
+		draw_string(font, Vector2(6, size.y - 6), "🔒 " + locked_text, HORIZONTAL_ALIGNMENT_CENTER, size.x - 12, 12,
+			Color(0.85, 0.85, 0.85, 0.9))
 	elif not affordable:
 		draw_rect(rect.grow(-1), Color(0, 0, 0, 0.38))

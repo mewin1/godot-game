@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="ReactionData" format=3]
+[ext_resource type="Script" path="res://src/sim/data/reaction_data.gd" id="1"]
+[resource]
+script = ExtResource("1")
+id = &"execute"
+incoming = &"physical"
+required = &""
+damage_percent = 200
+stun_ticks = 0
+freeze_ticks = 0
+suppress_status = false
+minimum_statuses = 2
+display_name = "Добивание"
+explanation = "Два статуса → Физика: ×1.4 + накопленный урон огня/проклятия; метки поглощаются."
+consume = Array[StringName]([&"wet", &"burn", &"charge", &"cold", &"frozen", &"curse"])
+stored_damage_percent = 100
+cooldown_ticks = 60
