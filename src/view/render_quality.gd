@@ -80,7 +80,8 @@ static func hashed_foliage() -> bool:
 ## Сглаживание и разрешение 3D. TAA даёт мягкую картинку без мерцания травы, теней и тонких кольев.
 ## MSAA на ПК не нужен: хвоя — шумовая альфа под TAA (hashed_foliage). Раньше хвоя была срезом
 ## с alpha-to-coverage, и без MSAA кроны превращались в пятна; MSAA 2x стоил ~1,7 мс в 2560×1440.
-static func setup_viewport(viewport: SubViewport) -> void:
+static func setup_viewport(viewport: SubViewport, ritual_catalogue: bool = false) -> void:
+	var aa: Antialias = ritual_antialias() if ritual_catalogue else antialias()
 	if is_mobile():
 		# Compatibility (OpenGL) не умеет FXAA — там MSAA 2x (на телефонных GPU он дешёвый);
 		# Mobile (Vulkan) — FXAA. Хвоя на телефоне — срез с alpha-to-coverage.
@@ -89,11 +90,62 @@ static func setup_viewport(viewport: SubViewport) -> void:
 		viewport.use_taa = false
 		viewport.screen_space_aa = Viewport.SCREEN_SPACE_AA_DISABLED if compatibility else Viewport.SCREEN_SPACE_AA_FXAA
 		viewport.scaling_3d_scale = MOBILE_3D_SCALE
+	elif aa == Antialias.FSR2:
+		# FSR2 в родном разрешении: свое временное сглаживание и резкость, TAA не нужен.
+		viewport.msaa_3d = Viewport.MSAA_DISABLED
+		viewport.use_taa = false
+		viewport.screen_space_aa = Viewport.SCREEN_SPACE_AA_DISABLED
+		viewport.scaling_3d_mode = Viewport.SCALING_3D_MODE_FSR2
+		viewport.scaling_3d_scale = 1.0
+		viewport.fsr_sharpness = FSR_SHARPNESS
 	else:
 		viewport.msaa_3d = Viewport.MSAA_DISABLED
 		viewport.use_taa = true
 		viewport.screen_space_aa = Viewport.SCREEN_SPACE_AA_DISABLED
+		viewport.scaling_3d_mode = Viewport.SCALING_3D_MODE_BILINEAR
 		viewport.scaling_3d_scale = 1.0
+
+
+## Сглаживание на ПК (docs/37 VIS-1): ключи --aa=taa/taa_sharp/fsr2 для сравнения.
+## D12: в новом бесконечном режиме FSR2; для прежних правил и PvP остается TAA с резкостью.
+enum Antialias { TAA_SHARP, TAA, FSR2 }
+## Резкость после TAA (параметр clarity постобработки) и ее радиус в пикселях.
+const SHARPEN: float = 0.3
+const SHARPEN_RADIUS: float = 1.0
+## Резкость FSR2: 0 - самая резкая, 2 - самая мягкая.
+const FSR_SHARPNESS: float = 0.3
+static var _antialias: Antialias = Antialias.TAA_SHARP
+static var _antialias_chosen: bool = false
+
+
+static func antialias() -> Antialias:
+	if not _antialias_chosen:
+		_antialias_chosen = true
+		for arg: String in OS.get_cmdline_user_args():
+			if arg == "--aa=taa":
+				_antialias = Antialias.TAA
+			elif arg == "--aa=fsr2":
+				_antialias = Antialias.FSR2
+	return _antialias
+
+
+## D12: FSR2 по умолчанию в новом бесконечном режиме; ключи сравнения сохраняются.
+static func ritual_antialias() -> Antialias:
+	var selected: Antialias = Antialias.FSR2
+	for arg: String in OS.get_cmdline_user_args():
+		if arg == "--aa=taa":
+			selected = Antialias.TAA
+		elif arg == "--aa=taa_sharp":
+			selected = Antialias.TAA_SHARP
+		elif arg == "--aa=fsr2":
+			selected = Antialias.FSR2
+	return selected
+
+
+## Сила повышения резкости для постобработки "Обряда" (0 - выключено).
+static func sharpen_amount(ritual_catalogue: bool = false) -> float:
+	var selected: Antialias = ritual_antialias() if ritual_catalogue else antialias()
+	return SHARPEN if not is_mobile() and selected == Antialias.TAA_SHARP else 0.0
 
 
 ## Окружение и солнце сцены арены (после постройки).

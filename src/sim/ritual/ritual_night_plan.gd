@@ -91,19 +91,23 @@ func _seen_through(night: int) -> Dictionary[int, bool]:
 	return _seen[night]
 
 
-func total_hp(night: int) -> int:
+## Здоровье всех врагов ночи с оберегами - так, как они выйдут на дорогу.
+func total_ehp(night: int) -> int:
 	var total: int = 0
 	for pack: RitualPack in packs(night):
-		for member: int in pack.members:
-			total += settings.enemies[member].hp * pack.hp_for(member, rules.boss_enemy) / 100
+		for index: int in pack.members.size():
+			var enemy: MobData = settings.enemies[pack.members[index]]
+			total += maxi(1, enemy.hp * pack.hp_at(index, rules.boss_enemy) / 100)
+			if enemy.tags.has(settings.ward_tag):
+				total += settings.ward_hp
 	return total
 
 
 func total_gold(night: int) -> int:
 	var total: int = 0
 	for pack: RitualPack in packs(night):
-		for member: int in pack.members:
-			total += settings.enemies[member].kill_reward
+		for bounty: int in pack.bounties:
+			total += bounty
 	return total
 
 
@@ -120,7 +124,8 @@ func total_threat(night: int) -> int:
 func describe(night: int) -> String:
 	var parts: PackedStringArray = []
 	for pack: RitualPack in packs(night):
-		parts.append("%d:%s:%s:%d" % [pack.at_tick, str(pack.members), pack.resist, pack.hp_percent])
+		parts.append("%d:%s:%s:%d:%s" % [pack.at_tick, str(pack.members), pack.resist, pack.hp_percent,
+			str(pack.elite)])
 	return "|".join(parts)
 
 
@@ -145,7 +150,8 @@ func omen_index(night: int) -> int:
 	return _omens[night]
 
 
-func _generate(night: int) -> Array[RitualPack]:
+## Генератор правил до P1: сохраняет состав, здоровье и награды старых записей.
+func _legacy_generate(night: int) -> Array[RitualPack]:
 	var rng: RandomNumberGenerator = RandomNumberGenerator.new()
 	rng.seed = run_seed * 1000003 + night * 7919
 	var night_omen: RitualOmenData = omen(night)
@@ -156,11 +162,11 @@ func _generate(night: int) -> Array[RitualPack]:
 	var result: Array[RitualPack] = []
 	for index: int in count:
 		var share: int = budget / count + (budget % count if index == count - 1 else 0)
-		var pack: RitualPack = _compose(rng, night, share)
+		var pack: RitualPack = _legacy_compose(rng, night, share)
 		pack.at_tick = start + window * index / count
 		result.append(pack)
 	if rules.is_boss_night(night):
-		_insert_boss(rng, night, budget, start + window / 2, result)
+		_legacy_insert_boss(rng, night, budget, start + window / 2, result)
 	# Свой генератор входов: прежние ночи (состав, время) не меняются от появления улиц.
 	var lanes: RandomNumberGenerator = RandomNumberGenerator.new()
 	lanes.seed = run_seed * 1000033 + night * 104729
@@ -171,7 +177,7 @@ func _generate(night: int) -> Array[RitualPack]:
 	return result
 
 
-func _compose(rng: RandomNumberGenerator, night: int, budget: int) -> RitualPack:
+func _legacy_compose(rng: RandomNumberGenerator, night: int, budget: int) -> RitualPack:
 	var pack: RitualPack = RitualPack.new()
 	pack.night = night
 	pack.spacing = maxi(1, rules.pack_spacing_ticks)
@@ -183,7 +189,7 @@ func _compose(rng: RandomNumberGenerator, night: int, budget: int) -> RitualPack
 	var room: int = rules.pack_max_size - (1 if leader != null else 0)
 	var spent: int = budget - remaining
 	while pack.members.size() < room:
-		# Второй боец — другого вида, если есть из чего выбрать: пачка всегда смешанная.
+		# Второй боец - другого вида, если есть из чего выбрать: пачка всегда смешанная.
 		var avoid: int = pack.members[0] if pack.members.size() == 1 else -1
 		var rule: RitualEnemyRule = _pick(rng, night, remaining, false, false, avoid)
 		if rule == null:
@@ -201,14 +207,178 @@ func _compose(rng: RandomNumberGenerator, night: int, budget: int) -> RitualPack
 	# Бюджет, на который не нашлось места в пачке, становится здоровьем: ночь не слабеет.
 	if remaining > 0 and spent > 0:
 		pack.hp_percent += pack.hp_percent * remaining / spent
+	pack.elite.resize(pack.members.size())
+	for member: int in pack.members:
+		pack.bounties.append(settings.enemies[member].kill_reward)
 	pack.leader = _strongest(pack.members)
 	return pack
 
 
-func _insert_boss(rng: RandomNumberGenerator, night: int, budget: int, at_tick: int,
+func _legacy_insert_boss(rng: RandomNumberGenerator, night: int, budget: int, at_tick: int,
 		result: Array[RitualPack]) -> void:
-	var pack: RitualPack = _compose(rng, night, budget * rules.boss_escort_percent / 100)
+	var pack: RitualPack = _legacy_compose(rng, night, budget * rules.boss_escort_percent / 100)
 	pack.members.append(rules.boss_enemy)
+	pack.elite.append(0)
+	pack.bounties.append(settings.enemies[rules.boss_enemy].kill_reward)
+	pack.leader = rules.boss_enemy
+	pack.boss = true
+	pack.boss_hp_percent = rules.boss_hp_percent(night)
+	pack.at_tick = at_tick
+	if not rules.boss_resist_gods.is_empty():
+		pack.resist = rules.boss_resist_gods[rng.randi_range(0, rules.boss_resist_gods.size() - 1)]
+	var position: int = result.size()
+	for index: int in result.size():
+		if result[index].at_tick > at_tick:
+			position = index
+			break
+	result.insert(position, pack)
+
+
+func _generate(night: int) -> Array[RitualPack]:
+	if rules.pressure_base <= 0:
+		return _legacy_generate(night)
+	var night_omen: RitualOmenData = omen(night)
+	var packs_add: int = night_omen.packs_add if night_omen != null else 0
+	var limit: int = maxi(1, rules.packs_max + packs_add)
+	var count: int = clampi(rules.pack_count(night) + packs_add, 1, limit)
+	var result: Array[RitualPack] = []
+	# Бюджет сверх полных пачек: сначала еще пачка до предела ночи, на пределе - элита (docs/37 ECO-1).
+	# Раньше он уходил в скрытое здоровье без награды - отсюда обрыв после 13-й ночи.
+	while true:
+		result = _compose_night(night, count, count == limit)
+		if count == limit or not _overflows(result):
+			break
+		count += 1
+	_fit_to_curves(night, result)
+	# Свой генератор входов: прежние ночи (состав, время) не меняются от появления улиц.
+	var lanes: RandomNumberGenerator = RandomNumberGenerator.new()
+	lanes.seed = run_seed * 1000033 + night * 104729
+	var shift: int = lanes.randi_range(0, 59)
+	for index: int in result.size():
+		result[index].slot = index
+		result[index].lane_shift = shift
+	return result
+
+
+## Состав ночи из count пачек (и пачки босса). Генератор сида тот же при любом count.
+func _compose_night(night: int, count: int, elite_allowed: bool) -> Array[RitualPack]:
+	var rng: RandomNumberGenerator = RandomNumberGenerator.new()
+	rng.seed = run_seed * 1000003 + night * 7919
+	var budget: int = rules.budget(night)
+	var start: int = rules.night_start(night)
+	var window: int = rules.night_length(night) * rules.spread_percent / 100
+	var result: Array[RitualPack] = []
+	for index: int in count:
+		var share: int = budget / count + (budget % count if index == count - 1 else 0)
+		var pack: RitualPack = _compose(rng, night, share, elite_allowed)
+		pack.at_tick = start + window * index / count
+		result.append(pack)
+	if rules.is_boss_night(night):
+		_insert_boss(rng, night, budget, start + window / 2, result, elite_allowed)
+	return result
+
+
+## Есть ли полная пачка с лишним бюджетом (свита босса не считается: ее доля бюджета своя).
+func _overflows(result: Array[RitualPack]) -> bool:
+	for pack: RitualPack in result:
+		if pack.overflow > 0 and not pack.boss:
+			return true
+	return false
+
+
+func _compose(rng: RandomNumberGenerator, night: int, budget: int, elite_allowed: bool) -> RitualPack:
+	var pack: RitualPack = RitualPack.new()
+	pack.night = night
+	pack.spacing = maxi(1, rules.pack_spacing_ticks)
+	pack.elite_multiplier = rules.elite_multiplier
+	var remaining: int = budget
+	var leader: RitualEnemyRule = _pick(rng, night, budget * rules.leader_budget_percent / 100, true)
+	if leader != null:
+		remaining -= leader.threat
+	var room: int = rules.pack_max_size - (1 if leader != null else 0)
+	while pack.members.size() < room:
+		# Второй боец - другого вида, если есть из чего выбрать: пачка всегда смешанная.
+		var avoid: int = pack.members[0] if pack.members.size() == 1 else -1
+		var rule: RitualEnemyRule = _pick(rng, night, remaining, false, false, avoid)
+		if rule == null:
+			break
+		pack.members.append(rule.enemy_index)
+		remaining -= rule.threat
+	if pack.members.is_empty() and leader == null:
+		var cheapest: RitualEnemyRule = _pick(rng, night, 2147483647, false, true)
+		pack.members.append(cheapest.enemy_index)
+		remaining = 0
+	if leader != null:
+		pack.members.insert(pack.members.size() / 2, leader.enemy_index)
+	pack.elite.resize(pack.members.size())
+	var full: bool = pack.members.size() >= rules.pack_max_size
+	if full and _pick(rng, night, remaining, false, true) != null:
+		pack.overflow = remaining
+		if elite_allowed:
+			_promote(rng, pack, remaining)
+	pack.leader = _strongest(pack.members)
+	return pack
+
+
+## Элита на случайных врагах полной пачки, пока хватает бюджета: ранг стоит как (множитель - 1)
+## таких же врагов, поэтому здоровье и награда растут вместе с бюджетом.
+func _promote(rng: RandomNumberGenerator, pack: RitualPack, budget: int) -> void:
+	if rules.elite_multiplier <= 1:
+		return
+	var remaining: int = budget
+	while true:
+		var choices: Array[int] = []
+		for index: int in pack.members.size():
+			if _promotion_cost(pack, index) <= remaining:
+				choices.append(index)
+		if choices.is_empty():
+			return
+		var chosen: int = choices[rng.randi_range(0, choices.size() - 1)]
+		remaining -= _promotion_cost(pack, chosen)
+		pack.elite[chosen] += 1
+
+
+func _promotion_cost(pack: RitualPack, index: int) -> int:
+	var rule: RitualEnemyRule = rules.rule_for(pack.members[index])
+	return (rule.threat if rule != null else 1) * pack.elite_factor(index) * (rules.elite_multiplier - 1)
+
+
+## Сила и награда ночи - по кривым правил (docs/37 ECO-2, ECO-5, ECO-6): состав пачек (примета,
+## элита) только делит их между врагами. Сам босс растет своим темпом и входит в силу ночи.
+func _fit_to_curves(night: int, result: Array[RitualPack]) -> void:
+	var target: int = rules.night_pressure(night)
+	var base: int = 0
+	var weights: int = 0
+	for pack: RitualPack in result:
+		for index: int in pack.members.size():
+			var enemy: MobData = settings.enemies[pack.members[index]]
+			weights += enemy.kill_reward * pack.elite_factor(index)
+			if enemy.tags.has(settings.ward_tag):
+				target -= settings.ward_hp
+			if pack.boss and pack.members[index] == rules.boss_enemy:
+				target -= enemy.hp * pack.boss_hp_percent / 100
+			else:
+				base += enemy.hp * pack.elite_factor(index)
+	var percent: int = maxi(1, (maxi(0, target) * 100 + base - 1) / maxi(1, base))
+	var bounty: int = rules.night_bounty(night)
+	var running: int = 0
+	var given: int = 0
+	for pack: RitualPack in result:
+		pack.hp_percent = percent
+		pack.bounties.clear()
+		for index: int in pack.members.size():
+			# Награда делится нарастающим итогом: сумма за ночь ровно равна награде ночи.
+			running += settings.enemies[pack.members[index]].kill_reward * pack.elite_factor(index)
+			var due: int = bounty * running / maxi(1, weights)
+			pack.bounties.append(due - given)
+			given = due
+
+
+func _insert_boss(rng: RandomNumberGenerator, night: int, budget: int, at_tick: int,
+		result: Array[RitualPack], elite_allowed: bool) -> void:
+	var pack: RitualPack = _compose(rng, night, budget * rules.boss_escort_percent / 100, elite_allowed)
+	pack.members.append(rules.boss_enemy)
+	pack.elite.append(0)
 	pack.leader = rules.boss_enemy
 	pack.boss = true
 	pack.boss_hp_percent = rules.boss_hp_percent(night)

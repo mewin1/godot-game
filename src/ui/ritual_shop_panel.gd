@@ -9,12 +9,16 @@ signal start_requested()
 signal sell_requested(tower_id: int)
 signal enchant_chosen(index: int)
 signal reroll_requested()
+signal placement_cancelled()
 var _ritual_rites: Array[MarketOffer] = []
 ## Карточки-заговоры прилавка (в конце, после построек).
 var _market_rites: Array[MarketOffer] = []
 var _ritual_enchants: Array[MarketOffer] = []
 var _enchant_grid: GridContainer
 var _market: bool = false
+var _catalogue: bool = false
+var _catalogue_god: StringName = &"war"
+var _god_buttons: Dictionary[StringName, Button] = {}
 
 func _init() -> void:
 	super()
@@ -39,7 +43,11 @@ func _init() -> void:
 
 
 func setup_ritual(settings: RitualTrialConfig) -> void:
+	_catalogue = settings.uses_plots()
 	_market = settings.market_offers > 0
+	if _catalogue:
+		_setup_god_buttons(settings)
+		_offer_grid.columns = 3
 	# Лавка с азартом: карточка — место прилавка; что на нём, решает refresh_ritual.
 	var count: int = settings.market_offers if _market else settings.combat.towers.size()
 	for index: int in count:
@@ -48,9 +56,18 @@ func setup_ritual(settings: RitualTrialConfig) -> void:
 		card.tower_cost = settings.costs[index]
 		card.custom_minimum_size = Vector2(96, 138)
 		card.show_offer(settings.combat.towers[index])
+		card.plot_card = _catalogue
+		if _catalogue:
+			card.name = "CatalogueCard_%s" % card.data.id
+			card.placement_cancelled.connect(placement_cancelled.emit)
 		card.clicked.connect(_on_offer)
 		_offer_grid.add_child(card)
 		_cards.append(card)
+	if _catalogue:
+		_army_grid.columns = 2
+		_setup_rites(settings, Vector2(96, 84))
+		_show_catalogue_god(_catalogue_god)
+		return
 	if _market:
 		_offer_grid.columns = 2
 		_reroll.show()
@@ -121,7 +138,9 @@ func refresh_ritual(trial: RitualTrial) -> void:
 	_gold_label.text = str(trial.gold)
 	_ready.visible = trial.phase == RitualTrial.Phase.PREP
 	var has_room: bool = limit <= 0 or trial.field.towers.size() < limit
-	if _market:
+	if _catalogue:
+		_refresh_catalogue(trial)
+	elif _market:
 		_refresh_market(trial)
 	else:
 		for index: int in _cards.size():
@@ -133,12 +152,69 @@ func refresh_ritual(trial: RitualTrial) -> void:
 		var maxed: bool = trial.settings.rite_purchase_limit \
 				and count >= trial.settings.rites[index].max_purchases
 		card.rite.cost = trial.rite_cost(index)
-		card.is_active = not maxed and trial.gold >= card.rite.cost
+		card.is_active = not maxed and trial.gold >= card.rite.cost \
+			and (not _catalogue or trial.has_idol_for(index))
 		card.tooltip_text = rite_tooltip(trial, index)
 		card.queue_redraw()
 	for index: int in _ritual_enchants.size():
 		_ritual_enchants[index].is_active = trial.gold >= trial.settings.enchant_costs[index]
 		_ritual_enchants[index].queue_redraw()
+
+
+func _setup_god_buttons(settings: RitualTrialConfig) -> void:
+	var row: HBoxContainer = HBoxContainer.new()
+	row.add_theme_constant_override("separation", 4)
+	var parent: Node = _offer_grid.get_parent()
+	parent.add_child(row)
+	parent.move_child(row, _offer_grid.get_index())
+	for data: TowerData in settings.combat.towers:
+		if _god_buttons.has(data.god):
+			continue
+		var button: Button = Button.new()
+		button.name = "Catalogue_%s" % data.god
+		button.icon = GodSymbols.get_icon(data.god)
+		button.expand_icon = true
+		button.custom_minimum_size = Vector2(36, 34)
+		button.tooltip_text = GodSymbols.get_power_name(data.god)
+		button.toggle_mode = true
+		button.focus_mode = Control.FOCUS_NONE
+		button.pressed.connect(_show_catalogue_god.bind(data.god))
+		row.add_child(button)
+		_god_buttons[data.god] = button
+
+
+func _show_catalogue_god(god: StringName) -> void:
+	_catalogue_god = god
+	for key: StringName in _god_buttons:
+		_god_buttons[key].set_pressed_no_signal(key == god)
+	for card: MarketOffer in _cards:
+		card.visible = card.data != null and card.data.god == god
+	for card: MarketOffer in _ritual_rites:
+		card.visible = card.rite.god == god
+
+
+func _refresh_catalogue(trial: RitualTrial) -> void:
+	_level_title.text = "Каталог · город %d" % trial.city_level()
+	var free: bool = false
+	for cell: Vector2i in trial.field.get_buildable_cells():
+		if trial.field.get_tower_at(cell) == null:
+			free = true
+			break
+	for index: int in _cards.size():
+		var card: MarketOffer = _cards[index] as MarketOffer
+		var unlock: String = trial.building_unlock_error(index)
+		var levels: RitualBuildingLevels = trial.settings.levels_for(card.data)
+		card.tower_cost = trial.building_cost(index)
+		card.is_active = free and unlock.is_empty() and trial.gold >= card.tower_cost
+		card.set_night_surcharge(trial.settings.is_night(trial.tick_count),
+			trial.settings.night_cost_percent - 100,
+			trial.settings.night_install_ticks / trial.settings.combat.ticks_per_second)
+		var lines: PackedStringArray = [card.data.display_name, levels.role, card.data.description,
+			"Цена %d · один дом на свободный участок" % card.tower_cost]
+		if not unlock.is_empty():
+			lines.append(unlock)
+		card.tooltip_text = "\n".join(lines)
+		card.queue_redraw()
 
 
 ## Подсказка заговора: прежний опыт — «куплено n из предела»; забег — текущий и следующий бонус.
@@ -176,6 +252,17 @@ static func _amount(effect: RiteData.Effect, value: int) -> String:
 	return "+%d%%" % value
 
 
+## Описание постройки общее с PvP; в "Обряде" сразу под названием - что она делает на 1-м уровне
+## (у ветра и воды главное действие иное, чем в общем описании).
+static func _lead_with_level_note(card: MarketOffer, settings: RitualTrialConfig) -> void:
+	var levels: RitualBuildingLevels = settings.levels_for(card.data)
+	var first: RitualLevelBehavior = levels.at_level(1) if levels != null else null
+	if first == null:
+		return
+	var parts: PackedStringArray = card.tooltip_text.split("\n", true, 1)
+	card.tooltip_text = "%s\n%s\n%s" % [parts[0], first.note, parts[1] if parts.size() > 1 else ""]
+
+
 ## Место прилавка показывает свою постройку; купленное место пустое до обновления или рассвета.
 func _refresh_market(trial: RitualTrial) -> void:
 	for slot: int in _cards.size():
@@ -191,6 +278,7 @@ func _refresh_market(trial: RitualTrial) -> void:
 			# Цена со скидкой своей стихии (docs/34 §7).
 			card.tower_cost = price
 			card.show_offer(trial.settings.combat.towers[index])
+			_lead_with_level_note(card, trial.settings)
 		card.is_active = trial.gold >= price
 		card.queue_redraw()
 	for slot: int in _market_rites.size():
@@ -210,6 +298,16 @@ func _refresh_market(trial: RitualTrial) -> void:
 	var cost: int = trial.reroll_cost()
 	_reroll.text = "Обновить · %d" % cost
 	_reroll.disabled = trial.gold < cost
+
+
+## Подсветить карточку постройки, выбранной для покупки (-1 - ни одной).
+func mark_chosen(index: int) -> void:
+	for card: OfferCard in _cards:
+		var offer: MarketOffer = card as MarketOffer
+		var chosen: bool = index >= 0 and card.visible and card.offer_index == index
+		if offer != null and offer.is_chosen != chosen:
+			offer.is_chosen = chosen
+			offer.queue_redraw()
 
 
 ## Сколько карточек сейчас на прилавке (для проверок без доступа к самим карточкам).

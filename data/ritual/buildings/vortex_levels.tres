@@ -1,0 +1,78 @@
+[gd_resource type="Resource" script_class="RitualBuildingLevels" format=3]
+[ext_resource type="Script" path="res://src/sim/data/ritual_building_levels.gd" id="profile"]
+[ext_resource type="Script" path="res://src/sim/data/ritual_level_behavior.gd" id="behavior"]
+[ext_resource type="Script" path="res://src/sim/data/ritual_specialisation.gd" id="branch"]
+[sub_resource type="Resource" id="l1"]
+script = ExtResource("behavior")
+note = "Контроль толпы"
+damage_percent = 100
+extra_targets = 0
+support_percent = 180
+[sub_resource type="Resource" id="l2"]
+script = ExtResource("behavior")
+note = "Контроль толпы: усиление уровня 2"
+damage_percent = 220
+extra_targets = 0
+support_percent = 195
+[sub_resource type="Resource" id="l3"]
+script = ExtResource("behavior")
+note = "Контроль толпы: усиление уровня 3"
+damage_percent = 460
+extra_targets = 0
+support_percent = 460
+[sub_resource type="Resource" id="l4"]
+script = ExtResource("behavior")
+note = "Контроль толпы: усиление уровня 4"
+damage_percent = 950
+extra_targets = 0
+support_percent = 950
+[sub_resource type="Resource" id="b0_3"]
+script = ExtResource("behavior")
+note = "Широкий круг: длинный встречный поток"
+damage_percent = 460
+extra_targets = 0
+support_percent = 215
+wind_length_bonus_milli = 3000
+wind_power_bonus = 0
+wind_width_bonus_milli = 0
+[sub_resource type="Resource" id="b0_4"]
+script = ExtResource("behavior")
+note = "Широкий круг: длинный встречный поток"
+damage_percent = 950
+extra_targets = 0
+support_percent = 240
+wind_length_bonus_milli = 5000
+wind_power_bonus = 0
+wind_width_bonus_milli = 0
+[sub_resource type="Resource" id="b0"]
+script = ExtResource("branch")
+title = "Широкий круг"
+levels = Array[ExtResource("behavior")]([SubResource("b0_3"), SubResource("b0_4")])
+[sub_resource type="Resource" id="b1_3"]
+script = ExtResource("behavior")
+note = "Сильный вихрь: сильный встречный поток"
+damage_percent = 460
+extra_targets = 0
+support_percent = 85
+wind_length_bonus_milli = 0
+wind_power_bonus = 15
+wind_width_bonus_milli = 500
+[sub_resource type="Resource" id="b1_4"]
+script = ExtResource("behavior")
+note = "Сильный вихрь: сильный встречный поток"
+damage_percent = 950
+extra_targets = 0
+support_percent = 45
+wind_length_bonus_milli = 0
+wind_power_bonus = 25
+wind_width_bonus_milli = 1000
+[sub_resource type="Resource" id="b1"]
+script = ExtResource("branch")
+title = "Сильный вихрь"
+levels = Array[ExtResource("behavior")]([SubResource("b1_3"), SubResource("b1_4")])
+[resource]
+script = ExtResource("profile")
+tower_id = &"vortex"
+role = "Контроль толпы"
+levels = Array[ExtResource("behavior")]([SubResource("l1"), SubResource("l2"), SubResource("l3"), SubResource("l4")])
+branches = Array[ExtResource("branch")]([SubResource("b0"), SubResource("b1")])

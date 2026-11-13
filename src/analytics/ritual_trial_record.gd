@@ -55,4 +55,46 @@ static func build_report(trial: RitualTrial, observations: Dictionary = {}) -> D
 		"events": trial.journal.duplicate(true), "roster": trial.roster(),
 		"idols": trial.idol_report(), "remaining": trial.remaining_report(),
 		"control": int(trial.control_mode), "observations": observations.duplicate(true),
-		"hash": trial.state_hash()}
+		"hero_index": trial.hero_index, "hash": trial.state_hash()}
+
+
+## Повтор записи: те же правила, сид, герой и команды в те же тики. До `until_tick` (-1 - до конца
+## записи). null - запись другой версии или других правил, либо команда не прошла.
+## Записи до 12.11.2026 героя не хранят: его передают в `hero_index`.
+static func replay(report: Dictionary, settings: RitualTrialConfig, until_tick: int = -1,
+		hero_index: int = -1) -> RitualTrial:
+	if number(report.get("simulation_version", -1)) != RitualTrial.SNAPSHOT_VERSION:
+		return null
+	var summary: Dictionary = RitualStateCodec.dictionary(report.get("summary"))
+	var hero: int = hero_index if hero_index >= 0 else number(report.get("hero_index", 0))
+	var trial: RitualTrial = RitualTrial.new(settings, 0, number(summary.get("seed", 0)), hero)
+	if trial.rules_hash != number(report.get("rules_hash", -1)):
+		return null
+	var commands: Array = RitualStateCodec.array(report.get("commands"))
+	var last_tick: int = number(summary.get("tick", 0)) if until_tick < 0 else until_tick
+	var next: int = 0
+	while true:
+		while next < commands.size() and number(commands[next]["tick"]) == trial.tick_count:
+			if not trial.execute(_command(RitualStateCodec.dictionary(commands[next]))).is_empty():
+				return null
+			next += 1
+		if trial.phase != RitualTrial.Phase.RUNNING or trial.tick_count >= last_tick:
+			break
+		trial.tick()
+	return trial
+
+
+## Целое из JSON: числа там приходят дробными.
+static func number(value: Variant) -> int:
+	if value is float:
+		var decimal: float = value
+		return roundi(decimal)
+	return value if value is int else 0
+
+
+static func _command(entry: Dictionary) -> RitualCommand:
+	# Клетка в JSON - текст "(x, y)".
+	var xy: PackedStringArray = str(entry.get("cell", "(0, 0)")).trim_prefix("(").trim_suffix(")").split(",")
+	return RitualCommand.new(number(entry["action"]) as RitualCommand.Action, number(entry["item"]),
+		Vector2i(xy[0].to_int(), xy[1].to_int()), number(entry["rotation"]), number(entry["tower_id"]),
+		number(entry["progress"]))

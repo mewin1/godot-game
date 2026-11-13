@@ -6,7 +6,8 @@ var _nights: RitualNightRules
 
 
 func before_each() -> void:
-	_settings = load("res://data/ritual/endless.tres") as RitualTrialConfig
+	# Контракт старой случайной лавки и слияний. Активный каталог проверяет test_ritual_catalogue.
+	_settings = load("res://tests/fixtures/ritual_endless_pre_plots.tres") as RitualTrialConfig
 	_nights = _settings.nights
 
 
@@ -64,7 +65,6 @@ func test_generator_is_deterministic_and_depends_on_seed() -> void:
 
 func test_packs_fit_budget_unlocks_and_grow_denser() -> void:
 	var plan: RitualNightPlan = RitualNightPlan.new(_settings, 3)
-	var previous_count: int = 0
 	for night: int in range(1, 25):
 		var packs: Array[RitualPack] = plan.packs(night)
 		var ordinary: int = 0
@@ -73,8 +73,8 @@ func test_packs_fit_budget_unlocks_and_grow_denser() -> void:
 		# Примета (docs/36 §2) может добавить или убрать пачку — сравниваем без неё.
 		var omen: RitualOmenData = plan.omen(night)
 		ordinary -= omen.packs_add if omen != null else 0
-		assert_true(ordinary >= previous_count, "Обычных пачек не меньше, чем в прошлую ночь")
-		previous_count = ordinary
+		# Полные пачки добавляют пачку (docs/37 ECO-1): число скачет, но не ниже правила ночи.
+		assert_true(ordinary >= _nights.pack_count(night), "Обычных пачек не меньше, чем по правилу ночи")
 		for pack: RitualPack in packs:
 			assert_true(pack.at_tick >= _nights.night_start(night), "Пачка приходит ночью")
 			assert_true(pack.at_tick < _nights.night_end(night), "Пачка начинается до рассвета")
@@ -120,7 +120,7 @@ func test_difficulty_outgrows_any_possible_income() -> void:
 	var income: int = _settings.start_gold
 	var ratios: Array[int] = [0]
 	for night: int in range(1, 41):
-		var need_dps_milli: int = plan.total_hp(night) * tps * 1000 / _nights.night_length(night)
+		var need_dps_milli: int = plan.total_ehp(night) * tps * 1000 / _nights.night_length(night)
 		var can_dps_milli: int = income * best_dps_per_gold_milli
 		ratios.append(need_dps_milli * 1000 / maxi(1, can_dps_milli))
 		income += plan.total_gold(night)
@@ -169,7 +169,8 @@ func _breach_count(trial: RitualTrial) -> int:
 
 func test_mob_health_grows_by_night() -> void:
 	var plan: RitualNightPlan = RitualNightPlan.new(_settings, 1)
-	assert_eq(plan.packs(1)[0].hp_percent, 100)
+	# Здоровье ночи подогнано под кривую давления: первая ночь - около здоровья из данных.
+	assert_between(plan.packs(1)[0].hp_percent, 80, 120)
 	assert_true(plan.packs(10)[0].hp_percent > 150)
 	var trial: RitualTrial = _trial(1)
 	var pack: RitualPack = plan.packs(1)[0]
@@ -981,8 +982,8 @@ func test_boss_health_grows_per_appearance_not_per_night() -> void:
 	var trial: RitualTrial = _trial(5)
 	for pack: RitualPack in trial.plan().packs(_nights.boss_every):
 		if pack.boss:
-			assert_eq(pack.hp_for(_nights.boss_enemy, _nights.boss_enemy), 100)
-			assert_true(pack.hp_for(pack.members[0], _nights.boss_enemy) > 100, "Свита растёт по ночам")
+			assert_eq(pack.hp_at(pack.members.find(_nights.boss_enemy), _nights.boss_enemy), 100)
+			assert_true(pack.hp_at(0, _nights.boss_enemy) > 100, "Свита растет по ночам")
 
 
 # --- Плейтест 9 ноября: ночная стройка дороже и дольше, перенос ночью дольше ---
@@ -1084,3 +1085,18 @@ func test_perun_and_curse_rites_strengthen_their_idol() -> void:
 	var curse: IdolState = trial.field.get_idol(&"curse")
 	assert_true(perun.chain_chance_bonus > 0 and perun.chain_chance_bonus < 40, "Шанс цепи растёт с затуханием")
 	assert_true(curse.extra_targets >= 1 and curse.extra_targets < 2, "Метка берёт больше целей, не до предела")
+
+
+func test_first_evening_light_is_day_not_night() -> void:
+	# docs/37 BUG-24: вечер (900 тиков) длиннее суток (500), первые 20 с забега были темнее ночи.
+	var dusk_start: int = _nights.day_ticks - _nights.dusk_ticks
+	var previous: int = -1
+	for tick: int in range(0, _nights.night_start(1), 10):
+		var local: int = _nights.cycle_view(tick)[0]
+		assert_true(local >= dusk_start / 2, "Вечер начинается днем: солнце над горизонтом (тик %d)" % tick)
+		assert_true(local >= previous, "Солнце не идет назад")
+		previous = local
+	assert_eq(_nights.cycle_view(_nights.night_start(1) - _nights.dusk_ticks)[0], dusk_start,
+			"Закат обычной длины")
+	assert_eq(_nights.cycle_view(_nights.night_start(1))[0], _nights.day_ticks, "Ночь в свой тик")
+	assert_eq(_nights.cycle_view(_nights.night_end(1))[0], 0, "Следующие сутки - как прежде")

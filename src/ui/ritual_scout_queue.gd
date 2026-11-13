@@ -10,6 +10,7 @@ const NEW_FRAME: Color = Color("e0b45a")
 const PLAIN_FRAME: Color = Color("4b5a63")
 const RESIST_FRAME: Color = Color("e04848")
 const MOB_VISUALS: String = "res://data/visuals/mobs/%s.tres"
+const ELITE_CROWN: Texture2D = preload("res://assets/ui/elite_crown.svg")
 ## Метка входа на карточке, когда входов больше одного: главная дорога, верхняя и нижняя улицы.
 const LANE_MARKS: Array[String] = ["→", "↑", "↓"]
 const LANE_COLORS: Array[Color] = [Color("f0c27a"), Color("7fd6d0"), Color("c59cf0")]
@@ -49,13 +50,16 @@ func refresh(trial: RitualTrial) -> void:
 	var night: int = trial.current_night()
 	var at_night: bool = trial.settings.is_night(trial.tick_count)
 	_title.text = "Ночь %d · %s: %d" % [night, "осталось пачек" if at_night else "пачек", queue.size()]
+	var alive: int = trial.field.count_alive_mobs()
+	if at_night and alive > 0:
+		_title.text += " · врагов на улицах: %d" % alive
 	var night_omen: RitualOmenData = trial.plan().omen(night)
 	_omen.text = "" if night_omen == null else "  · %s" % night_omen.title
 	_omen.tooltip_text = "" if night_omen == null else "Примета ночи %d — %s.\n%s" % [
 		night, night_omen.title, night_omen.description]
 	var boss: RitualPack = trial.boss_warning()
 	_warning.text = "" if boss == null else "  · Босс в ночь %d%s" % [boss.night,
-		"" if boss.resist == &"" else ", неуязвим: " + GodSymbols.get_power_name(boss.resist)]
+		"" if boss.resist == &"" else ", неуязвим к стихии: " + element_name(boss.resist)]
 	var key: String = str(night)
 	for pack: RitualPack in queue:
 		key += ";%d@%d" % [pack.at_tick, trial.pack_lane(pack)]
@@ -68,6 +72,11 @@ func refresh(trial: RitualTrial) -> void:
 		if tip != _tips[index]:
 			_tips[index] = tip
 			_cards[index].tooltip_text = tip
+
+
+## Только стихия: "Война · Бог войны" после "неуязвим к стихии" повторяет бога дважды.
+static func element_name(god: StringName) -> String:
+	return GodSymbols.get_power_name(god).get_slice(" · ", 0)
 
 
 ## Текст подсказки: кто ведёт, кто с ним, обереги, неуязвимость, когда придёт.
@@ -92,9 +101,14 @@ static func describe(trial: RitualTrial, pack: RitualPack) -> String:
 	if pack.hp_percent != 100:
 		lines.append("Здоровье: %d%% от обычного" % pack.hp_percent)
 	if wards > 0:
-		lines.append("Обереги: %d (сбивает огонь)" % wards)
+		lines.append("Обереги: %d (огонь %d%%, физика %d%%, молния %d%%, прочее %d%%)" % [
+			wards, settings.ward_fire_percent, settings.ward_physical_percent,
+			settings.ward_lightning_percent, settings.ward_other_percent])
+	var elites: int = pack.elite.size() - pack.elite.count(0)
+	if elites > 0:
+		lines.append("Элита: %d (здоровье и награда x%d)" % [elites, pack.elite_multiplier])
 	if pack.resist != &"":
-		lines.append("Неуязвим к стихии: %s" % GodSymbols.get_power_name(pack.resist))
+		lines.append("Неуязвим к стихии: %s" % element_name(pack.resist))
 	var fresh: Array[int] = trial.plan().new_types(pack)
 	if not fresh.is_empty():
 		var names: PackedStringArray = []
@@ -168,6 +182,14 @@ func _card(trial: RitualTrial, pack: RitualPack) -> Control:
 		row.add_child(icon)
 		var count: Label = _small_label(row, 13)
 		count.text = "×%d" % kind.y
+	if pack.elite.size() > pack.elite.count(0):
+		var crown: TextureRect = TextureRect.new()
+		crown.texture = ELITE_CROWN
+		crown.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		crown.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		crown.custom_minimum_size = Vector2(20, 16)
+		crown.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		row.add_child(crown)
 	if pack.resist != &"":
 		row.add_child(_resist_badge(pack.resist))
 	return card

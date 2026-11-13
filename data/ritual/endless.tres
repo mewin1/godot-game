@@ -6,7 +6,7 @@
 [ext_resource type="Script" path="res://src/sim/data/ritual_level_behavior.gd" id="level_behavior"]
 [ext_resource type="Script" path="res://src/sim/data/ritual_building_levels.gd" id="building_levels"]
 [ext_resource type="Script" path="res://src/sim/data/mob_data.gd" id="mob"]
-[ext_resource type="Resource" path="res://data/ritual/combat_endless.tres" id="combat"]
+[ext_resource type="Resource" path="res://data/ritual/combat_catalogue.tres" id="combat"]
 [ext_resource type="Resource" path="res://data/rites/war_power.tres" id="rite_0"]
 [ext_resource type="Resource" path="res://data/rites/svarog_power.tres" id="rite_1"]
 [ext_resource type="Resource" path="res://data/rites/ice_power.tres" id="rite_2"]
@@ -34,6 +34,28 @@
 [ext_resource type="Resource" path="res://data/ritual/undead/koshchei_voevoda.tres" id="mob_5"]
 [ext_resource type="Resource" path="res://data/ritual/undead/latnik.tres" id="mob_6"]
 [ext_resource type="Resource" path="res://data/ritual/undead/volkodlak.tres" id="mob_7"]
+[ext_resource type="Script" path="res://src/sim/data/ritual_plot.gd" id="plot"]
+[ext_resource type="Resource" path="res://data/ritual/buildings/bolt_levels.tres" id="profile_bolt"]
+[ext_resource type="Resource" path="res://data/ritual/buildings/brazier_levels.tres" id="profile_brazier"]
+[ext_resource type="Resource" path="res://data/ritual/buildings/furnace_levels.tres" id="profile_furnace"]
+[ext_resource type="Resource" path="res://data/ritual/buildings/wind_levels.tres" id="profile_wind"]
+[ext_resource type="Resource" path="res://data/ritual/buildings/water_levels.tres" id="profile_water"]
+[ext_resource type="Resource" path="res://data/ritual/buildings/rime_levels.tres" id="profile_rime"]
+[ext_resource type="Resource" path="res://data/ritual/buildings/spark_levels.tres" id="profile_spark"]
+[ext_resource type="Resource" path="res://data/ritual/buildings/thunder_levels.tres" id="profile_thunder"]
+[ext_resource type="Resource" path="res://data/ritual/buildings/hex_levels.tres" id="profile_hex"]
+[ext_resource type="Resource" path="res://data/ritual/buildings/plague_levels.tres" id="profile_plague"]
+[ext_resource type="Resource" path="res://data/ritual/buildings/war_engine_levels.tres" id="profile_war_engine"]
+[ext_resource type="Resource" path="res://data/ritual/buildings/glacier_levels.tres" id="profile_glacier"]
+[ext_resource type="Resource" path="res://data/ritual/buildings/gale_levels.tres" id="profile_gale"]
+[ext_resource type="Resource" path="res://data/ritual/buildings/dew_levels.tres" id="profile_dew"]
+[ext_resource type="Resource" path="res://data/ritual/buildings/cinder_levels.tres" id="profile_cinder"]
+[ext_resource type="Resource" path="res://data/ritual/buildings/ice_lance_levels.tres" id="profile_ice_lance"]
+[ext_resource type="Resource" path="res://data/ritual/buildings/storm_levels.tres" id="profile_storm"]
+[ext_resource type="Resource" path="res://data/ritual/buildings/doom_levels.tres" id="profile_doom"]
+[ext_resource type="Resource" path="res://data/ritual/buildings/rain_levels.tres" id="profile_rain"]
+[ext_resource type="Resource" path="res://data/ritual/buildings/vortex_levels.tres" id="profile_vortex"]
+[ext_resource type="Resource" path="res://data/ritual/buildings/porok_levels.tres" id="profile_porok"]
 [sub_resource type="Resource" id="rule_0"]
 script = ExtResource("enemy_rule")
 enemy_index = 0
@@ -83,486 +105,56 @@ threat = 7
 first_night = 8
 lead_weight = 6
 fill_weight = 3
-[sub_resource type="Resource" id="lvl_bolt_1"]
-script = ExtResource("level_behavior")
-note = "Одна цель"
-damage_percent = 100
-damage_add = 0
-extra_targets = 0
-splash_radius_milli = -1
-splash_percent = -1
-range_bonus_milli = 0
-armor_pierce = 0
-support_percent = 100
-[sub_resource type="Resource" id="lvl_bolt_2"]
-script = ExtResource("level_behavior")
-note = "Две цели"
-damage_percent = 200
-damage_add = 0
-extra_targets = 1
-splash_radius_milli = -1
-splash_percent = -1
-range_bonus_milli = 0
-armor_pierce = 0
-support_percent = 100
-[sub_resource type="Resource" id="lvl_bolt_3"]
-script = ExtResource("level_behavior")
-note = "Три цели, дальше на полклетки"
-damage_percent = 400
-damage_add = 0
-extra_targets = 2
-splash_radius_milli = -1
-splash_percent = -1
-range_bonus_milli = 500
-armor_pierce = 0
-support_percent = 100
-[sub_resource type="Resource" id="lvl_bolt_4"]
-script = ExtResource("level_behavior")
-note = "Три цели, пробивает броню 4"
-damage_percent = 800
-damage_add = 0
-extra_targets = 2
-splash_radius_milli = -1
-splash_percent = -1
-range_bonus_milli = 500
-armor_pierce = 4
-support_percent = 100
-[sub_resource type="Resource" id="levels_bolt"]
-script = ExtResource("building_levels")
-tower_id = &"bolt"
-levels = Array[ExtResource("level_behavior")]([SubResource("lvl_bolt_1"), SubResource("lvl_bolt_2"), SubResource("lvl_bolt_3"), SubResource("lvl_bolt_4")])
-[sub_resource type="Resource" id="lvl_brazier_1"]
-script = ExtResource("level_behavior")
-note = "Одна цель, поджигает"
-damage_percent = 100
-damage_add = 0
-extra_targets = 0
-splash_radius_milli = -1
-splash_percent = -1
-range_bonus_milli = 0
-armor_pierce = 0
-support_percent = 100
-[sub_resource type="Resource" id="lvl_brazier_2"]
-script = ExtResource("level_behavior")
-note = "Огненный горшок: область 0,8 клетки, 50% урона"
-damage_percent = 200
-damage_add = 0
-extra_targets = 0
-splash_radius_milli = 800
-splash_percent = 50
-range_bonus_milli = 0
-armor_pierce = 0
-support_percent = 100
-[sub_resource type="Resource" id="lvl_brazier_3"]
-script = ExtResource("level_behavior")
-note = "Область 1,2 клетки, 60% урона"
-damage_percent = 400
-damage_add = 0
-extra_targets = 0
-splash_radius_milli = 1200
-splash_percent = 60
-range_bonus_milli = 0
-armor_pierce = 0
-support_percent = 100
-[sub_resource type="Resource" id="lvl_brazier_4"]
-script = ExtResource("level_behavior")
-note = "Область 1,6 клетки, 75% урона"
-damage_percent = 800
-damage_add = 0
-extra_targets = 0
-splash_radius_milli = 1600
-splash_percent = 75
-range_bonus_milli = 0
-armor_pierce = 0
-support_percent = 100
-[sub_resource type="Resource" id="levels_brazier"]
-script = ExtResource("building_levels")
-tower_id = &"brazier"
-levels = Array[ExtResource("level_behavior")]([SubResource("lvl_brazier_1"), SubResource("lvl_brazier_2"), SubResource("lvl_brazier_3"), SubResource("lvl_brazier_4")])
-[sub_resource type="Resource" id="lvl_furnace_1"]
-script = ExtResource("level_behavior")
-note = "Мощный удар, сначала по горящим"
-damage_percent = 100
-damage_add = 0
-extra_targets = 0
-splash_radius_milli = -1
-splash_percent = -1
-range_bonus_milli = 0
-armor_pierce = 0
-support_percent = 100
-[sub_resource type="Resource" id="lvl_furnace_2"]
-script = ExtResource("level_behavior")
-note = "Две цели"
-damage_percent = 200
-damage_add = 0
-extra_targets = 1
-splash_radius_milli = -1
-splash_percent = -1
-range_bonus_milli = 0
-armor_pierce = 0
-support_percent = 100
-[sub_resource type="Resource" id="lvl_furnace_3"]
-script = ExtResource("level_behavior")
-note = "Две цели и взрыв: область 1 клетка, 50%"
-damage_percent = 400
-damage_add = 0
-extra_targets = 1
-splash_radius_milli = 1000
-splash_percent = 50
-range_bonus_milli = 0
-armor_pierce = 0
-support_percent = 100
-[sub_resource type="Resource" id="lvl_furnace_4"]
-script = ExtResource("level_behavior")
-note = "Две цели и взрыв 1,5 клетки, 60%"
-damage_percent = 800
-damage_add = 0
-extra_targets = 1
-splash_radius_milli = 1500
-splash_percent = 60
-range_bonus_milli = 0
-armor_pierce = 0
-support_percent = 100
-[sub_resource type="Resource" id="levels_furnace"]
-script = ExtResource("building_levels")
-tower_id = &"furnace"
-levels = Array[ExtResource("level_behavior")]([SubResource("lvl_furnace_1"), SubResource("lvl_furnace_2"), SubResource("lvl_furnace_3"), SubResource("lvl_furnace_4")])
-[sub_resource type="Resource" id="lvl_wind_1"]
-script = ExtResource("level_behavior")
-note = "Ветер; соседям темп +10%"
-damage_percent = 100
-damage_add = 0
-extra_targets = 0
-splash_radius_milli = -1
-splash_percent = -1
-range_bonus_milli = 0
-armor_pierce = 0
-support_percent = 100
-[sub_resource type="Resource" id="lvl_wind_2"]
-script = ExtResource("level_behavior")
-note = "Ветер сильнее и длиннее; соседям ×1,5"
-damage_percent = 100
-damage_add = 0
-extra_targets = 0
-splash_radius_milli = -1
-splash_percent = -1
-range_bonus_milli = 0
-armor_pierce = 0
-support_percent = 150
-[sub_resource type="Resource" id="lvl_wind_3"]
-script = ExtResource("level_behavior")
-note = "Ветер ещё сильнее; соседям ×2"
-damage_percent = 100
-damage_add = 0
-extra_targets = 0
-splash_radius_milli = -1
-splash_percent = -1
-range_bonus_milli = 0
-armor_pierce = 0
-support_percent = 200
-[sub_resource type="Resource" id="lvl_wind_4"]
-script = ExtResource("level_behavior")
-note = "Ветер сильнейший; соседям ×3"
-damage_percent = 100
-damage_add = 0
-extra_targets = 0
-splash_radius_milli = -1
-splash_percent = -1
-range_bonus_milli = 0
-armor_pierce = 0
-support_percent = 300
-[sub_resource type="Resource" id="levels_wind"]
-script = ExtResource("building_levels")
-tower_id = &"wind"
-levels = Array[ExtResource("level_behavior")]([SubResource("lvl_wind_1"), SubResource("lvl_wind_2"), SubResource("lvl_wind_3"), SubResource("lvl_wind_4")])
-[sub_resource type="Resource" id="lvl_water_1"]
-script = ExtResource("level_behavior")
-note = "Мочит одну цель"
-damage_percent = 100
-damage_add = 0
-extra_targets = 0
-splash_radius_milli = 0
-splash_percent = 0
-range_bonus_milli = 0
-armor_pierce = 0
-support_percent = 100
-[sub_resource type="Resource" id="lvl_water_2"]
-script = ExtResource("level_behavior")
-note = "Мочит всех в 1 клетке вокруг цели"
-damage_percent = 100
-damage_add = 0
-extra_targets = 0
-splash_radius_milli = 1000
-splash_percent = 100
-range_bonus_milli = 0
-armor_pierce = 0
-support_percent = 100
-[sub_resource type="Resource" id="lvl_water_3"]
-script = ExtResource("level_behavior")
-note = "Мочит в 1,2 клетки, две цели, урон 6; соседям ×1,5"
-damage_percent = 100
-damage_add = 6
-extra_targets = 1
-splash_radius_milli = 1200
-splash_percent = 100
-range_bonus_milli = 0
-armor_pierce = 0
-support_percent = 150
-[sub_resource type="Resource" id="lvl_water_4"]
-script = ExtResource("level_behavior")
-note = "Мочит в 1,5 клетки, три цели, урон 12; соседям ×2"
-damage_percent = 100
-damage_add = 12
-extra_targets = 2
-splash_radius_milli = 1500
-splash_percent = 100
-range_bonus_milli = 0
-armor_pierce = 0
-support_percent = 200
-[sub_resource type="Resource" id="levels_water"]
-script = ExtResource("building_levels")
-tower_id = &"water"
-levels = Array[ExtResource("level_behavior")]([SubResource("lvl_water_1"), SubResource("lvl_water_2"), SubResource("lvl_water_3"), SubResource("lvl_water_4")])
-[sub_resource type="Resource" id="lvl_rime_1"]
-script = ExtResource("level_behavior")
-note = "Холодит одну цель"
-damage_percent = 100
-damage_add = 0
-extra_targets = 0
-splash_radius_milli = -1
-splash_percent = -1
-range_bonus_milli = 0
-armor_pierce = 0
-support_percent = 100
-[sub_resource type="Resource" id="lvl_rime_2"]
-script = ExtResource("level_behavior")
-note = "Две цели"
-damage_percent = 200
-damage_add = 0
-extra_targets = 1
-splash_radius_milli = -1
-splash_percent = -1
-range_bonus_milli = 0
-armor_pierce = 0
-support_percent = 100
-[sub_resource type="Resource" id="lvl_rime_3"]
-script = ExtResource("level_behavior")
-note = "Морозное облако: область 1 клетка, 50%"
-damage_percent = 400
-damage_add = 0
-extra_targets = 0
-splash_radius_milli = 1000
-splash_percent = 50
-range_bonus_milli = 0
-armor_pierce = 0
-support_percent = 100
-[sub_resource type="Resource" id="lvl_rime_4"]
-script = ExtResource("level_behavior")
-note = "Две цели и облако 1,5 клетки, 70%"
-damage_percent = 800
-damage_add = 0
-extra_targets = 1
-splash_radius_milli = 1500
-splash_percent = 70
-range_bonus_milli = 0
-armor_pierce = 0
-support_percent = 100
-[sub_resource type="Resource" id="levels_rime"]
-script = ExtResource("building_levels")
-tower_id = &"rime"
-levels = Array[ExtResource("level_behavior")]([SubResource("lvl_rime_1"), SubResource("lvl_rime_2"), SubResource("lvl_rime_3"), SubResource("lvl_rime_4")])
-[sub_resource type="Resource" id="lvl_spark_1"]
-script = ExtResource("level_behavior")
-note = "Одна цель; цепь 20%, по мокрым 80%"
-damage_percent = 100
-damage_add = 0
-extra_targets = 0
-splash_radius_milli = -1
-splash_percent = -1
-range_bonus_milli = 0
-armor_pierce = 0
-support_percent = 100
-[sub_resource type="Resource" id="lvl_spark_2"]
-script = ExtResource("level_behavior")
-note = "Две цели"
-damage_percent = 200
-damage_add = 0
-extra_targets = 1
-splash_radius_milli = -1
-splash_percent = -1
-range_bonus_milli = 0
-armor_pierce = 0
-support_percent = 100
-[sub_resource type="Resource" id="lvl_spark_3"]
-script = ExtResource("level_behavior")
-note = "Две цели и разряд: область 1 клетка, 50%"
-damage_percent = 400
-damage_add = 0
-extra_targets = 1
-splash_radius_milli = 1000
-splash_percent = 50
-range_bonus_milli = 0
-armor_pierce = 0
-support_percent = 100
-[sub_resource type="Resource" id="lvl_spark_4"]
-script = ExtResource("level_behavior")
-note = "Три цели и разряд 1,2 клетки, 60%"
-damage_percent = 800
-damage_add = 0
-extra_targets = 2
-splash_radius_milli = 1200
-splash_percent = 60
-range_bonus_milli = 0
-armor_pierce = 0
-support_percent = 100
-[sub_resource type="Resource" id="levels_spark"]
-script = ExtResource("building_levels")
-tower_id = &"spark"
-levels = Array[ExtResource("level_behavior")]([SubResource("lvl_spark_1"), SubResource("lvl_spark_2"), SubResource("lvl_spark_3"), SubResource("lvl_spark_4")])
-[sub_resource type="Resource" id="lvl_thunder_1"]
-script = ExtResource("level_behavior")
-note = "Тяжёлый разряд, пробивает броню 3"
-damage_percent = 100
-damage_add = 0
-extra_targets = 0
-splash_radius_milli = -1
-splash_percent = -1
-range_bonus_milli = 0
-armor_pierce = 3
-support_percent = 100
-[sub_resource type="Resource" id="lvl_thunder_2"]
-script = ExtResource("level_behavior")
-note = "Громовой удар: область 1 клетка, 50%"
-damage_percent = 200
-damage_add = 0
-extra_targets = 0
-splash_radius_milli = 1000
-splash_percent = 50
-range_bonus_milli = 0
-armor_pierce = 3
-support_percent = 100
-[sub_resource type="Resource" id="lvl_thunder_3"]
-script = ExtResource("level_behavior")
-note = "Область 1,3 клетки, 60%; две цели"
-damage_percent = 400
-damage_add = 0
-extra_targets = 1
-splash_radius_milli = 1300
-splash_percent = 60
-range_bonus_milli = 0
-armor_pierce = 3
-support_percent = 100
-[sub_resource type="Resource" id="lvl_thunder_4"]
-script = ExtResource("level_behavior")
-note = "Область 1,6 клетки, 75%; пробивает броню 5"
-damage_percent = 800
-damage_add = 0
-extra_targets = 1
-splash_radius_milli = 1600
-splash_percent = 75
-range_bonus_milli = 0
-armor_pierce = 5
-support_percent = 100
-[sub_resource type="Resource" id="levels_thunder"]
-script = ExtResource("building_levels")
-tower_id = &"thunder"
-levels = Array[ExtResource("level_behavior")]([SubResource("lvl_thunder_1"), SubResource("lvl_thunder_2"), SubResource("lvl_thunder_3"), SubResource("lvl_thunder_4")])
-[sub_resource type="Resource" id="lvl_hex_1"]
-script = ExtResource("level_behavior")
-note = "Метка: взрыв через 3 с"
-damage_percent = 100
-damage_add = 0
-extra_targets = 0
-splash_radius_milli = -1
-splash_percent = -1
-range_bonus_milli = 0
-armor_pierce = 0
-support_percent = 100
-[sub_resource type="Resource" id="lvl_hex_2"]
-script = ExtResource("level_behavior")
-note = "Две метки"
-damage_percent = 200
-damage_add = 0
-extra_targets = 1
-splash_radius_milli = -1
-splash_percent = -1
-range_bonus_milli = 0
-armor_pierce = 0
-support_percent = 100
-[sub_resource type="Resource" id="lvl_hex_3"]
-script = ExtResource("level_behavior")
-note = "Три метки"
-damage_percent = 400
-damage_add = 0
-extra_targets = 2
-splash_radius_milli = -1
-splash_percent = -1
-range_bonus_milli = 0
-armor_pierce = 0
-support_percent = 100
-[sub_resource type="Resource" id="lvl_hex_4"]
-script = ExtResource("level_behavior")
-note = "Четыре метки"
-damage_percent = 800
-damage_add = 0
-extra_targets = 3
-splash_radius_milli = -1
-splash_percent = -1
-range_bonus_milli = 0
-armor_pierce = 0
-support_percent = 100
-[sub_resource type="Resource" id="levels_hex"]
-script = ExtResource("building_levels")
-tower_id = &"hex"
-levels = Array[ExtResource("level_behavior")]([SubResource("lvl_hex_1"), SubResource("lvl_hex_2"), SubResource("lvl_hex_3"), SubResource("lvl_hex_4")])
-[sub_resource type="Resource" id="lvl_plague_1"]
-script = ExtResource("level_behavior")
-note = "Метит группу в 1 клетке"
-damage_percent = 100
-damage_add = 0
-extra_targets = 0
-splash_radius_milli = 1000
-splash_percent = 100
-range_bonus_milli = 0
-armor_pierce = 0
-support_percent = 100
-[sub_resource type="Resource" id="lvl_plague_2"]
-script = ExtResource("level_behavior")
-note = "Группа в 1,3 клетки"
-damage_percent = 200
-damage_add = 0
-extra_targets = 0
-splash_radius_milli = 1300
-splash_percent = 100
-range_bonus_milli = 0
-armor_pierce = 0
-support_percent = 100
-[sub_resource type="Resource" id="lvl_plague_3"]
-script = ExtResource("level_behavior")
-note = "Группа в 1,6 клетки"
-damage_percent = 400
-damage_add = 0
-extra_targets = 0
-splash_radius_milli = 1600
-splash_percent = 100
-range_bonus_milli = 0
-armor_pierce = 0
-support_percent = 100
-[sub_resource type="Resource" id="lvl_plague_4"]
-script = ExtResource("level_behavior")
-note = "Две группы в 1,8 клетки"
-damage_percent = 800
-damage_add = 0
-extra_targets = 1
-splash_radius_milli = 1800
-splash_percent = 100
-range_bonus_milli = 0
-armor_pierce = 0
-support_percent = 100
-[sub_resource type="Resource" id="levels_plague"]
-script = ExtResource("building_levels")
-tower_id = &"plague"
-levels = Array[ExtResource("level_behavior")]([SubResource("lvl_plague_1"), SubResource("lvl_plague_2"), SubResource("lvl_plague_3"), SubResource("lvl_plague_4")])
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 [sub_resource type="Resource" id="curve_war_power"]
 script = ExtResource("rite_curve")
 rite_id = &"war_power"
@@ -846,11 +438,15 @@ night_ticks = 1200
 night_growth_ticks = 100
 night_max_ticks = 2400
 budget_base = 50
-budget_growth_percent = 23
-hp_growth_percent = 14
+budget_growth_percent = 13
+pressure_base = 1325
+pressure_growth_percent = 29
+boss_night_percent = 110
+bounty_percent = 100
+elite_multiplier = 3
 packs_base = 3
 packs_growth_every = 3
-packs_max = 9
+packs_max = 12
 pack_max_size = 20
 pack_spacing_ticks = 20
 spread_percent = 45
@@ -869,7 +465,7 @@ default_seed = 1
 script = ExtResource("street")
 title = "Верхняя улица"
 path_cells = Array[Vector2i]([Vector2i(5, 7), Vector2i(6, 7), Vector2i(7, 7), Vector2i(8, 7), Vector2i(9, 7), Vector2i(10, 7), Vector2i(11, 7), Vector2i(12, 7), Vector2i(13, 7), Vector2i(14, 7), Vector2i(15, 7), Vector2i(16, 7), Vector2i(17, 7), Vector2i(18, 7), Vector2i(18, 8), Vector2i(18, 9), Vector2i(18, 10)])
-build_regions = Array[Rect2i]([Rect2i(7, 5, 10, 2)])
+build_regions = Array[Rect2i]([Rect2i(7, 5, 11, 2)])
 alley_cells = Array[Vector2i]([Vector2i(11, 9), Vector2i(11, 8)])
 cost = 40
 tribute = 10
@@ -878,7 +474,7 @@ tribute = 10
 script = ExtResource("street")
 title = "Нижняя улица"
 path_cells = Array[Vector2i]([Vector2i(5, 13), Vector2i(6, 13), Vector2i(7, 13), Vector2i(8, 13), Vector2i(9, 13), Vector2i(10, 13), Vector2i(11, 13), Vector2i(12, 13), Vector2i(13, 13), Vector2i(14, 13), Vector2i(15, 13), Vector2i(16, 13), Vector2i(17, 13), Vector2i(18, 13), Vector2i(18, 12), Vector2i(18, 11), Vector2i(18, 10)])
-build_regions = Array[Rect2i]([Rect2i(7, 14, 10, 2)])
+build_regions = Array[Rect2i]([Rect2i(7, 14, 11, 2)])
 alley_cells = Array[Vector2i]([Vector2i(12, 11), Vector2i(12, 12)])
 cost = 80
 tribute = 15
@@ -931,7 +527,7 @@ short_name = "Яга"
 accusative = "Ягу"
 fallen_text = "Баба-Яга пала"
 skill_name = "Варево"
-passive_text = "Ступа: два обновления лавки в сутки бесплатно. 40 HP."
+passive_text = "Мастерица. 40 HP. Варево поднимает новую постройку до камня."
 skill_text = "Варево: следующая купленная постройка встаёт сразу каменной (2-й уровень). Каждые 60 с."
 portrait = "res://data/visuals/portraits/baba_yaga.tres"
 model = "res://assets/noir_h3d/heroes/baba_yaga.glb"
@@ -939,10 +535,114 @@ hp = 40
 skill = 2
 cooldown_ticks = 1200
 free_rerolls = 2
+[sub_resource type="Resource" id="plot_0"]
+script = ExtResource("plot")
+cell = Vector2i(7, 8)
+city_level = 1
+[sub_resource type="Resource" id="plot_1"]
+script = ExtResource("plot")
+cell = Vector2i(9, 8)
+city_level = 1
+[sub_resource type="Resource" id="plot_2"]
+script = ExtResource("plot")
+cell = Vector2i(12, 8)
+city_level = 1
+[sub_resource type="Resource" id="plot_3"]
+script = ExtResource("plot")
+cell = Vector2i(14, 8)
+city_level = 1
+[sub_resource type="Resource" id="plot_4"]
+script = ExtResource("plot")
+cell = Vector2i(16, 8)
+city_level = 1
+[sub_resource type="Resource" id="plot_5"]
+script = ExtResource("plot")
+cell = Vector2i(7, 11)
+city_level = 1
+[sub_resource type="Resource" id="plot_6"]
+script = ExtResource("plot")
+cell = Vector2i(9, 11)
+city_level = 1
+[sub_resource type="Resource" id="plot_7"]
+script = ExtResource("plot")
+cell = Vector2i(11, 11)
+city_level = 1
+[sub_resource type="Resource" id="plot_8"]
+script = ExtResource("plot")
+cell = Vector2i(13, 11)
+city_level = 1
+[sub_resource type="Resource" id="plot_9"]
+script = ExtResource("plot")
+cell = Vector2i(15, 11)
+city_level = 1
+[sub_resource type="Resource" id="plot_10"]
+script = ExtResource("plot")
+cell = Vector2i(7, 5)
+city_level = 2
+[sub_resource type="Resource" id="plot_11"]
+script = ExtResource("plot")
+cell = Vector2i(9, 5)
+city_level = 2
+[sub_resource type="Resource" id="plot_12"]
+script = ExtResource("plot")
+cell = Vector2i(11, 5)
+city_level = 2
+[sub_resource type="Resource" id="plot_13"]
+script = ExtResource("plot")
+cell = Vector2i(13, 5)
+city_level = 2
+[sub_resource type="Resource" id="plot_14"]
+script = ExtResource("plot")
+cell = Vector2i(15, 5)
+city_level = 2
+[sub_resource type="Resource" id="plot_15"]
+script = ExtResource("plot")
+cell = Vector2i(17, 5)
+city_level = 2
+[sub_resource type="Resource" id="plot_16"]
+script = ExtResource("plot")
+cell = Vector2i(7, 15)
+city_level = 3
+[sub_resource type="Resource" id="plot_17"]
+script = ExtResource("plot")
+cell = Vector2i(9, 15)
+city_level = 3
+[sub_resource type="Resource" id="plot_18"]
+script = ExtResource("plot")
+cell = Vector2i(11, 15)
+city_level = 3
+[sub_resource type="Resource" id="plot_19"]
+script = ExtResource("plot")
+cell = Vector2i(13, 15)
+city_level = 3
+[sub_resource type="Resource" id="plot_20"]
+script = ExtResource("plot")
+cell = Vector2i(15, 15)
+city_level = 3
+[sub_resource type="Resource" id="plot_21"]
+script = ExtResource("plot")
+cell = Vector2i(17, 15)
+city_level = 3
+[sub_resource type="Resource" id="plot_22"]
+script = ExtResource("plot")
+cell = Vector2i(19, 6)
+city_level = 4
+[sub_resource type="Resource" id="plot_23"]
+script = ExtResource("plot")
+cell = Vector2i(19, 8)
+city_level = 4
+[sub_resource type="Resource" id="plot_24"]
+script = ExtResource("plot")
+cell = Vector2i(19, 12)
+city_level = 4
+[sub_resource type="Resource" id="plot_25"]
+script = ExtResource("plot")
+cell = Vector2i(19, 14)
+city_level = 4
 [resource]
 script = ExtResource("settings")
 combat = ExtResource("combat")
-costs = Array[int]([12, 8, 18, 12, 16, 10, 10, 18, 8, 14])
+costs = Array[int]([14, 12, 34, 12, 30, 14, 14, 36, 14, 34, 36, 32, 32, 12, 80, 84, 84, 80, 72, 76, 84])
 rites = Array[ExtResource("rite")]([ExtResource("rite_0"), ExtResource("rite_1"), ExtResource("rite_2"), ExtResource("rite_3"), ExtResource("rite_4"), ExtResource("rite_5"), ExtResource("rite_6"), ExtResource("rite_7"), ExtResource("rite_8"), ExtResource("rite_9"), ExtResource("rite_10"), ExtResource("rite_11"), ExtResource("rite_12"), ExtResource("rite_13")])
 enemies = Array[ExtResource("mob")]([ExtResource("mob_0"), ExtResource("mob_1"), ExtResource("mob_2"), ExtResource("mob_3"), ExtResource("mob_4"), ExtResource("mob_5"), ExtResource("mob_6"), ExtResource("mob_7")])
 build_regions = Array[Rect2i]([Rect2i(7, 8, 4, 2), Rect2i(12, 8, 5, 2), Rect2i(7, 11, 5, 2), Rect2i(13, 11, 4, 2)])
@@ -951,6 +651,9 @@ heroes = Array[ExtResource("hero")]([SubResource("hero_ilya"), SubResource("hero
 streets = Array[ExtResource("street")]([SubResource("street_upper"), SubResource("street_lower")])
 hero_hp = 50
 start_gold = 75
+ward_physical_percent = 100
+ward_lightning_percent = 50
+ward_other_percent = 25
 night_cost_percent = 150
 night_install_ticks = 240
 night_move_ticks = 400
@@ -962,15 +665,15 @@ discount_cap_bp = 3000
 discount_step_bp = 1500
 enchants = Array[ExtResource("rite")]([])
 enchant_costs = Array[int]([])
-market_offers = 3
+market_offers = 0
 market_shooter_slots = 0
-market_rite_slots = 1
-market_by_element = true
+market_rite_slots = 0
+market_by_element = false
 early_dawn = true
 reroll_cost = 2
 reroll_cost_step = 1
 level_names = Array[String](["Деревянный", "Каменный", "Кирпичный", "Белокаменный"])
-building_levels = Array[ExtResource("building_levels")]([SubResource("levels_bolt"), SubResource("levels_brazier"), SubResource("levels_furnace"), SubResource("levels_wind"), SubResource("levels_water"), SubResource("levels_rime"), SubResource("levels_spark"), SubResource("levels_thunder"), SubResource("levels_hex"), SubResource("levels_plague")])
+building_levels = Array[ExtResource("building_levels")]([ExtResource("profile_bolt"), ExtResource("profile_brazier"), ExtResource("profile_furnace"), ExtResource("profile_wind"), ExtResource("profile_water"), ExtResource("profile_rime"), ExtResource("profile_spark"), ExtResource("profile_thunder"), ExtResource("profile_hex"), ExtResource("profile_plague"), ExtResource("profile_war_engine"), ExtResource("profile_glacier"), ExtResource("profile_gale"), ExtResource("profile_dew"), ExtResource("profile_cinder"), ExtResource("profile_ice_lance"), ExtResource("profile_storm"), ExtResource("profile_doom"), ExtResource("profile_rain"), ExtResource("profile_vortex"), ExtResource("profile_porok")])
 wear_ticks = 4800
 worn_damage_percent = 60
 repair_percent = 40
@@ -979,3 +682,9 @@ gift_choices = 3
 repair_hp = 5
 repair_cost = 10
 nights = SubResource("nights")
+plots = Array[ExtResource("plot")]([SubResource("plot_0"), SubResource("plot_1"), SubResource("plot_2"), SubResource("plot_3"), SubResource("plot_4"), SubResource("plot_5"), SubResource("plot_6"), SubResource("plot_7"), SubResource("plot_8"), SubResource("plot_9"), SubResource("plot_10"), SubResource("plot_11"), SubResource("plot_12"), SubResource("plot_13"), SubResource("plot_14"), SubResource("plot_15"), SubResource("plot_16"), SubResource("plot_17"), SubResource("plot_18"), SubResource("plot_19"), SubResource("plot_20"), SubResource("plot_21"), SubResource("plot_22"), SubResource("plot_23"), SubResource("plot_24"), SubResource("plot_25")])
+upgrade_cost_percent = Array[int]([150, 300, 600])
+upgrade_city_levels = Array[int]([1, 2, 3])
+plot_sell_percent = 60
+sell_undo_ticks = 200
+plot_support_radius_milli = 3500

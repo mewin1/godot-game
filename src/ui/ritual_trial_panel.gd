@@ -6,6 +6,9 @@ extends Control
 const TRIAL: RitualTrialConfig = preload("res://data/ritual/trial.tres")
 const ENDLESS: RitualTrialConfig = preload("res://data/ritual/endless.tres")
 const MAX_FRAME_TICKS: int = 8
+## Сообщение внизу поля гаснет через столько секунд (подсказка выбора - пока выбор идет).
+const TOAST_SECONDS: float = 4.0
+const PLACE_HINT: String = "ЛКМ - поставить · R - поворот · ПКМ/Esc - отмена"
 var settings: RitualTrialConfig = ENDLESS
 var trial: RitualTrial
 var board: RitualBoard
@@ -54,6 +57,19 @@ var _omen_night: int = 0
 var _supply_buttons: Array[Button] = []
 var _fast_button: Button
 var _speed: int = 1
+var _toast: PanelContainer
+var _toast_text: String = ""
+var _toast_age: float = 0.0
+## Счетчик кадров и кнопка "Проверки" в бесконечном забеге скрыты: F10 показывает их.
+var _fps: FpsLabel
+var _sound_bank: SoundBank
+## Ночь ли была на прошлом обновлении: смена дня и ночи звучит рогом и колоколом.
+var _was_night: bool = false
+var _upgrade_button: Button
+var _upgrade_surcharge: Label
+var _specialise_buttons: Array[Button] = []
+var _sell_button: Button
+var _wear_dawn: int = -1
 
 
 func _ready() -> void:
@@ -70,6 +86,11 @@ func _build_ui() -> void:
 	board.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	board.cell_clicked.connect(_on_cell)
 	board.command_requested.connect(_issue)
+	# Звуки выстрелов, смертей и прорывов шлет слой эффектов, как в PvP (docs/37 BUG-13).
+	_sound_bank = SoundBank.new()
+	add_child(_sound_bank)
+	if board.effects != null:
+		board.effects.sound_requested.connect(_sound_bank.play)
 	var root_box: VBoxContainer = VBoxContainer.new()
 	add_child(root_box)
 	root_box.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -115,10 +136,11 @@ func _build_ui() -> void:
 	_shop.sell_requested.connect(_sell_tower)
 	_shop.enchant_chosen.connect(_choose_enchant)
 	_shop.reroll_requested.connect(_reroll)
+	_shop.placement_cancelled.connect(_cancel_from_catalogue)
 	var edit: HBoxContainer = HBoxContainer.new()
 	left.add_child(edit)
 	_button(edit, "Перенести", _choose_move)
-	_button(edit, "Продать", _sell)
+	_sell_button = _button(edit, "Продать", _sell)
 	_button(edit, "Отмена", _cancel_move)
 	var upkeep: HBoxContainer = HBoxContainer.new()
 	left.add_child(upkeep)
@@ -152,6 +174,20 @@ func _build_ui() -> void:
 	right.add_child(field_space)
 	_shop.mount_selection(field_space)
 	_selection = _shop._selection
+	if settings.uses_plots():
+		var upgrades: HBoxContainer = HBoxContainer.new()
+		_selection.get_parent().add_child(upgrades)
+		_upgrade_button = _button(upgrades, "Улучшить", _upgrade_selected.bind(-1))
+		_upgrade_button.name = "UpgradeHouse"
+		for branch_index: int in 2:
+			_specialise_buttons.append(_button(upgrades, "", _upgrade_selected.bind(branch_index)))
+			_specialise_buttons[-1].name = "SpecialiseHouse%d" % branch_index
+		_upgrade_surcharge = Label.new()
+		_upgrade_surcharge.name = "UpgradeNightSurcharge"
+		_upgrade_surcharge.text = "↑"
+		_upgrade_surcharge.mouse_filter = Control.MOUSE_FILTER_PASS
+		_upgrade_surcharge.add_theme_color_override("font_color", Color("ff6258"))
+		upgrades.add_child(_upgrade_surcharge)
 	var bottom: HBoxContainer = HBoxContainer.new()
 	bottom.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	bottom.add_theme_constant_override("separation", 12)
@@ -189,14 +225,17 @@ func _build_ui() -> void:
 	_idols = _label(self, "", 10)
 	_idols.hide()
 	# Временный счётчик кадров: справа под кнопками «Пауза» и «Проверки».
-	var fps: FpsLabel = FpsLabel.new()
-	fps.viewport = board.stage._viewport if board.stage != null else null
-	add_child(fps)
-	fps.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
-	fps.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	fps.offset_left = -190.0
-	fps.offset_right = -16.0
-	fps.offset_top = 52.0
+	_fps = FpsLabel.new()
+	_fps.viewport = board.stage._viewport if board.stage != null else null
+	add_child(_fps)
+	_fps.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
+	_fps.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_fps.offset_left = -190.0
+	_fps.offset_right = -16.0
+	_fps.offset_top = 52.0
+	if settings.is_endless():
+		_fps.hide()
+		_hud._speed_button.hide()
 	# Техническая строка опыта сохранена отдельно от интерфейса PvP.
 	var tools: VBoxContainer = VBoxContainer.new()
 	root_box.add_child(tools)
@@ -238,17 +277,17 @@ func _build_ui() -> void:
 		strip.offset_top = 8
 		strip.add_child(_scout)
 	_threat.visible = not settings.is_endless()
-	var toast: PanelContainer = PanelContainer.new()
-	toast.add_theme_stylebox_override("panel", DuskTheme.glass(0.82, 8))
-	toast.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(toast)
-	toast.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
-	toast.offset_left = 356
-	toast.offset_right = -20
+	_toast = PanelContainer.new()
+	_toast.add_theme_stylebox_override("panel", DuskTheme.glass(0.82, 8))
+	_toast.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_toast)
+	_toast.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
+	_toast.offset_left = 356
+	_toast.offset_right = -20
 	# Над панелью выбора постройки, чтобы не закрывать её строку.
-	toast.offset_top = -258
-	toast.offset_bottom = -228
-	_message = _label(toast, "", 12)
+	_toast.offset_top = -258
+	_toast.offset_bottom = -228
+	_message = _label(_toast, "", 12)
 	_message.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_message.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_message.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
@@ -492,6 +531,7 @@ func _reset(index: int) -> void:
 
 
 func _board_reset() -> void:
+	_wear_dawn = -1
 	board.trial = trial
 	board.selected_id = 0
 	board.preview_index = -1
@@ -512,8 +552,22 @@ func _board_reset() -> void:
 func _issue(command: RitualCommand) -> bool:
 	var error: String = trial.execute(command)
 	_message.text = error if not error.is_empty() else "Приказ принят"
+	_sound_bank.play(_command_sound(command) if error.is_empty() else &"click")
 	_refresh()
 	return error.is_empty()
+
+
+func _command_sound(command: RitualCommand) -> StringName:
+	match command.action:
+		RitualCommand.Action.BUY:
+			return &"merge" if command.tower_id != 0 else &"buy"
+		RitualCommand.Action.SELL:
+			return &"sell"
+		RitualCommand.Action.MERGE, RitualCommand.Action.RITE:
+			return &"merge"
+		RitualCommand.Action.SKILL:
+			return &"skill"
+	return &"click"
 
 
 func _start() -> void:
@@ -566,6 +620,17 @@ func _process(delta: float) -> void:
 		if settings.is_endless():
 			_show_defeat()
 	_refresh()
+	_age_toast(delta)
+
+
+## Сообщение гаснет через TOAST_SECONDS после последней смены текста; подсказка выбора цели
+## держится, пока выбор не закончен.
+func _age_toast(delta: float) -> void:
+	if _message.text != _toast_text:
+		_toast_text = _message.text
+		_toast_age = 0.0
+	_toast_age += delta
+	_toast.visible = not _toast_text.is_empty() and (_toast_age < TOAST_SECONDS or board.action != &"")
 
 
 func _unhandled_key_input(event: InputEvent) -> void:
@@ -583,23 +648,45 @@ func _unhandled_key_input(event: InputEvent) -> void:
 			var kind: int = key.keycode - KEY_1
 			if not _supply_buttons[kind].disabled:
 				_choose_supply(kind)
+		elif key.keycode == KEY_R and not settings.uses_plots() and board.action in [&"buy", &"move"]:
+			board.preview_rotation = (board.preview_rotation + 1) % TowerState.ROTATIONS
+			board.queue_redraw()
+		elif key.keycode == KEY_F10 and settings.is_endless():
+			_fps.visible = not _fps.visible
+			_hud._speed_button.visible = _fps.visible
 	if event.is_action_pressed(&"ui_cancel"):
 		if _schedule.visible:
 			_hide_schedule()
 			get_viewport().set_input_as_handled()
 			return
-		board.preview_index = -1
-		board.action = &""
+		_cancel_aim()
 		board.selected_id = 0
 		_refresh()
 
 
+## Отмена выбора места/цели: покупки, переноса, навыка, припаса, чары.
+func _cancel_aim() -> void:
+	if board.action != &"":
+		_message.text = "Отменено"
+	board.preview_index = -1
+	board.preview_rotation = 0
+	board.action = &""
+	board.queue_redraw()
+
+
 func _choose_purchase(index: int) -> void:
+	if settings.is_endless() and board.action == &"buy" and board.preview_index == index:
+		# Повторный щелчок по выбранной карточке - отмена (docs/37 UI-6).
+		_cancel_aim()
+		_refresh()
+		return
 	board.preview_index = index
 	board.selected_id = 0
 	board.preview_rotation = 0
 	board.action = &"buy"
-	_message.text = "Выберите свободные клетки. ПКМ поворачивает фигуру."
+	_message.text = "Выберите свободный участок. ПКМ/Esc - отмена" if settings.uses_plots() \
+		else PLACE_HINT if settings.is_endless() else "Выберите свободные клетки. ПКМ поворачивает фигуру."
+	_refresh()
 
 
 func _buy_rite(index: int) -> void:
@@ -617,7 +704,8 @@ func _choose_enchant(index: int) -> void:
 ## оставались в памяти статические кэши иконок).
 func shop_report() -> Dictionary[String, Variant]:
 	return {"cards": _shop.visible_offer_count(), "reroll": _shop._reroll.is_visible_in_tree(),
-		"enchants": _shop.has_enchants()}
+		"enchants": _shop.has_enchants(), "gods": _shop._god_buttons.size(),
+		"catalogue_god": String(_shop._catalogue_god)}
 
 
 func _reroll() -> void:
@@ -630,6 +718,86 @@ func _repair_houses(tower_id: int) -> void:
 
 func _repair_selected() -> void:
 	_repair_houses(board.selected_id)
+
+
+func _upgrade_selected(branch_index: int) -> void:
+	var kind: RitualCommand.Action = RitualCommand.Action.UPGRADE if branch_index < 0 \
+		else RitualCommand.Action.SPECIALISE
+	_issue(RitualCommand.new(kind, branch_index, Vector2i.ZERO, 0, board.selected_id))
+
+
+func _cancel_from_catalogue() -> void:
+	_cancel_aim()
+	_refresh()
+
+
+func _announce_repairs() -> void:
+	if not settings.uses_plots() or settings.is_night(trial.tick_count):
+		return
+	var dawn: int = trial.nights_survived()
+	if dawn == _wear_dawn:
+		return
+	_wear_dawn = dawn
+	var worn: int = 0
+	for tower: TowerState in trial.field.towers:
+		if tower.durability >= 0 and tower.durability * 2 <= settings.max_durability(tower.level):
+			worn += 1
+	if worn > 0:
+		_message.text = "Нужен ремонт: ослабших домов %d. Починить все: %d" % [worn, trial.repair_all_cost()]
+
+
+func _refresh_building_actions(tower: TowerState) -> void:
+	if not settings.uses_plots():
+		return
+	_sell_button.disabled = tower == null
+	_sell_button.text = "Продать" if tower == null else "Продать · %d" % trial.sell_value(tower)
+	var can_upgrade: bool = tower != null and tower.level < settings.combat.max_tower_level
+	var at_night: bool = settings.is_night(trial.tick_count)
+	_upgrade_surcharge.visible = can_upgrade and at_night
+	_upgrade_surcharge.tooltip_text = "Мастера спят. Ночной вызов: +%d%% к цене, стройка %d с." % [
+		settings.night_cost_percent - 100, settings.night_install_ticks / settings.combat.ticks_per_second]
+	_color_build_price(_upgrade_button, at_night)
+	_upgrade_button.visible = can_upgrade and tower.level != 2
+	if _upgrade_button.visible:
+		_upgrade_button.text = "Улучшить · %d" % trial.upgrade_cost(tower)
+		var error: String = trial.upgrade_error(tower)
+		_upgrade_button.disabled = not error.is_empty()
+		_upgrade_button.tooltip_text = error if not error.is_empty() else _upgrade_note(tower, -1)
+	for index: int in _specialise_buttons.size():
+		var button: Button = _specialise_buttons[index]
+		_color_build_price(button, at_night)
+		button.visible = can_upgrade and tower.level == 2
+		if not button.visible:
+			continue
+		var levels: RitualBuildingLevels = settings.levels_for(tower.data)
+		button.text = "%s · %d" % [levels.branches[index].title, trial.upgrade_cost(tower)]
+		var error: String = trial.upgrade_error(tower, index)
+		button.disabled = not error.is_empty()
+		button.tooltip_text = error if not error.is_empty() else _upgrade_note(tower, index)
+
+
+func _color_build_price(button: Button, at_night: bool) -> void:
+	for key: StringName in [&"font_color", &"font_hover_color", &"font_pressed_color", &"font_focus_color"]:
+		if at_night:
+			button.add_theme_color_override(key, Color("ffe066"))
+		else:
+			button.remove_theme_color_override(key)
+
+
+func _display_dps(tower: TowerState) -> int:
+	return trial.field.get_tower_damage(tower) * settings.combat.ticks_per_second \
+		* trial.field.get_tower_targets(tower) / maxi(1, trial.field.get_tower_cooldown(tower))
+
+
+func _upgrade_note(tower: TowerState, branch_index: int) -> String:
+	var preview: RitualTower = trial.upgrade_preview(tower, branch_index)
+	if preview == null:
+		return "Выберите специализацию"
+	return "%s: %s\nУрон/с по целям: %d, после улучшения %d\nСтройка %d с" % [
+		settings.level_name(preview.level), settings.level_behavior(preview).note,
+		_display_dps(tower), _display_dps(preview),
+		(settings.night_install_ticks if settings.is_night(trial.tick_count)
+			else settings.install_ticks) / settings.combat.ticks_per_second]
 
 
 func _refresh_wear(selected: TowerState) -> void:
@@ -739,10 +907,24 @@ func _sell() -> void:
 
 
 func _cancel_move() -> void:
+	if board.action != &"":
+		# Кнопка "Отмена" сначала отменяет начатый выбор места, а не только перенос.
+		_cancel_aim()
+		_refresh()
+		return
 	_issue(RitualCommand.new(RitualCommand.Action.CANCEL_MOVE, 0, Vector2i.ZERO, 0, board.selected_id))
 
 
 func _on_cell(cell: Vector2i, right: bool) -> void:
+	if right and settings.is_endless() and board.action in [&"buy", &"move"]:
+		# В забеге ПКМ отменяет выбор места; поворот фигуры - клавиша R (docs/37 UI-6).
+		_cancel_aim()
+		_refresh()
+		return
+	if right and settings.uses_plots():
+		_cancel_aim()
+		_refresh()
+		return
 	if right:
 		if board.action in [&"buy", &"move"]:
 			board.preview_rotation = (board.preview_rotation + 1) % TowerState.ROTATIONS
@@ -760,18 +942,22 @@ func _on_cell(cell: Vector2i, right: bool) -> void:
 	match board.action:
 		&"buy":
 			var twin: TowerState = trial.field.get_tower_at(cell)
-			var into: int = twin.id if twin != null and twin.level == 1 \
+			var into: int = twin.id if not settings.uses_plots() and twin != null and twin.level == 1 \
 					and twin.data == settings.combat.towers[board.preview_index] else 0
 			if _issue(RitualCommand.new(RitualCommand.Action.BUY, board.preview_index, cell,
 					board.preview_rotation, into)):
 				board.action = &""
 				board.preview_index = -1
+				board.preview_rotation = 0
+			elif settings.is_endless() and not trial.field.is_buildable(cell):
+				# Щелчок мимо мест под дома (дорога, лес) - отмена выбора.
+				_cancel_aim()
 		&"move":
 			var twin: TowerState = trial.field.get_tower_at(cell)
 			var moving: TowerState = trial.field.get_tower(board.selected_id)
 			var command: RitualCommand = RitualCommand.new(RitualCommand.Action.MOVE, 0, cell,
 				board.preview_rotation, board.selected_id)
-			if twin != null and moving != null and twin != moving and twin.data == moving.data:
+			if not settings.uses_plots() and twin != null and moving != null and twin != moving and twin.data == moving.data:
 				command = RitualCommand.new(RitualCommand.Action.MERGE, twin.id, Vector2i.ZERO, 0, moving.id)
 			if _issue(command):
 				board.action = &""
@@ -839,7 +1025,9 @@ func _save_result() -> void:
 	if _attempts.size() > 3:
 		_attempts.remove_at(0)
 	_history.text = " | ".join(_attempts)
-	_message.text = "Запись: " + path.trim_prefix("res://")
+	# Путь к записи нужен только для проверок, игроку в забеге он ни к чему.
+	if not settings.is_endless():
+		_message.text = "Запись: " + path.trim_prefix("res://")
 
 
 ## Новая ночь с приметой — объявить её в строке сообщений, пока день и есть время готовиться.
@@ -861,17 +1049,24 @@ func _announce_omen() -> void:
 func _refresh() -> void:
 	if trial == null:
 		return
+	var at_night: bool = settings.is_endless() and settings.is_night(trial.tick_count)
+	if at_night != _was_night and trial.phase == RitualTrial.Phase.RUNNING:
+		_sound_bank.play(&"wave" if at_night else &"round", 0.0)
+	_was_night = at_night
 	_hud.refresh_ritual(trial, _paused)
 	_refresh_gifts()
 	_announce_omen()
 	_shop.refresh_ritual(trial)
+	_shop.mark_chosen(board.preview_index if board.action == &"buy" else -1)
 	for index: int in _idol_slots.size():
 		var slot: RitualIdolSlot = _idol_slots[index] as RitualIdolSlot
 		slot.trial = trial
 		slot.refresh(trial.field.idols[index], true, settings.combat.ticks_per_second)
 	var selected: TowerState = trial.field.get_tower(board.selected_id)
 	_selection.text = "Башня: не выбрана" if selected == null else _selection_text(selected)
+	_refresh_building_actions(selected)
 	_refresh_wear(selected)
+	_announce_repairs()
 	_refresh_streets()
 	_refresh_supplies()
 	if settings.is_endless():
@@ -891,6 +1086,24 @@ func _refresh() -> void:
 
 ## Выбранная постройка: материал (уровень) и что он даёт, вложения и готовность.
 func _selection_text(tower: TowerState) -> String:
+	if settings.uses_plots():
+		var profile: RitualBuildingLevels = settings.levels_for(tower.data)
+		var house: RitualTower = tower as RitualTower
+		var branch_name: String = " · " + profile.branches[house.branch].title if house.branch >= 0 else ""
+		var full: int = settings.max_durability(tower.level)
+		var condition: String = "Молчит" if tower.durability == 0 else "Ослаб" \
+			if tower.durability * 2 <= full else "Готов"
+		if tower.durability > 0 and tower.durability * 2 <= full:
+			condition = "Ослаб, урон %d%%" % settings.worn_damage_percent if tower.data.damage > 0 else "Изношен"
+		if tower.is_action_blocked():
+			condition = "Строится"
+		var next: RitualTower = trial.upgrade_preview(tower)
+		var damage: String = "Урон/с по целям %d" % _display_dps(tower)
+		if next != null:
+			damage += ", после улучшения %d" % _display_dps(next)
+		return "%s · %s%s\n%s · %s\n%s · прочность %d%% · ремонт %d" % [tower.data.display_name,
+			settings.level_name(tower.level), branch_name, profile.role, damage, condition,
+			tower.durability * 100 / maxi(1, full), trial.repair_cost(tower)]
 	var behavior: RitualLevelBehavior = settings.level_behavior(tower)
 	var level: String = "ур. %d" % tower.level if behavior == null \
 			else "%s (%d)" % [settings.level_name(tower.level), tower.level]

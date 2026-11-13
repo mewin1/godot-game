@@ -92,6 +92,7 @@ func _init(rules: RitualTrialConfig, loadout_index: int = 0, seed_value: int = -
 	field.trial_event.connect(_on_field_event)
 	field.movement_completed.connect(_resolve_palisade)
 	field.hit_observed.connect(_on_hit_observed)
+	field.tower_fired.connect(_on_tower_fired)
 	hp = max_hp()
 	gold = rules.start_gold
 	if rules.is_endless():
@@ -152,7 +153,8 @@ func execute(command: RitualCommand) -> String:
 	var economic: bool = command.action in [RitualCommand.Action.BUY,
 		RitualCommand.Action.SELL, RitualCommand.Action.RITE, RitualCommand.Action.MERGE,
 		RitualCommand.Action.ENCHANT, RitualCommand.Action.REPAIR, RitualCommand.Action.REROLL,
-		RitualCommand.Action.REPAIR_HOUSE, RitualCommand.Action.STREET]
+		RitualCommand.Action.REPAIR_HOUSE, RitualCommand.Action.STREET,
+		RitualCommand.Action.UPGRADE, RitualCommand.Action.SPECIALISE]
 	if phase == Phase.RUNNING and economic and (economy_frozen or control_mode != ControlMode.OPEN):
 		return "В этой контрольной ветке состав зафиксирован"
 	if command.action in [RitualCommand.Action.MOVE, RitualCommand.Action.CANCEL_MOVE] \
@@ -188,6 +190,10 @@ func execute(command: RitualCommand) -> String:
 			error = _street()
 		RitualCommand.Action.SUPPLY:
 			error = _supply(command.rotation, command.item, command.progress)
+		RitualCommand.Action.UPGRADE:
+			error = _upgrade(command.tower_id)
+		RitualCommand.Action.SPECIALISE:
+			error = _upgrade(command.tower_id, command.item)
 	if error.is_empty():
 		_record_command(command)
 	return error
@@ -204,6 +210,11 @@ func _buy(index: int, cell: Vector2i, rotation: int, into_id: int = 0) -> String
 	if index < 0 or index >= settings.combat.towers.size():
 		return "Нет такой постройки"
 	var data: TowerData = settings.combat.towers[index]
+	var unlock: String = building_unlock_error(index)
+	if not unlock.is_empty():
+		return unlock
+	if settings.uses_plots() and (into_id > 0 or rotation != 0):
+		return "На участке покупают отдельный дом без поворота"
 	var slot: int = offers.find(index)
 	if settings.market_offers > 0 and slot < 0:
 		return "Этой постройки нет в лавке"
@@ -221,13 +232,15 @@ func _buy(index: int, cell: Vector2i, rotation: int, into_id: int = 0) -> String
 	if settings.tower_limit > 0 and field.towers.size() >= settings.tower_limit:
 		return "Все места заняты: замените постройку"
 	if not field.can_place_tower_data(data, cell, rotation):
-		return "Фигура не помещается на свободной площадке"
+		return "Выберите свободный участок" if settings.uses_plots() else "Фигура не помещается на свободной площадке"
 	var tower: TowerState = field.add_tower(data, cell, posmod(rotation, TowerState.ROTATIONS))
 	if slot >= 0:
 		offers[slot] = -1
 	if settings.wear_ticks > 0:
 		tower.durability = settings.max_durability(1)
 	tower.invested_total = cost
+	if tower is RitualTower:
+		(tower as RitualTower).investments.append(Vector2i(cost, tick_count))
 	gold -= tower.invested_total
 	spent += tower.invested_total
 	if brew_charges > 0 and settings.is_endless():
@@ -264,6 +277,108 @@ func building_cost(index: int) -> int:
 	return price
 
 
+func city_level() -> int:
+	return 1 + street_nights.size()
+
+
+func building_unlock_error(index: int) -> String:
+	if index < 0 or index >= settings.combat.towers.size():
+		return "Нет такой постройки"
+	var tier: int = settings.combat.towers[index].tier
+	if settings.uses_plots() and tier > city_level():
+		return "Нужен город %d-го уровня" % tier
+	return ""
+
+
+func upgrade_cost(tower: TowerState) -> int:
+	if tower == null or tower.level > settings.upgrade_cost_percent.size():
+		return 0
+	var index: int = settings.combat.towers.find(tower.data)
+	if index < 0:
+		return 0
+	var price: int = discounted(settings.costs[index]
+		* settings.upgrade_cost_percent[tower.level - 1] / 100, tower.data.god)
+	return price * settings.night_cost_percent / 100 if settings.is_night(tick_count) else price
+
+
+func upgrade_error(tower: TowerState, branch: int = -1) -> String:
+	if not settings.uses_plots() or tower == null:
+		return "Выберите дом на участке"
+	if tower.level >= settings.combat.max_tower_level:
+		return "Уровень уже максимальный"
+	if tower.is_action_blocked() or install_until.has(tower.id):
+		return "Строительство еще идет"
+	if tower.level > settings.upgrade_city_levels.size() \
+			or city_level() < settings.upgrade_city_levels[tower.level - 1]:
+		return "Сначала укрепите город"
+	if tower.level == 2:
+		var levels: RitualBuildingLevels = settings.levels_for(tower.data)
+		if levels == null or branch < 0 or branch >= levels.branches.size():
+			return "Выберите специализацию"
+	elif branch >= 0:
+		return "Специализация выбирается на третьем уровне"
+	if gold < upgrade_cost(tower):
+		return "Не хватает золота"
+	return ""
+
+
+func upgrade_preview(tower: TowerState, branch: int = -1) -> RitualTower:
+	if not tower is RitualTower or tower.level >= settings.combat.max_tower_level:
+		return null
+	if tower.level == 2 and branch < 0:
+		return null
+	field.refresh_building_bonuses()
+	var preview: RitualTower = RitualTower.new()
+	preview.data = tower.data
+	RitualStateCodec.apply(preview, RitualStateCodec.capture(tower))
+	preview.level += 1
+	if tower.level == 2:
+		preview.branch = branch
+	if preview.durability >= 0:
+		preview.durability = tower.durability * settings.max_durability(preview.level) \
+			/ maxi(1, settings.max_durability(tower.level))
+	return preview
+
+
+func _upgrade(tower_id: int, branch: int = -1) -> String:
+	var tower: TowerState = field.get_tower(tower_id)
+	var error: String = upgrade_error(tower, branch)
+	if not error.is_empty():
+		return error
+	var house: RitualTower = tower as RitualTower
+	if house == null:
+		return "Выберите дом на участке"
+	var cost: int = upgrade_cost(tower)
+	var old_full: int = settings.max_durability(tower.level)
+	var old_durability: int = tower.durability
+	gold -= cost
+	spent += cost
+	tower.invested_total += cost
+	house.investments.append(Vector2i(cost, tick_count))
+	if tower.level == 2:
+		house.branch = branch
+	_raise_level(tower)
+	if old_durability >= 0:
+		tower.durability = old_durability * settings.max_durability(tower.level) / maxi(1, old_full)
+	_event(&"upgrade", {"tower": tower.id, "level": tower.level, "branch": house.branch, "cost": cost})
+	return ""
+
+
+func sell_value(tower: TowerState) -> int:
+	if tower == null:
+		return 0
+	var house: RitualTower = tower as RitualTower
+	if house == null:
+		return tower.invested_total if phase == Phase.PREP else tower.invested_total * settings.sell_percent / 100
+	if not house.used:
+		return house.invested_total
+	var amount: int = 0
+	for investment: Vector2i in house.investments:
+		amount += investment.x if tick_count - investment.y <= settings.sell_undo_ticks \
+			else investment.x * settings.plot_sell_percent / 100
+	return amount
+
+
 func discounted(price: int, god: StringName) -> int:
 	return price * (10000 - discount_bp(god)) / 10000
 
@@ -291,6 +406,8 @@ func reroll_cost() -> int:
 
 
 func _reroll() -> String:
+	if settings.uses_plots():
+		return "Каталог не требует обновления"
 	if settings.market_offers <= 0:
 		return "В этом режиме лавка не обновляется"
 	var cost: int = reroll_cost()
@@ -371,6 +488,8 @@ func _random_building(rng: RandomNumberGenerator, shooter_only: bool) -> int:
 
 
 func _merge(source_id: int, target_id: int) -> String:
+	if settings.uses_plots():
+		return "Дом улучшается за золото при выборе"
 	var source: TowerState = field.get_tower(source_id)
 	var target: TowerState = field.get_tower(target_id)
 	if source == null or target == null or source == target:
@@ -421,6 +540,8 @@ func _lock(tower: TowerState, moving: bool = false) -> void:
 
 
 func _move(id: int, cell: Vector2i, rotation: int) -> String:
+	if settings.uses_plots() and rotation != 0:
+		return "Дома на участках не поворачиваются"
 	var tower: TowerState = field.get_tower(id)
 	if tower == null:
 		return "Выберите башню"
@@ -435,7 +556,7 @@ func _move(id: int, cell: Vector2i, rotation: int) -> String:
 	var origin: Vector2i = tower.anchor
 	var old_rotation: int = tower.rotation
 	if not field.move_tower(tower, cell, posmod(rotation, TowerState.ROTATIONS)):
-		return "Фигура не помещается"
+		return "Участок недоступен или занят" if settings.uses_plots() else "Фигура не помещается"
 	if phase == Phase.RUNNING:
 		move_origins[id] = origin
 		move_rotations[id] = old_rotation
@@ -469,8 +590,7 @@ func _sell(id: int) -> String:
 	var tower: TowerState = field.get_tower(id)
 	if tower == null:
 		return "Выберите башню"
-	var amount: int = tower.invested_total if phase == Phase.PREP \
-			else tower.invested_total * settings.sell_percent / 100
+	var amount: int = sell_value(tower)
 	gold += amount
 	refunded += amount
 	field.remove_tower(tower)
@@ -588,6 +708,11 @@ func repair_cost(tower: TowerState) -> int:
 		return 0
 	var index: int = settings.combat.towers.find(tower.data)
 	var value: int = discounted(settings.costs[index] << (tower.level - 1), tower.data.god)
+	if settings.uses_plots():
+		var base: int = settings.costs[index]
+		for level: int in range(tower.level - 1):
+			base += settings.costs[index] * settings.upgrade_cost_percent[level] / 100
+		value = discounted(base, tower.data.god)
 	return maxi(1, value * settings.repair_percent * missing / (100 * full))
 
 
@@ -961,14 +1086,20 @@ func tick() -> void:
 func _spawn_due() -> void:
 	if settings.is_endless():
 		for pack: RitualPack in plan().spawns_at(tick_count):
-			var member: int = pack.member_at(tick_count)
-			var slot: int = (tick_count - pack.at_tick) / pack.spacing
-			field.spawn_mob(member, pack.hp_for(member, settings.nights.boss_enemy), pack.resist,
-					member_route(pack, slot))
+			spawn_from_pack(pack, (tick_count - pack.at_tick) / pack.spacing)
 		return
 	while next_spawn < settings.spawns.size() and settings.spawns[next_spawn].at_tick <= tick_count:
 		field.spawn_mob(settings.spawns[next_spawn].mob_index)
 		next_spawn += 1
+
+
+## Враг пачки на своем месте: здоровье и награда по кривым ночи, элита с короной.
+func spawn_from_pack(pack: RitualPack, slot: int) -> RitualMob:
+	var mob: RitualMob = field.spawn_mob(pack.members[slot], pack.hp_at(slot, settings.nights.boss_enemy),
+			pack.resist, member_route(pack, slot))
+	mob.kill_reward = pack.bounties[slot]
+	mob.elite_rank = pack.elite[slot]
+	return mob
 
 
 ## План ночей этого сида (после снимка пересоздаётся по восстановленному сиду).
@@ -1178,6 +1309,8 @@ func _on_breached(mob: MobState) -> void:
 		return
 	hp = maxi(0, hp - mob.breach_damage)
 	_event(&"breach", {"mob": mob.id, "kind": String(mob.data.id), "damage": mob.breach_damage})
+	# Вид показывает прорыв (вспышка, урон у сторожки, звук), как в PvP.
+	field.breach_resolved.emit(mob, mob.breach_damage)
 	if hp == 0:
 		phase = Phase.OVER
 		# Забег: враг дошёл до сторожки — удар по Илье; Илья погиб — сразу поражение.
@@ -1187,6 +1320,16 @@ func _on_breached(mob: MobState) -> void:
 
 func _on_hit_observed(details: Dictionary) -> void:
 	_event(&"damage", details)
+
+
+func _on_tower_fired(tower: TowerState, _target: MobState) -> void:
+	var house: RitualTower = tower as RitualTower
+	if house == null:
+		return
+	house.used = true
+	for support: TowerState in field.get_neighbors(tower):
+		if support.data.is_support():
+			field.use_support(support)
 
 
 func _on_field_event(kind: StringName, mob: RitualMob, amount: int) -> void:
@@ -1236,6 +1379,8 @@ func summary() -> Dictionary[String, Variant]:
 
 
 func snapshot() -> Dictionary[String, Variant]:
+	if settings.uses_plots():
+		field.refresh_building_bonuses()
 	var entities: Array[Dictionary] = []
 	for mob: MobState in field.mobs:
 		entities.append({"data": String(mob.data.id), "state": RitualStateCodec.capture(mob)})
@@ -1269,7 +1414,7 @@ static func from_snapshot(rules: RitualTrialConfig, state: Dictionary) -> Ritual
 				data = candidate
 		if data == null:
 			return null
-		var tower: TowerState = TowerState.new()
+		var tower: TowerState = RitualTower.new() if rules.uses_plots() else TowerState.new()
 		tower.data = data
 		RitualStateCodec.apply(tower, RitualStateCodec.dictionary(record["state"]))
 		trial.field.attach_tower(tower)
@@ -1306,5 +1451,9 @@ func fork_control(mode: ControlMode) -> RitualTrial:
 
 func state_hash() -> int:
 	var hasher: StateHasher = StateHasher.new()
-	RitualStateCodec.hash_value(hasher, snapshot())
+	var state: Dictionary[String, Variant] = snapshot()
+	# Равные правила могут быть загружены из файла или скопированы для стенда.
+	# Их содержание уже проверяет rules_hash; путь не является состоянием игры.
+	state.erase("rules")
+	RitualStateCodec.hash_value(hasher, state)
 	return hasher.value

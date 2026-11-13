@@ -3,13 +3,16 @@ extends SceneTree
 ## Боты — только ориентир; баланс проверяет автор живой игрой.
 ## Запуск: godot --headless --path . -s res://tools/ritual_endless_probe.gd [-- --seeds=1,2,3]
 
-## Копия правил: аргументы `-- --hp=9 --budget=14 --boss=1800` меняют рост здоровья/бюджета ночей
+## Копия правил: аргументы `-- --pressure=29 --budget=14 --boss=1800` меняют рост давления/бюджета ночей
 ## и здоровье босса; `--base`, `--gold`, `--spread`, `--kill=150` (награда в процентах), `--escort` (свита босса,
 ## % бюджета ночи) — тоже только в этом прогоне.
 ## Бот покупает улицы (ключ `--streets`): днём, со 2-й ночи, если останется запас.
 var _streets: bool = false
 ## `--trace`: кто ранил героя по ночам (вид врага → урон).
 var _trace: bool = false
+var _record: bool = false
+## --nights=N завершает технический прогон после N рассветов, без изменения правил.
+var _night_limit: int = 0
 var SETTINGS: RitualTrialConfig = (load("res://data/ritual/endless.tres") as RitualTrialConfig).duplicate(true)
 const TPS: int = 20
 const LIMIT_TICKS: int = 20 * 60 * 90
@@ -24,8 +27,8 @@ func _run() -> void:
 	var only: String = ""
 	var heroes: Array[int] = [0]
 	for argument: String in OS.get_cmdline_user_args():
-		if argument.begins_with("--hp="):
-			SETTINGS.nights.hp_growth_percent = argument.trim_prefix("--hp=").to_int()
+		if argument.begins_with("--pressure="):
+			SETTINGS.nights.pressure_growth_percent = argument.trim_prefix("--pressure=").to_int()
 		if argument.begins_with("--budget="):
 			SETTINGS.nights.budget_growth_percent = argument.trim_prefix("--budget=").to_int()
 		if argument.begins_with("--packs="):
@@ -49,6 +52,10 @@ func _run() -> void:
 			SETTINGS.nights.boss_escort_percent = argument.trim_prefix("--escort=").to_int()
 		if argument == "--trace":
 			_trace = true
+		if argument == "--record":
+			_record = true
+		if argument.begins_with("--nights="):
+			_night_limit = maxi(0, argument.trim_prefix("--nights=").to_int())
 		if argument == "--streets":
 			_streets = true
 		if argument.begins_with("--only="):
@@ -57,8 +64,8 @@ func _run() -> void:
 			seeds.clear()
 			for part: String in argument.trim_prefix("--seeds=").split(","):
 				seeds.append(part.to_int())
-	print("ENDLESS: рост здоровья %d%%, бюджета %d%% от %d, пачка +1 за %d ночи, босс %d HP" % [
-		SETTINGS.nights.hp_growth_percent, SETTINGS.nights.budget_growth_percent, SETTINGS.nights.budget_base,
+	print("ENDLESS: рост давления %d%%, бюджета %d%% от %d, пачка +1 за %d ночи, босс %d HP" % [
+		SETTINGS.nights.pressure_growth_percent, SETTINGS.nights.budget_growth_percent, SETTINGS.nights.budget_base,
 		SETTINGS.nights.packs_growth_every, SETTINGS.enemies[SETTINGS.nights.boss_enemy].hp])
 	for policy: String in ["ничего", "разумные траты"]:
 		if not only.is_empty() and not policy.contains(only):
@@ -73,7 +80,8 @@ func _play(policy: String, seed_value: int, hero: int = 0) -> void:
 	var trial: RitualTrial = RitualTrial.new(SETTINGS, 0, seed_value, hero)
 	var timeline: PackedStringArray = []
 	var last_night: int = 0
-	while trial.phase == RitualTrial.Phase.RUNNING and trial.tick_count < LIMIT_TICKS:
+	while trial.phase == RitualTrial.Phase.RUNNING and trial.tick_count < LIMIT_TICKS \
+			and (_night_limit == 0 or trial.nights_survived() < _night_limit):
 		if not trial.gift_choice.is_empty():
 			trial.execute(RitualCommand.new(RitualCommand.Action.GIFT, trial.gift_choice[0]))
 		if policy != "ничего" and trial.tick_count % 10 == 0:
@@ -93,6 +101,16 @@ func _play(policy: String, seed_value: int, hero: int = 0) -> void:
 		trial.result if not trial.result.is_empty() else "жив к пределу", trial.earned,
 		trial.field.towers.size(), trial.bosses_killed, trial.gifts_taken.size()])
 	print("ENDLESS:    " + " | ".join(timeline))
+	if SETTINGS.uses_plots():
+		var upgrades: int = 0
+		var branches: int = 0
+		for command: Dictionary in trial.commands:
+			var action: int = RitualStateCodec.integer(command["action"])
+			upgrades += int(action == RitualCommand.Action.UPGRADE)
+			branches += int(action == RitualCommand.Action.SPECIALISE)
+		print("CATALOGUE: город %d, улучшений %d, специализаций %d" % [trial.city_level(), upgrades, branches])
+	if _record:
+		print("ENDLESS RECORD: " + RitualTrialRecord.save_result(trial))
 	if _trace:
 		var hurt: Dictionary[int, Dictionary] = {}
 		for record: Dictionary in trial.journal:
@@ -120,8 +138,15 @@ func _enemies(trial: RitualTrial, night: int) -> int:
 func _spend(trial: RitualTrial) -> void:
 	if trial.hp <= trial.max_hp() - 15:
 		trial.execute(RitualCommand.new(RitualCommand.Action.REPAIR))
-	if trial.repair_all_cost() > 0 and trial.repair_all_cost() * 3 <= trial.gold:
+	var needs_repair: bool = not SETTINGS.uses_plots()
+	for tower: TowerState in trial.field.towers:
+		needs_repair = needs_repair or (tower.durability >= 0 \
+			and tower.durability * 2 <= SETTINGS.max_durability(tower.level))
+	if needs_repair and trial.repair_all_cost() > 0 and trial.repair_all_cost() * 3 <= trial.gold:
 		trial.execute(RitualCommand.new(RitualCommand.Action.REPAIR_HOUSE))
+	if SETTINGS.uses_plots():
+		_spend_catalogue(trial)
+		return
 	# Ночью стройка дороже и дольше — бот строит днём, ночью только чинит, сливает и копит.
 	if SETTINGS.is_night(trial.tick_count):
 		var rite_at_night: int = _main_rite(trial)
@@ -158,6 +183,77 @@ func _merge(trial: RitualTrial) -> bool:
 				return trial.execute(RitualCommand.new(RitualCommand.Action.MERGE, other.id,
 					Vector2i.ZERO, 0, tower.id)).is_empty()
 	return false
+
+
+func _spend_catalogue(trial: RitualTrial) -> void:
+	var want_growth: bool = trial.can_grow() and trial.field.towers.size() >= 8 \
+		and trial.current_night() >= 5 * trial.city_level()
+	if SETTINGS.is_night(trial.tick_count):
+		if want_growth:
+			return
+		var rite: int = _main_rite(trial)
+		if rite >= 0 and trial.gold >= trial.rite_cost(rite) + 60:
+			trial.execute(RitualCommand.new(RitualCommand.Action.RITE, rite))
+		return
+	var free: Array[Vector2i] = []
+	for cell: Vector2i in trial.field.get_buildable_cells():
+		if trial.field.get_tower_at(cell) == null:
+			free.append(cell)
+	var grow: bool = free.is_empty() or want_growth
+	if (grow or want_growth) and trial.can_grow():
+		if trial.gold >= trial.street_cost() + 20:
+			trial.execute(RitualCommand.new(RitualCommand.Action.STREET))
+		return
+	var choice: RitualCommand = null
+	var best: int = 0
+	for index: int in SETTINGS.combat.towers.size():
+		if not trial.building_unlock_error(index).is_empty() or trial.building_cost(index) > trial.gold:
+			continue
+		for cell: Vector2i in free:
+			var candidate: RitualTower = RitualTower.new()
+			candidate.data = SETTINGS.combat.towers[index]
+			candidate.anchor = cell
+			var value: int = _catalogue_value(trial, candidate) * 1000 / maxi(1, trial.building_cost(index))
+			var same: int = 0
+			for tower: TowerState in trial.field.towers:
+				same += int(tower.data.god == candidate.data.god)
+			value = value * 4 / (4 + same)
+			if value > best:
+				best = value
+				choice = RitualCommand.new(RitualCommand.Action.BUY, index, cell)
+	for tower: TowerState in trial.field.towers:
+		var branch: int = (1 if tower.data.damage == 0 else 0) if tower.level == 2 else -1
+		if not trial.upgrade_error(tower, branch).is_empty():
+			continue
+		var preview: RitualTower = trial.upgrade_preview(tower, branch)
+		var value: int = (_catalogue_value(trial, preview) - _catalogue_value(trial, tower)) \
+			* 1000 / maxi(1, trial.upgrade_cost(tower))
+		if value > best:
+			best = value
+			choice = RitualCommand.new(RitualCommand.Action.SPECIALISE if branch >= 0 \
+				else RitualCommand.Action.UPGRADE, branch, Vector2i.ZERO, 0, tower.id)
+	if choice != null:
+		trial.execute(choice)
+		return
+	var rite: int = _main_rite(trial)
+	if rite >= 0 and trial.gold >= trial.rite_cost(rite):
+		trial.execute(RitualCommand.new(RitualCommand.Action.RITE, rite))
+
+
+func _catalogue_value(trial: RitualTrial, tower: TowerState) -> int:
+	var dps: int = trial.field.get_tower_damage(tower) * SETTINGS.combat.ticks_per_second \
+		* trial.field.get_tower_targets(tower) / maxi(1, trial.field.get_tower_cooldown(tower))
+	var behavior: RitualLevelBehavior = SETTINGS.level_behavior(tower)
+	if tower.data.damage == 0:
+		dps = 20 * behavior.support_percent / 100
+	elif tower.data.cold_ticks > 0:
+		dps = dps * 140 / 100
+	elif tower.data.burn_percent > 0:
+		dps = dps * (100 + tower.data.burn_percent) / 100
+	elif tower.data.charge_ticks > 0 or tower.data.curse_ticks > 0:
+		dps = dps * 125 / 100
+	return dps * maxi(1, trial.field.count_path_cells_in_range(tower.cells(),
+		trial.field.get_tower_range(tower)))
 
 
 ## Заговор (с прилавка, если заговоры выпадают в лавке) для бога, у которого больше всего домов.

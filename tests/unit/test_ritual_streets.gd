@@ -6,7 +6,8 @@ var _settings: RitualTrialConfig
 
 
 func before_each() -> void:
-	_settings = load("res://data/ritual/endless.tres") as RitualTrialConfig
+	# Прежние дороги и свободные площадки; новая модель города относится к P3.
+	_settings = load("res://tests/fixtures/ritual_endless_pre_plots.tres") as RitualTrialConfig
 
 
 func _trial(run_seed: int = 7, gold: int = 1000) -> RitualTrial:

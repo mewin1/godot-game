@@ -16,15 +16,28 @@ extends Resource
 @export var night_max_ticks: int = 2400
 
 @export_group("Сила ночей")
-## Бюджет угрозы первой ночи; каждая следующая умножает его на (100 + рост)%.
+## Бюджет угрозы первой ночи; каждая следующая умножает его на (100 + рост)%. Бюджет задает число
+## врагов (пока пачки не полны) и награду ночи: награда растет ровно с ним (docs/37 ECO-2).
 @export var budget_base: int = 18
 @export var budget_growth_percent: int = 14
-## Здоровье врагов: каждая ночь ×(100 + рост)% к прежней. Награда за убийство не растёт —
-## поэтому нужный урон на монету дохода растёт каждую ночь (docs/34 §10).
+## Кривая давления (docs/37 ECO-5): здоровье всех врагов ночи (с оберегами) - pressure_base в первую
+## ночь и x(100 + рост)% каждую следующую. Здоровье врагов ночи подгоняется под кривую, поэтому
+## примета меняет состав, а не силу ночи. Давление растет быстрее награды - нужный урон на монету растет.
+## 0 сохраняет прежний генератор для записей со старыми правилами.
+@export var pressure_base: int = 0
 @export var hp_growth_percent: int = 9
+@export var pressure_growth_percent: int = 20
+## Ночь босса сильнее кривой на столько процентов (сам босс входит в эту силу).
+@export var boss_night_percent: int = 110
+## Награда за ночь в процентах от бюджета ночи; делится между врагами по их обычной награде.
+@export var bounty_percent: int = 100
+## Элита (docs/37 ECO-1): бюджет сверх полных пачек при пределе пачек - враги с короной,
+## у которых здоровье и награда умножены на столько (и еще раз - за следующий ранг).
+@export var elite_multiplier: int = 3
 @export var packs_base: int = 3
 ## +1 пачка каждые столько ночей.
 @export var packs_growth_every: int = 2
+## Предел пачек ночи (с поправкой приметы). Полные пачки сначала добавляют пачку до предела.
 @export var packs_max: int = 9
 @export var pack_max_size: int = 14
 ## Промежуток между врагами одной пачки.
@@ -113,13 +126,19 @@ func period_name(tick: int) -> String:
 
 
 ## Время для света: [тик внутри суток, начало заката, начало ночи, номер суток с 0].
-## Вечер перед первой ночью — конец обычного дня, чтобы солнце уже стояло низко.
+## Вечер перед первой ночью длиннее суток: солнце медленно идет от полудня к закату. Без этого
+## первые секунды забега приходились на время до восхода и были темнее ночи.
 func cycle_view(tick: int) -> Array[int]:
 	var night: int = night_index_at(tick)
 	var segment_start: int = 0 if night == 1 else night_end(night - 1)
 	var day_length: int = night_start(night) - segment_start
-	var local: int = tick - segment_start + (day_ticks - day_length)
-	return [local, day_ticks - dusk_ticks, day_ticks, night - 1]
+	var elapsed: int = tick - segment_start
+	var dusk_start: int = day_ticks - dusk_ticks
+	var local: int = elapsed + (day_ticks - day_length)
+	if day_length > day_ticks and elapsed < day_length - dusk_ticks:
+		var noon: int = dusk_start / 2
+		local = noon + elapsed * (dusk_start - noon) / (day_length - dusk_ticks)
+	return [local, dusk_start, day_ticks, night - 1]
 
 
 ## Бюджет угрозы ночи: сложный процент от базы, целыми числами.
@@ -130,11 +149,29 @@ func budget(night: int) -> int:
 	return value
 
 
+## Здоровье всех врагов обычной ночи по кривой давления, целыми числами.
+func pressure(night: int) -> int:
+	var value: int = pressure_base
+	for index: int in maxi(0, night - 1):
+		value = value * (100 + pressure_growth_percent) / 100
+	return value
+
+
 func hp_percent(night: int) -> int:
 	var value: int = 100
 	for index: int in maxi(0, night - 1):
 		value = value * (100 + hp_growth_percent) / 100
 	return value
+
+
+## Сила ночи с поправкой на босса.
+func night_pressure(night: int) -> int:
+	return pressure(night) * boss_night_percent / 100 if is_boss_night(night) else pressure(night)
+
+
+## Награда за все убийства ночи.
+func night_bounty(night: int) -> int:
+	return budget(night) * bounty_percent / 100
 
 
 func pack_count(night: int) -> int:

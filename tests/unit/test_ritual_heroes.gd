@@ -9,7 +9,8 @@ var _settings: RitualTrialConfig
 
 
 func before_each() -> void:
-	_settings = load("res://data/ritual/endless.tres") as RitualTrialConfig
+	# Пассивка обновлений Яги и покупка копий относятся к прежней лавке.
+	_settings = load("res://tests/fixtures/ritual_endless_pre_plots.tres") as RitualTrialConfig
 
 
 func _trial(hero: int, run_seed: int = 3) -> RitualTrial:

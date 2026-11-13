@@ -52,8 +52,10 @@ func draw(canvas: CanvasItem, foot: Vector2, cell: float) -> void:
 						false, Color(color, fade * 0.85))
 			&"ice", &"physical":
 				var side: Vector2 = dir.orthogonal() * cell * 0.06 * (1.0 - t)
-				canvas.draw_colored_polygon(PackedVector2Array([at + dir * cell * 0.22,
-						at + side, at - dir * cell * 0.10, at - side]), ink)
+				# В конце жизни осколок сжимается в линию: такой многоугольник не триангулируется.
+				if side.length() > 0.25:
+					canvas.draw_colored_polygon(PackedVector2Array([at + dir * cell * 0.22,
+							at + side, at - dir * cell * 0.10, at - side]), ink)
 				canvas.draw_line(at, at + dir * cell * 0.22, Color(1, 1, 1, fade), 1, true)
 			&"lightning":
 				var kink: Vector2 = dir.orthogonal() * cell * 0.13

@@ -4,6 +4,8 @@ extends OfferCard
 ## картинка, имя, нижняя плашка с крупной ценой, уроном и формой фигуры.
 ## Подробности (радиус, скорострельность, описание) — в подсказке по наведению.
 
+signal placement_cancelled()
+
 const COIN: Texture2D = preload("res://assets/ui/icon_gold.svg")
 const SWORD: Texture2D = preload("res://assets/ui/icon_damage.svg")
 const FOOTER_HEIGHT: float = 26.0
@@ -21,6 +23,14 @@ const STAT_COLOR: Color = Color("d6e0e6")
 const ART_FOCUS_Y: float = 0.6
 const NAME_FONT_SIZE: int = 13
 const NAME_FONT_MIN: int = 10
+const CHOSEN_COLOR: Color = Color("f0c869")
+
+## Карточка выбрана и ждет места на поле: золотая рамка, пока выбор не закончен.
+var is_chosen: bool = false
+## Компактная цена каталога участков, без фигуры и старой подсказки поворота.
+var plot_card: bool = false
+var night_surcharge: bool = false
+var _night_badge: Label
 
 
 func _init() -> void:
@@ -39,6 +49,15 @@ func _init() -> void:
 	_normal_style.set_corner_radius_all(7)
 	_hover_style.set_corner_radius_all(7)
 	_hover_style.bg_color = Color(0.1, 0.18, 0.27, 0.92)
+
+
+func _gui_input(event: InputEvent) -> void:
+	var button: InputEventMouseButton = event as InputEventMouseButton
+	if plot_card and button != null and button.button_index == MOUSE_BUTTON_RIGHT and button.pressed:
+		placement_cancelled.emit()
+		accept_event()
+		return
+	super(event)
 
 
 ## Подсказка: стихия, описание и числа — как всплывающая карточка в концепте.
@@ -112,6 +131,8 @@ func _draw() -> void:
 	_draw_footer(font, price)
 	if not is_active:
 		draw_rect(rect, Color(0.02, 0.03, 0.06, 0.38))
+	if is_chosen:
+		draw_rect(rect.grow(-1.5), CHOSEN_COLOR, false, 3.0)
 
 
 ## Картинка концепта на всю карточку (обрезка «по заполнению», постройка по центру) и тёмная
@@ -176,7 +197,12 @@ func _draw_footer(font: Font, price: int) -> void:
 	draw_string_outline(font, Vector2(26, baseline), str(price), HORIZONTAL_ALIGNMENT_LEFT, -1,
 			18, 3, Color(0, 0, 0, 0.6))
 	draw_string(font, Vector2(26, baseline), str(price), HORIZONTAL_ALIGNMENT_LEFT, -1, 18,
-			PRICE_COLOR if is_active else DuskTheme.SHORT)
+			(Color("ffe066") if night_surcharge else PRICE_COLOR) if is_active else DuskTheme.SHORT)
+	if plot_card:
+		if _night_badge != null:
+			_night_badge.position = Vector2(28 + font.get_string_size(str(price), HORIZONTAL_ALIGNMENT_LEFT,
+				-1, 18).x, footer.position.y + 2)
+		return
 	if data == null:
 		return
 	var cells: Array[Vector2i] = TowerState.rotated_shape(data.shape, rotation_turns)
@@ -196,3 +222,18 @@ func _draw_footer(font: Font, price: int) -> void:
 				Vector2(15, 15)), false)
 		draw_string(font, Vector2(text_left, baseline), text, HORIZONTAL_ALIGNMENT_LEFT, -1, 14,
 				STAT_COLOR)
+
+
+func set_night_surcharge(active: bool, surcharge_percent: int, install_seconds: int) -> void:
+	night_surcharge = active
+	if _night_badge == null:
+		_night_badge = Label.new()
+		_night_badge.name = "NightSurcharge"
+		_night_badge.text = "↑"
+		_night_badge.add_theme_font_size_override("font_size", 20)
+		_night_badge.add_theme_color_override("font_color", Color("ff6258"))
+		_night_badge.mouse_filter = Control.MOUSE_FILTER_PASS
+		add_child(_night_badge)
+	_night_badge.tooltip_text = "Мастера спят. Ночной вызов: +%d%% к цене, стройка %d с." % [
+		surcharge_percent, install_seconds]
+	_night_badge.visible = active

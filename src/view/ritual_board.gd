@@ -4,6 +4,9 @@ extends Control
 
 signal command_requested(command: RitualCommand)
 signal cell_clicked(cell: Vector2i, right: bool)
+
+const ELITE_CROWN: Texture2D = preload("res://assets/ui/elite_crown.svg")
+
 var trial: RitualTrial
 var selected_id: int = 0
 var preview_index: int = -1
@@ -165,7 +168,12 @@ func _draw() -> void:
 		return
 	_geometry()
 	var field: RitualField = trial.field
-	if action in [&"buy", &"move"]:
+	if trial.settings.uses_plots():
+		for cell: Vector2i in field.get_buildable_cells():
+			if field.get_tower_at(cell) == null:
+				_tile(cell, Color(0.3, 0.34, 0.33, 0.45))
+				_tile(cell, Color("f0c27a") if action == &"buy" else Color("7f8a85"), false)
+	elif action in [&"buy", &"move"]:
 		for cell: Vector2i in field.get_buildable_cells():
 			_tile(cell, Color(0.6, 0.8, 0.75, 0.13), false)
 	for tower: TowerState in field.towers:
@@ -195,7 +203,20 @@ func _draw_tower(tower: TowerState) -> void:
 		if tower.is_action_blocked():
 			_tile(cell, Color(0.1, 0.15, 0.2, 0.65))
 	var center: Vector2 = _point(tower.center_milli())
-	if tower.data.wind_length_milli > 0:
+	if trial.settings.uses_plots() and tower.durability >= 0:
+		var full: int = trial.settings.max_durability(tower.level)
+		if tower.durability * 2 <= full:
+			var roof: Vector2 = stage.tower_top(tower.id)
+			var worn: Color = Color("ff6555") if tower.durability == 0 else Color("ffc36b")
+			_ring(tower.center_milli(), 480, worn, 2.5)
+			_text(roof + Vector2(-4, -5), "!" if tower.durability > 0 else "X", worn, 20)
+			draw_polyline(PackedVector2Array([roof + Vector2(-7, 5), roof + Vector2(0, 9),
+				roof + Vector2(-2, 15), roof + Vector2(6, 19)]), Color("271e18"), 2.5, true)
+	# Стрелка ветра - у выбранной, под курсором и пока ищем место: пять домов ветра иначе
+	# расчерчивают всю карту (docs/37 BUG-18).
+	var wind_shown: bool = tower.id == selected_id or action in [&"buy", &"move"] \
+			or tower.cells().has(hover_cell)
+	if tower.data.wind_length_milli > 0 and wind_shown:
 		var direction: Vector2i = trial.field.wind_direction(tower)
 		var wind_end: Vector2i = tower.center_milli() + direction * tower.data.wind_length_milli
 		var end: Vector2 = _point(wind_end)
@@ -240,11 +261,15 @@ func _draw_mob(mob: RitualMob) -> void:
 	if mob.freeze_ticks_left > 0:
 		color = Color("a1e8f5")
 	_text(stage.mob_head(mob, 1.0) + Vector2(-5, -13), glyph, color, 13)
+	if mob.elite_rank > 0:
+		draw_texture_rect(ELITE_CROWN,
+			Rect2(stage.mob_head(mob, 1.0) + Vector2(-10, -43), Vector2(20, 16)), false)
 	if mob.stun_ticks_left > 0:
 		_text(center + Vector2(-3, -radius), "*", Color.WHITE, 18)
 	if boss:
 		if mob.boss_phase == RitualMob.BossPhase.WARNING:
-			_text(stage.mob_head(mob, 1.0) + Vector2(-55, -31), "РЫВОК!", Color("ffab65"), 20)
+			_text(stage.mob_head(mob, 1.0) + Vector2(-55, -51 if mob.elite_rank > 0 else -31),
+				"РЫВОК!", Color("ffab65"), 20)
 			var lane: int = RitualField.lane_of(mob)
 			var ahead: int = mini(mob.progress + 3000, trial.field.lane_end_progress(lane))
 			draw_line(center, _point(trial.field.lane_point(lane, ahead)), Color("ffab65"), 4, true)
@@ -258,6 +283,45 @@ func _draw_mob(mob: RitualMob) -> void:
 	if mob.ward_hp > 0:
 		_ring(trial.field.get_mob_position(mob), 430, Color("9de3f5"), 3)
 		draw_rect(Rect2(bar.position - Vector2(0, 4), Vector2(bar.size.x * float(mob.ward_hp) / trial.settings.ward_hp, 3)), Color("9de3f5"))
+	_draw_statuses(mob, Vector2(bar.get_center().x, bar.end.y + 5))
+
+
+## Статусы под полоской здоровья: форма своя у каждого (не только цвет) - мокрый капля,
+## горит треугольник, заряд ромб, холод/лед квадрат, проклятие крест (docs/37 BUG-25).
+func _draw_statuses(mob: MobState, at: Vector2) -> void:
+	var marks: Array[StringName] = []
+	if mob.wet_ticks_left > 0:
+		marks.append(&"wet")
+	if mob.burn_ticks_left > 0:
+		marks.append(&"burn")
+	if mob.charge_ticks_left > 0:
+		marks.append(&"charge")
+	if mob.cold_ticks_left > 0 or mob.freeze_ticks_left > 0:
+		marks.append(&"cold")
+	if mob.curse_ticks_left > 0:
+		marks.append(&"curse")
+	var step: float = 9.0
+	var x: float = at.x - step * (marks.size() - 1) * 0.5
+	for mark: StringName in marks:
+		var point: Vector2 = Vector2(x, at.y)
+		match mark:
+			&"wet":
+				draw_circle(point + Vector2(0, 1), 3.2, Color("4fc3f7"))
+				draw_colored_polygon(PackedVector2Array([point + Vector2(0, -4), point + Vector2(-2.6, 0),
+					point + Vector2(2.6, 0)]), Color("4fc3f7"))
+			&"burn":
+				draw_colored_polygon(PackedVector2Array([point + Vector2(0, -4), point + Vector2(-4, 3),
+					point + Vector2(4, 3)]), Color("ff8a3d"))
+			&"charge":
+				draw_colored_polygon(PackedVector2Array([point + Vector2(0, -4), point + Vector2(3.5, 0),
+					point + Vector2(0, 4), point + Vector2(-3.5, 0)]), Color("ffe066"))
+			&"cold":
+				draw_rect(Rect2(point - Vector2(3.5, 3.5), Vector2(7, 7)),
+					Color("e6fbff") if mob.freeze_ticks_left > 0 else Color("a1e8f5"))
+			&"curse":
+				draw_line(point + Vector2(-3.5, -3.5), point + Vector2(3.5, 3.5), Color("d070f0"), 2.5, true)
+				draw_line(point + Vector2(-3.5, 3.5), point + Vector2(3.5, -3.5), Color("d070f0"), 2.5, true)
+		x += step
 
 
 func _draw_preview() -> void:
@@ -312,7 +376,7 @@ func _draw_preview() -> void:
 	if data == null:
 		return
 	var twin: TowerState = trial.field.get_tower_at(hover_cell)
-	if twin != null and twin.data == data and twin.id != selected_id \
+	if not trial.settings.uses_plots() and twin != null and twin.data == data and twin.id != selected_id \
 			and twin.level < trial.settings.combat.max_tower_level:
 		var moving: TowerState = trial.field.get_tower(selected_id) if action == &"move" else null
 		var level_ok: bool = twin.level == 1 if moving == null else moving.level == twin.level
@@ -393,6 +457,8 @@ func _can_drop_data(at_position: Vector2, value: Variant) -> bool:
 
 ## Башня под курсором, с которой сольётся перетаскиваемое (или null).
 func merge_target(payload: DragPayload, under: TowerState) -> TowerState:
+	if trial.settings.uses_plots():
+		return null
 	if under == null or under.data != payload.data or under.id == payload.tower_id \
 			or under.level >= trial.settings.combat.max_tower_level:
 		return null
@@ -427,6 +493,8 @@ func _drop_data(at_position: Vector2, value: Variant) -> void:
 
 
 func _input(event: InputEvent) -> void:
+	if trial != null and trial.settings.uses_plots():
+		return
 	var button: InputEventMouseButton = event as InputEventMouseButton
 	if button != null and button.pressed and button.button_index == MOUSE_BUTTON_RIGHT and get_viewport().gui_is_dragging():
 		var value: Variant = get_viewport().gui_get_drag_data()

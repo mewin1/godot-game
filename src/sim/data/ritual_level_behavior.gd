@@ -19,3 +19,6 @@ extends Resource
 @export var armor_pierce: int = 0
 ## Сила бонусов соседям в процентах от данных (100 — как в данных).
 @export var support_percent: int = 100
+@export var wind_power_bonus: int = 0
+@export var wind_length_bonus_milli: int = 0
+@export var wind_width_bonus_milli: int = 0

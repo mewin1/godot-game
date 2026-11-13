@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="TowerData" format=3]
+
+[ext_resource type="Script" path="res://src/sim/data/tower_data.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"porok"
+display_name = "Порок"
+school = &"war"
+tier = 3
+shape = Array[Vector2i]([Vector2i(0, 0)])
+damage = 320
+cooldown_ticks = 50
+range_milli = 4000
+tags = Array[StringName]([&"physical"])
+description = "Тяжелый урон по области. Медленный камнемет с тяжелым уроном по области."
+splash_radius_milli = 900
+splash_percent = 50
+god = &"war"

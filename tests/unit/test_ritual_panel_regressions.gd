@@ -182,3 +182,45 @@ func test_idol_slot_accepts_repeated_rite_until_limit() -> void:
 	assert_false(slot._can_drop_data(Vector2.ZERO, DragPayload.for_rite(0, rite)), "Предел 5")
 	var enchant: RiteData = RitualTrialPanel.TRIAL.enchants[0]
 	assert_false(slot._can_drop_data(Vector2.ZERO, DragPayload.for_rite(0, enchant)), "Чара не кладётся на идол")
+
+
+func _endless_panel() -> RitualTrialPanel:
+	var scene: PackedScene = load("res://scenes/ritual_trial.tscn") as PackedScene
+	var panel: RitualTrialPanel = scene.instantiate() as RitualTrialPanel
+	add_child_autofree(panel)
+	return panel
+
+
+func _chosen_cards(panel: RitualTrialPanel) -> int:
+	var count: int = 0
+	for card: OfferCard in panel._shop._cards:
+		var offer: MarketOffer = card as MarketOffer
+		count += int(offer != null and offer.is_chosen)
+	return count
+
+
+## docs/37 BUG-01/02/22: выбранную карточку видно, выбор отменяется мышью, поворот не остается.
+func test_endless_purchase_is_highlighted_and_cancelled_by_mouse() -> void:
+	var panel: RitualTrialPanel = _endless_panel()
+	await get_tree().process_frame
+	panel._pick_hero(0)
+	var offer: int = 0
+	panel._choose_purchase(offer)
+	assert_eq(panel.board.action, &"buy")
+	assert_eq(_chosen_cards(panel), 1, "Выбранная карточка подсвечена")
+	panel._on_cell(Vector2i(8, 8), true)
+	assert_eq(panel.board.action, &"", "ПКМ отменяет выбор")
+	assert_eq(_chosen_cards(panel), 0)
+	assert_eq(panel.trial.field.towers.size(), 0)
+	panel._choose_purchase(offer)
+	panel._choose_purchase(offer)
+	assert_eq(panel.board.action, &"", "Повторный щелчок по карточке отменяет выбор")
+	panel._choose_purchase(offer)
+	panel.board.preview_rotation = 1
+	assert_false(panel.trial.field.is_buildable(Vector2i.ZERO))
+	panel._on_cell(Vector2i.ZERO, false)
+	assert_eq(panel.board.action, &"", "Щелчок мимо мест под дома отменяет выбор")
+	assert_eq(panel.board.preview_rotation, 0, "Поворот не переходит в следующий выбор")
+	panel._choose_purchase(offer)
+	panel._cancel_move()
+	assert_eq(panel.board.action, &"", "Кнопка Отмена отменяет выбор места")

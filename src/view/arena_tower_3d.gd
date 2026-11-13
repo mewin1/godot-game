@@ -261,9 +261,9 @@ func _add_accent(mesh: Mesh, color: Color, height: float,
 	_accent.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 
 
-## Уровень слияния: золотые кольца у основания (уровень 2 — одно, 3 — два).
+## Уровень слияния: золотые кольца у основания (уровень 2 - одно, 3 - два, 4 - три в бесконечном "Обряде").
 func _add_level_rings(level: int) -> void:
-	for i: int in range(1, clampi(level, 1, 3)):
+	for i: int in range(1, clampi(level, 1, 4)):
 		var ring: TorusMesh = TorusMesh.new()
 		ring.inner_radius = 0.5 + i * 0.1
 		ring.outer_radius = 0.55 + i * 0.1
@@ -306,8 +306,9 @@ func _add_level_marks(cell_offsets: Array[Vector3], level: int) -> void:
 		if offset.x > front.x + 0.01 or (absf(offset.x - front.x) < 0.01 and offset.z > front.z):
 			front = offset
 	var material: StandardMaterial3D = ArenaMaterials3D.glow(ArenaMaterials3D.GOLD, 2.6)
-	var count: int = clampi(level, 1, 3)
-	# черточки поперёк края (как римские I, II, III), крупные — читаются с высоты камеры
+	var count: int = clampi(level, 1, 4)
+	# черточки поперек края (как римские I, II, III), крупные - читаются с высоты камеры;
+	# 4-й уровень (белый камень) - четыре черточки, иначе он не отличим от 3-го
 	for i: int in count:
 		var z: float = (float(i) - float(count - 1) * 0.5) * 0.32
 		ArenaMaterials3D.part(self, ArenaMaterials3D.box(Vector3(0.5, 0.1, 0.16)), material,

@@ -9,6 +9,13 @@ extends Resource
 @export var spawns: Array[RitualSpawn] = []
 @export var loadouts: Array[RitualLoadout] = []
 @export var build_regions: Array[Rect2i] = []
+## P2: непустой список включает участки и постоянный каталог только в бесконечном режиме.
+@export var plots: Array[RitualPlot] = []
+@export var upgrade_cost_percent: Array[int] = []
+@export var upgrade_city_levels: Array[int] = []
+@export var plot_sell_percent: int = 60
+@export var sell_undo_ticks: int = 200
+@export var plot_support_radius_milli: int = 3500
 ## Пристраиваемые улицы по порядку покупки (docs/34 §3); пусто — город не растёт.
 ## Улица N даёт вход N + 1: главная дорога поля — вход 1.
 @export var streets: Array[RitualStreetData] = []
@@ -97,6 +104,8 @@ extends Resource
 @export var ward_hp: int = 120
 @export var ward_fire_percent: int = 200
 @export var ward_physical_percent: int = 25
+@export var ward_lightning_percent: int = 0
+@export var ward_other_percent: int = 0
 @export var ward_break_stun: int = 20
 @export var banner_radius: int = 4000
 @export var banner_damage_percent: int = 70
@@ -126,7 +135,12 @@ func levels_for(data: TowerData) -> RitualBuildingLevels:
 
 func level_behavior(tower: TowerState) -> RitualLevelBehavior:
 	var levels: RitualBuildingLevels = levels_for(tower.data)
-	return levels.at_level(tower.level) if levels != null else null
+	var house: RitualTower = tower as RitualTower
+	return levels.at_level(tower.level, house.branch if house != null else -1) if levels != null else null
+
+
+func uses_plots() -> bool:
+	return is_endless() and not plots.is_empty()
 
 
 func level_name(level: int) -> String:

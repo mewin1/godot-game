@@ -33,7 +33,9 @@ func _check_endless(scene: PackedScene) -> void:
 	_check(panel._scout._cards[0].tooltip_text.contains("Состав"), "В подсказке пачки нет состава")
 	_check(panel._scout.get_global_rect().end.x <= panel.size.x, "Очередь разведки за краем экрана")
 	_check(panel._supply_buttons.size() == 3, "Нет ряда припасов")
-	_check(panel._hud._speed_button.get_global_rect().end.x <= panel.size.x + 1, "«Проверки» за правым краем экрана")
+	# "Проверки" и счетчик кадров игроку не показываются (docs/37 BUG-16), открываются по F10.
+	_check(not panel._hud._speed_button.visible and not panel._fps.visible, "Отладка видна игроку")
+	_check(panel._fast_button.get_global_rect().end.x <= panel.size.x + 1, "Скорость за правым краем экрана")
 	panel._toggle_speed()
 	_check(panel._speed == 2 and panel._fast_button.text == "×2", "Скорость не переключается")
 	var before_fast: int = panel.trial.tick_count
@@ -53,26 +55,26 @@ func _check_endless(scene: PackedScene) -> void:
 	var cards: int = shop["cards"]
 	var reroll: bool = shop["reroll"]
 	var enchants: bool = shop["enchants"]
-	_check(cards == panel.settings.market_offers, "Лавка с азартом: не %d карточек" % panel.settings.market_offers)
-	_check(reroll, "Нет кнопки «Обновить»")
+	_check(cards == 3, "Каталог не показывает три тира выбранного бога")
+	_check(not reroll, "В каталоге осталась кнопка обновления")
 	_check(not enchants, "Ряд чар остался в бесконечном забеге")
 	var gold: int = panel.trial.gold
 	panel._reroll()
-	_check(panel.trial.gold == gold - panel.settings.reroll_cost, "Обновление лавки не списало цену")
-	var offered: int = panel.trial.offers[0]
+	_check(panel.trial.gold == gold, "Обновление каталога списало золото")
+	var offered: int = 0
+	var plot: Vector2i = panel.trial.field.get_buildable_cells()[0]
 	panel._choose_purchase(offered)
-	panel._on_cell(Vector2i(8, 8), false)
+	panel._on_cell(plot, false)
 	_check(panel.trial.field.towers.size() == 1, "Вечером нельзя строить с прилавка")
 	panel._refresh()
-	panel._on_cell(Vector2i(8, 8), false)
+	panel._on_cell(plot, false)
 	_check(panel._selection.text.contains(panel.settings.level_name(1)), "Не виден материал дома: " + panel._selection.text)
 	_check(panel._selection.text.contains("прочность 100%"), "Не видна прочность дома: " + panel._selection.text)
 	panel.trial.field.towers[0].durability = 0
 	panel._repair_houses(0)
 	_check(panel.trial.field.towers[0].durability == panel.settings.max_durability(1), "«Починить всё» не чинит")
 	cards = panel.shop_report()["cards"]
-	_check(cards == panel.settings.market_offers - 1,
-		"Купленная карточка осталась на прилавке")
+	_check(cards == 3, "Покупка убрала постройку из постоянного каталога")
 	var nights: RitualNightRules = panel.settings.nights
 	while panel.trial.tick_count < nights.night_start(1) + 1:
 		panel.trial.tick()

@@ -88,6 +88,11 @@ func is_route_open(lane: int) -> bool:
 
 
 func is_buildable(cell: Vector2i) -> bool:
+	if settings.uses_plots():
+		for plot: RitualPlot in settings.plots:
+			if plot.cell == cell and plot.city_level <= open_streets + 1:
+				return true
+		return false
 	for region: Rect2i in open_regions():
 		if region.has_point(cell):
 			return true
@@ -96,6 +101,11 @@ func is_buildable(cell: Vector2i) -> bool:
 
 func get_buildable_cells() -> Array[Vector2i]:
 	var result: Array[Vector2i] = []
+	if settings.uses_plots():
+		for plot: RitualPlot in settings.plots:
+			if plot.city_level <= open_streets + 1:
+				result.append(plot.cell)
+		return result
 	for region: Rect2i in open_regions():
 		for y: int in range(region.position.y, region.end.y):
 			for x: int in range(region.position.x, region.end.x):
@@ -109,6 +119,42 @@ func open_regions() -> Array[Rect2i]:
 	for index: int in mini(open_streets, settings.streets.size()):
 		regions.append_array(settings.streets[index].build_regions)
 	return regions
+
+
+func create_tower(data: TowerData) -> TowerState:
+	if not settings.uses_plots():
+		return super(data)
+	var tower: RitualTower = RitualTower.new()
+	tower.id = _next_tower_id
+	_next_tower_id += 1
+	tower.data = data
+	return tower
+
+
+func get_neighbors(tower: TowerState) -> Array[TowerState]:
+	if not settings.uses_plots():
+		return super(tower)
+	var neighbors: Array[TowerState] = []
+	for other: TowerState in towers:
+		if other != tower and _is_in_range(tower.center_milli(), other.center_milli(),
+				settings.plot_support_radius_milli):
+			neighbors.append(other)
+	return neighbors
+
+
+func use_support(tower: TowerState) -> void:
+	var house: RitualTower = tower as RitualTower
+	if house == null or house.durability == 0 or house.is_action_blocked():
+		return
+	house.used = true
+	if not house.data.attacks and house.durability > 0 and house.last_support_tick != wave_tick:
+		house.last_support_tick = wave_tick
+		house.durability -= 1
+
+
+func refresh_building_bonuses() -> void:
+	if _are_bonuses_dirty:
+		_refresh_bonuses()
 
 
 #region Входы и маршруты (docs/34 §3): у каждого входа свой маршрут до сторожки.
@@ -418,8 +464,13 @@ func _target_priority(tower: TowerState, mob: MobState) -> int:
 func _hit(base: MobState, damage: int, data: TowerData, tower: TowerState = null) -> void:
 	var mob: RitualMob = base as RitualMob
 	if mob.ward_hp > 0:
-		var percent: int = settings.ward_fire_percent if data.tags.has(&"fire") \
-				else settings.ward_physical_percent if data.tags.has(&"physical") else 0
+		var percent: int = settings.ward_other_percent
+		if data.tags.has(&"fire"):
+			percent = settings.ward_fire_percent
+		elif data.tags.has(&"physical"):
+			percent = settings.ward_physical_percent
+		elif data.tags.has(&"lightning"):
+			percent = settings.ward_lightning_percent
 		damage_ward(mob, damage, percent, tower.id if tower != null else 0)
 		return
 	var old_stun: int = mob.stun_ticks_left
@@ -533,7 +584,7 @@ func _refresh_bonuses() -> void:
 		tower.bonus_fire_rate_percent = 0
 		tower.bonus_range_milli = 0
 	for support: TowerState in towers:
-		if support.is_action_blocked():
+		if support.is_action_blocked() or (settings.uses_plots() and support.durability == 0):
 			continue
 		var behavior: RitualLevelBehavior = settings.level_behavior(support)
 		var power: int = behavior.support_percent if behavior != null else 100
@@ -545,6 +596,19 @@ func _refresh_bonuses() -> void:
 
 ## У контрольного Ветродуя нулевая стрелка влево, фигура остаётся 1×2.
 func wind_direction(tower: TowerState) -> Vector2i:
+	if settings.uses_plots():
+		var closest: int = 9223372036854775807
+		var direction: Vector2i = Vector2i.LEFT
+		for lane: int in lane_count():
+			if not is_route_open(lane):
+				continue
+			var cells: Array[Vector2i] = route(lane)
+			for index: int in range(cells.size() - 1):
+				var distance: int = (cells[index] * MILLI - tower.center_milli()).length_squared()
+				if distance < closest:
+					closest = distance
+					direction = cells[index] - cells[index + 1]
+		return direction
 	return DivineCombat.DIRECTIONS[(tower.rotation + 3) % 4]
 
 
@@ -553,8 +617,11 @@ func in_wind(tower: TowerState, point: Vector2i) -> bool:
 	var direction: Vector2i = wind_direction(tower)
 	var along: int = offset.x * direction.x + offset.y * direction.y
 	var across: int = absi(offset.x * direction.y - offset.y * direction.x)
-	return along >= 0 and along <= DivineCombat.wind_length(self, tower) \
-			and across <= DivineCombat.wind_width(self, tower)
+	var behavior: RitualLevelBehavior = settings.level_behavior(tower)
+	var length_bonus: int = behavior.wind_length_bonus_milli if behavior != null else 0
+	var width_bonus: int = behavior.wind_width_bonus_milli if behavior != null else 0
+	return along >= 0 and along <= DivineCombat.wind_length(self, tower) + length_bonus \
+			and across <= DivineCombat.wind_width(self, tower) + width_bonus
 
 
 func _apply_trial_wind(mob: RitualMob) -> void:
@@ -563,13 +630,17 @@ func _apply_trial_wind(mob: RitualMob) -> void:
 	mob.is_in_wind = false
 	var movement: Vector2i = get_mob_step(mob)
 	for tower: TowerState in towers:
-		if tower.is_action_blocked() or tower.data.wind_length_milli <= 0 \
+		if tower.is_action_blocked() or (settings.uses_plots() and tower.durability == 0) \
+				or tower.data.wind_length_milli <= 0 \
 				or not DivineCombat.is_wind_blowing(tower) or not in_wind(tower, get_mob_position(mob)):
 			continue
 		mob.is_in_wind = true
+		use_support(tower)
 		var direction: Vector2i = wind_direction(tower)
 		var alignment: int = direction.x * movement.x + direction.y * movement.y
-		var power: int = mini(tower.data.wind_power_percent, config.max_wind_slow_percent)
+		var behavior: RitualLevelBehavior = settings.level_behavior(tower)
+		var power: int = mini(tower.data.wind_power_percent
+			+ (behavior.wind_power_bonus if behavior != null else 0), config.max_wind_slow_percent)
 		if alignment > 0:
 			mob.wind_boost_percent = maxi(mob.wind_boost_percent, power)
 		else:

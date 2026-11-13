@@ -83,9 +83,15 @@ func _pixel_scale() -> float:
 
 
 func _fit_viewport() -> void:
-	var pixels: Vector2i = Vector2i((size * _pixel_scale()).round())
+	var scale_factor: float = _pixel_scale()
+	var pixels: Vector2i = Vector2i((size * scale_factor).round())
 	if pixels.x > 0 and pixels.y > 0 and _viewport.size != pixels:
 		_viewport.size = pixels
+	# Пиксель картинки ровно на пиксель экрана - без билинейного смешивания соседей (лишнее мыло).
+	var corner: Vector2 = global_position * scale_factor
+	var exact: bool = (size * scale_factor).is_equal_approx(Vector2(pixels)) \
+			and corner.is_equal_approx(corner.round())
+	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST if exact else CanvasItem.TEXTURE_FILTER_LINEAR
 	queue_redraw()
 
 

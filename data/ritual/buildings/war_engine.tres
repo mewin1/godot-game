@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="TowerData" format=3]
+[ext_resource type="Script" path="res://src/sim/data/tower_data.gd" id="1"]
+[resource]
+script = ExtResource("1")
+id = &"war_engine"
+display_name = "Осадный станок"
+god = &"war"
+school = &"war"
+tags = Array[StringName]([&"physical"])
+tier = 2
+shape = Array[Vector2i]([Vector2i(0, 0)])
+damage = 56
+cooldown_ticks = 26
+range_milli = 3300
+description = "Залп. Приоритет: цель для реакции. Усилитель: физический залп по двум целям. Раскалывает замороженных. Не бьет летающих. Пробивает броню (2)."
+targets_per_shot = 2
+target_priority = 1
+can_hit_flying = false
+armor_pierce = 2

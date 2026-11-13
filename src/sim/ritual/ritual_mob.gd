@@ -16,6 +16,8 @@ var step_distance: int = 0
 ## Вход, через который идёт враг: 0 — главная дорога, N — улица N (RitualField.route).
 ## progress считается вдоль маршрута своего входа.
 var lane: int = 0
+## Ранг элиты (docs/37 ECO-1): 0 - обычный, иначе корона, здоровье и награда больше.
+var elite_rank: int = 0
 
 
 static func from_data(mob_data: MobData, settings: RitualTrialConfig) -> RitualMob:

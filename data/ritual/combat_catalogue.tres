@@ -1,0 +1,53 @@
+[gd_resource type="Resource" script_class="GameConfig" format=3]
+[ext_resource type="Script" path="res://src/sim/data/game_config.gd" id="game"]
+[ext_resource type="Resource" path="res://data/ritual/board_city.tres" id="board"]
+[ext_resource type="Script" path="res://src/sim/data/tower_data.gd" id="tower"]
+[ext_resource type="Script" path="res://src/sim/data/reaction_data.gd" id="reaction"]
+[ext_resource type="Resource" path="res://data/ritual/buildings/bolt.tres" id="t_bolt"]
+[ext_resource type="Resource" path="res://data/ritual/buildings/brazier.tres" id="t_brazier"]
+[ext_resource type="Resource" path="res://data/ritual/buildings/furnace.tres" id="t_furnace"]
+[ext_resource type="Resource" path="res://data/ritual/buildings/wind.tres" id="t_wind"]
+[ext_resource type="Resource" path="res://data/ritual/buildings/water.tres" id="t_water"]
+[ext_resource type="Resource" path="res://data/ritual/buildings/rime.tres" id="t_rime"]
+[ext_resource type="Resource" path="res://data/ritual/buildings/spark.tres" id="t_spark"]
+[ext_resource type="Resource" path="res://data/ritual/buildings/thunder.tres" id="t_thunder"]
+[ext_resource type="Resource" path="res://data/ritual/buildings/hex.tres" id="t_hex"]
+[ext_resource type="Resource" path="res://data/ritual/buildings/plague.tres" id="t_plague"]
+[ext_resource type="Resource" path="res://data/reactions/steam.tres" id="r_steam"]
+[ext_resource type="Resource" path="res://data/reactions/roast_reverse.tres" id="r_roast_reverse"]
+[ext_resource type="Resource" path="res://data/reactions/melt_reverse_cold.tres" id="r_melt_reverse_cold"]
+[ext_resource type="Resource" path="res://data/reactions/melt_reverse_frozen.tres" id="r_melt_reverse_frozen"]
+[ext_resource type="Resource" path="res://data/reactions/roast.tres" id="r_roast"]
+[ext_resource type="Resource" path="res://data/reactions/melt.tres" id="r_melt"]
+[ext_resource type="Resource" path="res://data/reactions/freeze.tres" id="r_freeze"]
+[ext_resource type="Resource" path="res://data/reactions/shatter.tres" id="r_shatter"]
+[ext_resource type="Resource" path="res://data/reactions/execute.tres" id="r_execute"]
+[ext_resource type="Resource" path="res://data/reactions/chain.tres" id="r_chain"]
+[ext_resource type="Resource" path="res://data/reactions/infection.tres" id="r_infection"]
+[ext_resource type="Resource" path="res://data/reactions/conservation.tres" id="r_conservation"]
+[ext_resource type="Resource" path="res://data/reactions/surge.tres" id="r_surge"]
+[ext_resource type="Resource" path="res://data/reactions/wildfire.tres" id="r_wildfire"]
+[ext_resource type="Resource" path="res://data/reactions/blizzard.tres" id="r_blizzard"]
+[ext_resource type="Resource" path="res://data/reactions/frozen_wind.tres" id="r_frozen_wind"]
+[ext_resource type="Resource" path="res://data/ritual/buildings/war_engine.tres" id="t_war_engine"]
+[ext_resource type="Resource" path="res://data/ritual/buildings/glacier.tres" id="t_glacier"]
+[ext_resource type="Resource" path="res://data/ritual/buildings/gale.tres" id="t_gale"]
+[ext_resource type="Resource" path="res://data/ritual/buildings/dew.tres" id="t_dew"]
+[ext_resource type="Resource" path="res://data/ritual/buildings/cinder.tres" id="t_cinder"]
+[ext_resource type="Resource" path="res://data/ritual/buildings/ice_lance.tres" id="t_ice_lance"]
+[ext_resource type="Resource" path="res://data/ritual/buildings/storm.tres" id="t_storm"]
+[ext_resource type="Resource" path="res://data/ritual/buildings/doom.tres" id="t_doom"]
+[ext_resource type="Resource" path="res://data/ritual/buildings/rain.tres" id="t_rain"]
+[ext_resource type="Resource" path="res://data/ritual/buildings/vortex.tres" id="t_vortex"]
+[ext_resource type="Resource" path="res://data/ritual/buildings/porok.tres" id="t_porok"]
+[resource]
+script = ExtResource("game")
+board = ExtResource("board")
+chain_chance_percent = 20
+ticks_per_second = 20
+idol_slots = 3
+towers = Array[ExtResource("tower")]([ExtResource("t_bolt"), ExtResource("t_brazier"), ExtResource("t_furnace"), ExtResource("t_wind"), ExtResource("t_water"), ExtResource("t_rime"), ExtResource("t_spark"), ExtResource("t_thunder"), ExtResource("t_hex"), ExtResource("t_plague"), ExtResource("t_war_engine"), ExtResource("t_glacier"), ExtResource("t_gale"), ExtResource("t_dew"), ExtResource("t_cinder"), ExtResource("t_ice_lance"), ExtResource("t_storm"), ExtResource("t_doom"), ExtResource("t_rain"), ExtResource("t_vortex"), ExtResource("t_porok")])
+reactions = Array[ExtResource("reaction")]([ExtResource("r_steam"), ExtResource("r_roast_reverse"), ExtResource("r_melt_reverse_cold"), ExtResource("r_melt_reverse_frozen"), ExtResource("r_roast"), ExtResource("r_melt"), ExtResource("r_freeze"), ExtResource("r_shatter"), ExtResource("r_execute"), ExtResource("r_chain"), ExtResource("r_infection"), ExtResource("r_conservation"), ExtResource("r_surge"), ExtResource("r_wildfire"), ExtResource("r_blizzard"), ExtResource("r_frozen_wind")])
+resist_percent = 100
+max_tower_level = 4
+level_damage_percent = Array[int]([100, 200, 400, 800])

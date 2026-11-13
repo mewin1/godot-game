@@ -20,6 +20,15 @@ func refresh_ritual(trial: RitualTrial, paused: bool) -> void:
 		_round_label.text = "Обряд · %d / %d" % [cycle, trial.settings.cycles]
 	var seconds: int = trial.tick_count / trial.settings.combat.ticks_per_second
 	_phase_label.text = "%s · %d:%02d" % [trial.settings.period_name(trial.tick_count), seconds / 60, seconds % 60]
+	if trial.settings.is_endless():
+		# Забегу важно, сколько осталось до ночи или рассвета, а не сколько прошло (docs/37 UI-1).
+		var nights: RitualNightRules = trial.settings.nights
+		var night: int = nights.night_index_at(trial.tick_count)
+		var at_night: bool = nights.is_night(trial.tick_count)
+		var left: int = ceili(float((nights.night_end(night) if at_night else nights.night_start(night))
+				- trial.tick_count) / trial.settings.combat.ticks_per_second)
+		_phase_label.text = "%s · до %s %d:%02d" % [nights.period_name(trial.tick_count),
+				"рассвета" if at_night else "ночи", left / 60, left % 60]
 	if trial.phase == RitualTrial.Phase.PREP:
 		_phase_label.text = "Подготовка"
 	# Забег: HP принадлежит герою в сторожке перед теремом (docs/34 §4, docs/36 §1).

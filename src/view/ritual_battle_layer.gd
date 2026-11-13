@@ -11,6 +11,12 @@ func _draw_hero_hp(_center: Vector2) -> void:
 	pass
 
 
+## Сторожка - конец главной дороги "Обряда": урон прорыва всплывает у нее.
+func _hero_screen_position() -> Vector2:
+	var route: Array[Vector2i] = (_field as RitualField).route(0)
+	return _milli_to_screen((Vector2(route[route.size() - 1]) + Vector2(0.5, 0.2)) * MILLI)
+
+
 func _on_field_mob_killed(mob: MobState) -> void:
 	var id: StringName = RitualStage3D.UNIT_IDS.get(mob.data.id, &"basic")
 	var at: Vector2 = mob_feet_projector.call(mob)

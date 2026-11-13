@@ -25,10 +25,15 @@ const CAMERA_PITCH_RITUAL: float = -0.85
 const CAMERA_YAW_RITUAL: float = 0.3
 ## Солнце, закат, ночь и тени облаков (ночь — свет PvP-двора).
 var _daylight: RitualDaylight
+var _catalogue_profile: bool = false
+var _profile_ready: bool = false
 
 
 func _init() -> void:
 	super()
+	var post: ShaderMaterial = material as ShaderMaterial
+	post.set_shader_parameter(&"clarity", RenderQuality.sharpen_amount())
+	post.set_shader_parameter(&"clarity_radius", RenderQuality.SHARPEN_RADIUS)
 	# Лес PvP повёрнут на −90° вокруг двора (ritual_arena_3d.gd) — луна вместе с ним.
 	_camera.rotation = Vector3(CAMERA_PITCH_RITUAL, CAMERA_YAW_RITUAL, 0.0)
 	for light_name: String in ["Moon", "WarmKey"]:
@@ -132,6 +137,12 @@ func mob_head(mob: MobState, interpolation: float) -> Vector2:
 
 
 func update_ritual(trial: RitualTrial, delta: float) -> void:
+	var catalogue: bool = trial.settings.uses_plots()
+	if not _profile_ready or catalogue != _catalogue_profile:
+		_profile_ready = true
+		_catalogue_profile = catalogue
+		RenderQuality.setup_viewport(_viewport, catalogue)
+		(material as ShaderMaterial).set_shader_parameter(&"clarity", RenderQuality.sharpen_amount(catalogue))
 	var model: String = trial.hero().model if trial.hero() != null and not trial.hero().model.is_empty() \
 			else "res://assets/noir_h3d/heroes/ilya.glb"
 	if model != _hero_model:

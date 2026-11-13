@@ -32,7 +32,8 @@ static func hash_value(hasher: StateHasher, value: Variant) -> void:
 	if value is Dictionary:
 		var data: Dictionary = dictionary(value)
 		var keys: Array = data.keys()
-		keys.sort()
+		# StringName в sort() сравниваются по адресу в памяти: порядок зависел бы от процесса.
+		keys.sort_custom(_key_before)
 		hasher.add(keys.size())
 		for key: Variant in keys:
 			hash_value(hasher, key)
@@ -48,6 +49,14 @@ static func hash_value(hasher: StateHasher, value: Variant) -> void:
 		hasher.add(integer(value) if value is int else int(boolean(value)))
 	else:
 		hasher.add_string(str(value))
+
+
+static func _key_before(first: Variant, second: Variant) -> bool:
+	if typeof(first) != typeof(second):
+		return typeof(first) < typeof(second)
+	if first is int:
+		return integer(first) < integer(second)
+	return str(first) < str(second)
 
 
 static func integer(value: Variant, fallback: int = 0) -> int:
@@ -84,6 +93,27 @@ static func rules_state(source: Resource) -> Dictionary[String, Variant]:
 		if (integer(info["usage"]) & PROPERTY_USAGE_SCRIPT_VARIABLE) == 0:
 			continue
 		var key: String = str(info["name"])
+		# Отключенная модель участков не меняет отпечаток старого опыта и его записей.
+		if source is RitualTrialConfig and key in ["ward_lightning_percent", "ward_other_percent"] \
+				and integer(source.get(key)) == 0:
+			continue
+		if source is RitualNightRules:
+			var nights: RitualNightRules = source as RitualNightRules
+			if nights.pressure_base <= 0 and key in ["pressure_base", "pressure_growth_percent",
+					"boss_night_percent", "bounty_percent", "elite_multiplier"]:
+				continue
+			if nights.pressure_base > 0 and key == "hp_growth_percent":
+				continue
+		if source is RitualTrialConfig and not (source as RitualTrialConfig).uses_plots() \
+				and key in ["plots", "upgrade_cost_percent", "upgrade_city_levels",
+					"plot_sell_percent", "sell_undo_ticks", "plot_support_radius_milli"]:
+			continue
+		if source is RitualBuildingLevels and (source as RitualBuildingLevels).branches.is_empty() \
+				and (source as RitualBuildingLevels).role.is_empty() and key in ["branches", "role"]:
+			continue
+		if source is RitualLevelBehavior and key in ["wind_power_bonus", "wind_length_bonus_milli",
+				"wind_width_bonus_milli"] and integer(source.get(key)) == 0:
+			continue
 		result[key] = _rule_value(source.get(key))
 	return result
 

@@ -1,0 +1,70 @@
+[gd_resource type="Resource" script_class="RitualBuildingLevels" format=3]
+[ext_resource type="Script" path="res://src/sim/data/ritual_building_levels.gd" id="profile"]
+[ext_resource type="Script" path="res://src/sim/data/ritual_level_behavior.gd" id="behavior"]
+[ext_resource type="Script" path="res://src/sim/data/ritual_specialisation.gd" id="branch"]
+[sub_resource type="Resource" id="l1"]
+script = ExtResource("behavior")
+note = "Проклятие"
+damage_percent = 100
+extra_targets = 0
+support_percent = 100
+[sub_resource type="Resource" id="l2"]
+script = ExtResource("behavior")
+note = "Проклятие: усиление уровня 2"
+damage_percent = 225
+extra_targets = 0
+support_percent = 220
+[sub_resource type="Resource" id="l3"]
+script = ExtResource("behavior")
+note = "Проклятие: усиление уровня 3"
+damage_percent = 460
+extra_targets = 0
+support_percent = 460
+[sub_resource type="Resource" id="l4"]
+script = ExtResource("behavior")
+note = "Проклятие: усиление уровня 4"
+damage_percent = 950
+extra_targets = 0
+support_percent = 950
+[sub_resource type="Resource" id="b0_3"]
+script = ExtResource("behavior")
+note = "Множество меток: несколько целей"
+damage_percent = 188
+extra_targets = 2
+support_percent = 460
+[sub_resource type="Resource" id="b0_4"]
+script = ExtResource("behavior")
+note = "Множество меток: несколько целей"
+damage_percent = 300
+extra_targets = 3
+support_percent = 950
+[sub_resource type="Resource" id="b0"]
+script = ExtResource("branch")
+title = "Множество меток"
+levels = Array[ExtResource("behavior")]([SubResource("b0_3"), SubResource("b0_4")])
+[sub_resource type="Resource" id="b1_3"]
+script = ExtResource("behavior")
+note = "Глубокая метка: сильная цель и дальность"
+damage_percent = 650
+extra_targets = 0
+support_percent = 460
+armor_pierce = 4
+range_bonus_milli = 500
+[sub_resource type="Resource" id="b1_4"]
+script = ExtResource("behavior")
+note = "Глубокая метка: сильная цель и дальность"
+damage_percent = 1738
+extra_targets = 0
+support_percent = 950
+armor_pierce = 8
+range_bonus_milli = 800
+[sub_resource type="Resource" id="b1"]
+script = ExtResource("branch")
+title = "Глубокая метка"
+levels = Array[ExtResource("behavior")]([SubResource("b1_3"), SubResource("b1_4")])
+[resource]
+script = ExtResource("profile")
+tower_id = &"hex"
+role = "Проклятие"
+levels = Array[ExtResource("behavior")]([SubResource("l1"), SubResource("l2"), SubResource("l3"), SubResource("l4")])
+branches = Array[ExtResource("branch")]([SubResource("b0"), SubResource("b1")])

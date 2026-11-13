@@ -9,7 +9,7 @@ extends RefCounted
 ## STREET — пристроить следующую улицу.
 ## SUPPLY: rotation — вид припаса (RitualTrial.Supply), item/progress — вход и точка (для смолы и чаши).
 enum Action { START, BUY, MOVE, SELL, RITE, SKILL, PALISADE, CANCEL_MOVE, MERGE, ENCHANT, REPAIR, REROLL,
-		REPAIR_HOUSE, GIFT, STREET, SUPPLY }
+		REPAIR_HOUSE, GIFT, STREET, SUPPLY, UPGRADE, SPECIALISE }
 var action: Action
 var item: int
 var cell: Vector2i
