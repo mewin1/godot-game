@@ -11,6 +11,10 @@ var _streets: bool = false
 ## `--trace`: кто ранил героя по ночам (вид врага → урон).
 var _trace: bool = false
 var _record: bool = false
+## docs/37 P7: строка BALANCE с показателями таблицы целей §3 (ключ --report).
+var _report: bool = false
+## Политика «реакции»: дом, дающий реакцию с соседом в досягаемости, ценится выше (A/B к «разумным»).
+var _aware: bool = false
 ## --nights=N завершает технический прогон после N рассветов, без изменения правил.
 var _night_limit: int = 0
 var SETTINGS: RitualTrialConfig = (load("res://data/ritual/endless.tres") as RitualTrialConfig).duplicate(true)
@@ -54,6 +58,8 @@ func _run() -> void:
 			_trace = true
 		if argument == "--record":
 			_record = true
+		if argument == "--report":
+			_report = true
 		if argument.begins_with("--nights="):
 			_night_limit = maxi(0, argument.trim_prefix("--nights=").to_int())
 		if argument == "--streets":
@@ -67,7 +73,9 @@ func _run() -> void:
 	print("ENDLESS: рост давления %d%%, бюджета %d%% от %d, пачка +1 за %d ночи, босс %d HP" % [
 		SETTINGS.nights.pressure_growth_percent, SETTINGS.nights.budget_growth_percent, SETTINGS.nights.budget_base,
 		SETTINGS.nights.packs_growth_every, SETTINGS.enemies[SETTINGS.nights.boss_enemy].hp])
-	for policy: String in ["ничего", "разумные траты"]:
+	if _report:
+		_print_curve()
+	for policy: String in ["ничего", "разумные траты", "реакции"]:
 		if not only.is_empty() and not policy.contains(only):
 			continue
 		for hero: int in heroes:
@@ -78,6 +86,14 @@ func _run() -> void:
 
 func _play(policy: String, seed_value: int, hero: int = 0) -> void:
 	var trial: RitualTrial = RitualTrial.new(SETTINGS, 0, seed_value, hero)
+	_aware = policy == "реакции"
+	var stats: RitualRunStats = RitualRunStats.new()
+	stats.watch(trial.field)
+	var houses_15: int = -1
+	var earned_before: int = 0
+	var unspent: Array[int] = []
+	var first_leak: int = -1
+	var hp_before: int = trial.hp
 	var timeline: PackedStringArray = []
 	var last_night: int = 0
 	var reactions_before: int = 0
@@ -95,6 +111,15 @@ func _play(policy: String, seed_value: int, hero: int = 0) -> void:
 			_use_supplies(trial)
 		if trial.nights_survived() > last_night:
 			last_night = trial.nights_survived()
+			if last_night == 15:
+				houses_15 = trial.field.towers.size()
+			var income: int = trial.earned - earned_before
+			earned_before = trial.earned
+			if last_night >= 3 and income > 0:
+				unspent.append(trial.gold * 100 / income)
+			if first_leak < 0 and (hp_before - trial.hp) * 10 >= trial.max_hp():
+				first_leak = last_night
+			hp_before = trial.hp
 			# Реакций в секунду за ночь (docs/37 P4: поздние ночи — не больше 4 в среднем).
 			var total: int = 0
 			for id: StringName in trial.field.reaction_counts:
@@ -112,6 +137,20 @@ func _play(policy: String, seed_value: int, hero: int = 0) -> void:
 		trial.result if not trial.result.is_empty() else "жив к пределу", trial.earned,
 		trial.field.towers.size(), trial.bosses_killed, trial.gifts_taken.size()])
 	print("ENDLESS:    " + " | ".join(timeline))
+	if _report:
+		var mean: int = 0
+		var worst: int = 0
+		for value: int in unspent:
+			mean += value
+			worst = maxi(worst, value)
+		mean /= maxi(1, unspent.size())
+		var lethal: int = trial.nights_survived() + 1
+		var top: PackedStringArray = stats.top_damage(1)
+		print("BALANCE: %s | %s | сид %d | ночей %d | домов к 15-й %s | запас на рассвете %d%% (худший %d%%) | от прорыва до гибели %s | лучший дом %s" % [
+			policy, trial.hero_name(), seed_value, trial.nights_survived(),
+			str(houses_15) if houses_15 >= 0 else "-", mean, worst,
+			str(lethal - first_leak) if first_leak > 0 and trial.phase == RitualTrial.Phase.OVER else "-",
+			top[0] if not top.is_empty() else "-"])
 	print("REACTIONS/с: " + " | ".join(rates))
 	if SETTINGS.uses_plots():
 		var upgrades: int = 0
@@ -264,8 +303,34 @@ func _catalogue_value(trial: RitualTrial, tower: TowerState) -> int:
 		dps = dps * (100 + tower.data.burn_percent) / 100
 	elif tower.data.charge_ticks > 0 or tower.data.curse_ticks > 0:
 		dps = dps * 125 / 100
-	return dps * maxi(1, trial.field.count_path_cells_in_range(tower.cells(),
+	var value: int = dps * maxi(1, trial.field.count_path_cells_in_range(tower.cells(),
 		trial.field.get_tower_range(tower)))
+	if _aware:
+		for other: TowerState in trial.field.towers:
+			if other.id == tower.id:
+				continue
+			var gap: Vector2 = Vector2(other.center_milli() - tower.center_milli())
+			if gap.length() <= trial.field.get_tower_range(tower) + trial.field.get_tower_range(other) \
+					and RitualBoard.reaction_between(tower.data, other.data, SETTINGS.combat.reactions) != null:
+				value = value * 140 / 100
+				break
+	return value
+
+
+## Сила ночей по плану: отношение соседних ночей (цель §3: 1,10-1,30, ночь босса до 1,45).
+func _print_curve() -> void:
+	var plan: RitualNightPlan = RitualNightPlan.new(SETTINGS, 1)
+	var low: float = 99.0
+	var high: float = 0.0
+	var boss_high: float = 0.0
+	for night: int in range(2, 31):
+		var ratio: float = float(plan.total_ehp(night)) / maxf(1.0, float(plan.total_ehp(night - 1)))
+		if SETTINGS.nights.is_boss_night(night):
+			boss_high = maxf(boss_high, ratio)
+		elif not SETTINGS.nights.is_boss_night(night - 1):
+			low = minf(low, ratio)
+			high = maxf(high, ratio)
+	print("BALANCE CURVE: обычные ночи x%.2f..x%.2f, ночь босса до x%.2f" % [low, high, boss_high])
 
 
 ## Заговор (с прилавка, если заговоры выпадают в лавке) для бога, у которого больше всего домов.
