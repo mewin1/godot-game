@@ -33,6 +33,9 @@ const MACHINES: Dictionary[StringName, PackedScene] = {
 	&"wind": preload("res://assets/ritual/town/wind.glb"),
 }
 const IDLE_ENERGY: Array[float] = [0.72, 0.95, 1.55]
+## Модель вдвое крупнее сборки Blender: дом выше врага и шире клетки, через клетку-зазор (D8)
+## соседние дома стоят почти вплотную, улица выглядит сплошной.
+const MODEL_SCALE: float = 2.0
 static var _paints: Dictionary[StringName, ShaderMaterial] = {}
 
 var _tower: RitualTower
@@ -90,13 +93,19 @@ func get_top() -> Vector3:
 	return _outlet.global_position
 
 
+## Фасад к улице (клетки поля: +y - к камере). Дом у меридиональной улицы стоит к ней торцом
+## клетки: глубина дома равна клетке, а ширина x2 заняла бы край дороги.
+func face(front: Vector2i) -> void:
+	_model.rotation.y = atan2(float(front.x), float(front.y))
+
+
 func aim_wind(direction: Vector2i) -> void:
-	# Ноль GLB направлен на +Z (фасад). Поворачивается только механизм на седле.
-	_installation.rotation.y = atan2(float(direction.x), float(direction.y))
+	# Ноль GLB направлен на +Z (фасад). Поворачивается только механизм на седле, поворот дома вычитается.
+	_installation.rotation.y = atan2(float(direction.x), float(direction.y)) - _model.rotation.y
 
 
 func label_position() -> Vector3:
-	return global_position + Vector3.UP * _label_height
+	return global_position + Vector3.UP * _label_height * MODEL_SCALE
 
 
 ## Малые отдельные объёмы крыши, стен и установки: не перекрываем проезд рядом.
@@ -117,7 +126,7 @@ func _process(delta: float) -> void:
 	_pop_left = maxf(0.0, _pop_left - delta)
 	_pulse_left = maxf(0.0, _pulse_left - delta)
 	var growth: float = ease(1.0 - _pop_left / POP_SECONDS, 0.4)
-	_model.scale = Vector3.ONE * maxf(0.001, growth)
+	_model.scale = Vector3.ONE * maxf(0.001, growth) * MODEL_SCALE
 	var flash: float = sin(_pulse_left / PULSE_SECONDS * PI) if operational else 0.0
 	var energy: float = _idle_energy * (1.0 + 1.4 * flash) if operational else 0.0
 	if energy != _previous_energy:

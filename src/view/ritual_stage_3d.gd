@@ -23,8 +23,9 @@ const FRAME_NEAR_PAD: float = 2.0
 ## Наклон круче PvP: при пологом взгляде мокрые лужи мостовой бликуют белым.
 const CAMERA_PITCH_RITUAL: float = -0.85
 const CAMERA_YAW_RITUAL: float = 0.3
-## Враги забега крупнее PvP-моделей (docs/37 SCN-6): с камеры над городом они иначе ~15 px.
-const MOB_SCALE: float = 1.4
+## Враги забега мельче домов (решение автора 15 ноября: враг ~0,7 высоты дома тира I, дома x2).
+## Читаемость держит плотная доска 17x14: камера ближе, чем на прежней 20x18.
+const MOB_SCALE: float = 0.75
 ## Солнце, закат, ночь и тени облаков (ночь — свет PvP-двора).
 var _daylight: RitualDaylight
 var _catalogue_profile: bool = false
@@ -120,9 +121,24 @@ func _tower_node(tower: TowerState) -> ArenaTower3D:
 
 func _build_tower(tower: TowerState) -> ArenaTower3D:
 	var node: ArenaTower3D = super(tower)
+	if node is RitualTownHouse:
+		(node as RitualTownHouse).face(_house_front(tower.anchor))
 	if node is RitualTownHouse and tower.data.wind_length_milli > 0:
 		(node as RitualTownHouse).aim_wind((_field as RitualField).wind_direction(tower))
 	return node
+
+
+## Куда смотрит фасад дома: к дороге южнее участка, иначе к дороге сбоку (любой, даже ещё закрытой).
+func _house_front(cell: Vector2i) -> Vector2i:
+	var field: RitualField = _field as RitualField
+	var roads: Dictionary[Vector2i, bool] = {}
+	for lane: int in field.lane_count():
+		for road: Vector2i in field.route(lane):
+			roads[road] = true
+	for side: Vector2i in [Vector2i.DOWN, Vector2i.LEFT, Vector2i.RIGHT]:
+		if roads.has(cell + side):
+			return side
+	return Vector2i.DOWN
 
 
 func _sync_fog() -> void:

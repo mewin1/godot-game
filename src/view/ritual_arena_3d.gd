@@ -26,6 +26,16 @@ const TEREM_SIZE: float = 1.9
 const FILL: CourtyardForestLayout = preload("res://assets/noir/courtyard/ritual_fill.tres")
 ## Запас от открытой клетки до травы и камней (частокол стоит в 1 м от клетки).
 const GRASS_GAP: float = 1.6
+## Карта «Городища» (решение автора 15 ноября, вариант "Слобода у пруда"). Изгибы дорог объясняют
+## преграды: подкова главной дороги огибает пруд, северная сворачивает у капища, южная идёт
+## вдоль берега. Дворы за тыном. Только вид: враги и так идут по маршрутам поля.
+## Дома стоят севернее широтных дорог (камера смотрит с юга): дом x2 южнее дороги закрывал бы её.
+const TOWN_BOARD: String = "res://data/ritual/board_city2.tres"
+const POND: Rect2i = Rect2i(7, 7, 7, 6)
+const SHRINE: Rect2i = Rect2i(10, 4, 1, 1)
+## Тын ниже 0,4 клетки (docs/37 SCN-4), чтобы не закрывать врагов.
+const FENCE_HEIGHT: float = 0.7
+const FENCE_COLOR: Color = Color(0.17, 0.12, 0.08)
 ## Клетки поля (пути и места, включая ещё не пристроенные кварталы) — задаёт RitualStage3D
 ## до постройки леса: лес, камни и луг сюда не садятся.
 var yard_cells: Dictionary[Vector2i, bool] = {}
@@ -40,6 +50,9 @@ var _city_level: int = 1
 ## Сколько входов открыто сейчас и какие клетки двора уже открыты (подлесок их обходит).
 var _open_lanes: int = 1
 var _open_now: Dictionary[Vector2i, bool] = {}
+var _roads_now: Dictionary[Vector2i, bool] = {}
+var _plots_now: Dictionary[Vector2i, bool] = {}
+var _town: bool = false
 
 
 func _yard_rect() -> Rect2:
@@ -124,6 +137,13 @@ func _open_cells(field: FieldState, path: Array[Vector2i]) -> Dictionary[Vector2
 	var roads: Array[Vector2i] = path
 	if field is RitualField:
 		roads = (field as RitualField).open_road_cells()
+	_town = field.layout.resource_path == TOWN_BOARD
+	_roads_now.clear()
+	_plots_now.clear()
+	for cell: Vector2i in roads:
+		_roads_now[cell] = true
+	for cell: Vector2i in field.get_buildable_cells():
+		_plots_now[cell] = true
 	for cell: Vector2i in field.get_buildable_cells() + roads:
 		cells[cell] = true
 	# Участки (docs/37 P3) стоят в цельных кварталах уровня города: частокол обходит квартал,
@@ -236,7 +256,99 @@ func _build_mist() -> void:
 ## Чаш на поле нет (docs/37 VIS-2): свет площади дают огни идолов (RitualIdols3D),
 ## огромные чаши закрывали участки и были ярче всего игрового.
 func _build_fires(_fine: Dictionary[Vector2i, bool], _terem: Vector2) -> void:
-	pass
+	if _town:
+		_build_pond()
+		_build_shrine()
+		_build_fences()
+
+
+func _cell_rect(cells: Rect2i) -> Rect2:
+	return Rect2(Vector2(cells.position) * CELL + BOARD_MIN, Vector2(cells.size) * CELL)
+
+
+## Пруд внутри подковы главной дороги. Проулок через него (с города 2) рисуется дорогой поверх воды - кладки.
+func _build_pond() -> void:
+	# Полоса берега у дорог - мостовая.
+	var area: Rect2 = _cell_rect(POND).grow(-0.3)
+	var tool: SurfaceTool = SurfaceTool.new()
+	tool.begin(Mesh.PRIMITIVE_TRIANGLES)
+	tool.set_normal(Vector3.UP)
+	var corners: Array[Vector2] = [area.position, Vector2(area.end.x, area.position.y), area.end,
+		Vector2(area.position.x, area.end.y)]
+	for index: int in [0, 1, 2, 0, 2, 3]:
+		var corner: Vector2 = corners[index]
+		# Шейдер ручья: UV.x - метры вдоль, UV.y - поперек 0..1 (темнее к середине).
+		tool.set_uv(Vector2(corner.x, (corner.y - area.position.y) / area.size.y))
+		tool.add_vertex(Vector3(corner.x, 0.005, corner.y))
+	tool.generate_tangents()
+	var material: ShaderMaterial = ShaderMaterial.new()
+	material.shader = STREAM_SHADER
+	material.set_shader_parameter("bed", preload("res://assets/noir/courtyard/river_gravel.png"))
+	material.set_shader_parameter("flow", 0.05)
+	var center: Vector2 = area.get_center()
+	material.set_shader_parameter("moon_spot", Vector3(center.x, 0.0, center.y))
+	var water: MeshInstance3D = MeshInstance3D.new()
+	water.name = "Pond"
+	water.mesh = tool.commit()
+	water.material_override = material
+	water.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_yard.add_child(water)
+
+
+## Капище перед северными воротами: из-за него северная дорога сворачивает на восток.
+## Ниже домов: стоит южнее дороги и не должно закрывать врагов.
+func _build_shrine() -> void:
+	var area: Rect2 = _cell_rect(SHRINE)
+	var holder: Node3D = Node3D.new()
+	holder.name = "Shrine"
+	holder.position = Vector3(area.get_center().x, 0.0, area.get_center().y)
+	_yard.add_child(holder)
+	var wood: StandardMaterial3D = ArenaMaterials3D.solid(ArenaMaterials3D.DARK_WOOD)
+	ArenaMaterials3D.part(holder, ArenaMaterials3D.cylinder(0.85, 0.92, 0.1, 12),
+		ArenaMaterials3D.stone(ArenaMaterials3D.DARK_STONE), Vector3(0, 0.05, 0))
+	ArenaMaterials3D.part(holder, ArenaMaterials3D.cylinder(0.17, 0.14, 1.3, 8), wood, Vector3(0, 0.65, 0))
+	ArenaMaterials3D.part(holder, ArenaMaterials3D.cylinder(0.24, 0.17, 0.2, 8), wood, Vector3(0, 1.35, 0))
+	for index: int in 8:
+		var angle: float = TAU * index / 8.0
+		ArenaMaterials3D.part(holder, ArenaMaterials3D.cylinder(0.06, 0.05, 0.6, 6), wood,
+			Vector3(cos(angle) * 0.72, 0.3, sin(angle) * 0.72))
+
+
+## Тын вдоль улиц: дворы между домами закрыты, путь врага - только по дороге.
+func _build_fences() -> void:
+	var panels: Array[Transform3D] = []
+	var posts: Array[Transform3D] = []
+	for road: Vector2i in _roads_now:
+		for side: Vector2i in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
+			if not _is_fenced_yard(road + side):
+				continue
+			var center: Vector3 = _layout.cell_center(road) + Vector3(side.x, 0, side.y) * (CELL * 0.5 + 0.08)
+			var axes: Basis = Basis(Vector3.UP, atan2(float(side.x), float(side.y)))
+			panels.append(Transform3D(axes, center + Vector3.UP * FENCE_HEIGHT * 0.55))
+			for offset: float in [-0.9, 0.0, 0.9]:
+				posts.append(Transform3D(axes, center + axes.x * offset + Vector3.UP * FENCE_HEIGHT * 0.5))
+	var wood: StandardMaterial3D = ArenaMaterials3D.solid(FENCE_COLOR)
+	_fence_multimesh("FencePanels", ArenaMaterials3D.box(Vector3(1.96, FENCE_HEIGHT * 0.7, 0.07)), wood, panels)
+	_fence_multimesh("FencePosts", ArenaMaterials3D.cylinder(0.05, 0.045, FENCE_HEIGHT, 5), wood, posts)
+
+
+func _is_fenced_yard(cell: Vector2i) -> bool:
+	return _open_now.has(cell) and not _roads_now.has(cell) and not _plots_now.has(cell) \
+		and not POND.has_point(cell) and not SHRINE.has_point(cell) and not PLAZA.has_point(cell)
+
+
+func _fence_multimesh(title: String, mesh: Mesh, material: Material, poses: Array[Transform3D]) -> void:
+	var instances: MultiMesh = MultiMesh.new()
+	instances.transform_format = MultiMesh.TRANSFORM_3D
+	instances.mesh = mesh
+	instances.instance_count = poses.size()
+	for index: int in poses.size():
+		instances.set_instance_transform(index, poses[index])
+	var node: MultiMeshInstance3D = MultiMeshInstance3D.new()
+	node.name = title
+	node.multimesh = instances
+	node.material_override = material
+	_yard.add_child(node)
 
 
 func _build_paving(fine: Dictionary[Vector2i, bool]) -> Material:

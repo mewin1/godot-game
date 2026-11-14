@@ -194,7 +194,13 @@ func test_fourth_upgrade_requires_city_three_and_keeps_branch() -> void:
 func test_recent_upgrade_refunds_only_its_share_in_full() -> void:
 	var house: RitualTower = _buy_house()
 	_finish_build(house)
-	_trial.field.spawn_mob(0).progress = 3000
+	# Враг на клетке главной дороги рядом с домом (не зависит от раскладки карты).
+	var road: Array[Vector2i] = _trial.field.route(0)
+	var nearest: int = 0
+	for index: int in road.size():
+		if (road[index] - house.anchor).length_squared() < (road[nearest] - house.anchor).length_squared():
+			nearest = index
+	_trial.field.spawn_mob(0).progress = nearest * 1000
 	_trial.field.prepare_tick(_trial.tick_count)
 	_trial.field.fire_trial_towers()
 	assert_true(house.used, "Дом действительно выстрелил")

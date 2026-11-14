@@ -47,8 +47,15 @@ func test_entrances_come_from_three_sides() -> void:
 	var main: Array[Vector2i] = _trial.field.route(0)
 	var north: Array[Vector2i] = _trial.field.route(1)
 	var south: Array[Vector2i] = _trial.field.route(2)
-	assert_true(main[0].x < 5, "Главная дорога входит с запада")
-	assert_true(north[0].y <= 1, "Северная — сверху")
+	# Края считаются по городу 4-го уровня: доска шире города (площадь терема, лес).
+	var top: int = 1000
+	var left: int = 1000
+	for road: Array[Vector2i] in [main, north, south]:
+		for cell: Vector2i in road:
+			top = mini(top, cell.y)
+			left = mini(left, cell.x)
+	assert_eq(main[0].x, left, "Главная дорога входит с запада")
+	assert_eq(north[0].y, top, "Северная — сверху")
 	assert_true(south[0].y >= _trial.field.layout.height - 1, "Южная — снизу")
 	for road: Array[Vector2i] in [main, north, south]:
 		assert_eq(road[road.size() - 1], main[main.size() - 1], "Все дороги сходятся у сторожки")
