@@ -265,6 +265,9 @@ func _spend_catalogue(trial: RitualTrial) -> void:
 			candidate.data = SETTINGS.combat.towers[index]
 			candidate.anchor = cell
 			var value: int = _catalogue_value(trial, candidate) * 1000 / maxi(1, trial.building_cost(index))
+			# Участков мало — важнее урон на участок: дорогой дом весит больше (корень из цены).
+			if free.size() <= 2:
+				value = int(value * sqrt(float(trial.building_cost(index)) / 12.0))
 			var same: int = 0
 			for tower: TowerState in trial.field.towers:
 				same += int(tower.data.god == candidate.data.god)

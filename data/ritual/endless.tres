@@ -165,7 +165,7 @@ cap = 0
 step_bp = 2500
 unit = 1
 cost_step = 0
-cost_growth_percent = 25
+cost_growth_percent = 35
 [sub_resource type="Resource" id="curve_svarog_power"]
 script = ExtResource("rite_curve")
 rite_id = &"svarog_power"
@@ -173,7 +173,7 @@ cap = 0
 step_bp = 2500
 unit = 1
 cost_step = 0
-cost_growth_percent = 25
+cost_growth_percent = 35
 [sub_resource type="Resource" id="curve_ice_power"]
 script = ExtResource("rite_curve")
 rite_id = &"ice_power"
@@ -181,7 +181,7 @@ cap = 0
 step_bp = 2500
 unit = 1
 cost_step = 0
-cost_growth_percent = 25
+cost_growth_percent = 35
 [sub_resource type="Resource" id="curve_war_range"]
 script = ExtResource("rite_curve")
 rite_id = &"war_range"
@@ -245,7 +245,7 @@ cap = 0
 step_bp = 2500
 unit = 1
 cost_step = 0
-cost_growth_percent = 25
+cost_growth_percent = 35
 [sub_resource type="Resource" id="curve_curse_power"]
 script = ExtResource("rite_curve")
 rite_id = &"curse_power"
@@ -253,7 +253,7 @@ cap = 0
 step_bp = 2500
 unit = 1
 cost_step = 0
-cost_growth_percent = 25
+cost_growth_percent = 35
 [sub_resource type="Resource" id="curve_perun_charge"]
 script = ExtResource("rite_curve")
 rite_id = &"perun_charge"
