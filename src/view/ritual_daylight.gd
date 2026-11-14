@@ -23,14 +23,15 @@ const DAWN_TICKS: int = 100
 ## + холодный «нуар» — синеватые тени и воздух, лес насыщенно-зелёный, мрачноватый. Жёлтых тонов
 ## («кислотно», «болото») нет. Ночь — свет PvP-двора, не меняется.
 const DAY_SUN: Color = Color("fff6ea")
-const DAY_SUN_ENERGY: float = 1.7
+const DAY_SUN_ENERGY: float = 2.0
 const DAY_AMBIENT: Color = Color("a9bcc6")
-const DAY_AMBIENT_ENERGY: float = 0.85
+const DAY_AMBIENT_ENERGY: float = 1.05
 const DAY_SKY_TOP: Color = Color("5c7e96")
 const DAY_SKY_HORIZON: Color = Color("a1b5bd")
 const DAY_FOG: Color = Color("86a2ad")
 const DAY_FOG_DENSITY: float = 0.1
-const DAY_EXPOSURE: float = 1.2
+## День заметно светлее ночи (docs/37 SCN-3: поле днём от 100 по яркости, ночью 45-60).
+const DAY_EXPOSURE: float = 1.65
 const DAY_GLOW: float = 0.5
 const DAY_BLOOM: float = 0.05
 const DAY_SATURATION: float = 1.12
@@ -52,6 +53,14 @@ const CLOUD_STRENGTH: float = 0.65
 ## Тень леса днём (глобальный параметр шейдеров деревьев noir_forest_shade): под кронами темновато
 ## даже в полдень, иначе днём лес «пластмассовый» и спорит с двором. Ночью — 0 (ночь и так тёмная).
 const FOREST_SHADE: float = 1.0
+## Ночью дорога светится своим цветом с такой силой (шейдер noir_road, «лунная дорожка»).
+const ROAD_MOONLIT: float = 0.65
+## Проклятая земля наползает: ночной туман гуще на столько за каждую ночь (docs/37 SCN-8), до предела.
+const FOG_PER_NIGHT: float = 0.04
+const FOG_NIGHT_MAX: float = 1.8
+## Ночь босса: красная луна и туман (docs/37 SCN-3).
+const BOSS_MOON: Color = Color("ff9c86")
+const BOSS_FOG: Color = Color("6e3a36")
 
 ## Расстояние от камеры до двора — туман и размытие дальнего плана начинаются за двором.
 var camera_distance: float = 80.0
@@ -67,6 +76,8 @@ var _clouds: CloudShadows3D
 var _world: Node3D
 ## Огни сцены и их ночная сила (двор перестраивается — список обновляется).
 var _fires: Array[OmniLight3D] = []
+var _roads: Array[ShaderMaterial] = []
+var _road_glow: float = -1.0
 var _fire_energy: PackedFloat32Array = PackedFloat32Array()
 ## Ночь — как настроена сцена PvP-двора.
 var _night_ambient: Color
@@ -160,10 +171,13 @@ func apply(trial: RitualTrial) -> void:
 	var to_moon: float = smoothstep(0.15, 0.6, night)
 	_sun.basis = sun_basis.slerp(_moon_basis, to_moon).orthonormalized()
 	var sun_color: Color = DAY_SUN.lerp(SUNSET_SUN, warmth)
-	_sun.light_color = sun_color.lerp(_moon_color, to_moon)
+	var boss: float = night if trial.settings.is_endless() \
+		and trial.settings.nights.is_boss_night(trial.current_night()) else 0.0
+	_sun.light_color = sun_color.lerp(_moon_color.lerp(BOSS_MOON, 0.55 * boss), to_moon)
 	var sun_energy: float = DAY_SUN_ENERGY * up * lerpf(1.0, 0.7, warmth)
 	# луна поднимается, пока гаснет закат: сумерки не темнее ночи
-	_sun.light_energy = sun_energy * (1.0 - night) + _moon_energy * smoothstep(0.2, 0.75, night)
+	# Луна встаёт раньше, а экспозиция держится дольше: сумерки не темнее ночи (SCN-3).
+	_sun.light_energy = sun_energy * (1.0 - night) + _moon_energy * smoothstep(0.05, 0.5, night)
 	_sun.shadow_opacity = lerpf(DAY_SHADOW_OPACITY, _night_shadow_opacity, night)
 	_sun.shadow_blur = lerpf(DAY_SHADOW_BLUR, _night_shadow_blur, night)
 	# Тени до дальней кромки кадра, не дальше: чем дальше, тем крупнее пиксели тени («ломаные» края).
@@ -172,11 +186,14 @@ func apply(trial: RitualTrial) -> void:
 	_warm.light_energy = lerpf(SUNSET_WARM_KEY * afterglow, _night_warm, night)
 	_env.ambient_light_color = DAY_AMBIENT.lerp(SUNSET_AMBIENT, afterglow).lerp(_night_ambient, night)
 	_env.ambient_light_energy = lerpf(DAY_AMBIENT_ENERGY, _night_ambient_energy, night)
-	_env.fog_light_color = DAY_FOG.lerp(SUNSET_FOG, afterglow).lerp(_night_fog, night)
-	_env.fog_density = lerpf(DAY_FOG_DENSITY, _night_fog_density, night)
+	_env.fog_light_color = DAY_FOG.lerp(SUNSET_FOG, afterglow).lerp(_night_fog.lerp(BOSS_FOG, 0.5 * boss), night)
+	var thick: float = 1.0
+	if trial.settings.is_endless():
+		thick = minf(FOG_NIGHT_MAX, 1.0 + FOG_PER_NIGHT * (trial.current_night() - 1))
+	_env.fog_density = lerpf(DAY_FOG_DENSITY, _night_fog_density * thick, night)
 	_env.fog_depth_begin = camera_distance + 20.0
 	_env.fog_depth_end = camera_distance + 110.0
-	_env.tonemap_exposure = lerpf(DAY_EXPOSURE, _night_exposure, night)
+	_env.tonemap_exposure = lerpf(DAY_EXPOSURE, _night_exposure, smoothstep(0.25, 1.0, night))
 	_env.glow_intensity = lerpf(DAY_GLOW, _night_glow, night)
 	_env.glow_bloom = lerpf(DAY_BLOOM, _night_bloom, night)
 	_env.adjustment_saturation = lerpf(DAY_SATURATION, _night_saturation, night)
@@ -190,6 +207,26 @@ func apply(trial: RitualTrial) -> void:
 	RenderingServer.global_shader_parameter_set(&"noir_forest_shade", forest_shade * up * (1.0 - night))
 	_clouds.set_strength(CLOUD_STRENGTH * up * lerpf(1.0, 0.55, warmth) * (1.0 - night))
 	_dim_fires(lerpf(1.0, DAY_FIRE, up * (1.0 - night)))
+	_light_roads(ROAD_MOONLIT * smoothstep(0.3, 1.0, night))
+
+
+## Дороги пересобираются с ростом города — материалы ищутся заново, когда их узлы пропали.
+func _light_roads(glow: float) -> void:
+	if not _roads.is_empty() and not is_instance_valid(_roads[0]):
+		_roads.clear()
+	if _roads.is_empty():
+		_roads.clear()
+		for node: Node in _world.find_children("*", "MeshInstance3D", true, false):
+			var material: ShaderMaterial = (node as MeshInstance3D).material_override as ShaderMaterial
+			if material != null and material.shader == NoirArena3D.ROAD_SHADER:
+				_roads.append(material)
+		_road_glow = -1.0
+	if absf(glow - _road_glow) < 0.004:
+		return
+	_road_glow = glow
+	for material: ShaderMaterial in _roads:
+		material.set_shader_parameter(&"moonlit", glow)
+
 
 
 func _dim_fires(factor: float) -> void:

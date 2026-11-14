@@ -23,6 +23,8 @@ const FRAME_NEAR_PAD: float = 2.0
 ## Наклон круче PvP: при пологом взгляде мокрые лужи мостовой бликуют белым.
 const CAMERA_PITCH_RITUAL: float = -0.85
 const CAMERA_YAW_RITUAL: float = 0.3
+## Враги забега крупнее PvP-моделей (docs/37 SCN-6): с камеры над городом они иначе ~15 px.
+const MOB_SCALE: float = 1.4
 ## Солнце, закат, ночь и тени облаков (ночь — свет PvP-двора).
 var _daylight: RitualDaylight
 var _catalogue_profile: bool = false
@@ -31,6 +33,8 @@ var _profile_ready: bool = false
 var _idols: RitualIdols3D
 var idol_hovered: int = -1
 var idol_selected: int = -1
+## Сторожка и ворота входов (docs/37 SCN-7).
+var _gates: RitualGates3D
 ## Завалы проулков (docs/37 ALY-1): узел на входе в проулок, пока он завален.
 var _barricades: Array[Node3D] = []
 
@@ -104,6 +108,8 @@ func show_field(field: FieldState, player_colors: Callable) -> void:
 	super.show_field(field, player_colors)
 	if _hero == null:
 		_spawn_hero()
+	if _gates == null and (field as RitualField).settings.is_endless():
+		_build_gates(field as RitualField)
 
 
 func _tower_node(tower: TowerState) -> ArenaTower3D:
@@ -150,6 +156,19 @@ func house_label(id: int) -> Vector2:
 	return project(house.label_position()) if house != null else tower_top(id)
 
 
+func _build_gates(ritual: RitualField) -> void:
+	_gates = RitualGates3D.new()
+	_gates.name = "RitualGates"
+	_world.add_child(_gates)
+	var end: float = layout.road_end_length()
+	_gates.build_gatehouse(layout.road_point(end - 0.6), layout.road_direction(end - 0.6))
+	var points: Array[Vector3] = [layout.road_point(0.4)]
+	for street: int in ritual.settings.streets.size():
+		if not ritual.settings.streets[street].path_cells.is_empty():
+			points.append(_lanes[street + 1].road_point(0.4))
+	_gates.set_gates(points)
+
+
 ## Герой забега в сторожке — конец главной улицы, у крыльца терема, чуть в стороне от колеи.
 func _spawn_hero() -> void:
 	if _hero != null:
@@ -169,7 +188,8 @@ func _sync_units(delta: float, interpolation: float) -> void:
 			var id: StringName = UNIT_IDS.get(mob.data.id, &"basic")
 			var unit: ArenaUnit3D = ArenaUnit3D.new()
 			_world.add_child(unit)
-			unit.build(STYLE.get_mob_model(id), STYLE.get_mob_tint(id), STYLE.get_mob_height(id), Color.TRANSPARENT, id)
+			unit.build(STYLE.get_mob_model(id), STYLE.get_mob_tint(id), STYLE.get_mob_height(id) * MOB_SCALE,
+				Color.TRANSPARENT, id)
 			if mob.data.tags.has(&"banner"):
 				ArenaMaterials3D.part(unit, ArenaMaterials3D.cylinder(0.025, 0.025, 1.6, 5),
 					ArenaMaterials3D.solid(ArenaMaterials3D.WOOD), Vector3(0.3, 0.8, 0))
@@ -197,7 +217,7 @@ func _lane_layout(lane: int) -> ArenaLayout3D:
 
 func mob_head(mob: MobState, interpolation: float) -> Vector2:
 	var id: StringName = UNIT_IDS.get(mob.data.id, &"basic")
-	return project(_mob_world(mob, interpolation) + Vector3.UP * (STYLE.get_mob_height(id) * 1.15 + 0.2))
+	return project(_mob_world(mob, interpolation) + Vector3.UP * (STYLE.get_mob_height(id) * MOB_SCALE * 1.15 + 0.2))
 
 
 func update_ritual(trial: RitualTrial, delta: float) -> void:
@@ -215,6 +235,13 @@ func update_ritual(trial: RitualTrial, delta: float) -> void:
 			_spawn_hero()
 	_daylight.camera_distance = _camera.position.distance_to((_frame_min + _frame_max) * 0.5)
 	_daylight.apply(trial)
+	if _gates != null:
+		var night: int = trial.current_night()
+		var open: Array[bool] = [true]
+		for street: int in trial.settings.streets.size():
+			if not trial.settings.streets[street].path_cells.is_empty():
+				open.append(street < trial.street_nights.size() and trial.street_nights[street] <= night)
+		_gates.sync(trial, open, delta)
 	_idols.visible = catalogue
 	if catalogue:
 		_idols.sync(trial.field.idols, idol_hovered, idol_selected)

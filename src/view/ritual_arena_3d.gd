@@ -247,7 +247,7 @@ func _build_paving(fine: Dictionary[Vector2i, bool]) -> Material:
 			var material: ShaderMaterial = mesh.material_override as ShaderMaterial
 			if material != null and material.shader == PAVING_SHADER:
 				material.set_shader_parameter("custom_palette", true)
-				material.set_shader_parameter("grout_color", Color("343c3b"))
-				material.set_shader_parameter("stone_dark", Color("222a2b"))
-				material.set_shader_parameter("stone_light", Color("3a4140"))
+				material.set_shader_parameter("grout_color", Color("47514f"))
+				material.set_shader_parameter("stone_dark", Color("343e3e"))
+				material.set_shader_parameter("stone_light", Color("545e5c"))
 	return paving

@@ -472,7 +472,9 @@ func _draw_mob(mob: RitualMob) -> void:
 		_ring(trial.field.get_mob_position(mob), trial.settings.banner_radius, Color(color, 0.35), 1.0)
 	if mob.freeze_ticks_left > 0:
 		color = Color("a1e8f5")
-	_text(stage.mob_head(mob, 1.0) + Vector2(-5, -13), glyph, color, 13)
+	# Буквы над врагами — только с Alt (docs/37 SCN-6): облик и полоска и так читаются.
+	if show_all_marks or not trial.settings.uses_plots():
+		_text(stage.mob_head(mob, 1.0) + Vector2(-5, -13), glyph, color, 13)
 	if mob.elite_rank > 0:
 		draw_texture_rect(ELITE_CROWN,
 			Rect2(stage.mob_head(mob, 1.0) + Vector2(-10, -43), Vector2(20, 16)), false)
@@ -489,9 +491,15 @@ func _draw_mob(mob: RitualMob) -> void:
 			draw_arc(center, radius + 3, 0, TAU, 24, Color("e9ba63"), 2)
 	if trial.field.has_banner(mob):
 		draw_arc(center, radius + 1, 0, TAU, 24, Color("c291eb"), 1)
-	var bar: Rect2 = Rect2(stage.mob_head(mob, 1.0) + Vector2(-14, -8), Vector2(28, 3))
-	draw_rect(bar, Color("18222b"))
-	draw_rect(Rect2(bar.position, Vector2(bar.size.x * maxf(0, float(mob.hp) / mob.max_hp), 3)), Color("85c777"))
+	# Полоска здоровья — когда враг ранен; у элиты и босса всегда и толще (docs/37 VIS-7).
+	var strong: bool = boss or mob.elite_rank > 0
+	var plots: bool = trial.settings.uses_plots()
+	var bar: Rect2 = Rect2(stage.mob_head(mob, 1.0) + Vector2(-20 if strong else -14, -8),
+		Vector2(40 if strong else 28, 5 if strong else 3))
+	if not plots or strong or mob.hp < mob.max_hp or mob.ward_hp > 0:
+		draw_rect(bar.grow(1) if strong else bar, Color("18222b"))
+		draw_rect(Rect2(bar.position, Vector2(bar.size.x * maxf(0, float(mob.hp) / mob.max_hp), bar.size.y)),
+			Color("d9533f") if boss else Color("e0b85a") if strong else Color("85c777"))
 	if mob.ward_hp > 0:
 		_ring(trial.field.get_mob_position(mob), 430, Color("9de3f5"), 3)
 		draw_rect(Rect2(bar.position - Vector2(0, 4), Vector2(bar.size.x * float(mob.ward_hp) / trial.settings.ward_hp, 3)), Color("9de3f5"))
