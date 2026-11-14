@@ -96,6 +96,10 @@ func _check_endless(scene: PackedScene) -> void:
 	_check(panel.trial.barricades[0] and not panel.trial.alley_open(0), "Проулок не завален")
 	panel._toggle_barricade(0)
 	_check(panel.trial.alley_open(0), "Завал не разобран")
+	# Припасы за золото днём (docs/37 SUP-2).
+	var tar: int = panel.trial.supplies[RitualTrial.Supply.TAR]
+	panel._buy_supply(RitualTrial.Supply.TAR)
+	_check(panel.trial.supplies[RitualTrial.Supply.TAR] == tar + 1, "Припас не покупается днём")
 	var nights: RitualNightRules = panel.settings.nights
 	while panel.trial.tick_count < nights.night_start(1) + 1:
 		panel.trial.tick()

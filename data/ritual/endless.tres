@@ -518,6 +518,7 @@ warning_ticks = 20
 radius_milli = 2200
 percent = 45
 cap = 500
+cap_growth_percent = 12
 [sub_resource type="Resource" id="hero_solovey"]
 script = ExtResource("hero")
 id = &"solovey"
@@ -848,6 +849,176 @@ description = "Постройки Чернобога: +1 цель."
 effect = 14
 value = 1
 
+[sub_resource type="Resource" id="boon_merchants"]
+script = ExtResource("gift")
+id = &"merchants"
+display_name = "Купцы на рассвете"
+description = "Золото: 20 и ещё 3 за каждую ночь."
+effect = 9
+god = &""
+value = 20
+extra = 3
+
+[sub_resource type="Resource" id="boon_tar_barrel"]
+script = ExtResource("gift")
+id = &"tar_barrel"
+display_name = "Бочка смолы"
+description = "Припас: смоляная полоса."
+effect = 10
+god = &""
+value = 0
+extra = 0
+
+[sub_resource type="Resource" id="boon_rain_bowl"]
+script = ExtResource("gift")
+id = &"rain_bowl"
+display_name = "Дождевая чаша"
+description = "Припас: дождевая чаша."
+effect = 10
+god = &""
+value = 1
+extra = 0
+
+[sub_resource type="Resource" id="boon_gate_charm"]
+script = ExtResource("gift")
+id = &"gate_charm"
+display_name = "Оберег сторожки"
+description = "Припас: оберег сторожки."
+effect = 10
+god = &""
+value = 2
+extra = 0
+
+[sub_resource type="Resource" id="boon_stakes"]
+script = ExtResource("gift")
+id = &"stakes"
+display_name = "Колья"
+description = "+1 частокол."
+effect = 11
+god = &""
+value = 1
+extra = 0
+
+[sub_resource type="Resource" id="boon_craft"]
+script = ExtResource("gift")
+id = &"craft"
+display_name = "Ремесло"
+description = "Улучшения на 15% дешевле до следующего рассвета."
+effect = 12
+god = &""
+value = 15
+extra = 0
+
+[sub_resource type="Resource" id="boon_strong_gate"]
+script = ExtResource("gift")
+id = &"strong_gate"
+display_name = "Крепкая сторожка"
+description = "Герою +5 к наибольшему здоровью и лечение на 5."
+effect = 13
+god = &""
+value = 5
+extra = 0
+
+[sub_resource type="Resource" id="boon_carpenters"]
+script = ExtResource("gift")
+id = &"carpenters"
+display_name = "Плотники"
+description = "Все дома сразу починены."
+effect = 4
+god = &""
+value = 1
+extra = 0
+
+[sub_resource type="Resource" id="boon_keen_eye"]
+script = ExtResource("gift")
+id = &"keen_eye"
+display_name = "Зоркий глаз"
+description = "Все дома бьют на 0,15 клетки дальше."
+effect = 6
+god = &""
+value = 150
+extra = 0
+
+[sub_resource type="Resource" id="boon_vigor"]
+script = ExtResource("gift")
+id = &"vigor"
+display_name = "Бодрость"
+description = "Все дома бьют на 5% чаще."
+effect = 7
+god = &""
+value = 5
+extra = 0
+
+[sub_resource type="Resource" id="boon_glory_war"]
+script = ExtResource("gift")
+id = &"glory_war"
+display_name = "Слава: Война"
+description = "Дома стихии «Война» бьют на 8% сильнее."
+effect = 1
+god = &"war"
+value = 8
+extra = 0
+
+[sub_resource type="Resource" id="boon_glory_svarog"]
+script = ExtResource("gift")
+id = &"glory_svarog"
+display_name = "Слава: Сварог"
+description = "Дома стихии «Сварог» бьют на 8% сильнее."
+effect = 1
+god = &"svarog"
+value = 8
+extra = 0
+
+[sub_resource type="Resource" id="boon_glory_ice"]
+script = ExtResource("gift")
+id = &"glory_ice"
+display_name = "Слава: Лёд"
+description = "Дома стихии «Лёд» бьют на 8% сильнее."
+effect = 1
+god = &"ice"
+value = 8
+extra = 0
+
+[sub_resource type="Resource" id="boon_glory_water"]
+script = ExtResource("gift")
+id = &"glory_water"
+display_name = "Слава: Вода"
+description = "Дома стихии «Вода» бьют на 8% сильнее."
+effect = 1
+god = &"water"
+value = 8
+extra = 0
+
+[sub_resource type="Resource" id="boon_glory_stribog"]
+script = ExtResource("gift")
+id = &"glory_stribog"
+display_name = "Слава: Стрибог"
+description = "Дома стихии «Стрибог» бьют на 8% сильнее."
+effect = 1
+god = &"stribog"
+value = 8
+extra = 0
+
+[sub_resource type="Resource" id="boon_glory_perun"]
+script = ExtResource("gift")
+id = &"glory_perun"
+display_name = "Слава: Перун"
+description = "Дома стихии «Перун» бьют на 8% сильнее."
+effect = 1
+god = &"perun"
+value = 8
+extra = 0
+
+[sub_resource type="Resource" id="boon_glory_curse"]
+script = ExtResource("gift")
+id = &"glory_curse"
+display_name = "Слава: Чернобог"
+description = "Дома стихии «Чернобог» бьют на 8% сильнее."
+effect = 1
+god = &"curse"
+value = 8
+extra = 0
+
 [resource]
 script = ExtResource("settings")
 combat = ExtResource("combat")
@@ -889,6 +1060,12 @@ wear_ticks = 4800
 worn_damage_percent = 60
 repair_percent = 40
 gifts = Array[ExtResource("gift")]([SubResource("gift_might"), SubResource("gift_svarog_fury"), SubResource("gift_war_fury"), SubResource("gift_ice_fury"), SubResource("gift_flood"), SubResource("gift_fire_rain"), SubResource("gift_ilya_twice"), SubResource("gift_carpenters"), SubResource("gift_masters"), SubResource("gift_far_sight"), SubResource("gift_fury"), SubResource("gift_living_water"), SubResource("gift_perun_fury"), SubResource("gift_curse_fury")])
+gift_relevance = true
+boons = Array[ExtResource("gift")]([SubResource("boon_merchants"), SubResource("boon_tar_barrel"), SubResource("boon_rain_bowl"), SubResource("boon_gate_charm"), SubResource("boon_stakes"), SubResource("boon_craft"), SubResource("boon_strong_gate"), SubResource("boon_carpenters"), SubResource("boon_keen_eye"), SubResource("boon_vigor"), SubResource("boon_glory_war"), SubResource("boon_glory_svarog"), SubResource("boon_glory_ice"), SubResource("boon_glory_water"), SubResource("boon_glory_stribog"), SubResource("boon_glory_perun"), SubResource("boon_glory_curse")])
+boon_choices = 3
+clean_night_gold = 10
+clean_night_gold_per_night = 1
+supply_costs = Array[int]([15, 15, 25])
 gift_choices = 3
 repair_hp = 5
 repair_cost = 10

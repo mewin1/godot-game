@@ -25,6 +25,8 @@ enum Skill { STRIKE, WHISTLE, BREW }
 ## Удар: доля текущего HP цели и предел урона.
 @export var percent: int = 45
 @export var cap: int = 500
+## Рост предела удара за каждую ночь после первой, % (docs/37 HER-3); 0 — постоянный предел.
+@export var cap_growth_percent: int = 0
 ## Свист: на сколько тысячных клетки назад по дороге и сколько тиков оглушения.
 ## Боссы отлетают вдвое меньше.
 @export var knockback_milli: int = 0

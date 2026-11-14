@@ -79,6 +79,11 @@ var _barricade_buttons: Array[Button] = []
 ## Реакции, вызванные каждым домом за текущую ночь (docs/37 RX-6): id дома → id реакции → число.
 var _tower_reactions: Dictionary[int, Dictionary] = {}
 var _numbers_button: Button
+## Усиления рассвета (docs/37 D4): ряд карточек над доком, днём, игра не стоит.
+var _boon_panel: PanelContainer
+var _boon_buttons: HBoxContainer
+var _boon_key: String = ""
+var _supply_menu: MenuButton
 ## Итоги забега для экрана поражения (docs/37 UI-14).
 var _stats: RitualRunStats = RitualRunStats.new()
 var _defeat_columns: HBoxContainer
@@ -349,6 +354,16 @@ func _build_dock(root_box: VBoxContainer) -> void:
 	_repair_button.name = "HealHero"
 	for kind: int in RitualTrial.SUPPLY_NAMES.size():
 		_supply_buttons.append(_button(_dock.utility_row, "", _choose_supply.bind(kind)))
+	if not settings.supply_costs.is_empty():
+		# Припасы за золото днём (docs/37 SUP-2).
+		_supply_menu = MenuButton.new()
+		_supply_menu.name = "BuySupplies"
+		_supply_menu.text = "+"
+		_supply_menu.tooltip_text = "Купить припас (днём)"
+		_supply_menu.flat = false
+		_supply_menu.focus_mode = Control.FOCUS_NONE
+		_dock.utility_row.add_child(_supply_menu)
+		_supply_menu.get_popup().id_pressed.connect(_buy_supply)
 	_selection = _dock.context_text
 	_selection_title = _dock.context_title
 	_upgrade_button = _button(_dock.house_actions, "Улучшить", _upgrade_selected.bind(-1))
@@ -372,6 +387,19 @@ func _build_dock(root_box: VBoxContainer) -> void:
 		_barricade_buttons.append(barricade)
 	_repair_all_button = _button(_dock.city_actions, "Починить всё", _repair_houses.bind(0))
 	_repair_all_button.tooltip_text = "Вернуть полную прочность всем домам. Ремонт дешевле новой постройки."
+	_boon_panel = PanelContainer.new()
+	_boon_panel.name = "BoonPanel"
+	_boon_panel.add_theme_stylebox_override("panel", DuskTheme.panel(Color(0.04, 0.07, 0.11, 0.93), DuskTheme.GOLD, 10))
+	add_child(_boon_panel)
+	var boon_box: VBoxContainer = VBoxContainer.new()
+	_boon_panel.add_child(boon_box)
+	var boon_title: Label = _label(boon_box, "Рассвет: выберите усиление (до ночи)", 15)
+	boon_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	boon_title.add_theme_color_override("font_color", DuskTheme.GOLD)
+	_boon_buttons = HBoxContainer.new()
+	_boon_buttons.add_theme_constant_override("separation", 8)
+	boon_box.add_child(_boon_buttons)
+	_boon_panel.hide()
 	_idol_popup = RitualIdolPopup.new()
 	add_child(_idol_popup)
 	_idol_popup.rite_requested.connect(_buy_rite_at)
@@ -520,6 +548,62 @@ func _build_gifts() -> void:
 	_gift_buttons.add_theme_constant_override("separation", 8)
 	content.add_child(_gift_buttons)
 	_gift_panel.hide()
+
+
+## Карточки усилений рассвета: пересобираются при новом выборе, стоят над доком по центру.
+func _refresh_boons() -> void:
+	if _boon_panel == null:
+		return
+	var key: String = str(trial.boon_choice)
+	if key != _boon_key:
+		_boon_key = key
+		for child: Node in _boon_buttons.get_children():
+			_boon_buttons.remove_child(child)
+			child.queue_free()
+		for index: int in trial.boon_choice:
+			var boon: RitualGiftData = settings.boons[index]
+			var button: Button = _button(_boon_buttons, "%s\n%s" % [boon.display_name, boon.description],
+				_take_boon.bind(index))
+			button.name = "Boon_%s" % boon.id
+			button.custom_minimum_size = Vector2(250, 58)
+			button.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			button.add_theme_font_size_override("font_size", 13)
+			if boon.god != &"":
+				button.icon = GodSymbols.get_icon(boon.god)
+				button.expand_icon = true
+				button.add_theme_constant_override("icon_max_width", 30)
+		_boon_panel.reset_size()
+	_boon_panel.visible = not trial.boon_choice.is_empty() and trial.phase == RitualTrial.Phase.RUNNING
+	if _boon_panel.visible:
+		_boon_panel.position = Vector2((size.x - _boon_panel.size.x) * 0.5,
+			size.y - RitualDock.HEIGHT - _boon_panel.size.y - 40)
+
+
+func _take_boon(index: int) -> void:
+	var boon: RitualGiftData = settings.boons[index]
+	if _issue(RitualCommand.new(RitualCommand.Action.BOON, index)):
+		_message.text = "Усиление: %s" % boon.display_name
+
+
+func _buy_supply(kind: int) -> void:
+	if _issue(RitualCommand.new(RitualCommand.Action.BUY_SUPPLY, kind)):
+		_message.text = "Куплено: %s" % RitualTrial.SUPPLY_NAMES[kind].to_lower()
+
+
+func _refresh_supply_menu() -> void:
+	if _supply_menu == null:
+		return
+	var popup: PopupMenu = _supply_menu.get_popup()
+	var at_night: bool = settings.is_night(trial.tick_count)
+	_supply_menu.disabled = at_night or trial.phase != RitualTrial.Phase.RUNNING
+	_supply_menu.tooltip_text = "Ночью мастера спят: припасы — днём" if at_night else "Купить припас (днём)"
+	if popup.item_count != settings.supply_costs.size():
+		popup.clear()
+		for kind: int in settings.supply_costs.size():
+			popup.add_item("", kind)
+	for kind: int in settings.supply_costs.size():
+		popup.set_item_text(kind, "%s · %d" % [RitualTrial.SUPPLY_NAMES[kind], settings.supply_costs[kind]])
+		popup.set_item_disabled(kind, trial.gold < settings.supply_costs[kind])
 
 
 func _refresh_gifts() -> void:
@@ -1392,6 +1476,8 @@ func _refresh() -> void:
 	_refresh_streets()
 	_refresh_barricades()
 	_refresh_supplies()
+	_refresh_boons()
+	_refresh_supply_menu()
 	if settings.is_endless():
 		var accusative: String = trial.hero().accusative if trial.hero() != null else "Илью"
 		_repair_button.text = "Лечить %s +%d · %d" % [accusative, settings.repair_hp, settings.repair_cost] \

@@ -206,6 +206,8 @@ func _watch_phase(trial: RitualTrial) -> void:
 		var tribute: int = trial.tribute_due(trial.nights_survived()) if trial.nights_survived() > 0 else 0
 		if tribute > 0:
 			lines.append("Подать с улиц: +%d золота" % tribute)
+		if trial.last_clean_bonus > 0:
+			lines.append("Чистая ночь, ни одного прорыва: +%d золота" % trial.last_clean_bonus)
 		var next_omen: RitualOmenData = trial.plan().omen(night)
 		if next_omen != null:
 			lines.append("Следующая ночь — %s: %s" % [next_omen.title, next_omen.description])

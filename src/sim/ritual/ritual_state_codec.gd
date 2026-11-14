@@ -115,6 +115,12 @@ static func rules_state(source: Resource) -> Dictionary[String, Variant]:
 				or (source is TowerData and key == "status_apply_cooldown_ticks")) \
 				and str(source.get(key)) in ["0", "false"]:
 			continue
+		# Рассвет и припасы (docs/37 D4, ECO-3, SUP-2, BOS-2, HER-3): нули не меняют прежний отпечаток.
+		if ((source is RitualTrialConfig and key in ["gift_relevance", "boons", "boon_choices",
+					"clean_night_gold", "clean_night_gold_per_night", "supply_costs"])
+				or (source is RitualHeroData and key == "cap_growth_percent")) \
+				and str(source.get(key)) in ["0", "false", "[]"]:
+			continue
 		if source is RitualStreetData and key in ["summary", "hero_hp", "extra_idol"] \
 				and (source.get(key) == null or str(source.get(key)) in ["", "0", "false"]):
 			continue

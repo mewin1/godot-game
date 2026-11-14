@@ -86,6 +86,8 @@ func _play(policy: String, seed_value: int, hero: int = 0) -> void:
 			and (_night_limit == 0 or trial.nights_survived() < _night_limit):
 		if not trial.gift_choice.is_empty():
 			trial.execute(RitualCommand.new(RitualCommand.Action.GIFT, trial.gift_choice[0]))
+		if policy != "ничего" and not trial.boon_choice.is_empty():
+			trial.execute(RitualCommand.new(RitualCommand.Action.BOON, trial.boon_choice[0]))
 		if policy != "ничего" and trial.tick_count % 10 == 0:
 			_spend(trial)
 			_cast(trial)

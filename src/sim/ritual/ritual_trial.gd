@@ -77,6 +77,17 @@ var free_repair_until: int = 0
 ## Пристроенные улицы (docs/34 §3): для каждой — ночь, с которой открыт её вход.
 ## Места под дома открываются сразу при покупке.
 var street_nights: Array[int] = []
+## Усиления рассвета (docs/37 D4): что предложено сейчас (до ночи) и что взято за забег.
+var boon_choice: Array[int] = []
+var boons_taken: Array[int] = []
+## Прорывов за текущую ночь; итог прошлой ночи и выплаченный за неё бонус чистой ночи (ECO-3).
+var night_leaks: int = 0
+var night_leaks_last: int = 0
+var last_clean_bonus: int = 0
+## Здоровье героя от усилений и скидка на улучшения до рассвета номер upgrade_discount_dawn.
+var hero_hp_bonus: int = 0
+var upgrade_discount_percent: int = 0
+var upgrade_discount_dawn: int = -1
 ## Заваленные проулки-срезки (docs/37 ALY-1): номер проулка → завален ли.
 var barricades: Array[bool] = []
 var _plan: RitualNightPlan
@@ -157,6 +168,7 @@ func execute(command: RitualCommand) -> String:
 		RitualCommand.Action.SELL, RitualCommand.Action.RITE, RitualCommand.Action.MERGE,
 		RitualCommand.Action.ENCHANT, RitualCommand.Action.REPAIR, RitualCommand.Action.REROLL,
 		RitualCommand.Action.REPAIR_HOUSE, RitualCommand.Action.STREET, RitualCommand.Action.BARRICADE,
+		RitualCommand.Action.BUY_SUPPLY,
 		RitualCommand.Action.UPGRADE, RitualCommand.Action.SPECIALISE]
 	if phase == Phase.RUNNING and economic and (economy_frozen or control_mode != ControlMode.OPEN):
 		return "В этой контрольной ветке состав зафиксирован"
@@ -193,6 +205,10 @@ func execute(command: RitualCommand) -> String:
 			error = _street()
 		RitualCommand.Action.BARRICADE:
 			error = _barricade(command.item)
+		RitualCommand.Action.BOON:
+			error = _take_boon(command.item)
+		RitualCommand.Action.BUY_SUPPLY:
+			error = _buy_supply(command.item)
 		RitualCommand.Action.SUPPLY:
 			error = _supply(command.rotation, command.item, command.progress)
 		RitualCommand.Action.UPGRADE:
@@ -303,6 +319,8 @@ func upgrade_cost(tower: TowerState) -> int:
 		return 0
 	var price: int = discounted(settings.costs[index]
 		* settings.upgrade_cost_percent[tower.level - 1] / 100, tower.data.god)
+	if upgrade_discount_dawn > last_dawn:
+		price = price * (100 - upgrade_discount_percent) / 100
 	return price * settings.night_cost_percent / 100 if settings.is_night(tick_count) else price
 
 
@@ -1090,7 +1108,7 @@ func max_hp() -> int:
 	var bonus: int = 0
 	for index: int in mini(street_nights.size(), settings.streets.size()):
 		bonus += settings.streets[index].hero_hp
-	return (hero().hp if hero() != null else settings.hero_hp) + bonus
+	return (hero().hp if hero() != null else settings.hero_hp) + bonus + hero_hp_bonus
 
 
 func hero_name() -> String:
@@ -1106,7 +1124,18 @@ func _hero_percent() -> int:
 
 
 func _hero_cap() -> int:
-	return hero().cap if hero() != null else settings.hero_cap
+	return hero_cap()
+
+
+## Предел удара героя; с ростом (docs/37 HER-3) — на cap_growth_percent за каждую ночь после первой.
+func hero_cap() -> int:
+	if hero() == null:
+		return settings.hero_cap
+	var cap: int = hero().cap
+	if hero().cap_growth_percent > 0 and settings.is_endless():
+		for night: int in mini(current_night() - 1, 60):
+			cap = cap * (100 + hero().cap_growth_percent) / 100
+	return cap
 
 
 ## Свист: враги в круге отлетают назад по своей дороге и оглушены; боссы — вдвое ближе.
@@ -1188,6 +1217,10 @@ func tick() -> void:
 	if phase != Phase.RUNNING or not gift_choice.is_empty():
 		return
 	_boundaries()
+	if not boon_choice.is_empty() and settings.is_night(tick_count):
+		# Невыбранное усиление сгорает к ночи: выбор — дело дня.
+		_event(&"boon_expired", {"choice": boon_choice.duplicate()})
+		boon_choice.clear()
 	_spawn_due()
 	field.prepare_tick(tick_count)
 	_finish_installations()
@@ -1355,6 +1388,8 @@ func _boundaries() -> void:
 			palisades += 1
 		_collect_tribute(dawn)
 		_grant_supply(dawn)
+		_clean_night_bonus(dawn)
+		_offer_boons(dawn)
 		# Соловей: засеки — частокол каждый рассвет, пока запас не полон.
 		if hero() != null and hero().dawn_palisades > 0:
 			palisades = maxi(palisades, mini(hero().palisade_cap, palisades + hero().dawn_palisades))
@@ -1383,11 +1418,24 @@ func _on_killed(mob: MobState) -> void:
 
 
 ## Победа над боссом: выбор из gift_choices даров без повторов (взятые не предлагаются).
+## Выбор дара сейчас (для проверок и инструментов): то же, что после босса.
+func offer_gifts_now() -> void:
+	_offer_gifts()
+
+
 func _offer_gifts() -> void:
 	var pool: Array[int] = []
+	var spare: Array[int] = []
 	for index: int in settings.gifts.size():
-		if not gifts_taken.has(index):
+		if gifts_taken.has(index):
+			continue
+		if settings.gift_relevance and not _gift_fits(settings.gifts[index], 2):
+			spare.append(index)
+		else:
 			pool.append(index)
+	# Подходящих мало — добираем остальными, чтобы выбор был полным.
+	while pool.size() < settings.gift_choices and not spare.is_empty():
+		pool.append(spare.pop_front())
 	if pool.is_empty():
 		return
 	var rng: RandomNumberGenerator = RandomNumberGenerator.new()
@@ -1420,7 +1468,121 @@ func sync_gifts() -> void:
 	field.gifts.clear()
 	for index: int in gifts_taken:
 		field.gifts.append(settings.gifts[index])
+	# Усиления рассвета с постоянным действием считаются полем так же, как дары.
+	for index: int in boons_taken:
+		if settings.boons[index].effect in [RitualGiftData.Effect.DAMAGE_ALL, RitualGiftData.Effect.DAMAGE_GOD,
+				RitualGiftData.Effect.SPLASH_GOD, RitualGiftData.Effect.RANGE_ALL, RitualGiftData.Effect.RATE_ALL]:
+			field.gifts.append(settings.boons[index])
 	field.mark_towers_changed()
+
+
+## Дар или усиление стихии подходит городу: у этой стихии не меньше need домов или есть её идол.
+func _gift_fits(gift: RitualGiftData, need: int) -> bool:
+	if not gift.effect in [RitualGiftData.Effect.DAMAGE_GOD, RitualGiftData.Effect.SPLASH_GOD]:
+		return true
+	var houses: int = 0
+	for tower: TowerState in field.towers:
+		houses += int(tower.data.god == gift.god)
+	return houses >= need or (need > 1 and field.get_idol(gift.god) != null)
+
+
+#region Рассвет: чистая ночь, усиления, припасы за золото (docs/37 ECO-3, D4, SUP-2)
+
+func _clean_night_bonus(dawn: int) -> void:
+	night_leaks_last = night_leaks
+	night_leaks = 0
+	last_clean_bonus = 0
+	if settings.clean_night_gold <= 0 or night_leaks_last > 0:
+		return
+	last_clean_bonus = settings.clean_night_gold + settings.clean_night_gold_per_night * dawn
+	gold += last_clean_bonus
+	earned += last_clean_bonus
+	_event(&"clean_night", {"dawn": dawn, "gold": last_clean_bonus})
+
+
+## Выбор из boon_choices усилений по сиду забега и номеру рассвета; неподходящие городу не идут.
+func _offer_boons(dawn: int) -> void:
+	boon_choice.clear()
+	if settings.boons.is_empty() or settings.boon_choices <= 0:
+		return
+	var pool: Array[int] = []
+	for index: int in settings.boons.size():
+		if _boon_fits(settings.boons[index]):
+			pool.append(index)
+	var rng: RandomNumberGenerator = RandomNumberGenerator.new()
+	rng.seed = run_seed * 7919 + dawn * 104729
+	while boon_choice.size() < settings.boon_choices and not pool.is_empty():
+		boon_choice.append(pool.pop_at(rng.randi_range(0, pool.size() - 1)))
+	_event(&"boon_offer", {"dawn": dawn, "choice": boon_choice.duplicate()})
+
+
+func _boon_fits(boon: RitualGiftData) -> bool:
+	match boon.effect:
+		RitualGiftData.Effect.SUPPLY:
+			var total: int = 0
+			for count: int in supplies:
+				total += count
+			return settings.supply_cap > 0 and total < settings.supply_cap
+		RitualGiftData.Effect.FREE_REPAIR:
+			return repair_all_cost() > 0
+		RitualGiftData.Effect.UPGRADE_DISCOUNT:
+			for tower: TowerState in field.towers:
+				if tower.level < settings.combat.max_tower_level:
+					return true
+			return false
+	return _gift_fits(boon, 1)
+
+
+func _take_boon(index: int) -> String:
+	if not boon_choice.has(index):
+		return "Этого усиления нет в выборе"
+	boon_choice.clear()
+	boons_taken.append(index)
+	var boon: RitualGiftData = settings.boons[index]
+	match boon.effect:
+		RitualGiftData.Effect.GOLD:
+			var amount: int = boon.value + boon.extra * current_night()
+			gold += amount
+			earned += amount
+		RitualGiftData.Effect.SUPPLY:
+			supplies[clampi(boon.value, 0, supplies.size() - 1)] += 1
+		RitualGiftData.Effect.PALISADE:
+			palisades += boon.value
+		RitualGiftData.Effect.UPGRADE_DISCOUNT:
+			upgrade_discount_percent = boon.value
+			upgrade_discount_dawn = last_dawn + 1
+		RitualGiftData.Effect.HERO_HP:
+			hero_hp_bonus += boon.value
+			hp = mini(max_hp(), hp + boon.value)
+		RitualGiftData.Effect.FREE_REPAIR:
+			for tower: TowerState in field.towers:
+				if tower.durability >= 0:
+					tower.durability = settings.max_durability(tower.level)
+	sync_gifts()
+	_event(&"boon", {"boon": String(boon.id)})
+	return ""
+
+
+func _buy_supply(kind: int) -> String:
+	if kind < 0 or kind >= mini(supplies.size(), settings.supply_costs.size()):
+		return "Этот припас не продаётся"
+	if settings.is_night(tick_count):
+		return "Ночью мастера спят: припасы — днём"
+	var total: int = 0
+	for count: int in supplies:
+		total += count
+	if total >= settings.supply_cap:
+		return "Запас полон (%d)" % settings.supply_cap
+	var cost: int = settings.supply_costs[kind]
+	if gold < cost:
+		return "Не хватает золота"
+	gold -= cost
+	spent += cost
+	supplies[kind] += 1
+	_event(&"supply_bought", {"kind": kind, "cost": cost})
+	return ""
+
+#endregion
 
 
 func gift_count(effect: RitualGiftData.Effect) -> int:
@@ -1431,6 +1593,7 @@ func gift_count(effect: RitualGiftData.Effect) -> int:
 
 
 func _on_breached(mob: MobState) -> void:
+	night_leaks += 1
 	if charm_left > 0:
 		charm_left -= 1
 		_event(&"charm", {"mob": mob.id, "left": charm_left})

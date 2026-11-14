@@ -83,6 +83,16 @@ extends Resource
 ## Дары за боссов: из списка без повторов предлагается gift_choices штук.
 @export var gifts: Array[RitualGiftData] = []
 @export var gift_choices: int = 3
+## Дары стихий — только тем стихиям, что есть в городе (docs/37 BOS-2).
+@export var gift_relevance: bool = false
+## Малые усиления рассвета (docs/37 D4): выбор одного из boon_choices каждый рассвет, до ночи.
+@export var boons: Array[RitualGiftData] = []
+@export var boon_choices: int = 0
+## Бонус за ночь без прорывов (docs/37 ECO-3): clean_night_gold + clean_night_gold_per_night × ночь.
+@export var clean_night_gold: int = 0
+@export var clean_night_gold_per_night: int = 0
+## Цена припасов днём по видам (docs/37 SUP-2); пусто — припасы не продаются.
+@export var supply_costs: Array[int] = []
 @export var repair_hp: int = 5
 @export var repair_cost: int = 10
 ## Здоровье тела врагов по суткам, в процентах.
