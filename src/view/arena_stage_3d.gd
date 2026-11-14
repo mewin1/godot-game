@@ -392,13 +392,17 @@ func _sync_towers() -> void:
 			_tower_keys.erase(tower_id)
 
 
+func _tower_node(_tower: TowerState) -> ArenaTower3D:
+	return ArenaTower3D.new()
+
+
 func _build_tower(tower: TowerState) -> ArenaTower3D:
 	var cells: Array[Vector2i] = tower.cells()
 	var origin: Vector3 = _tower_position(cells)
 	var offsets: Array[Vector3] = []
 	for cell: Vector2i in cells:
 		offsets.append(layout.cell_center(cell) - origin)
-	var node: ArenaTower3D = ArenaTower3D.new()
+	var node: ArenaTower3D = _tower_node(tower)
 	_world.add_child(node)
 	node.position = origin
 	node.build(tower, STYLE, offsets)

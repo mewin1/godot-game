@@ -101,6 +101,11 @@ func _in_cells(p: Vector2, cells: Dictionary[Vector2i, bool]) -> bool:
 	return yard_cells.is_empty() and YARD.grow(1.2).has_point(p)
 
 
+## У дома на участке свой цоколь. Каменная стенка PvP закрывала двери и окна.
+func _uses_cellar_walls(field: FieldState) -> bool:
+	return not (field as RitualField).settings.uses_plots()
+
+
 ## Двор растёт улицами: открытые дороги и места всех пристроенных кварталов.
 func set_open(field: FieldState) -> void:
 	var ritual: RitualField = field as RitualField

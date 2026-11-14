@@ -193,7 +193,7 @@ func _gui_input(event: InputEvent) -> void:
 	_geometry()
 	if event is InputEventMouseMotion:
 		var motion: InputEventMouseMotion = event as InputEventMouseMotion
-		hover_cell = stage.cell_at(motion.position)
+		hover_cell = _pointed_cell(motion.position)
 		stage.idol_hovered = stage.idol_at(motion.position) if action == &"" else -1
 		mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND if stage.idol_hovered >= 0 \
 			else Control.CURSOR_ARROW
@@ -206,9 +206,15 @@ func _gui_input(event: InputEvent) -> void:
 				idol_clicked.emit(idol)
 				accept_event()
 				return
-			var cell: Vector2i = stage.cell_at(button.position)
+			var cell: Vector2i = _pointed_cell(button.position)
 			cell_clicked.emit(cell, button.button_index == MOUSE_BUTTON_RIGHT)
 			accept_event()
+
+
+func _pointed_cell(at: Vector2) -> Vector2i:
+	if trial != null and trial.settings.uses_plots() and action == &"":
+		return stage.house_cell_at(at)
+	return stage.cell_at(at)
 
 
 func _point(point: Vector2i) -> Vector2:
@@ -292,7 +298,7 @@ func _draw_tower(tower: TowerState) -> void:
 	if trial.settings.uses_plots() and tower.durability >= 0:
 		var full: int = trial.settings.max_durability(tower.level)
 		if tower.durability * 2 <= full:
-			var roof: Vector2 = stage.tower_top(tower.id)
+			var roof: Vector2 = stage.house_label(tower.id)
 			var worn: Color = Color("ff6555") if tower.durability == 0 else Color("ffc36b")
 			_ring(tower.center_milli(), 480, worn, 2.5)
 			_text(roof + Vector2(-4, -5), "!" if tower.durability > 0 else "X", worn, 20)
@@ -317,7 +323,7 @@ func _draw_tower(tower: TowerState) -> void:
 				strip.append(_point(point))
 			draw_colored_polygon(strip, Color(0.6, 0.85, 1, 0.12))
 	if tower.is_action_blocked():
-		_text(stage.tower_top(tower.id), "Установка…", Color.WHITE, 14)
+		_text(stage.house_label(tower.id), "Установка…", Color.WHITE, 14)
 	if tower.id == selected_id:
 		var width: float = 2.5 if trial.settings.uses_plots() else 1.5
 		_ring(tower.center_milli(), trial.field.get_tower_range(tower), Color(color, 0.7), width)
@@ -338,7 +344,7 @@ func _draw_kin(tower: TowerState) -> void:
 			_tile_outline(cell, Color(GodSymbols.get_color(tower.data.god), 0.95), 3.0)
 	if not (kin or show_all_marks):
 		return
-	var top: Vector2 = stage.tower_top(tower.id) + Vector2(0, -6)
+	var top: Vector2 = stage.house_label(tower.id) + Vector2(0, -6)
 	_level_pips(top, tower.level, GodSymbols.get_color(tower.data.god))
 	if tower.level < trial.settings.combat.max_tower_level and kin:
 		var ready: bool = trial.upgrade_error(tower, 0 if tower.level == 2 else -1).is_empty() \
@@ -603,7 +609,7 @@ func _get_tooltip(at_position: Vector2) -> String:
 		return ""
 	if stage.idol_at(at_position) >= 0:
 		return "Идол: щёлкните — посвятить богу или купить заговор"
-	var tower: TowerState = trial.field.get_tower_at(stage.cell_at(at_position))
+	var tower: TowerState = trial.field.get_tower_at(_pointed_cell(at_position))
 	if tower != null and trial.settings.uses_plots():
 		var levels: RitualBuildingLevels = trial.settings.levels_for(tower.data)
 		return "%s · %s\n%s\nЛКМ: выбрать · Tab: следующий такой же · Alt: уровни всех домов" % [

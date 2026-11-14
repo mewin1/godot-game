@@ -106,6 +106,50 @@ func show_field(field: FieldState, player_colors: Callable) -> void:
 		_spawn_hero()
 
 
+func _tower_node(tower: TowerState) -> ArenaTower3D:
+	if tower is RitualTower:
+		return RitualTownHouse.new()
+	return super(tower)
+
+
+func _build_tower(tower: TowerState) -> ArenaTower3D:
+	var node: ArenaTower3D = super(tower)
+	if node is RitualTownHouse and tower.data.wind_length_milli > 0:
+		(node as RitualTownHouse).aim_wind((_field as RitualField).wind_direction(tower))
+	return node
+
+
+func _sync_fog() -> void:
+	var previous: int = _fog_key
+	super()
+	if previous != _fog_key:
+		var field: RitualField = _field as RitualField
+		for tower: TowerState in field.towers:
+			var house: RitualTownHouse = _towers[tower.id] as RitualTownHouse if _towers.has(tower.id) else null
+			if house != null and tower.data.wind_length_milli > 0:
+				house.aim_wind(field.wind_direction(tower))
+
+
+func house_cell_at(point: Vector2) -> Vector2i:
+	var ray: Vector3 = _camera.project_ray_normal(point * _pixel_scale())
+	var origin: Vector3 = _camera.project_ray_origin(point * _pixel_scale())
+	var nearest: float = INF
+	var picked_id: int = -1
+	for id: int in _towers:
+		var house: RitualTownHouse = _towers[id] as RitualTownHouse
+		if house != null:
+			var distance: float = house.pick_distance(origin, ray)
+			if distance < nearest:
+				nearest = distance
+				picked_id = id
+	return _field.get_tower(picked_id).anchor if picked_id >= 0 else cell_at(point)
+
+
+func house_label(id: int) -> Vector2:
+	var house: RitualTownHouse = _towers[id] as RitualTownHouse if _towers.has(id) else null
+	return project(house.label_position()) if house != null else tower_top(id)
+
+
 ## Герой забега в сторожке — конец главной улицы, у крыльца терема, чуть в стороне от колеи.
 func _spawn_hero() -> void:
 	if _hero != null:

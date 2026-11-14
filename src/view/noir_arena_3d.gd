@@ -295,8 +295,9 @@ func set_open(field: FieldState) -> void:
 	roofs.mesh = _cellars.roofs(field, _layout, lane, _extra_lanes)
 	roofs.material_override = paving
 	_yard.add_child(roofs)
-	_multimesh("cellar_arch", _cellars.arches, _yard)
-	_multimesh("cellar_wall", _cellars.walls, _yard)
+	if _uses_cellar_walls(field):
+		_multimesh("cellar_arch", _cellars.arches, _yard)
+		_multimesh("cellar_wall", _cellars.walls, _yard)
 	_build_terem(terem_at, out3)
 	var entry: Vector3 = _layout.road_point(0.0)
 	_build_walls(fine, Vector2(entry.x, entry.z), Vector2(door.x, door.z))
@@ -305,6 +306,10 @@ func set_open(field: FieldState) -> void:
 	_build_collected(_yard_grass, _yard)
 	if _ambience != null:
 		_ambience.set_perches(_perches)
+
+
+func _uses_cellar_walls(_field: FieldState) -> bool:
+	return true
 
 
 ## Поляна (до двух прямоугольников мира x, z): за ней земля и трава днём в тени леса.
