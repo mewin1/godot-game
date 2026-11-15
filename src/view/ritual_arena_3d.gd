@@ -258,7 +258,9 @@ func _build_mist() -> void:
 func _build_fires(_fine: Dictionary[Vector2i, bool], _terem: Vector2) -> void:
 	if _town:
 		_build_pond()
-		_build_shrine()
+		# Капище стоит на своей клетке, открытой с города 2; раньше оно вставало на линию частокола.
+		if _open_now.has(SHRINE.position):
+			_build_shrine()
 		_build_fences()
 
 
@@ -275,6 +277,11 @@ func _build_pond() -> void:
 	tool.set_normal(Vector3.UP)
 	var corners: Array[Vector2] = [area.position, Vector2(area.end.x, area.position.y), area.end,
 		Vector2(area.position.x, area.end.y)]
+## На площади свет дают огни идолов (RitualIdols3D): факел и чаша посреди стены встали бы на их ряд.
+func _wall_light_allowed(at: Vector2) -> bool:
+	return not _cell_rect(PLAZA).grow(1.2).has_point(at)
+
+
 	for index: int in [0, 1, 2, 0, 2, 3]:
 		var corner: Vector2 = corners[index]
 		# Шейдер ручья: UV.x - метры вдоль, UV.y - поперек 0..1 (темнее к середине).

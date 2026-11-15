@@ -9,7 +9,9 @@ signal building_hovered(index: int)
 signal placement_cancelled()
 
 const HEIGHT: float = 172.0
-const CONTEXT_WIDTH: float = 320.0
+## Док должен влезать в логическую ширину 1600 (critique_2 п. 18): при 1676 корневой столбец
+## растягивался, и правый край дока и кнопки шапки уезжали за экран на 16:9 и 4:3.
+const CONTEXT_WIDTH: float = 260.0
 
 ## Сюда панель переносит портрет, HP, золото, умение и частокол героя (MatchHud).
 var hero_row: HBoxContainer
@@ -20,8 +22,8 @@ var context_title: Label
 var context_text: Label
 ## Кнопки выбранного дома (улучшить, ветки, починить, продать).
 var house_actions: HFlowContainer
-## Кнопки города, когда ничего не выбрано (новая улица, починить всё).
-var city_actions: HBoxContainer
+## Кнопки города, когда ничего не выбрано (новая улица, починить всё) — переносятся в два ряда.
+var city_actions: HFlowContainer
 var _grid: GridContainer
 ## Вкладки тиров каталога (просьба автора 13 ноября): на вкладке — 7 крупных карточек богов.
 var _tier_tabs: Array[Button] = []
@@ -96,8 +98,9 @@ func _init() -> void:
 	house_actions.add_theme_constant_override("h_separation", 4)
 	house_actions.add_theme_constant_override("v_separation", 4)
 	right.add_child(house_actions)
-	city_actions = HBoxContainer.new()
-	city_actions.add_theme_constant_override("separation", 4)
+	city_actions = HFlowContainer.new()
+	city_actions.add_theme_constant_override("h_separation", 4)
+	city_actions.add_theme_constant_override("v_separation", 4)
 	right.add_child(city_actions)
 
 

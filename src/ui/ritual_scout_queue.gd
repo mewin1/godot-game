@@ -38,6 +38,10 @@ func _init() -> void:
 	_omen.mouse_filter = Control.MOUSE_FILTER_STOP
 	_warning = _small_label(header, 15)
 	_warning.add_theme_color_override("font_color", Color("ffab65"))
+	# Полоса делит шапку с таймером и кнопками: длинные строки сокращаются, а не раздвигают шапку.
+	for label: Label in [_omen, _warning]:
+		label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_flow = HFlowContainer.new()
 	_flow.add_theme_constant_override("h_separation", 4)
 	_flow.add_theme_constant_override("v_separation", 4)

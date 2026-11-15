@@ -35,7 +35,8 @@ func refresh_ritual(trial: RitualTrial, paused: bool) -> void:
 		_phase_label.text = "Подготовка"
 	# Забег: HP принадлежит герою в сторожке перед теремом (docs/34 §4, docs/36 §1).
 	var hero: RitualHeroData = trial.hero()
-	_hp_label.text = "%s · %d" % [trial.hero_name(), trial.hp] if trial.settings.is_endless() else str(trial.hp)
+	# Имя героя уже в заголовке блока: «Соловей · 45» читалось как «Соловей 45» (critique_2 п. 22).
+	_hp_label.text = "%d/%d" % [trial.hp, trial.max_hp()] if trial.settings.is_endless() else str(trial.hp)
 	_gold_label.text = str(trial.gold)
 	(_income_label.get_parent() as Control).hide()
 	_hero_name.text = hero.display_name if hero != null else "Илья Муромец"

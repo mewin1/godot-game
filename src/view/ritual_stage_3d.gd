@@ -76,9 +76,9 @@ func show_field(field: FieldState, player_colors: Callable) -> void:
 		for lane: int in ritual.lane_count():
 			_lanes.append(RitualLayout3D.new(ritual.route(lane)))
 		layout = _lanes[0]
-		_build_platforms()
-		# Лес и трава обходят двор по настоящим клеткам (до постройки окружения) — и будущие
-		# кварталы тоже: лес сажается один раз, а улицу можно пристроить в любой момент.
+		# Лес и трава обходят двор по настоящим клеткам — и будущие кварталы тоже: лес сажается
+		# один раз (_build_platforms → build_for_layout), а улицу можно пристроить в любой момент.
+		# Поэтому клетки записываются до _build_platforms: иначе луг садился на будущие улицы.
 		var arena: RitualArena3D = _world.get_node("Arena") as RitualArena3D
 		arena.lane_layouts = _lanes
 		for street: int in range(1, ritual.settings.streets.size() + 1):
@@ -106,6 +106,7 @@ func show_field(field: FieldState, player_colors: Callable) -> void:
 			arena.shortcut_levels.append(ritual.settings.alleys[index].city_level)
 			for cell: Vector2i in cells:
 				arena.yard_cells[cell] = true
+		_build_platforms()
 	super.show_field(field, player_colors)
 	if _hero == null:
 		_spawn_hero()

@@ -757,6 +757,12 @@ func _build_walls(fine: Dictionary[Vector2i, bool], entry: Vector2, door: Vector
 		long_axis_x = box.size.x >= box.size.z
 		segment = maxf(0.1, maxf(box.size.x, box.size.z))
 		probe.free()
+	# Полуширина проёма — по модели ворот (константа уже модели оставляла щели у створок).
+	var gate_half: float = GATE_WIDTH * 0.5
+	var gate_probe: Node3D = _prop("gate")
+	if gate_probe != null:
+		gate_half = _bounds(gate_probe).size.x * 0.5
+		gate_probe.free()
 	var runs: Array[Run] = _wall_runs(fine)
 	_perches = []
 	# ворота — на стене, ближайшей к входу дороги (у каждого входа свои)
@@ -772,6 +778,8 @@ func _build_walls(fine: Dictionary[Vector2i, bool], entry: Vector2, door: Vector
 				best = p.distance_to(gate_entry)
 				gate_point = p
 				gate_run = run
+		if gate_run != null:
+			gate_point = _gate_on_run(gate_run, gate_point, gate_half)
 		gate_points.append(gate_point)
 		gate_runs.append(gate_run)
 	var corners: Dictionary[Vector2, bool] = {}
@@ -779,26 +787,33 @@ func _build_walls(fine: Dictionary[Vector2i, bool], entry: Vector2, door: Vector
 		var wall: Vector2 = run.b - run.a
 		var direction: Vector2 = wall.normalized()
 		var yaw: float = -atan2(direction.y, direction.x) + (0.0 if long_axis_x else PI * 0.5)
-		var count: int = maxi(1, roundi(wall.length() / segment))
-		var step: float = wall.length() / count
-		for k: int in count:
-			var center: Vector2 = run.a + direction * (step * (k + 0.5))
-			if _gap_near(center, gate_points) < GATE_WIDTH * 0.5 + step * 0.5:
-				continue
-			if center.distance_to(door) < 2.6:
-				continue
-			var panel: Node3D = _place("palisade", Vector3(center.x, 0, center.y), yaw)
-			if panel != null:
-				panel.scale = Vector3(step / segment, WALL_SCALE, 1.0)
-			if k % 2 == 0 and k > 0:
-				var post: Vector2 = run.a + direction * step * k
-				_place("palisade_post", Vector3(post.x, 0, post.y), yaw + PI)
-				_add_perch(post, 1.0, run.out)
+		# Проём — только на стене своих ворот и по проекции на неё: проём «по радиусу» сносил
+		# панель соседней стены у угла (дыра 2 м у западных ворот «Городища»).
+		var openings: Array[Vector2] = []
+		for index: int in gate_points.size():
+			if gate_runs[index] == run:
+				var at: float = (gate_points[index] - run.a).dot(direction)
+				openings.append(Vector2(at - gate_half, at + gate_half))
+		for piece: Vector2 in _wall_pieces(wall.length(), openings):
+			# Кусок стены делится на целые панели; короткий остаток у ворот — одна укороченная.
+			var count: int = maxi(1, roundi((piece.y - piece.x) / segment))
+			var step: float = (piece.y - piece.x) / count
+			for k: int in count:
+				var center: Vector2 = run.a + direction * (piece.x + step * (k + 0.5))
+				if center.distance_to(door) < 2.6:
+					continue
+				var panel: Node3D = _place("palisade", Vector3(center.x, 0, center.y), yaw)
+				if panel != null:
+					panel.scale = Vector3(step / segment, WALL_SCALE, 1.0)
+				if k % 2 == 0 and k > 0:
+					var post: Vector2 = run.a + direction * (piece.x + step * k)
+					_place("palisade_post", Vector3(post.x, 0, post.y), yaw + PI)
+					_add_perch(post, 1.0, run.out)
 		# факелы вдоль стены изнутри двора
 		var torches: int = int(wall.length() / TORCH_STEP)
 		for k: int in torches:
 			var p: Vector2 = run.a.lerp(run.b, (k + 0.5) / torches) - run.out * 0.55
-			if _gap_near(p, gate_points) < GATE_WIDTH or p.distance_to(door) < 3.0:
+			if _gap_near(p, gate_points) < GATE_WIDTH or p.distance_to(door) < 3.0 or not _wall_light_allowed(p):
 				continue
 			# чаша посреди стены — только если так задано: огня во дворе хватает от угловых чаш
 			var bowl: bool = WALL_BOWLS and k == torches / 2
@@ -843,10 +858,41 @@ func _build_walls(fine: Dictionary[Vector2i, bool], entry: Vector2, door: Vector
 		# ворота — тёплый акцент слева (как на концепте 05): по жаровне с огнём по обе стороны, снаружи двора
 		var along: Vector2 = Vector2(-gate_run.out.y, gate_run.out.x)
 		for side: float in [-1.0, 1.0]:
-			var spot: Vector2 = gate_point + along * side * (GATE_WIDTH * 0.5 + 0.9) + gate_run.out * 0.9
+			var spot: Vector2 = gate_point + along * side * (gate_half + 0.5) + gate_run.out * 0.9
 			_add_flame(_place("fire_bowl", Vector3(spot.x, 0, spot.y), _rng.randf() * TAU, GATE_BOWL_SCALE),
 					FLAME_HEIGHT * GATE_BOWL_SCALE)
 			_warm_light(Vector3(spot.x, 1.5, spot.y), GATE_BOWL_ENERGY, 5.0)
+
+
+## Точка ворот на стене: створки не должны заходить на угол двора — ворота у угла сдвигаются
+## вдоль стены (дорога всё равно проходит в проём: он шире колеи).
+static func _gate_on_run(run: Run, point: Vector2, half: float) -> Vector2:
+	var wall: Vector2 = run.b - run.a
+	var length: float = wall.length()
+	var direction: Vector2 = wall / maxf(length, 0.001)
+	var margin: float = half + 0.5
+	if length <= margin * 2.0:
+		return run.a + direction * length * 0.5
+	return run.a + direction * clampf((point - run.a).dot(direction), margin, length - margin)
+
+
+## Куски стены длиной length без проёмов (x — начало, y — конец вдоль стены); обрезки < 0,15 м не нужны.
+static func _wall_pieces(length: float, openings: Array[Vector2]) -> Array[Vector2]:
+	openings.sort_custom(func(a: Vector2, b: Vector2) -> bool: return a.x < b.x)
+	var pieces: Array[Vector2] = []
+	var start: float = 0.0
+	for opening: Vector2 in openings:
+		if opening.x - start >= 0.15:
+			pieces.append(Vector2(start, opening.x))
+		start = maxf(start, opening.y)
+	if length - start >= 0.15:
+		pieces.append(Vector2(start, length))
+	return pieces
+
+
+## Можно ли ставить факел или чашу у стены в этой точке (режим со своим светом площади запрещает).
+func _wall_light_allowed(_at: Vector2) -> bool:
+	return true
 
 
 ## Расстояние до ближайших ворот.

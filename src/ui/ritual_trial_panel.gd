@@ -193,12 +193,15 @@ func _build_ui() -> void:
 		var strip: PanelContainer = PanelContainer.new()
 		strip.add_theme_stylebox_override("panel", DuskTheme.glass(0.62, 6))
 		strip.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		add_child(strip)
-		strip.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
-		strip.offset_left = 430
-		strip.offset_right = -230
-		strip.offset_top = 8
 		strip.add_child(_scout)
+		if _dock != null:
+			_build_top_bar(strip)
+		else:
+			add_child(strip)
+			strip.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+			strip.offset_left = 430
+			strip.offset_right = -230
+			strip.offset_top = 8
 	_threat.visible = not settings.is_endless()
 	_toast = PanelContainer.new()
 	_toast.add_theme_stylebox_override("panel", DuskTheme.glass(0.82, 8))
@@ -215,8 +218,9 @@ func _build_ui() -> void:
 		_toast.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
 		_toast.offset_left = -380
 		_toast.offset_right = 380
-		_toast.offset_top = 64
-		_toast.offset_bottom = 94
+		# Под шапкой (она до ~80 px), а не на нижнем крае полосы разведки.
+		_toast.offset_top = 90
+		_toast.offset_bottom = 120
 	_message = _label(_toast, "", 12)
 	_message.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_message.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -227,6 +231,31 @@ func _build_ui() -> void:
 	_build_defeat()
 	_build_gifts()
 	_build_heroes()
+
+
+## Шапка забега одной строкой (critique_2 п. 18-19): [время] [разведка — тянется, лишнее обрезает]
+## [инструменты]. Раньше полоса стояла на жёстких отступах 430/−230 и накрывала таймер и «?»,
+## а инструменты лежали в корневом столбце и уезжали за край вместе с широким доком.
+func _build_top_bar(strip: PanelContainer) -> void:
+	var bar: HBoxContainer = HBoxContainer.new()
+	bar.name = "TopBar"
+	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bar.add_theme_constant_override("separation", 10)
+	add_child(bar)
+	bar.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+	bar.offset_left = 12
+	bar.offset_right = -12
+	bar.offset_top = 8
+	var chip: Control = _hud._prep_info.get_parent() as Control
+	chip.reparent(bar, false)
+	chip.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	strip.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	strip.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	strip.clip_contents = true
+	bar.add_child(strip)
+	var tools: HBoxContainer = _hud._prep_tools
+	tools.reparent(bar, false)
+	tools.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 
 
 ## Прежняя раскладка (4-суточный опыт): лавка и правка слева, идолы и герой под картой.

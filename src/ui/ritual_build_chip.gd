@@ -8,7 +8,7 @@ signal hovered(index: int)
 signal cancelled()
 
 ## Крупная карточка вкладки тира (просьба автора 13 ноября: иконки крупнее, на весь отсек).
-const CHIP_SIZE: Vector2 = Vector2(104, 112)
+const CHIP_SIZE: Vector2 = Vector2(96, 112)
 const TIER_NAMES: Array[String] = ["I", "II", "III"]
 const TIER_COLORS: Array[Color] = [Color("b9814f"), Color("b8c3cc"), Color("f0c869")]
 const NIGHT_PRICE: Color = Color("ffe066")

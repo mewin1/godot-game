@@ -4,11 +4,18 @@ extends Node3D
 ## он заменил чаши и растёт с числом заговоров, так вложение видно на карте. Только вид.
 
 const ROOT: String = "res://assets/noir_h3d/idols/"
-## Места пьедесталов в мире: по бокам крыльца терема и у ближнего угла площади.
-## Четвёртое место — у дальнего угла площади, для идола детинца (docs/37 D5).
-const SPOTS: Array[Vector3] = [Vector3(39.6, 0.0, -3.4), Vector3(39.6, 0.0, 5.4), Vector3(47.2, 0.0, 5.6),
-	Vector3(47.2, 0.0, -3.8)]
+## Места пьедесталов в мире. Перед крыльцом терема места нет (с города 4 там участки (19,8) и
+## (19,12)), за северной частью терема камера их не видит, у южного частокола их закрывают колья.
+## Поэтому три идола стоят в ряд вдоль восточной стены площади, симметрично оси терема (z = 1),
+## четвёртый (детинец, docs/37 D5) — в том же ряду у северного угла (в углу за теремом его не видно).
+## Зазор плиты до частокола и терема не меньше 0,3 м (tools/ritual_view_probe.gd --dump).
+const SPOTS: Array[Vector3] = [Vector3(47.8, 0.0, -1.9), Vector3(47.8, 0.0, 1.0), Vector3(47.8, 0.0, 3.9),
+	Vector3(47.8, 0.0, -3.85)]
 const MODEL_SCALE: float = 0.85
+## Плита меньше фигуры: восточная полоса площади между цоколем терема и частоколом — 2,1 м.
+const PLATE_SCALE: float = 0.74
+## Плита стоит по осям мира (как мостовая и терем); к дороге (−x) и чуть к камере повёрнута только фигура.
+const FACE_YAW: float = -PI * 0.5 + 0.35
 ## Огонь у подножия: пустой идол — лампадка, каждый заговор чуть больше (до предела).
 const FLAME_BASE: float = 0.55
 const FLAME_STEP: float = 0.05
@@ -40,14 +47,14 @@ func _init(style: Arena3DStyle) -> void:
 	for index: int in SPOTS.size():
 		var base: Node3D = Node3D.new()
 		base.position = SPOTS[index]
-		# Лицом к дороге (−x) и чуть к камере.
-		base.rotation.y = -PI * 0.5 + 0.35
 		add_child(base)
+		var face: Vector3 = Vector3(sin(FACE_YAW), 0.0, cos(FACE_YAW))
 		_gods.append(&"?")
 		_rites.append(-1)
 		_models.append(null)
 		var flame: MeshInstance3D = _make_flame(index)
-		flame.position = Vector3(0.0, 0.25, 0.85)
+		# Огонь — у подножия фигуры, на краю плиты со стороны лица (не у частокола).
+		flame.position = face * 0.62 + Vector3(0.0, 0.25, 0.0)
 		base.add_child(flame)
 		_flames.append(flame)
 		var light: OmniLight3D = OmniLight3D.new()
@@ -55,7 +62,7 @@ func _init(style: Arena3DStyle) -> void:
 		light.omni_range = LIGHT_REACH
 		light.omni_attenuation = 1.5
 		light.shadow_enabled = false
-		light.position = Vector3(0.0, 1.4, 0.9)
+		light.position = face * 0.9 + Vector3(0.0, 1.4, 0.0)
 		base.add_child(light)
 		_lights.append(light)
 		var ring: MeshInstance3D = MeshInstance3D.new()
@@ -137,11 +144,13 @@ func _set_model(index: int, god: StringName) -> void:
 		_models[index].queue_free()
 	var key: String = String(god) if god != &"" else "empty"
 	var holder: Node3D = Node3D.new()
-	holder.scale = Vector3.ONE * MODEL_SCALE
 	for file: String in ["idol_%s_plate.glb" % key, "idol_%s.glb" % key]:
 		if not ResourceLoader.exists(ROOT + file):
 			continue
 		var part: Node3D = (load(ROOT + file) as PackedScene).instantiate() as Node3D
+		var plate: bool = file.ends_with("_plate.glb")
+		part.scale = Vector3.ONE * (PLATE_SCALE if plate else MODEL_SCALE)
+		part.rotation.y = 0.0 if plate else FACE_YAW
 		holder.add_child(part)
 	ArenaTower3D._tune_materials(holder, _style.noir_model_glow, _style.noir_model_tone, _style.noir_model_rim)
 	(get_child(index) as Node3D).add_child(holder)
