@@ -101,15 +101,18 @@ func _draw() -> void:
 	draw_rect(Rect2(2, strip_top, size.x - 4, NAME_STRIP - 2), Color(0.02, 0.03, 0.05, 0.92))
 	var color: Color = GodSymbols.get_color(data.god)
 	draw_rect(Rect2(4, 2, size.x - 8, 4), color)
-	var symbol: Texture2D = GodSymbols.get_icon(data.god)
+	# Знак стихии новой семьи её цветом (critique_4 п. 45, хвост critique_3 п. 61).
+	var symbol: Texture2D = RitualIcons.god(data.god)
 	if symbol != null:
-		draw_texture_rect(symbol, Rect2(Vector2(5, 7), Vector2(20, 20)), false)
-	var lines: PackedStringArray = _name_lines(font, size.x - 6.0)
+		draw_texture_rect(symbol, Rect2(Vector2(5, 6), Vector2(20, 20)), false, color.lightened(0.25))
+	# Поле имени шире (critique_4 п. 43): «Свистящий» помещается без многоточия.
+	var lines: PackedStringArray = _name_lines(font, size.x - 2.0)
 	var line_height: float = NAME_SIZE * 1.05
 	var first: float = strip_top + (NAME_STRIP - line_height * lines.size()) * 0.5 + NAME_SIZE * 0.8
 	for row: int in lines.size():
-		draw_string(font, Vector2(3, first + row * line_height), lines[row], HORIZONTAL_ALIGNMENT_CENTER,
-				size.x - 6, NAME_SIZE, NAME_COLOR)
+		DuskTheme.note_drawn(lines[row], NAME_SIZE)
+		draw_string(font, Vector2(1, first + row * line_height), lines[row], HORIZONTAL_ALIGNMENT_CENTER,
+				size.x - 2, NAME_SIZE, NAME_COLOR)
 	if locked_text.is_empty():
 		# Цена — справа в верхнем ярусе, над небом иконки. Ночью оранжевая с луной (наценка —
 		# в подсказке): стрелка «↑» путалась со стрелкой улучшения (critique_3 п. 62).
@@ -122,9 +125,19 @@ func _draw() -> void:
 		DuskTheme.draw_price(self, number_font, Vector2(left, 6.0 + PRICE_SIZE * 0.9), amount, PRICE_SIZE,
 				NIGHT_PRICE if at_night else PRICE_COLOR)
 	if not locked_text.is_empty():
-		draw_rect(rect.grow(-1), Color(0, 0, 0, 0.6))
-		draw_string(font, Vector2(3, size.y * 0.42), "🔒 " + locked_text, HORIZONTAL_ALIGNMENT_CENTER, size.x - 6,
-				NAME_SIZE, Color(0.85, 0.85, 0.85, 0.9))
+		# Заперт (critique_4 п. 42): затемнение без имени и дома, нарисованный замок в углу и условие —
+		# бейджем на месте цены (системный эмодзи 🔒 был чужой семьёй знаков).
+		draw_rect(rect.grow(-1), Color(0, 0, 0, 0.5))
+		var lock: Texture2D = RitualIcons.named("lock")
+		if lock != null:
+			draw_texture_rect(lock, Rect2(Vector2(size.x - 21, 6), Vector2(16, 16)), false, Color(0.85, 0.85, 0.85))
+		var badge: float = font.get_string_size(locked_text, HORIZONTAL_ALIGNMENT_LEFT, -1, PRICE_SIZE).x + 10.0
+		var badge_rect: Rect2 = Rect2(Vector2((size.x - badge) * 0.5, size.y * 0.36), Vector2(badge, PRICE_SIZE + 6))
+		draw_rect(badge_rect, Color(0.06, 0.06, 0.07, 0.92))
+		draw_rect(badge_rect, Color(0.7, 0.68, 0.62, 0.8), false, 1.0)
+		DuskTheme.note_drawn(locked_text, PRICE_SIZE)
+		draw_string(font, badge_rect.position + Vector2(5, PRICE_SIZE * 0.95), locked_text, HORIZONTAL_ALIGNMENT_LEFT,
+				-1, PRICE_SIZE, Color(0.9, 0.88, 0.82))
 	elif not affordable:
 		draw_rect(rect.grow(-1), Color(0, 0, 0, 0.38))
 
@@ -175,5 +188,19 @@ func _make_custom_tooltip(for_text: String) -> Object:
 		line.text = lines[row]
 		line.add_theme_font_size_override("font_size", 18 if row == 1 else 17)
 		line.add_theme_color_override("font_color", DuskTheme.TEXT if row == 1 else DuskTheme.MUTED)
+		if row == 1:
+			# Роль — со знаком роли (хвост critique_3 п. 59).
+			var role_row: HBoxContainer = HBoxContainer.new()
+			role_row.add_theme_constant_override("separation", 6)
+			var icon: TextureRect = TextureRect.new()
+			icon.texture = RitualIcons.role(lines[row])
+			icon.custom_minimum_size = Vector2(22, 22)
+			icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			icon.modulate = DuskTheme.GOLD
+			role_row.add_child(icon)
+			role_row.add_child(line)
+			box.add_child(role_row)
+			continue
 		box.add_child(line)
 	return box

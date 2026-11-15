@@ -90,7 +90,7 @@ func refresh(trial: RitualTrial) -> void:
 		_title.text = "Идол %d · пустой" % (idol_index + 1)
 		_fill_gods(trial)
 	else:
-		_title.text = "Идол %d · %s" % [idol_index + 1, GodSymbols.get_power_name(god)]
+		_title.text = "Идол %d · %s" % [idol_index + 1, RitualScoutQueue.element_name(god)]
 		_fill_rites(trial, god, idol.god == &"")
 	size = Vector2.ZERO
 	reset_size()
@@ -109,9 +109,11 @@ func _fill_gods(trial: RitualTrial) -> void:
 			continue
 		seen[rite.god] = true
 		var button: Button = Button.new()
-		button.text = GodSymbols.get_power_name(rite.god)
-		button.icon = GodSymbols.get_icon(rite.god)
-		button.expand_icon = true
+		# Семь пунктов одного вида (critique_4 п. 45): знак стихии её цветом и имя стихии; бог — в подсказке.
+		button.text = RitualScoutQueue.element_name(rite.god)
+		button.icon = RitualIcons.god(rite.god)
+		RitualIcons.tint(button, GodSymbols.get_color(rite.god))
+		button.add_theme_constant_override("icon_max_width", 24)
 		button.custom_minimum_size = Vector2(160, 34)
 		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		button.focus_mode = Control.FOCUS_NONE
@@ -119,7 +121,7 @@ func _fill_gods(trial: RitualTrial) -> void:
 		var elsewhere: IdolState = trial.field.get_idol(rite.god)
 		button.disabled = elsewhere != null
 		button.tooltip_text = "Этот бог уже живёт в другом идоле" if elsewhere != null \
-			else "Заговоры %s; скидка на его постройки растёт с каждым заговором" % GodSymbols.get_power_name(rite.god)
+			else "%s. Заговоры стихии; скидка на её постройки растёт с каждым заговором" % GodSymbols.get_power_name(rite.god)
 		button.pressed.connect(_pick_god.bind(rite.god))
 		grid.add_child(button)
 
@@ -137,7 +139,7 @@ func _fill_rites(trial: RitualTrial, god: StringName, preview: bool) -> void:
 		back.focus_mode = Control.FOCUS_NONE
 		back.pressed.connect(_pick_god.bind(&""))
 		_body.add_child(back)
-		_note("Первый заговор посвятит этот идол %s навсегда." % GodSymbols.get_power_name(god))
+		_note("Первый заговор навсегда посвятит этот идол стихии «%s»." % RitualScoutQueue.element_name(god))
 	for index: int in trial.settings.rites.size():
 		var rite: RiteData = trial.settings.rites[index]
 		if rite.god != god:
@@ -171,7 +173,7 @@ func _fill_rites(trial: RitualTrial, god: StringName, preview: bool) -> void:
 	_fill_milestones(trial, god)
 	var discount: int = trial.discount_bp(god)
 	if discount > 0:
-		_note("Скидка на постройки и улучшения %s: −%d%%" % [GodSymbols.get_power_name(god), discount / 100])
+		_note("Скидка на постройки и улучшения стихии «%s»: −%d%%" % [RitualScoutQueue.element_name(god), discount / 100])
 
 
 ## Вехи бога (docs/37 IDL-4): пройденные — золотом, следующая — сколько заговоров осталось.

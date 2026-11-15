@@ -2,6 +2,8 @@ class_name RitualMatchHud
 extends MatchHud
 ## Существующая шапка и нижний блок героя PvP; меняется только источник состояния.
 
+## Умение, чей знак стоит на кнопке (-1 — ещё нет).
+var _skill_icon_kind: int = -1
 var _portrait_path: String = ""
 ## Ширина имени героя: в нижнем доке забега уже, чем у прежнего блока героя.
 var hero_name_width: float = 185.0
@@ -61,6 +63,13 @@ func refresh_ritual(trial: RitualTrial, paused: bool) -> void:
 		_portrait_path = portrait
 		_hero_portrait.texture = load(portrait) as Texture2D
 	var skill: String = hero.skill_name if hero != null else "Удар Ильи"
+	# Знак умения (хвост critique_3 п. 51): тёмный силуэт на янтарной кнопке.
+	var skill_kind: RitualHeroData.Skill = hero.skill if hero != null else RitualHeroData.Skill.STRIKE
+	if _skill_icon_kind != skill_kind:
+		_skill_icon_kind = skill_kind
+		_skill_button.icon = RitualIcons.skill(skill_kind)
+		_skill_button.add_theme_constant_override("icon_max_width", 20)
+		RitualIcons.tint(_skill_button, Color("2a1c10"))
 	var wait: int = ceili(float(trial.hero_ready - trial.tick_count) / trial.settings.combat.ticks_per_second)
 	_skill_button.text = "%s · Q" % skill if trial.tick_count >= trial.hero_ready else "%s · %d с" % [skill, wait]
 	if hero != null and trial.brew_charges > 0:

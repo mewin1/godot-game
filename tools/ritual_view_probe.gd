@@ -419,7 +419,7 @@ func _dump_all() -> void:
 	_dump_wildlife()
 	_dump_frame_share()
 	_dump_ui()
-	_dump_fonts()
+	await _dump_fonts()
 	await _dump_dock()
 
 
@@ -626,7 +626,27 @@ func _dump_fonts() -> void:
 		if size < smallest:
 			smallest = size
 			where = "%s '%s'" % [control.name, _text(control).left(30)]
-	print("FONTS: smallest %.1f px at %s  below14=%d" % [smallest, where, small])
+	# И текст, нарисованный draw_string: сцена, карточки каталога, плитки (critique_4 п. 39).
+	DuskTheme.drawn_text.clear()
+	DuskTheme.track_drawn = true
+	_panel.board.queue_redraw()
+	if _panel._dock != null:
+		for chip: RitualBuildChip in _panel._dock.chips:
+			chip.queue_redraw()
+	await _settle(3)
+	DuskTheme.track_drawn = false
+	var canvas: float = root.get_final_transform().get_scale().y
+	for text: String in DuskTheme.drawn_text:
+		var drawn: float = DuskTheme.drawn_text[text] * canvas
+		if drawn < 14.0 - 0.01:
+			small += 1
+			if small <= 40:
+				print("  SMALL %.1f px drawn '%s'" % [drawn, text.left(30)])
+		if drawn < smallest:
+			smallest = drawn
+			where = "drawn '%s'" % text.left(30)
+	print("FONTS: smallest %.1f px at %s  below14=%d (вместе с draw_string: %d надписей)" % [smallest, where, small,
+			DuskTheme.drawn_text.size()])
 
 
 ## Высота дока без выбора и с выбранным домом (не должна меняться).
@@ -649,6 +669,10 @@ func _dump_dock() -> void:
 			var control: Control = node as Control
 			if control != null and control.visible:
 				print("  DOCK ROW %s %s min %s" % [control.name, control.size, control.get_combined_minimum_size()])
+		for node: Node in _panel._dock.city_actions.get_children():
+			var city: Control = node as Control
+			if city != null and city.visible:
+				print("  DOCK CITY %s %s min %s" % [city.name, city.size, city.get_combined_minimum_size()])
 		for node: Node in _panel._dock.house_actions.get_children():
 			var item: Control = node as Control
 			if item != null and item.visible:

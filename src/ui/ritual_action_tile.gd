@@ -7,7 +7,7 @@ extends Button
 const COUNT_COLOR: Color = Color("fff0cf")
 const PRICE_COLOR: Color = Color("ffe2a8")
 const BADGE: Color = Color(0.02, 0.04, 0.06, 0.86)
-const BADGE_SIZE: int = 15
+const BADGE_SIZE: int = 18
 
 var picture: Texture2D
 var key_hint: String = ""
@@ -40,10 +40,11 @@ func _draw() -> void:
 		# Пустой припас узнаётся (critique_3 п. 50): не темнее 60%.
 		var alpha: float = 0.6 if empty else 0.7 if disabled else 1.0
 		draw_texture_rect(picture, art, false, Color(1, 1, 1, alpha))
-	# Бейджи не мельче 15 (critique_3 п. 4): клавиша слева сверху, число или цена — внизу.
+	# Бейджи не мельче 18 (critique_3 п. 4, critique_4 п. 39): клавиша слева сверху, число или цена — внизу.
 	if not key_hint.is_empty() and not (empty and price >= 0):
 		var key_width: float = font.get_string_size(key_hint, HORIZONTAL_ALIGNMENT_LEFT, -1, BADGE_SIZE).x
 		draw_rect(Rect2(2, 2, key_width + 6, BADGE_SIZE + 3), BADGE)
+		DuskTheme.note_drawn(key_hint, BADGE_SIZE)
 		draw_string(font, Vector2(5, BADGE_SIZE + 1), key_hint, HORIZONTAL_ALIGNMENT_LEFT, -1, BADGE_SIZE,
 				Color(0.8, 0.84, 0.86))
 	var numbers: Font = DuskTheme.NUMBER_FONT
@@ -51,9 +52,10 @@ func _draw() -> void:
 	# отдельным бейджем «+» сверху справа, только когда купить можно.
 	if count >= 0:
 		var number: String = str(count)
-		var width: float = numbers.get_string_size(number, HORIZONTAL_ALIGNMENT_LEFT, -1, 17).x
-		draw_rect(Rect2(size.x - width - 8, size.y - 21, width + 6, 19), BADGE)
-		draw_string(numbers, Vector2(size.x - width - 5, size.y - 5), number, HORIZONTAL_ALIGNMENT_LEFT, -1, 17,
+		var width: float = numbers.get_string_size(number, HORIZONTAL_ALIGNMENT_LEFT, -1, 18).x
+		draw_rect(Rect2(size.x - width - 8, size.y - 22, width + 6, 20), BADGE)
+		DuskTheme.note_drawn(number, 18)
+		draw_string(numbers, Vector2(size.x - width - 5, size.y - 5), number, HORIZONTAL_ALIGNMENT_LEFT, -1, 18,
 				COUNT_COLOR if count > 0 else Color(0.6, 0.62, 0.64))
 	if empty and price >= 0:
 		var amount: String = str(price)

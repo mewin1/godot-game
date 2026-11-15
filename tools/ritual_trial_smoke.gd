@@ -81,7 +81,7 @@ func _check_endless(scene: PackedScene) -> void:
 	_check(panel.trial.field.towers.size() == 1, "Вечером нельзя строить с прилавка")
 	panel._refresh()
 	panel._on_cell(plot, false)
-	_check(panel._selection_title.text.contains(panel.settings.level_name(1)), "Не виден материал дома: " + panel._selection_title.text)
+	_check(panel._selection_title.text.contains("ур. I (дерево)"), "Не виден уровень и материал дома: " + panel._selection_title.text)
 	_check(panel._selection.text.contains("прочность 100%"), "Не видна прочность дома: " + panel._selection.text)
 	panel.trial.field.towers[0].durability = 0
 	panel._repair_houses(0)

@@ -3,7 +3,7 @@ extends RefCounted
 ## Итоги забега для экрана поражения (docs/37 UI-14): на что ушло золото, кто сколько урона нанёс,
 ## кто прорвался и какая реакция была самой частой. Только наблюдение: в симуляцию не пишет.
 
-const SPEND_ORDER: Array[String] = ["Постройки", "Улучшения", "Город", "Заговоры", "Ремонт и лечение"]
+const SPEND_ORDER: Array[String] = ["Постройки", "Улучшения", "Город", "Заговоры", "Ремонт и лечение", "Припасы"]
 
 var spend: Dictionary[String, int] = {}
 ## Урон по типам домов: id постройки → урон по здоровью и оберегу.
@@ -34,6 +34,8 @@ func add_spend(action: RitualCommand.Action, amount: int) -> void:
 			category = "Заговоры"
 		RitualCommand.Action.REPAIR, RitualCommand.Action.REPAIR_HOUSE:
 			category = "Ремонт и лечение"
+		RitualCommand.Action.BUY_SUPPLY:
+			category = "Припасы"
 		_:
 			category = "Прочее"
 	spend[category] = spend.get(category, 0) + amount
@@ -69,11 +71,16 @@ func top_damage(count: int) -> PackedStringArray:
 	return lines
 
 
-func spend_lines() -> PackedStringArray:
+## Разбивка трат; spent — сумма забега (RitualTrial.spent): то, что прошло мимо команд панели
+## (ночные вызовы, авто-траты, пробник), — «Прочее», и разбивка всегда сходится с суммой (critique_4 п. 47).
+func spend_lines(spent: int = -1) -> PackedStringArray:
 	var lines: PackedStringArray = []
 	var total: int = 0
 	for category: String in spend:
 		total += spend[category]
+	if spent > total:
+		spend["Прочее"] = spend.get("Прочее", 0) + spent - total
+		total = spent
 	for category: String in SPEND_ORDER + ["Прочее"]:
 		if spend.get(category, 0) > 0:
 			lines.append("%s — %d (%d%%)" % [category, spend[category], spend[category] * 100 / maxi(1, total)])

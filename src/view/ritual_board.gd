@@ -272,7 +272,8 @@ func road_spot(cell: Vector2i) -> Vector2i:
 
 ## Подписи и числа на сцене — шрифтом темы с тёмной обводкой 3 px (critique_3 п. 40):
 ## системный шрифт Godot был третьим и без обводки не читался на светлой брусчатке.
-func _text(at: Vector2, text: String, color: Color, font_size: int = 16) -> void:
+func _text(at: Vector2, text: String, color: Color, font_size: int = 18) -> void:
+	DuskTheme.note_drawn(text, font_size)
 	draw_string_outline(SCENE_FONT, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, 3 * 2,
 			Color(0.02, 0.02, 0.03, 0.9 * color.a))
 	draw_string(SCENE_FONT, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, color)
@@ -369,7 +370,7 @@ func _draw_tower(tower: TowerState) -> void:
 				strip.append(_point(point))
 			draw_colored_polygon(strip, Color(0.6, 0.85, 1, 0.12))
 	if tower.is_action_blocked():
-		_text(stage.house_label(tower.id), "Установка…", Color.WHITE, 14)
+		_text(stage.house_label(tower.id), "Установка…", Color.WHITE, 18)
 	# Круг дальности выбранного в забеге — 3D-плоскость (RitualStage3D.show_selected_range, critique_4 п. 31).
 	if tower.id == selected_id and not trial.settings.uses_plots():
 		_ring(tower.center_milli(), trial.field.get_tower_range(tower), Color(color, 0.8), 1.5)
@@ -434,9 +435,9 @@ func _draw_combo_links() -> void:
 		draw_line(from, to, Color(tint, 0.22), 9.0, true)
 		draw_line(from, to, Color(tint, 0.9), 3.0, true)
 		var middle: Vector2 = (from + to) * 0.5
-		_reaction_badge(middle, GodSymbols.get_color(data.god), GodSymbols.get_color(other.data.god))
+		_reaction_badge(middle, reaction, GodSymbols.get_color(data.god), GodSymbols.get_color(other.data.god))
 		if other.cells().has(hover_cell):
-			_text(middle + Vector2(14, 6), reaction.display_name, tint.lightened(0.45), 17)
+			_text(middle + Vector2(16, 6), reaction.display_name, tint.lightened(0.45), 18)
 
 
 ## Статус, который ставит постройка (для подсказок о реакциях), или пусто.
@@ -513,7 +514,7 @@ func _draw_mob(mob: RitualMob) -> void:
 		color = Color("a1e8f5")
 	# Буквы над врагами — только с Alt (docs/37 SCN-6): облик и полоска и так читаются.
 	if show_all_marks or not trial.settings.uses_plots():
-		_text(stage.mob_head(mob, 1.0) + Vector2(-5, -13), glyph, color, 13)
+		_text(stage.mob_head(mob, 1.0) + Vector2(-6, -13), glyph, color, 18)
 	if mob.elite_rank > 0:
 		draw_texture_rect(ELITE_CROWN,
 			Rect2(stage.mob_head(mob, 1.0) + Vector2(-10, -43), Vector2(20, 16)), false)
@@ -622,8 +623,8 @@ func _draw_preview() -> void:
 						var target: RitualMob = candidate as RitualMob
 						if target.immune_until > trial.tick_count:
 							hint += " · сейчас иммунитет"
-				_text(Vector2(_origin.x + 8, _origin.y + 18), hint, Color.WHITE, 14)
-				_text(Vector2(_origin.x + 8, _origin.y + 36), "Разгон и новые отряды могут изменить порядок", Color("dfc8a1"), 13)
+				_text(Vector2(_origin.x + 8, _origin.y + 20), hint, Color.WHITE, 18)
+				_text(Vector2(_origin.x + 8, _origin.y + 42), "Разгон и новые отряды могут изменить порядок", Color("dfc8a1"), 18)
 		return
 	var data: TowerData = null
 	if preview_index >= 0:
@@ -804,16 +805,20 @@ func _level_mark(at: Vector2, level: int, color: Color) -> void:
 	shield.append(shield[0])
 	draw_polyline(shield, color.lerp(Color("ffe4a5"), 0.35), 2.0, true)
 	var width: float = LEVEL_FONT.get_string_size(numeral, HORIZONTAL_ALIGNMENT_LEFT, -1, 19).x
+	DuskTheme.note_drawn(numeral, 19)
 	draw_string(LEVEL_FONT, center + Vector2(-width * 0.5, 6.5), numeral, HORIZONTAL_ALIGNMENT_LEFT, -1, 19,
 			color.lerp(Color("ffe4a5"), 0.75))
 
 
-## Значок реакции на связи: кружок из двух половин — стихии пары.
-func _reaction_badge(at: Vector2, first: Color, second: Color) -> void:
-	draw_circle(at, 10.0, Color(0.03, 0.04, 0.06, 0.9))
-	draw_arc(at, 6.0, PI * 0.5, PI * 1.5, 12, first, 6.0, true)
-	draw_arc(at, 6.0, -PI * 0.5, PI * 0.5, 12, second, 6.0, true)
-	draw_arc(at, 10.0, 0.0, TAU, 20, Color(1, 1, 1, 0.5), 1.2, true)
+## Значок реакции на связи (critique_4 п. 28): знак самой реакции (пар, прожарка…) на тёмном круге,
+## обводка из двух половин — стихии пары. Раньше двухцветный кружок с точкой читался мишенью.
+func _reaction_badge(at: Vector2, reaction: ReactionData, first: Color, second: Color) -> void:
+	draw_circle(at, 14.0, Color(0.03, 0.04, 0.06, 0.92))
+	draw_arc(at, 13.0, PI * 0.5, PI * 1.5, 16, first, 3.0, true)
+	draw_arc(at, 13.0, -PI * 0.5, PI * 0.5, 16, second, 3.0, true)
+	var icon: Texture2D = RitualIcons.reaction(reaction.id)
+	if icon != null:
+		draw_texture_rect(icon, Rect2(at - Vector2(9, 9), Vector2(18, 18)), false, Color("f4e6c8"))
 
 
 ## Знак «нельзя»: серый перечёркнутый круг на тёмной подложке.

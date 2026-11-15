@@ -156,21 +156,45 @@ func toggle_legend(settings: RitualTrialConfig) -> void:
 		hint.add_theme_color_override("font_color", DuskTheme.MUTED)
 		hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		box.add_child(hint)
-		var marks: Label = Label.new()
-		marks.text = "Капля — мокрый · треугольник — горит · ромб — заряд · квадрат — холод (светлый — скован) · крест — проклятие"
-		marks.add_theme_font_size_override("font_size", 18)
+		# Значок → имя (critique_4 п. 48): метки нарисованы теми же формами, что над врагами и домами.
+		var marks: GridContainer = GridContainer.new()
+		marks.columns = 4
+		marks.add_theme_constant_override("h_separation", 14)
+		marks.add_theme_constant_override("v_separation", 6)
 		box.add_child(marks)
+		for mark: int in LEGEND_MARKS.size():
+			var glyph: LegendGlyph = LegendGlyph.new()
+			glyph.kind = LEGEND_MARKS[mark]
+			glyph.custom_minimum_size = Vector2(30, 30)
+			marks.add_child(glyph)
+			var name_label: Label = Label.new()
+			name_label.text = LEGEND_NAMES[mark]
+			name_label.add_theme_font_size_override("font_size", 18)
+			marks.add_child(name_label)
+		box.add_child(HSeparator.new())
+		var reactions: GridContainer = GridContainer.new()
+		reactions.columns = 2
+		reactions.add_theme_constant_override("h_separation", 10)
+		reactions.add_theme_constant_override("v_separation", 6)
+		box.add_child(reactions)
 		var seen: Dictionary[String, bool] = {}
 		for reaction: ReactionData in settings.combat.reactions:
 			if seen.has(reaction.display_name) or reaction.explanation.is_empty():
 				continue
 			seen[reaction.display_name] = true
+			var icon: TextureRect = TextureRect.new()
+			icon.texture = RitualIcons.reaction(reaction.id)
+			icon.custom_minimum_size = Vector2(28, 28)
+			icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			icon.modulate = Color("f4e6c8")
+			reactions.add_child(icon)
 			var line: Label = Label.new()
 			line.text = "%s — %s" % [reaction.display_name, reaction.explanation]
 			line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 			line.custom_minimum_size.x = 640
 			line.add_theme_font_size_override("font_size", 18)
-			box.add_child(line)
+			reactions.add_child(line)
 		_legend.hide()
 	_legend.visible = not _legend.visible
 	_legend.reset_size()
@@ -241,8 +265,9 @@ func _refresh_gifts(trial: RitualTrial) -> void:
 		chip.mouse_filter = Control.MOUSE_FILTER_PASS
 		chip.tooltip_text = "%s\n%s" % [gift.display_name, gift.description]
 		if gift.god != &"":
-			chip.icon = GodSymbols.get_icon(gift.god)
+			chip.icon = RitualIcons.god(gift.god)
 			chip.expand_icon = true
+			RitualIcons.tint(chip, GodSymbols.get_color(gift.god))
 		else:
 			chip.text = GIFT_GLYPHS.get(gift.effect, "✦")
 		_gifts.add_child(chip)
@@ -290,7 +315,8 @@ func _draw_boss_bar() -> void:
 	var title: String = _boss_name
 	if _boss_resist != &"":
 		title += " · неуязвим: " + RitualScoutQueue.element_name(_boss_resist)
-	draw_string(font, bar.position + Vector2(0, -7), title, HORIZONTAL_ALIGNMENT_CENTER, width, 15,
+	DuskTheme.note_drawn(title, 18)
+	draw_string(font, bar.position + Vector2(0, -7), title, HORIZONTAL_ALIGNMENT_CENTER, width, 18,
 		Color("ffd2b8"))
 
 
@@ -298,3 +324,49 @@ func _draw_boss_bar() -> void:
 func _edge(rect: Rect2, a: Color, b: Color, c: Color, d: Color) -> void:
 	draw_polygon(PackedVector2Array([rect.position, Vector2(rect.end.x, rect.position.y), rect.end,
 		Vector2(rect.position.x, rect.end.y)]), PackedColorArray([a, b, c, d]))
+
+
+## Метки легенды: форма → имя (формы — как в RitualBoard._draw_statuses, бейдж износа и щиток уровня).
+const LEGEND_MARKS: Array[StringName] = [&"wet", &"burn", &"charge", &"cold", &"frozen", &"curse", &"wear", &"level"]
+const LEGEND_NAMES: Array[String] = ["мокрый", "горит", "заряд", "холод", "скован", "проклятие", "нужен ремонт",
+	"уровень дома"]
+
+
+## Нарисованная метка для легенды в том же виде, что на карте, только крупнее.
+class LegendGlyph:
+	extends Control
+	var kind: StringName = &""
+
+	func _draw() -> void:
+		var c: Vector2 = size * 0.5
+		var k: float = 2.2
+		match kind:
+			&"wet":
+				draw_circle(c + Vector2(0, 1) * k, 3.2 * k, Color("4fc3f7"))
+				draw_colored_polygon(PackedVector2Array([c + Vector2(0, -4) * k, c + Vector2(-2.6, 0) * k,
+					c + Vector2(2.6, 0) * k]), Color("4fc3f7"))
+			&"burn":
+				draw_colored_polygon(PackedVector2Array([c + Vector2(0, -4) * k, c + Vector2(-4, 3) * k,
+					c + Vector2(4, 3) * k]), Color("ff8a3d"))
+			&"charge":
+				draw_colored_polygon(PackedVector2Array([c + Vector2(0, -4) * k, c + Vector2(3.5, 0) * k,
+					c + Vector2(0, 4) * k, c + Vector2(-3.5, 0) * k]), Color("ffe066"))
+			&"cold", &"frozen":
+				draw_rect(Rect2(c - Vector2(3.5, 3.5) * k, Vector2(7, 7) * k),
+					Color("e6fbff") if kind == &"frozen" else Color("a1e8f5"))
+			&"curse":
+				draw_line(c + Vector2(-3.5, -3.5) * k, c + Vector2(3.5, 3.5) * k, Color("d070f0"), 2.5 * k * 0.6, true)
+				draw_line(c + Vector2(-3.5, 3.5) * k, c + Vector2(3.5, -3.5) * k, Color("d070f0"), 2.5 * k * 0.6, true)
+			&"wear":
+				draw_circle(c, 13.0, Color(0.03, 0.03, 0.04, 0.85))
+				draw_arc(c, 13.0, 0.0, TAU, 24, Color("ffc36b"), 1.6, true)
+				var icon: Texture2D = load("res://assets/ui/icon_repair.svg") as Texture2D
+				draw_texture_rect(icon, Rect2(c - Vector2(8, 8), Vector2(16, 16)), false)
+			&"level":
+				var shield: PackedVector2Array = PackedVector2Array([c + Vector2(0, -13), c + Vector2(14, 0),
+					c + Vector2(0, 13), c + Vector2(-14, 0)])
+				draw_colored_polygon(shield, Color(0.04, 0.04, 0.05, 0.9))
+				shield.append(shield[0])
+				draw_polyline(shield, Color("e8cf9a"), 2.0, true)
+				draw_string(DuskTheme.TITLE_FONT, c + Vector2(-5, 6), "II", HORIZONTAL_ALIGNMENT_LEFT, -1, 17,
+						Color("ffe4a5"))

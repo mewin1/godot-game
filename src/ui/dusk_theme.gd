@@ -22,8 +22,22 @@ const COIN: Texture2D = preload("res://assets/ui/icon_gold.svg")
 
 
 ## Цена с монетой в своём _draw: монета высотой с кегль, число справа. Возвращает ширину.
+## Текст, нарисованный draw_string (сцена, карточки, плитки), — для дампа кеглей пробника (critique_4 п. 39):
+## текст → наименьший кегль в логических px. Пишется, только пока track_drawn включён.
+static var track_drawn: bool = false
+static var drawn_text: Dictionary[String, int] = {}
+
+
+static func note_drawn(text: String, font_size: int) -> void:
+	if not track_drawn or text.strip_edges().is_empty():
+		return
+	var known: int = drawn_text.get(text, font_size)
+	drawn_text[text] = mini(known, font_size)
+
+
 static func draw_price(canvas: CanvasItem, font: Font, left_baseline: Vector2, amount: String, font_size: int,
 		color: Color) -> float:
+	note_drawn(amount, font_size)
 	var coin: float = font_size * 0.95
 	canvas.draw_texture_rect(COIN, Rect2(left_baseline + Vector2(0, -coin * 0.86), Vector2(coin, coin)), false,
 			Color(1, 1, 1, color.a))

@@ -93,14 +93,15 @@ var _boon_key: String = ""
 var _supply_menu: MenuButton
 var _boon_shade: ColorRect
 const PALISADE_ICON: Texture2D = preload("res://assets/ui/ritual/palisade.svg")
+## Уровень дома в заголовке дока — римской цифрой и материалом (critique_4 п. 53).
+const ROMAN: Array[String] = ["I", "II", "III", "IV"]
+const MATERIALS: Array[String] = ["дерево", "камень", "кирпич", "белый камень"]
 ## Высота тоста в портрете: две строки сообщения (critique_4 п. 34).
 const TOAST_COMPACT_HEIGHT: float = 64.0
 ## Молоток ремонта — тот же знак, что бейдж износа над домом.
 const REPAIR_ICON: Texture2D = preload("res://assets/ui/icon_repair.svg")
 ## Луна у ночной цены улучшения (critique_4 п. 37).
 const NIGHT_PRICE_ICON: Texture2D = preload("res://assets/ui/icon_night_price.svg")
-## Усиление без бога (плотники, купцы, ремесло) — общий знак дара.
-const BOON_ICON: Texture2D = preload("res://assets/ui/ritual/supply_charm.svg")
 const SUPPLY_ICONS: Array[Texture2D] = [preload("res://assets/ui/ritual/supply_tar.svg"),
 	preload("res://assets/ui/ritual/supply_bowl.svg"), preload("res://assets/ui/ritual/supply_charm.svg")]
 ## Итоги забега для экрана поражения (docs/37 UI-14).
@@ -425,7 +426,7 @@ func _build_dock(root_box: VBoxContainer) -> void:
 	# Действия героя одним рядом плиток (critique_2 п. 23-24): умение, частокол, три припаса.
 	var orders: Node = _hud._skill_button.get_parent()
 	_hud._skill_button.reparent(_dock.utility_row)
-	_hud._skill_button.custom_minimum_size = Vector2(112, 48)
+	_hud._skill_button.custom_minimum_size = Vector2(138, 48)
 	_hud._skill_button.add_theme_font_size_override("font_size", 18)
 	_hud._reserve_button.reparent(_dock.utility_row)
 	_hud._reserve_button.hide()
@@ -469,6 +470,10 @@ func _build_dock(root_box: VBoxContainer) -> void:
 	_sell_button.add_theme_color_override("font_hover_color", Color("ffb2a0"))
 	if not settings.streets.is_empty():
 		_street_button = _button(_dock.city_actions, "", _grow)
+		# Главное действие города — янтарным текстом (critique_4 п. 50); янтарная плашка выше обычной
+		# кнопки и растила док на 4 px.
+		for key: StringName in [&"font_color", &"font_hover_color", &"font_focus_color"]:
+			_street_button.add_theme_color_override(key, DuskTheme.GOLD.lightened(0.15))
 	for index: int in settings.alleys.size():
 		var barricade: Button = _button(_dock.city_actions, "", _toggle_barricade.bind(index))
 		barricade.name = "Barricade%d" % index
@@ -585,9 +590,13 @@ func _build_defeat() -> void:
 	buttons.alignment = BoxContainer.ALIGNMENT_CENTER
 	buttons.add_theme_constant_override("separation", 10)
 	content.add_child(buttons)
-	DuskTheme.make_primary(_button(buttons, "Ещё забег", _again)).tooltip_text = "Новый забег тем же героем"
+	# Главное действие крупно (critique_4 п. 47): «Ещё забег» 26 px, остальные 20.
+	var again: Button = DuskTheme.make_primary(_button(buttons, "Ещё забег", _again))
+	again.tooltip_text = "Новый забег тем же героем"
+	again.add_theme_font_size_override("font_size", 26)
+	again.custom_minimum_size = Vector2(220, 52)
 	if settings.heroes.size() > 1:
-		_button(buttons, "Сменить героя", _change_hero)
+		_button(buttons, "Сменить героя", _change_hero).add_theme_font_size_override("font_size", 20)
 	DuskTheme.make_quiet(_button(buttons, "В меню", _back))
 	_defeat.hide()
 
@@ -711,25 +720,55 @@ func _refresh_boons() -> void:
 			child.queue_free()
 		for index: int in trial.boon_choice:
 			var boon: RitualGiftData = settings.boons[index]
-			var button: Button = _button(_boon_buttons, "%s\n\n%s" % [boon.display_name, boon.description],
-				_take_boon.bind(index))
+			var button: Button = _button(_boon_buttons, "", _take_boon.bind(index))
 			button.name = "Boon_%s" % boon.id
-			button.custom_minimum_size = Vector2(190, 200)
-			button.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-			button.add_theme_font_size_override("font_size", 18)
-			button.vertical_icon_alignment = VERTICAL_ALIGNMENT_TOP
-			button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
-			button.expand_icon = true
-			button.add_theme_constant_override("icon_max_width", 56)
+			button.tooltip_text = "%s\n%s" % [boon.display_name, boon.description]
+			button.custom_minimum_size = Vector2(200, 210)
+			var tint: Color = GodSymbols.get_color(boon.god) if boon.god != &"" else DuskTheme.GOLD
 			button.add_theme_stylebox_override("normal", DuskTheme.panel(Color(0.05, 0.08, 0.12, 0.95),
-					GodSymbols.get_color(boon.god) if boon.god != &"" else DuskTheme.GLASS_EDGE, 14))
-			button.icon = GodSymbols.get_icon(boon.god) if boon.god != &"" else BOON_ICON
+					tint if boon.god != &"" else DuskTheme.GLASS_EDGE, 14))
+			_fill_boon_card(button, boon, tint)
 		_boon_panel.reset_size()
 	_boon_panel.visible = not trial.boon_choice.is_empty() and trial.phase == RitualTrial.Phase.RUNNING
 	_boon_shade.visible = _boon_panel.visible
 	if _boon_panel.visible:
 		_boon_panel.position = Vector2((size.x - _boon_panel.size.x) * 0.5,
 			(size.y - RitualDock.HEIGHT - _boon_panel.size.y) * 0.5)
+
+
+## Карточка усиления (critique_4 п. 46): свой знак, имя Kurale 22, эффект Fira 17 — не список одним кеглем.
+func _fill_boon_card(button: Button, boon: RitualGiftData, tint: Color) -> void:
+	var box: VBoxContainer = VBoxContainer.new()
+	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	box.offset_left = 12
+	box.offset_right = -12
+	box.offset_top = 14
+	box.offset_bottom = -12
+	box.add_theme_constant_override("separation", 8)
+	button.add_child(box)
+	var icon: TextureRect = TextureRect.new()
+	icon.texture = RitualIcons.boon(boon.id, boon.god)
+	icon.modulate = tint.lightened(0.15)
+	icon.custom_minimum_size = Vector2(56, 56)
+	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.add_child(icon)
+	var title: Label = DuskTheme.modal_title(boon.display_name, 22)
+	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	title.custom_minimum_size.x = 176
+	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.add_child(title)
+	var effect: Label = Label.new()
+	effect.text = boon.description
+	effect.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	effect.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	effect.custom_minimum_size.x = 176
+	effect.add_theme_font_size_override("font_size", 17)
+	effect.add_theme_color_override("font_color", DuskTheme.TEXT)
+	effect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.add_child(effect)
 
 
 func _take_boon(index: int) -> void:
@@ -778,9 +817,9 @@ func _refresh_gifts() -> void:
 		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		button.add_theme_font_size_override("font_size", 18)
 		if gift.god != &"":
-			button.icon = GodSymbols.get_icon(gift.god)
-			button.expand_icon = true
-			button.add_theme_constant_override("icon_max_width", 40)
+			button.icon = RitualIcons.god(gift.god)
+			RitualIcons.tint(button, GodSymbols.get_color(gift.god))
+			button.add_theme_constant_override("icon_max_width", 32)
 	_gift_panel.reset_size()
 	_gift_panel.set_anchors_and_offsets_preset(Control.PRESET_CENTER, Control.PRESET_MODE_MINSIZE)
 
@@ -820,7 +859,7 @@ func _show_defeat() -> void:
 		_defeat_columns.remove_child(child)
 		child.queue_free()
 	var reaction: String = RitualRunStats.best_reaction(trial)
-	_defeat_column("Золото: заработано %d, потрачено %d" % [trial.earned, trial.spent], _stats.spend_lines())
+	_defeat_column("Золото: заработано %d, потрачено %d" % [trial.earned, trial.spent], _stats.spend_lines(trial.spent))
 	_defeat_column("Урон по домам", _stats.top_damage(5))
 	var leaks: PackedStringArray = RitualRunStats.leak_lines(trial)
 	if not reaction.is_empty():
@@ -1380,8 +1419,12 @@ func _refresh_barricades() -> void:
 		button.visible = trial.city_level() >= alley.city_level
 		var closed: bool = index < trial.barricades.size() and trial.barricades[index]
 		# Коротко (critique_3 п. 54): две кнопки города в ряд; что делает завал — в подсказке.
-		button.text = "Разобрать завал" if closed else "Завал · %d" % alley.barricade_cost
-		button.tooltip_text = "Проулок срезает подкову западной дороги: быстрые враги (упыри, волкодлаки) идут им всегда, остальные — если впереди частокол или смола.\nЗавал закрывает проулок для всех; разбор бесплатный, без возврата."
+		# «Завалить» со знаком частокола (critique_4 п. 50): что и где — в подсказке; длинное «Завалить проулок»
+		# переносило ряд кнопок города на третью строку.
+		button.text = "Разобрать" if closed else "Завалить · %d" % alley.barricade_cost
+		button.icon = PALISADE_ICON
+		button.add_theme_constant_override("icon_max_width", 20)
+		button.tooltip_text = ("Разобрать завал проулка (бесплатно).\n" if closed else "Завалить проулок.\n") + "Проулок срезает подкову западной дороги: быстрые враги (упыри, волкодлаки) идут им всегда, остальные — если впереди частокол или смола.\nЗавал закрывает проулок для всех; разбор бесплатный, без возврата."
 		button.disabled = trial.phase != RitualTrial.Phase.RUNNING or (not closed and trial.gold < alley.barricade_cost)
 
 
@@ -1739,8 +1782,9 @@ func _selection_text(tower: TowerState) -> String:
 		var dps: int = _display_dps(tower)
 		if settings.is_night(trial.tick_count) and dps > 0:
 			parts.insert(1, "урон %d/с" % dps)
-		var text: String = "%s · %s%s\n%s\n%s · прочность %d%% · ремонт %d · %s" % [tower.data.display_name,
-			settings.level_name(tower.level), branch_name, " · ".join(parts),
+		# Заголовок: «Самострел · ур. I (дерево)» — уровень цифрой, как на карте (critique_4 п. 53).
+		var text: String = "%s · ур. %s (%s)%s\n%s\n%s · прочность %d%% · ремонт %d · %s" % [tower.data.display_name,
+			ROMAN[clampi(tower.level, 1, 4) - 1], MATERIALS[clampi(tower.level, 1, 4) - 1], branch_name, " · ".join(parts),
 			condition, tower.durability * 100 / maxi(1, full), trial.repair_cost(tower), ward_note(settings, tower.data)]
 		var reactions: String = _reaction_note(tower.id)
 		return text + ("\n" + reactions if not reactions.is_empty() else "")

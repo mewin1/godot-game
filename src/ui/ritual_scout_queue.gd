@@ -266,7 +266,7 @@ func _resist_badge(god: StringName) -> Control:
 	badge.add_theme_stylebox_override("panel", style)
 	badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var symbol: TextureRect = TextureRect.new()
-	symbol.texture = GodSymbols.get_icon(god)
+	symbol.texture = RitualIcons.god(god)
 	symbol.modulate = GodSymbols.get_color(god)
 	symbol.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	symbol.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
