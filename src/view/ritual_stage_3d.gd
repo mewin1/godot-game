@@ -38,6 +38,22 @@ var idol_selected: int = -1
 var _gates: RitualGates3D
 ## Завалы проулков (docs/37 ALY-1): узел на входе в проулок, пока он завален.
 var _barricades: Array[Node3D] = []
+## Подход нежити из леса (critique_2 п. 11-12, docs/37 SCN-8). По расписанию ночи (только чтение)
+## вид ведёт «фантома» врага по лесной тропе так, чтобы в тик выхода он стоял в начале дороги, —
+## там его сменяет настоящий враг. Логика, попадания и расписание не меняются.
+## Враг без фантома (проулок выбран в момент выхода) проявляется за APPEAR_SECONDS.
+const APPEAR_SECONDS: float = 0.45
+## Последние метры тропы фантом проявляется из тумана.
+const PHANTOM_FADE_M: float = 3.0
+var _phantoms: Dictionary[String, ArenaUnit3D] = {}
+var _phantom_spots: Dictionary[String, Vector3] = {}
+## Путь подхода каждого входа: от конца тропы к началу дороги (мир) и длины вдоль него.
+var _approach: Array[PackedVector3Array] = []
+var _approach_lengths: Array[PackedFloat32Array] = []
+## Сколько фантомов дошли до ворот входа в этом кадре — их сменят новые враги без проявления.
+var _arrived: Dictionary[int, int] = {}
+## Проявление врага у ворот: x — прошло секунд, y — полная непрозрачность (скрытный — полупрозрачен).
+var _appear: Dictionary[int, Vector2] = {}
 
 
 func _init() -> void:
@@ -202,18 +218,134 @@ func _sync_units(delta: float, interpolation: float) -> void:
 	# Создаём модели по существующим PvP-ID, не подменяя данные мобов в sim.
 	for mob: MobState in _field.mobs:
 		if not _units.has(mob.id):
-			var id: StringName = UNIT_IDS.get(mob.data.id, &"basic")
-			var unit: ArenaUnit3D = ArenaUnit3D.new()
-			_world.add_child(unit)
-			unit.build(STYLE.get_mob_model(id), STYLE.get_mob_tint(id), STYLE.get_mob_height(id) * MOB_SCALE,
-				Color.TRANSPARENT, id)
-			if mob.data.tags.has(&"banner"):
-				ArenaMaterials3D.part(unit, ArenaMaterials3D.cylinder(0.025, 0.025, 1.6, 5),
-					ArenaMaterials3D.solid(ArenaMaterials3D.WOOD), Vector3(0.3, 0.8, 0))
-				ArenaMaterials3D.part(unit, ArenaMaterials3D.box(Vector3(0.5, 0.4, 0.03)),
-					ArenaMaterials3D.glow(Color("9a71bd"), 0.7), Vector3(0.55, 1.35, 0))
+			var unit: ArenaUnit3D = _make_unit(mob.data)
 			_units[mob.id] = unit
+			# Пришёл фантом по тропе — враг сразу на месте; иначе проявляется у ворот.
+			var lane: int = RitualField.lane_of(mob)
+			if _arrived.get(lane, 0) > 0:
+				_arrived[lane] -= 1
+			else:
+				var full: float = STYLE.stealth_alpha if mob.data.reveal_radius_milli > 0 else 1.0
+				_appear[mob.id] = Vector2(0.0, full)
+				unit.set_ghost(0.0)
 	super._sync_units(delta, interpolation)
+	_arrived.clear()
+	for mob_id: int in _appear.keys():
+		var unit: ArenaUnit3D = _units.get(mob_id)
+		if unit == null:
+			_appear.erase(mob_id)
+			continue
+		var state: Vector2 = _appear[mob_id] + Vector2(delta, 0.0)
+		_appear[mob_id] = state
+		var shown: float = clampf(state.x / APPEAR_SECONDS, 0.0, 1.0)
+		unit.set_ghost(state.y * shown)
+		if shown >= 1.0:
+			_appear.erase(mob_id)
+
+
+## Модель врага забега (и фантома подхода): PvP-модель по id, меньше домов (MOB_SCALE).
+func _make_unit(data: MobData) -> ArenaUnit3D:
+	var id: StringName = UNIT_IDS.get(data.id, &"basic")
+	var unit: ArenaUnit3D = ArenaUnit3D.new()
+	_world.add_child(unit)
+	unit.build(STYLE.get_mob_model(id), STYLE.get_mob_tint(id), STYLE.get_mob_height(id) * MOB_SCALE,
+		Color.TRANSPARENT, id)
+	if data.tags.has(&"banner"):
+		ArenaMaterials3D.part(unit, ArenaMaterials3D.cylinder(0.025, 0.025, 1.6, 5),
+			ArenaMaterials3D.solid(ArenaMaterials3D.WOOD), Vector3(0.3, 0.8, 0))
+		ArenaMaterials3D.part(unit, ArenaMaterials3D.box(Vector3(0.5, 0.4, 0.03)),
+			ArenaMaterials3D.glow(Color("9a71bd"), 0.7), Vector3(0.55, 1.35, 0))
+	return unit
+
+
+## Фантомы подхода: враги ближайших пачек, которым до выхода осталось меньше, чем идти по тропе.
+func _sync_phantoms(trial: RitualTrial, delta: float) -> void:
+	var arena: RitualArena3D = _world.get_node("Arena") as RitualArena3D
+	if not trial.settings.is_endless() or trial.phase != RitualTrial.Phase.RUNNING or arena.trails.is_empty():
+		_clear_phantoms()
+		return
+	if _approach.size() != arena.trails.size():
+		_build_approach(arena)
+	var meters_per_milli: float = layout.progress_to_length(1000.0) / 1000.0 - layout.progress_to_length(0.0) / 1000.0
+	var tick: int = trial.tick_count
+	var night: int = trial.settings.nights.night_index_at(tick)
+	var open: int = 1 + trial.field.open_streets
+	var wanted: Dictionary[String, bool] = {}
+	for index: int in [night, night + 1]:
+		if index < 1:
+			continue
+		for pack: RitualPack in trial.plan().packs(index):
+			for slot: int in pack.members.size():
+				var due: int = pack.at_tick + slot * pack.spacing
+				var lane: int = trial.member_route(pack, slot)
+				if lane < 0 or lane >= mini(open, _approach.size()):
+					continue
+				var key: String = "%d:%d:%d" % [pack.at_tick, lane, slot]
+				if due <= tick:
+					if _phantoms.has(key):
+						_arrived[lane] = _arrived.get(lane, 0) + 1
+					continue
+				var data: MobData = trial.settings.enemies[pack.members[slot]]
+				var left: float = (due - tick) * data.speed_milli_per_tick * meters_per_milli
+				var lengths: PackedFloat32Array = _approach_lengths[lane]
+				var total: float = lengths[lengths.size() - 1]
+				if left >= total:
+					continue
+				wanted[key] = true
+				var unit: ArenaUnit3D = _phantoms.get(key)
+				if unit == null:
+					unit = _make_unit(data)
+					_phantoms[key] = unit
+				var walked: float = total - left
+				var point: Vector3 = _approach_point(lane, walked)
+				var previous: Vector3 = _phantom_spots.get(key, point)
+				var moved: Vector3 = point - previous
+				_phantom_spots[key] = point
+				unit.position = point
+				if moved.length() > 0.002:
+					unit.rotation.y = atan2(moved.x, moved.z)
+				unit.animate(delta, moved.length() / maxf(delta, 0.001), STYLE.steps_per_meter)
+				unit.set_ghost(clampf(walked / PHANTOM_FADE_M, 0.0, 1.0))
+	for key: String in _phantoms.keys():
+		if not wanted.has(key):
+			_phantoms[key].queue_free()
+			_phantoms.erase(key)
+			_phantom_spots.erase(key)
+
+
+func _clear_phantoms() -> void:
+	for unit: ArenaUnit3D in _phantoms.values():
+		unit.queue_free()
+	_phantoms.clear()
+	_phantom_spots.clear()
+
+
+## Путь подхода входа: тропа от её конца к воротам и дальше до начала дороги (прогресс 0).
+func _build_approach(arena: RitualArena3D) -> void:
+	_approach.clear()
+	_approach_lengths.clear()
+	for lane: int in arena.trails.size():
+		var trail: PackedVector2Array = arena.trails[lane]
+		var points: PackedVector3Array = PackedVector3Array()
+		for index: int in range(trail.size() - 1, -1, -1):
+			points.append(Vector3(trail[index].x, 0.0, trail[index].y))
+		var road: ArenaLayout3D = _lane_layout(lane)
+		points.append(road.road_point(road.progress_to_length(0.0)))
+		var lengths: PackedFloat32Array = PackedFloat32Array([0.0])
+		for index: int in range(1, points.size()):
+			lengths.append(lengths[index - 1] + points[index].distance_to(points[index - 1]))
+		_approach.append(points)
+		_approach_lengths.append(lengths)
+
+
+func _approach_point(lane: int, walked: float) -> Vector3:
+	var points: PackedVector3Array = _approach[lane]
+	var lengths: PackedFloat32Array = _approach_lengths[lane]
+	for index: int in range(1, points.size()):
+		if lengths[index] >= walked:
+			var span: float = maxf(0.0001, lengths[index] - lengths[index - 1])
+			return points[index - 1].lerp(points[index], (walked - lengths[index - 1]) / span)
+	return points[points.size() - 1]
 
 
 ## Враг идёт по дороге своего входа.
@@ -252,6 +384,7 @@ func update_ritual(trial: RitualTrial, delta: float) -> void:
 			_spawn_hero()
 	_daylight.camera_distance = _camera.position.distance_to((_frame_min + _frame_max) * 0.5)
 	_daylight.apply(trial)
+	_sync_phantoms(trial, delta)
 	if _gates != null:
 		var night: int = trial.current_night()
 		var open: Array[bool] = [true]

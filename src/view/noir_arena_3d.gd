@@ -842,7 +842,7 @@ func _build_walls(fine: Dictionary[Vector2i, bool], entry: Vector2, door: Vector
 					continue
 				var panel: Node3D = _place("palisade", Vector3(center.x, 0, center.y), yaw)
 				if panel != null:
-					panel.scale = Vector3(step / segment, WALL_SCALE, 1.0)
+					panel.scale = Vector3(step / segment, _wall_height(center, run.out), 1.0)
 				if k % 2 == 0 and k > 0:
 					var post: Vector2 = run.a + direction * (piece.x + step * k)
 					_place("palisade_post", Vector3(post.x, 0, post.y), yaw + PI)
@@ -926,6 +926,11 @@ static func _wall_pieces(length: float, openings: Array[Vector2]) -> Array[Vecto
 	if length - start >= 0.15:
 		pieces.append(Vector2(start, length))
 	return pieces
+
+
+## Высота панели частокола (масштаб модели): режим может опустить стену, за которой не видно дорогу.
+func _wall_height(_center: Vector2, _out: Vector2) -> float:
+	return WALL_SCALE
 
 
 ## Можно ли ставить факел или чашу у стены в этой точке (режим со своим светом площади запрещает).

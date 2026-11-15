@@ -45,6 +45,17 @@ const POND_DEPTH: float = 0.5
 const POND_RINGS: Array[float] = [0.0, 0.3, 0.75, 1.5]
 ## Отражение луны — у дальнего (северного) берега, небольшое, как у ручья.
 const POND_MOON: Vector3 = Vector3(21.5, 0.0, -2.9)
+## Лесные тропы за воротами (docs/37 SCN-8, critique_2 п. 11): нежить выходит из леса по ним.
+## Длина тропы от ворот (м) и сдвиг её конца вбок (м) по входам: запад, север, юг.
+const TRAIL_LENGTH: float = 20.0
+const TRAIL_BENDS: Array[float] = [-5.0, 5.5, -5.0]
+## Коридор без деревьев вдоль тропы (м); трава и камни отступают на TRAIL_GRASS.
+const TRAIL_CLEAR: float = 2.4
+const TRAIL_GRASS: float = 1.1
+const DEAD_WOOD: Color = Color(0.07, 0.065, 0.06)
+const BONE: Color = Color(0.7, 0.67, 0.58)
+## Южные (к камере) стены у дороги ниже: за ними враг на въезде виден целиком (critique_2 п. 13).
+const LOW_WALL: float = 0.72
 const SHRINE: Rect2i = Rect2i(10, 4, 1, 1)
 ## Тын ниже 0,4 клетки (docs/37 SCN-4), чтобы не закрывать врагов.
 const FENCE_HEIGHT: float = 0.7
@@ -66,11 +77,59 @@ var _open_now: Dictionary[Vector2i, bool] = {}
 var _roads_now: Dictionary[Vector2i, bool] = {}
 var _plots_now: Dictionary[Vector2i, bool] = {}
 var _town: bool = false
+## Тропа каждого входа (мир x, z): от ворот наружу в лес; задаётся до посадки леса.
+var trails: Array[PackedVector2Array] = []
+var _trail_boxes: Array[Rect2] = []
 
 
 func _yard_rect() -> Rect2:
 	return YARD
 
+
+## Тропы считаются до леса: лес сажается один раз и оставляет вдоль них коридор.
+func build_for_layout(layout: ArenaLayout3D) -> void:
+	if _layout == null:
+		trails.clear()
+		_trail_boxes.clear()
+		for lane: int in lane_layouts.size():
+			var trail: PackedVector2Array = _make_trail(lane)
+			trails.append(trail)
+			var box: Rect2 = Rect2(trail[0], Vector2.ZERO)
+			for point: Vector2 in trail:
+				box = box.expand(point)
+			_trail_boxes.append(box.grow(TRAIL_CLEAR))
+	super.build_for_layout(layout)
+
+
+## Тропа входа lane: начинается под воротами, идёт наружу и конец уводит вбок, в лес.
+func _make_trail(lane: int) -> PackedVector2Array:
+	var road: ArenaLayout3D = lane_layouts[lane]
+	var entry: Vector3 = road.road_point(0.0)
+	var heading: Vector3 = road.road_direction(0.0)
+	var out: Vector2 = -Vector2(heading.x, heading.z).normalized()
+	var side: Vector2 = Vector2(-out.y, out.x)
+	var bend: float = TRAIL_BENDS[lane % TRAIL_BENDS.size()]
+	var points: PackedVector2Array = PackedVector2Array()
+	var steps: int = 40
+	for k: int in steps + 1:
+		var t: float = TRAIL_LENGTH * k / steps
+		var sway: float = bend * smoothstep(0.2, 1.0, t / TRAIL_LENGTH) \
+				+ 0.4 * sin(t * 0.43 + lane * 1.7) * smoothstep(2.0, 6.0, t)
+		points.append(Vector2(entry.x, entry.z) + out * (t + 1.2) + side * sway)
+	return points
+
+
+## Расстояние от точки до ближайшей тропы (INF — троп рядом нет).
+func trail_gap(point: Vector2) -> float:
+	var best: float = INF
+	for lane: int in trails.size():
+		if not _trail_boxes[lane].has_point(point):
+			continue
+		var trail: PackedVector2Array = trails[lane]
+		for index: int in trail.size() - 1:
+			var near: Vector2 = Geometry2D.get_closest_point_to_segment(point, trail[index], trail[index + 1])
+			best = minf(best, near.distance_to(point))
+	return best
 
 func _terem_side() -> Side:
 	return SIDE_RIGHT
@@ -96,9 +155,11 @@ func _rock_layouts() -> Array[CourtyardForestLayout]:
 	return layouts
 
 
-## Деревья — вне поляны; камни и трава — вне двора с теремом.
+## Деревья — вне поляны и коридоров троп; камни и трава — вне двора с теремом и не на тропах.
 func _keep_env(at: Vector3, tree: bool) -> bool:
 	var point: Vector2 = Vector2(at.x, at.z)
+	if trail_gap(point) < (TRAIL_CLEAR if tree else TRAIL_GRASS):
+		return false
 	return not (_in_clearing(point) if tree else _in_yard(point))
 
 
@@ -239,6 +300,8 @@ func _collect(into: Dictionary[String, Array], id: String, at: Vector2, scale_by
 		id = "spruce"
 	elif id.begins_with("bb/birch_"):
 		id = "birch"
+	if trail_gap(at) < (TRAIL_CLEAR if id in ["spruce", "birch"] else TRAIL_GRASS):
+		return
 	super._collect(into, id, at, scale_by, yaw)
 
 
@@ -269,12 +332,174 @@ func _build_mist() -> void:
 ## Чаш на поле нет (docs/37 VIS-2): свет площади дают огни идолов (RitualIdols3D),
 ## огромные чаши закрывали участки и были ярче всего игрового.
 func _build_fires(_fine: Dictionary[Vector2i, bool], _terem: Vector2) -> void:
+	for lane: int in mini(_open_lanes, trails.size()):
+		_build_trail(lane)
 	if _town:
 		_build_pond()
 		# Капище стоит на своей клетке, открытой с города 2; раньше оно вставало на линию частокола.
 		if _open_now.has(SHRINE.position):
 			_build_shrine()
 		_build_fences()
+
+
+## Тропа открытого входа: тёмная колея, к концу уже и тает; через ручей — бревенчатые кладки;
+## в конце — сухие деревья, костяной тотем и туман (docs/37 SCN-8).
+func _build_trail(lane: int) -> void:
+	var trail: PackedVector2Array = trails[lane]
+	var crossing: Vector2 = _stream_crossing(trail)
+	var tool: SurfaceTool = SurfaceTool.new()
+	tool.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var along: float = 0.0
+	for index: int in trail.size() - 1:
+		var a: Vector2 = trail[index]
+		var b: Vector2 = trail[index + 1]
+		var step: float = a.distance_to(b)
+		if crossing.is_finite() and (a.distance_to(crossing) < 2.3 or b.distance_to(crossing) < 2.3):
+			along += step
+			continue
+		var direction: Vector2 = (b - a).normalized()
+		var side: Vector2 = Vector2(-direction.y, direction.x)
+		var half_a: float = lerpf(0.95, 0.6, along / TRAIL_LENGTH)
+		var half_b: float = lerpf(0.95, 0.6, (along + step) / TRAIL_LENGTH)
+		var corners: Array[Vector3] = [_trail_vertex(a - side * half_a), _trail_vertex(a + side * half_a),
+				_trail_vertex(b + side * half_b), _trail_vertex(b - side * half_b)]
+		var uvs: Array[Vector2] = [Vector2(0.0, along / 4.0), Vector2(1.0, along / 4.0),
+				Vector2(1.0, (along + step) / 4.0), Vector2(0.0, (along + step) / 4.0)]
+		for corner: int in [0, 1, 2, 0, 2, 3]:
+			tool.set_normal(Vector3.UP)
+			tool.set_uv(uvs[corner])
+			tool.add_vertex(corners[corner])
+		along += step
+	var material: ShaderMaterial = ShaderMaterial.new()
+	material.shader = ROAD_SHADER
+	material.set_shader_parameter("cartway", preload("res://assets/noir/courtyard/cartway.png"))
+	material.set_shader_parameter("earth_normal", preload("res://assets/noir_h3d/arena/ground/brown_mud_leaves_01_nor_gl_1k.jpg"))
+	material.set_shader_parameter("earth", preload("res://assets/noir_h3d/arena/ground/brown_mud_leaves_01_diff_1k.jpg"))
+	material.set_shader_parameter("wild", 1.0)
+	material.set_shader_parameter("fade_from", TRAIL_LENGTH * 0.55 / 4.0)
+	material.set_shader_parameter("fade_to", TRAIL_LENGTH / 4.0)
+	var ribbon: MeshInstance3D = MeshInstance3D.new()
+	ribbon.name = "Trail%d" % lane
+	ribbon.mesh = tool.commit()
+	ribbon.material_override = material
+	ribbon.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_yard.add_child(ribbon)
+	if crossing.is_finite():
+		_build_log_bridge(crossing, trail)
+	var end: Vector2 = trail[trail.size() - 1]
+	var tail: Vector2 = (end - trail[trail.size() - 6]).normalized()
+	var across: Vector2 = Vector2(-tail.y, tail.x)
+	for index: int in 3:
+		var spot: Vector2 = end - tail * (2.0 + index * 2.6) + across * (2.2 + index * 0.5) * (1.0 if index % 2 == 0 else -1.0)
+		_dead_tree(Vector3(spot.x, 0.0, spot.y), 2.6 + index * 0.45, lane * 3 + index)
+	var totem: Vector2 = trail[int(trail.size() * 0.62)] + across * 1.5
+	_bone_totem(Vector3(totem.x, 0.0, totem.y))
+	_trail_mist(Vector3(end.x, 0.0, end.y))
+
+
+func _trail_vertex(point: Vector2) -> Vector3:
+	return Vector3(point.x, -0.02, point.y)
+
+
+## Где тропа пересекает ручей (INF — не пересекает).
+func _stream_crossing(trail: PackedVector2Array) -> Vector2:
+	var stream: PackedVector2Array = _world_stream()
+	for index: int in trail.size() - 1:
+		for k: int in stream.size() - 1:
+			var hit: Variant = Geometry2D.segment_intersects_segment(trail[index], trail[index + 1], stream[k], stream[k + 1])
+			if hit != null:
+				var point: Vector2 = hit
+				return point
+	return Vector2.INF
+
+
+## Кладки через ручей: брёвна вдоль тропы и поперечные бревна-лежни на берегах.
+func _build_log_bridge(at: Vector2, trail: PackedVector2Array) -> void:
+	var nearest: int = 0
+	for index: int in trail.size():
+		if trail[index].distance_to(at) < trail[nearest].distance_to(at):
+			nearest = index
+	var direction: Vector2 = (trail[mini(nearest + 1, trail.size() - 1)] - trail[maxi(nearest - 1, 0)]).normalized()
+	var holder: Node3D = Node3D.new()
+	holder.name = "LogBridge"
+	holder.position = Vector3(at.x, 0.0, at.y)
+	holder.rotation.y = atan2(direction.x, direction.y)
+	_yard.add_child(holder)
+	var wood: StandardMaterial3D = ArenaMaterials3D.solid(ArenaMaterials3D.WOOD.darkened(0.15))
+	for index: int in 4:
+		ArenaMaterials3D.part(holder, ArenaMaterials3D.cylinder(0.13, 0.12, 4.6, 7), wood,
+				Vector3((index - 1.5) * 0.27, 0.16, 0.0), Vector3(PI * 0.5, 0.0, 0.0))
+	for end: float in [-2.1, 2.1]:
+		ArenaMaterials3D.part(holder, ArenaMaterials3D.cylinder(0.1, 0.1, 1.5, 6), wood,
+				Vector3(0.0, 0.05, end), Vector3(0.0, 0.0, PI * 0.5))
+
+
+## Сухое дерево (docs/37 SCN-8): чёрный ствол и голые ветви. seed — разброс ветвей.
+func _dead_tree(at: Vector3, height: float, seed_value: int) -> void:
+	var rng: RandomNumberGenerator = RandomNumberGenerator.new()
+	rng.seed = 7001 + seed_value
+	var holder: Node3D = Node3D.new()
+	holder.position = at
+	holder.rotation = Vector3(rng.randf_range(-0.08, 0.08), rng.randf() * TAU, rng.randf_range(-0.08, 0.08))
+	_yard.add_child(holder)
+	var bark: StandardMaterial3D = ArenaMaterials3D.solid(DEAD_WOOD, 0.95)
+	ArenaMaterials3D.part(holder, ArenaMaterials3D.cylinder(0.17, 0.05, height, 7), bark, Vector3(0, height * 0.5, 0))
+	for branch: int in 5:
+		var rise: float = height * rng.randf_range(0.35, 0.85)
+		var length: float = rng.randf_range(0.7, 1.4) * (1.0 - rise / height * 0.4)
+		var yaw: float = TAU * branch / 5.0 + rng.randf_range(-0.4, 0.4)
+		var tilt: float = rng.randf_range(0.6, 1.05)
+		var limb: Node3D = Node3D.new()
+		limb.position = Vector3(0, rise, 0)
+		limb.rotation = Vector3(0.0, yaw, tilt)
+		holder.add_child(limb)
+		ArenaMaterials3D.part(limb, ArenaMaterials3D.cylinder(0.045, 0.012, length, 5), bark, Vector3(0, length * 0.5, 0))
+
+
+## Костяной тотем у тропы: шест, перекладина и черепа.
+func _bone_totem(at: Vector3) -> void:
+	var holder: Node3D = Node3D.new()
+	holder.position = at
+	holder.rotation.y = 0.6
+	_yard.add_child(holder)
+	var pole: StandardMaterial3D = ArenaMaterials3D.solid(DEAD_WOOD.lightened(0.08), 0.95)
+	var bone: StandardMaterial3D = ArenaMaterials3D.solid(BONE, 0.7)
+	ArenaMaterials3D.part(holder, ArenaMaterials3D.cylinder(0.07, 0.05, 1.9, 6), pole, Vector3(0, 0.95, 0))
+	ArenaMaterials3D.part(holder, ArenaMaterials3D.box(Vector3(0.8, 0.07, 0.07)), pole, Vector3(0, 1.55, 0))
+	ArenaMaterials3D.part(holder, ArenaMaterials3D.sphere(0.15, 8, 5), bone, Vector3(0, 2.0, 0), Vector3.ZERO,
+			Vector3(1.0, 1.15, 1.0))
+	for side: float in [-0.34, 0.34]:
+		ArenaMaterials3D.part(holder, ArenaMaterials3D.sphere(0.09, 6, 4), bone, Vector3(side, 1.38, 0))
+
+
+## Туман в конце тропы: на ПК — объёмный, на телефоне его даёт общий слой дымки у земли.
+func _trail_mist(at: Vector3) -> void:
+	var world_env: WorldEnvironment = get_parent().get_node_or_null("Environment") as WorldEnvironment
+	if world_env == null or not world_env.environment.volumetric_fog_enabled:
+		return
+	var fog: FogMaterial = FogMaterial.new()
+	fog.density = 1.1
+	fog.albedo = Color(0.6, 0.66, 0.68)
+	fog.edge_fade = 0.7
+	fog.height_falloff = 0.6
+	var volume: FogVolume = FogVolume.new()
+	volume.name = "TrailMist"
+	volume.shape = RenderingServer.FOG_VOLUME_SHAPE_ELLIPSOID
+	volume.size = Vector3(11.0, 3.2, 11.0)
+	volume.position = at + Vector3(0, 0.9, 0)
+	volume.material = fog
+	_yard.add_child(volume)
+
+
+## Южная (к камере) стена у открытой дороги ниже — частокол не прячет врага на въезде.
+func _wall_height(center: Vector2, out: Vector2) -> float:
+	if not _town or out.y <= 0.0:
+		return WALL_SCALE
+	for road: Vector2i in _roads_now:
+		var middle: Vector3 = _layout.cell_center(road)
+		if absf(middle.x - center.x) < 2.2 and center.y - middle.z > 0.0 and center.y - middle.z < 2.6:
+			return WALL_SCALE * LOW_WALL
+	return WALL_SCALE
 
 
 ## На площади свет дают огни идолов (RitualIdols3D): факел и чаша посреди стены встали бы на их ряд.
