@@ -50,7 +50,7 @@ func _run() -> void:
 		"night": nights.night_start(2) + 500,
 		"boss_night": nights.night_start(boss) + 500,
 	}
-	print("LIGHT: фаза | поле | дорога | двор | дорога-двор | рамка")
+	print("LIGHT: фаза | поле | дорога | двор | дорога-двор | рамка | R/B рамки | насыщенность поля")
 	for phase: String in PHASES:
 		while trial.tick_count < moments[phase]:
 			if not trial.gift_choice.is_empty():
@@ -87,8 +87,26 @@ func _measure(phase: String) -> void:
 	var field: Rect2 = Rect2(inset.position + inset.size * 0.2, inset.size * 0.6)
 	var frame: Rect2 = Rect2(inset.position, Vector2(inset.size.x, inset.size.y * 0.12))
 	_panel.set_process(true)
-	print("LIGHT: %-13s | %5.1f | %5.1f | %5.1f | %+5.1f | %5.1f" % [phase, _mean_rect(image, scale, field),
-		road, plots, road - plots, _mean_rect(image, scale, frame)])
+	var tint: Vector2 = _tint(image, scale, frame)
+	print("LIGHT: %-13s | %5.1f | %5.1f | %5.1f | %+5.1f | %5.1f | R/B %.2f | sat %.2f" % [phase,
+		_mean_rect(image, scale, field), road, plots, road - plots, _mean_rect(image, scale, frame), tint.x,
+		_tint(image, scale, field).y])
+
+
+## x — отношение красного к синему, y — средняя насыщенность (HSV) в прямоугольнике (critique_4 п. 7).
+func _tint(image: Image, scale: Vector2, rect: Rect2) -> Vector2:
+	var red: float = 0.0
+	var blue: float = 0.0
+	var saturation: float = 0.0
+	var count: int = 0
+	for y: int in range(int(rect.position.y * scale.y), int(rect.end.y * scale.y), 6):
+		for x: int in range(int(rect.position.x * scale.x), int(rect.end.x * scale.x), 6):
+			var color: Color = image.get_pixel(x, y)
+			red += color.r
+			blue += color.b
+			saturation += color.s
+			count += 1
+	return Vector2(red / maxf(0.001, blue), saturation / maxi(1, count))
 
 
 func _luma(color: Color) -> float:

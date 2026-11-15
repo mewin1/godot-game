@@ -738,9 +738,10 @@ func _gate_bowl_scale() -> float:
 	return GATE_BOWL_RITUAL
 
 
-## Жаровни снаружи — только у главных (западных) ворот: огней в кадре было ~12 при норме SCN-9 «≤ 3».
-func _gate_bowls(gate: int) -> bool:
-	return gate == 0
+## Жаровен у ворот нет (critique_4 п. 6): вход отмечают фонари на столбах (RitualGates3D) — у одного
+## входа было 8 огней при норме SCN-9 «≤ 3», а серые гранёные постаменты спорили с деревом.
+func _gate_bowls(_gate: int) -> bool:
+	return false
 
 
 ## На площади свет дают огни идолов (RitualIdols3D): факел и чаша посреди стены встали бы на их ряд.

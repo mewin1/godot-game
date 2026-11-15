@@ -32,8 +32,18 @@ const DAY_FOG: Color = Color("86a2ad")
 const DAY_FOG_DENSITY: float = 0.1
 ## День заметно светлее ночи (docs/37 SCN-3: поле днём от 100 по яркости, ночью 45-60).
 ## 1,78 и ночь x1,06 (17 ноября): тёмные крыши и частокол (critique_3 п. 5, 7) опустили поле ниже таблицы.
-const DAY_EXPOSURE: float = 1.78
-const NIGHT_EXPOSURE_GAIN: float = 1.06
+const DAY_EXPOSURE: float = 1.97
+const NIGHT_EXPOSURE_GAIN: float = 1.03
+## Лес ночью темнее (critique_4 п. 2): поле поднято экспозицией, рамка остаётся <= 30 — тень леса
+## (noir_forest_shade) ночью не 0, а столько.
+const NIGHT_FOREST_SHADE: float = 1.0
+## Туман дальнего плана ночью темнее: рамка-лес держится туманом, а не кронами.
+const NIGHT_FOG_TONE: float = 0.62
+## Мостовая «Обряда» ночью светлее на столько (альбедо): поле вверх, рамка не трогается.
+const NIGHT_PAVING_LIFT: float = 0.8
+const PAVING_SHADER: Shader = preload("res://assets/shaders/noir_paving.gdshader")
+var _pavings: Array[ShaderMaterial] = []
+var _paving_lift: float = -1.0
 const DAY_GLOW: float = 0.5
 const DAY_BLOOM: float = 0.05
 const DAY_SATURATION: float = 1.12
@@ -66,6 +76,11 @@ const BOSS_MOON: Color = Color("ff6a50")
 const BOSS_FOG: Color = Color("7a2a24")
 const BOSS_AMBIENT: Color = Color("7a3a30")
 const BOSS_MOON_BOOST: float = 1.4
+## Ночь босса акцентом, а не сепией (critique_4 п. 7, 56): окружение и луна красные вполсилы, туман
+## дальнего плана красный; у ворот босса гуще — дымка предупреждения (RitualGates3D).
+const BOSS_AMBIENT_MIX: float = 0.45
+const BOSS_FOG_MIX: float = 1.0
+const BOSS_MOON_MIX: float = 0.55
 const STREAM_SHADER: Shader = preload("res://assets/shaders/noir_stream.gdshader")
 const NIGHT_STREAM_SKY: Color = Color(0.3, 0.4, 0.48)
 const DAY_STREAM_SKY: Color = Color(0.62, 0.74, 0.84)
@@ -185,7 +200,7 @@ func apply(trial: RitualTrial) -> void:
 	var sun_color: Color = DAY_SUN.lerp(SUNSET_SUN, warmth)
 	var boss: float = night if trial.settings.is_endless() \
 		and trial.settings.nights.is_boss_night(trial.current_night()) else 0.0
-	_sun.light_color = sun_color.lerp(_moon_color.lerp(BOSS_MOON, 0.85 * boss), to_moon)
+	_sun.light_color = sun_color.lerp(_moon_color.lerp(BOSS_MOON, BOSS_MOON_MIX * boss), to_moon)
 	var sun_energy: float = DAY_SUN_ENERGY * up * lerpf(1.0, 0.7, warmth)
 	# луна поднимается, пока гаснет закат: сумерки не темнее ночи
 	# Луна встаёт раньше, а экспозиция держится дольше: сумерки не темнее ночи (SCN-3).
@@ -199,9 +214,10 @@ func apply(trial: RitualTrial) -> void:
 			RenderQuality.MOBILE_SHADOW_DISTANCE if RenderQuality.is_mobile() else INF)
 	_warm.light_energy = lerpf(SUNSET_WARM_KEY * afterglow, _night_warm, night)
 	_env.ambient_light_color = DAY_AMBIENT.lerp(SUNSET_AMBIENT, afterglow).lerp(
-			_night_ambient.lerp(BOSS_AMBIENT, 0.55 * boss), night)
+			_night_ambient.lerp(BOSS_AMBIENT, BOSS_AMBIENT_MIX * boss), night)
 	_env.ambient_light_energy = lerpf(DAY_AMBIENT_ENERGY, _night_ambient_energy, night)
-	_env.fog_light_color = DAY_FOG.lerp(SUNSET_FOG, afterglow).lerp(_night_fog.lerp(BOSS_FOG, 0.75 * boss), night)
+	_env.fog_light_color = DAY_FOG.lerp(SUNSET_FOG, afterglow).lerp(
+			(_night_fog * NIGHT_FOG_TONE).lerp(BOSS_FOG, BOSS_FOG_MIX * boss), night)
 	var thick: float = 1.0
 	if trial.settings.is_endless():
 		thick = minf(FOG_NIGHT_MAX, 1.0 + FOG_PER_NIGHT * (trial.current_night() - 1))
@@ -219,11 +235,13 @@ func apply(trial: RitualTrial) -> void:
 		_sky.sky_top_color = DAY_SKY_TOP.lerp(SUNSET_SKY_TOP, afterglow).lerp(_night_top, night)
 	if _attributes != null:
 		_attributes.dof_blur_far_distance = camera_distance + 40.0
-	RenderingServer.global_shader_parameter_set(&"noir_forest_shade", forest_shade * up * (1.0 - night))
+	RenderingServer.global_shader_parameter_set(&"noir_forest_shade",
+			forest_shade * up * (1.0 - night) + NIGHT_FOREST_SHADE * smoothstep(0.3, 1.0, night))
 	_clouds.set_strength(CLOUD_STRENGTH * up * lerpf(1.0, 0.55, warmth) * (1.0 - night))
 	_dim_fires(lerpf(1.0, DAY_FIRE, up * (1.0 - night)))
 	RitualTownHouse.set_night(smoothstep(0.3, 1.0, night))
 	_light_roads(ROAD_MOONLIT * smoothstep(0.3, 1.0, night))
+	_light_paving(NIGHT_PAVING_LIFT * smoothstep(0.3, 1.0, night))
 	_tint_stream(up * (1.0 - night))
 
 
@@ -243,6 +261,22 @@ func _tint_stream(day: float) -> void:
 	for material: ShaderMaterial in _streams:
 		material.set_shader_parameter(&"sky", NIGHT_STREAM_SKY.lerp(DAY_STREAM_SKY, day))
 		material.set_shader_parameter(&"deep", NIGHT_STREAM_DEEP.lerp(DAY_STREAM_DEEP, day))
+
+
+func _light_paving(lift: float) -> void:
+	if not _pavings.is_empty() and not is_instance_valid(_pavings[0]):
+		_pavings.clear()
+	if _pavings.is_empty():
+		for node: Node in _world.find_children("*", "MeshInstance3D", true, false):
+			var material: ShaderMaterial = (node as MeshInstance3D).material_override as ShaderMaterial
+			if material != null and material.shader == PAVING_SHADER:
+				_pavings.append(material)
+		_paving_lift = -1.0
+	if absf(lift - _paving_lift) < 0.004:
+		return
+	_paving_lift = lift
+	for material: ShaderMaterial in _pavings:
+		material.set_shader_parameter(&"night_lift", lift)
 
 
 ## Дороги пересобираются с ростом города — материалы ищутся заново, когда их узлы пропали.

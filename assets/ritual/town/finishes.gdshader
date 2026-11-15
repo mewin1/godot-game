@@ -115,7 +115,8 @@ void fragment() {
 	}
 	if (swatch == 22) {
 		// Молчащий дом — тёмные окна (critique_4 п. 30).
-		EMISSION = paint * 0.42 * (1.0 - smoothstep(0.7, 1.0, wear));
+		// Вечером и днём окна тише (critique_4 п. 55: ярче врагов), ночью — как были.
+		EMISSION = paint * 0.42 * mix(0.7, 1.0, night) * (1.0 - smoothstep(0.7, 1.0, wear));
 		ALBEDO *= 1.0 - 0.6 * smoothstep(0.7, 1.0, wear);
 	}
 	if (swatch >= 24 && swatch <= 28) {

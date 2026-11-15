@@ -18,6 +18,10 @@ var _gate_lights: Array[OmniLight3D] = []
 var _lanterns: Array[StandardMaterial3D] = []
 var _hazes: Array[FogVolume] = []
 const LANTERN_COLOR: Color = Color("ffb35c")
+## Днём фонари ворот тлеют на столько от ночной силы.
+const DAY_LAMP: float = 0.3
+## Входы, уже открывавшиеся ночью: их столбы остаются стоять.
+var _ever_open: Dictionary[int, bool] = {}
 var _last_hp: int = -1
 var _breach_age: float = BREACH_SECONDS
 var _clock: float = 0.0
@@ -148,17 +152,27 @@ func set_gates(points: Array[Vector3], outwards: Array[Vector3] = []) -> void:
 			_hazes.append(haze)
 
 
-## Фонарь на столбе ворот: столбик, колпак и светящийся короб (тёплый; перед ночью — красный).
+## Фонарь на столбе ворот (critique_4 п. 61): столб, кронштейн с крюком, тёплый короб в раме и
+## шатровый колпак с навершием — не гладкий цилиндр со светящейся белой коробкой.
 func _lantern(at: Vector3, glow: StandardMaterial3D, gate: int) -> void:
 	var holder: Node3D = Node3D.new()
 	holder.name = "GateLantern%d" % gate
 	holder.position = at
 	add_child(holder)
 	var post: StandardMaterial3D = ArenaMaterials3D.wood(0.5)
-	ArenaMaterials3D.part(holder, ArenaMaterials3D.cylinder(0.06, 0.07, 2.2, 6), post, Vector3(0, 1.1, 0))
-	ArenaMaterials3D.part(holder, ArenaMaterials3D.cylinder(0.13, 0.16, 0.06, 6), post, Vector3(0, 2.48, 0))
-	ArenaMaterials3D.part(holder, ArenaMaterials3D.cylinder(0.1, 0.1, 0.24, 6), glow, Vector3(0, 2.32, 0))
-	ArenaMaterials3D.part(holder, ArenaMaterials3D.cylinder(0.14, 0.11, 0.04, 6), post, Vector3(0, 2.18, 0))
+	var iron: StandardMaterial3D = ArenaMaterials3D.wood(0.25)
+	ArenaMaterials3D.part(holder, ArenaMaterials3D.cylinder(0.07, 0.09, 2.4, 7), post, Vector3(0, 1.2, 0))
+	# Кронштейн и крюк: фонарь висит сбоку от столба.
+	ArenaMaterials3D.part(holder, ArenaMaterials3D.box(Vector3(0.42, 0.05, 0.05)), post, Vector3(0.2, 2.3, 0))
+	ArenaMaterials3D.part(holder, ArenaMaterials3D.cylinder(0.01, 0.01, 0.12, 4), iron, Vector3(0.36, 2.22, 0))
+	var lamp: Vector3 = Vector3(0.36, 1.98, 0)
+	ArenaMaterials3D.part(holder, ArenaMaterials3D.box(Vector3(0.15, 0.2, 0.15)), glow, lamp)
+	for corner: Vector2 in [Vector2(-1, -1), Vector2(1, -1), Vector2(1, 1), Vector2(-1, 1)]:
+		ArenaMaterials3D.part(holder, ArenaMaterials3D.box(Vector3(0.025, 0.24, 0.025)), iron,
+				lamp + Vector3(corner.x * 0.08, 0.0, corner.y * 0.08))
+	ArenaMaterials3D.part(holder, ArenaMaterials3D.box(Vector3(0.19, 0.03, 0.19)), iron, lamp - Vector3(0, 0.12, 0))
+	ArenaMaterials3D.part(holder, ArenaMaterials3D.cylinder(0.0, 0.15, 0.14, 4), iron, lamp + Vector3(0, 0.18, 0),
+			Vector3(0.0, PI * 0.25, 0.0))
 
 
 ## open_tonight[i] — вход i будет открыт в ближайшую ночь.
@@ -180,14 +194,26 @@ func sync(trial: RitualTrial, open_tonight: Array[bool], delta: float) -> void:
 	var left: int = nights.night_start(night) - trial.tick_count
 	var warn: bool = not settings.is_night(trial.tick_count) and left >= 0 and left <= WARN_TICKS
 	var pulse: float = 0.5 + 0.5 * sin(_clock * 5.0)
+	# Днём огни гаснут (critique_4 п. 51, SCN-3 «Day: fires out»): x0,3 до сумерек.
+	var dark: float = RitualDaylight.sun_phase(trial).y
+	var lamp: float = lerpf(DAY_LAMP, 1.0, smoothstep(0.0, 0.5, dark))
+	var boss: bool = settings.nights.is_boss_night(night) and settings.is_night(trial.tick_count)
 	for index: int in _gate_lights.size():
 		var open: bool = index < open_tonight.size() and open_tonight[index]
 		var lit: bool = warn and open
 		_gate_lights[index].light_color = WARN_COLOR if lit else LANTERN_COLOR
-		_gate_lights[index].light_energy = (1.4 + 1.6 * pulse) if lit else (LANTERN_ENERGY if open else 0.0)
+		_gate_lights[index].light_energy = (1.4 + 1.6 * pulse) if lit else (LANTERN_ENERGY * lamp if open else 0.0)
 		var glow: StandardMaterial3D = _lanterns[index]
 		glow.emission = WARN_COLOR if lit else LANTERN_COLOR
-		glow.albedo_color = glow.emission
-		glow.emission_energy_multiplier = (2.0 + 2.0 * pulse) if lit else (2.2 if open else 0.3)
+		glow.albedo_color = (WARN_COLOR if lit else LANTERN_COLOR) * 0.6
+		glow.emission_energy_multiplier = (2.0 + 2.0 * pulse) if lit else (1.6 * lamp if open else 0.2)
+		# Столбы фонарей — только у входов, открытых этой ночью или раньше (п. 8: «фонари в никуде»).
+		for child: Node in get_children():
+			if child.name == "GateLantern%d" % index:
+				(child as Node3D).visible = open or index == 0 or _ever_open.has(index)
+		if open:
+			_ever_open[index] = true
 		if index < _hazes.size():
-			(_hazes[index].material as FogMaterial).density = 0.9 * (0.6 + 0.4 * pulse) if lit else 0.0
+			# Ночь босса: у открытых ворот держится красная дымка (п. 7) — акцент вместо сепии на весь кадр.
+			var density: float = 0.9 * (0.6 + 0.4 * pulse) if lit else (0.45 if boss and open else 0.0)
+			(_hazes[index].material as FogMaterial).density = density

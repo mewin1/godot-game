@@ -18,6 +18,9 @@ uniform float stone_size = 0.42;
 // Облицовка стен (подклет терема, critique_4 п. 11): на боковых гранях кладка по (x+z, y), свет — по
 // нормали грани; мох по швам выключен.
 uniform bool walls = false;
+// Ночью мостовая «Обряда» светлее (critique_4 п. 2): поле в норме SCN-3 без подъёма экспозиции, которая
+// светлила и лес-рамку. Задаёт RitualDaylight; в PvP 0.
+uniform float night_lift = 0.0;
 varying vec2 ground;
 varying float border;
 
@@ -110,7 +113,7 @@ void fragment() {
 		float value = dot(stone, vec3(0.29, 0.58, 0.13));
 		vec3 slab = mix(stone_dark, stone_light, smoothstep(0.03, 0.115, value));
 		stone = mix(grout_color, slab, smoothstep(0.022, 0.047, value))
-				* (0.86 + 0.28 * clamp(value * 9.0, 0.0, 1.0));
+				* (0.86 + 0.28 * clamp(value * 9.0, 0.0, 1.0)) * (1.0 + night_lift);
 	}
 	// Поворот пятен относительно кладки скрывает повтор, швы остаются по клеткам.
 	float patch = 0.5 + 0.23 * sin(ground.x * 0.71 + ground.y * 0.42)
