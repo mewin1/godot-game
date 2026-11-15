@@ -413,6 +413,7 @@ func _dump_all() -> void:
 	_dump_plaza()
 	_dump_grass()
 	_dump_hero()
+	_dump_wildlife()
 	_dump_ui()
 	_dump_fonts()
 	await _dump_dock()
@@ -655,3 +656,12 @@ func _tooltip_on_chip(index: int) -> void:
 	for frame: int in 70:
 		await process_frame
 	_panel._hover_building(index)
+
+
+## Медвежонок не на открытых клетках города (critique_3 п. 35).
+func _dump_wildlife() -> void:
+	for node: Node in _arena().find_children("*", "ArenaBearCub3D", true, false):
+		var bear: Node3D = node as Node3D
+		var at: Vector3 = bear.global_position
+		var cell: Vector2i = Vector2i(floori(at.x / NoirArena3D.CELL), floori((at.z - NoirArena3D.BOARD_MIN.y) / NoirArena3D.CELL))
+		print("BEAR: at %s in_city=%s" % [at, _arena()._open_now.has(cell)])

@@ -223,6 +223,12 @@ func setup_wildlife(zone: Rect2, blocked: Rect2, obstacles: PackedVector3Array, 
 			_ground_spots.append(Transform3D(Basis(Vector3.UP, _rng.randf() * TAU), Vector3(spot.x, 0.0, spot.y)))
 
 
+## Расширить запретную для медвежонка зону (улицы новых уровней города).
+func add_wild_block(rect: Rect2) -> void:
+	if _bear != null:
+		_bear.add_block(rect)
+
+
 ## Бой во дворе: сидящие на частоколе вороны с карканьем улетают, новые садятся только на землю.
 func set_battle(active: bool) -> void:
 	if active == _battle:

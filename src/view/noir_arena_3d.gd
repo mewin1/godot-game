@@ -314,6 +314,14 @@ func set_open(field: FieldState) -> void:
 	_build_collected(_yard_grass, _yard)
 	if _ambience != null:
 		_ambience.set_perches(_perches)
+		var block: Rect2 = _wildlife_block(cells)
+		if block.has_area():
+			_ambience.add_wild_block(block)
+
+
+## Куда зверью нельзя сверх двора (critique_3 п. 35): в «Обряде» — улицы текущего уровня.
+func _wildlife_block(_cells: Dictionary[Vector2i, bool]) -> Rect2:
+	return Rect2()
 
 
 func _uses_cellar_walls(_field: FieldState) -> bool:

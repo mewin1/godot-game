@@ -20,16 +20,17 @@ var _clock: float = 0.0
 
 ## Сторожка у конца главной дороги (critique_2 п. 14, SCN-7): рубленая арка над проездом —
 ## столбы-брёвна, полустенки из брёвен по бокам, балки и двускатная тёсовая крыша с коньком.
-## Красная полоса под крышей вспыхивает на прорыве. Лицом вдоль дороги.
+## Фонарь под коньком вспыхивает на прорыве. Лицом вдоль дороги.
 func build_gatehouse(at: Vector3, along: Vector3) -> void:
 	_gatehouse = Node3D.new()
 	_gatehouse.name = "Gatehouse"
 	_gatehouse.position = at
 	_gatehouse.rotation.y = atan2(along.x, along.z)
 	add_child(_gatehouse)
-	var logs: StandardMaterial3D = ArenaMaterials3D.solid(Color(0.42, 0.29, 0.18), 0.9)
-	var dark: StandardMaterial3D = ArenaMaterials3D.solid(Color(0.24, 0.16, 0.1), 0.9)
-	var shingle: StandardMaterial3D = ArenaMaterials3D.solid(Color(0.27, 0.22, 0.19), 0.85)
+	# Фактура брёвен частокола вместо гладкого цвета (critique_3 п. 20).
+	var logs: StandardMaterial3D = ArenaMaterials3D.wood(0.95)
+	var dark: StandardMaterial3D = ArenaMaterials3D.wood(0.6)
+	var shingle: StandardMaterial3D = ArenaMaterials3D.wood(0.55, true)
 	# Столбы на ±1,5 от оси дороги: герой стоит у правого края проезда, а не в столбе (critique_3 п. 21).
 	for side: float in [-1.5, 1.5]:
 		for depth: float in [-0.5, 0.5]:
@@ -47,8 +48,13 @@ func build_gatehouse(at: Vector3, along: Vector3) -> void:
 			Vector3(0.0, 2.78, side * 0.36), Vector3(side * 0.52, 0.0, 0.0))
 	ArenaMaterials3D.part(_gatehouse, ArenaMaterials3D.cylinder(0.07, 0.07, 3.8, 6), dark,
 		Vector3(0.0, 3.02, 0.0), Vector3(0.0, 0.0, PI * 0.5))
-	_glow = ArenaMaterials3D.glow(Color("ff3b2a"), 0.0)
-	ArenaMaterials3D.part(_gatehouse, ArenaMaterials3D.box(Vector3(2.3, 0.07, 0.12)), _glow, Vector3(0, 2.28, 0.52))
+	# Фонарь под коньком вместо неоновой полосы (п. 20): тлеет при малом здоровье, вспыхивает на прорыве.
+	_glow = ArenaMaterials3D.glow(Color("ff5a2e"), 0.0)
+	var lantern: Vector3 = Vector3(0.0, 2.05, 0.55)
+	ArenaMaterials3D.part(_gatehouse, ArenaMaterials3D.cylinder(0.012, 0.012, 0.32, 4), dark, lantern + Vector3(0, 0.3, 0))
+	ArenaMaterials3D.part(_gatehouse, ArenaMaterials3D.cylinder(0.11, 0.13, 0.05, 6), dark, lantern + Vector3(0, 0.15, 0))
+	ArenaMaterials3D.part(_gatehouse, ArenaMaterials3D.cylinder(0.09, 0.09, 0.22, 6), _glow, lantern)
+	ArenaMaterials3D.part(_gatehouse, ArenaMaterials3D.cylinder(0.12, 0.1, 0.04, 6), dark, lantern - Vector3(0, 0.13, 0))
 
 
 ## Ворота (точки входа дорог в мире): создаются по числу дорог, светятся по sync.

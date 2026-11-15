@@ -52,6 +52,15 @@ func setup(seed_value: int, zone: Rect2, blocked: Rect2, obstacles: PackedVector
 	visible = false  # место — в первом кадре, когда камера уже наведена на двор
 
 
+## Город вырос: зона двора шире. Если зверь уже внутри — уходит в свободное место за частоколом.
+func add_block(rect: Rect2) -> void:
+	_blocked = _blocked.merge(rect)
+	if _blocked.has_point(Vector2(position.x, position.z)):
+		var spot: Vector2 = _random_spot()
+		position = Vector3(spot.x, position.y, spot.y)
+		_target = spot
+
+
 ## Где сейчас (мировые x, z) — стая ворон по этому спугивает сидящих на земле.
 func ground_position() -> Vector2:
 	return Vector2(position.x, position.z)

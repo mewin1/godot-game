@@ -15,6 +15,11 @@ static var _flat: Dictionary[Color, StandardMaterial3D] = {}
 static var _stone: Dictionary[Color, StandardMaterial3D] = {}
 static var _grain: NoiseTexture2D
 static var _relief: NoiseTexture2D
+## Дерево с фактурой (critique_3 п. 20, 24, 25, 32): та же доска, что у частокола, на все примитивы.
+const WOOD_GRAIN: Texture2D = preload("res://assets/noir/courtyard/palisade_weathered_oak.png")
+static var _wood: Dictionary[String, StandardMaterial3D] = {}
+static var _grain_across: ImageTexture
+static var _wattle: Dictionary[Color, StandardMaterial3D] = {}
 
 
 ## Матовый материал (дерево, камень, окраска).
@@ -67,6 +72,84 @@ static func _noise_texture(as_normal: bool) -> NoiseTexture2D:
 		ramp.set_color(1, Color(1.05, 1.04, 1.02))
 		texture.color_ramp = ramp
 	return texture
+
+
+## Дерево с волокнами досок частокола (трипланарно в осях детали). shade — яркость (1 — как
+## частокол), across — волокна вдоль оси X детали (доски и брусья), иначе вдоль Y (столбы, брёвна).
+static func wood(shade: float, across: bool = false, roughness: float = 0.9) -> StandardMaterial3D:
+	var key: String = "%.3f:%s:%.2f" % [shade, across, roughness]
+	if not _wood.has(key):
+		var material: StandardMaterial3D = StandardMaterial3D.new()
+		material.albedo_color = Color(shade, shade, shade)
+		material.albedo_texture = _across_grain() if across else WOOD_GRAIN
+		material.roughness = roughness
+		material.uv1_triplanar = true
+		material.uv1_scale = Vector3.ONE * 0.85
+		material.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
+		_wood[key] = material
+	return _wood[key]
+
+
+static func _across_grain() -> ImageTexture:
+	if _grain_across == null:
+		var image: Image = WOOD_GRAIN.get_image()
+		if image.is_compressed():
+			image.decompress()
+		image.rotate_90(CLOCKWISE)
+		image.generate_mipmaps()
+		_grain_across = ImageTexture.create_from_image(image)
+	return _grain_across
+
+
+## Плетень (critique_3 п. 16, 27): полоса с прутьями и просветами (альфа-срез), неровный верх.
+## Рисуется в коде один раз: горизонтальные прутья волной вокруг кольев. Двусторонняя.
+static func wattle(color: Color) -> StandardMaterial3D:
+	if not _wattle.has(color):
+		var material: StandardMaterial3D = StandardMaterial3D.new()
+		material.albedo_color = color
+		material.albedo_texture = _wattle_texture()
+		material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR
+		material.alpha_scissor_threshold = 0.5
+		material.cull_mode = BaseMaterial3D.CULL_DISABLED
+		material.roughness = 0.95
+		material.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+		_wattle[color] = material
+	return _wattle[color]
+
+
+static func _wattle_texture() -> ImageTexture:
+	const W: int = 256
+	const H: int = 96
+	var image: Image = Image.create(W, H, true, Image.FORMAT_RGBA8)
+	image.fill(Color(0, 0, 0, 0))
+	var rng: RandomNumberGenerator = RandomNumberGenerator.new()
+	rng.seed = 91
+	# Неровный верх: высота верхнего прута плавно гуляет.
+	var rods: int = 7
+	for rod: int in rods:
+		var base: float = H - 10.0 - rod * 11.5
+		var phase: float = rng.randf() * TAU
+		var tone: float = rng.randf_range(0.8, 1.15)
+		for x: int in W:
+			var weave: float = sin(x / float(W) * TAU * 4.0 + (PI if rod % 2 == 1 else 0.0)) * 2.4
+			var wobble: float = sin(x * 0.045 + phase) * 1.6
+			var y_mid: float = base + weave + wobble
+			if rod == rods - 1 and sin(x * 0.03 + phase) > 0.35:
+				continue
+			for dy: int in range(-4, 5):
+				var y: int = roundi(y_mid) + dy
+				if y < 0 or y >= H:
+					continue
+				var shade: float = tone * (1.0 - absf(dy) / 6.0) * (0.9 + 0.1 * sin(x * 0.7 + rod))
+				image.set_pixel(x, y, Color(shade, shade * 0.97, shade * 0.93, 1.0))
+	# Колья через 64 px — темнее прутьев.
+	for stake: int in 4:
+		var x0: int = 30 + stake * 64
+		for x: int in range(x0 - 3, x0 + 4):
+			for y: int in range(4, H):
+				image.set_pixel(x, y, Color(0.62, 0.6, 0.58, 1.0))
+	image.generate_mipmaps()
+	return ImageTexture.create_from_image(image)
 
 
 ## Светящийся акцент (кристалл, огонь, глаза). Яркость выше 1 даёт свечение (glow).
