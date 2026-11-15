@@ -551,7 +551,9 @@ func _frame_perspective(target: Rect2, basis: Basis) -> void:
 		target = Rect2(target.position - Vector2(0.0, lift), target.size + Vector2(0.0, lift))
 	# 21:9 (critique_4 п. 9): по высоте у города запас (сверху и снизу пустой лес) — кадр крупнее на
 	# WIDE_ZOOM, город чуть левее (он стоял правее середины): частокол >= 0,65 ширины.
-	var wide: float = smoothstep(2.0, 2.4, aspect)
+	# По соотношению сторон экрана, а не места под карту: на 16:9 место под карту тоже ~2,1.
+	var screen: Vector2 = get_viewport_rect().size
+	var wide: float = smoothstep(2.0, 2.3, screen.x / maxf(1.0, screen.y))
 	if wide > 0.0:
 		var grow: Vector2 = target.size * WIDE_ZOOM * wide
 		target = Rect2(target.position - grow * 0.5 - Vector2(target.size.x * WIDE_SHIFT * wide, 0.0), target.size + grow)

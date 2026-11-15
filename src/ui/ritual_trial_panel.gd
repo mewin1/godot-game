@@ -1900,6 +1900,12 @@ func _fit_screen() -> void:
 	var width: float = size.x
 	var narrow: bool = width < COMPACT_WIDTH
 	_dock.set_compact(narrow, width)
+	if _compact:
+		# Полоса разведки растёт с числом пачек — держится по центру и не уходит за край (critique_4 дамп).
+		_scout_strip.size = _scout_strip.get_combined_minimum_size()
+		var fit: float = clampf((width - 8.0) / maxf(1.0, _scout_strip.size.x), 0.6, 1.0)
+		_scout_strip.scale = Vector2.ONE * fit
+		_scout_strip.position.x = maxf(4.0, (width - _scout_strip.size.x * fit) * 0.5)
 	if narrow == _compact:
 		return
 	_compact = narrow
