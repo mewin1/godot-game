@@ -1,7 +1,8 @@
 class_name RitualBuildChip
 extends Control
-## Карточка каталога в нижнем доке забега (docs/37 UI-3): полоса цвета стихии, картинка,
-## имя, цена и тир. Весь каталог виден сразу — 7 богов × 3 тира. Числа и правила — у RitualTrial.
+## Карточка каталога в нижнем доке забега (docs/37 UI-3): полоса цвета стихии, дом на всю
+## карточку (иконка запечена из той же модели, что стоит на карте, — tools/ritual_house_icons.gd),
+## цена бейджем, имя внизу в одну-две строки. Числа и правила — у RitualTrial.
 
 signal chosen(index: int)
 signal hovered(index: int)
@@ -15,6 +16,10 @@ const NIGHT_PRICE: Color = Color("ffe066")
 const NIGHT_ARROW: Color = Color("ff6258")
 const PRICE_COLOR: Color = Color("ffe2a8")
 const NAME_COLOR: Color = Color("f1e6cf")
+## Иконки домов «Городища» по id постройки; нет файла — прежняя картинка машины (VisualCatalog).
+const HOUSE_ICONS: String = "res://assets/ritual/town/icons/%s.png"
+const NAME_SIZE: int = 13
+const PRICE_SIZE: int = 15
 
 var index: int = 0
 var data: TowerData
@@ -32,7 +37,8 @@ var _icon: Texture2D
 func _init() -> void:
 	custom_minimum_size = CHIP_SIZE
 	mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	_normal = DuskTheme.panel(Color(0.05, 0.09, 0.14, 0.86), Color(0.62, 0.74, 0.9, 0.2), 6)
+	# В покое без рамки (critique.md п. 20): рамка — только при наведении и выборе.
+	_normal = DuskTheme.panel(Color(0.05, 0.09, 0.14, 0.86), Color(0.0, 0.0, 0.0, 0.0), 6)
 	_hover = DuskTheme.panel(Color(0.1, 0.18, 0.27, 0.95), DuskTheme.GOLD, 6)
 	_chosen = DuskTheme.panel(Color(0.16, 0.14, 0.08, 0.95), Color("f0c869"), 6)
 	_chosen.set_border_width_all(3)
@@ -44,7 +50,9 @@ func setup(catalogue_index: int, tower: TowerData) -> void:
 	index = catalogue_index
 	data = tower
 	name = "CatalogueChip_%s" % tower.id
-	_icon = VisualCatalog.get_default().get_tower(tower.id).icon
+	var house: String = HOUSE_ICONS % tower.id
+	_icon = load(house) as Texture2D if ResourceLoader.exists(house) \
+			else VisualCatalog.get_default().get_tower(tower.id).icon
 
 
 func _on_enter() -> void:
@@ -75,34 +83,66 @@ func _draw() -> void:
 	var rect: Rect2 = Rect2(Vector2.ZERO, size)
 	var hovered_now: bool = rect.has_point(get_local_mouse_position())
 	draw_style_box(_chosen if is_chosen else _hover if hovered_now else _normal, rect)
+	var font: Font = get_theme_default_font()
+	var lines: PackedStringArray = _name_lines(font, size.x - 8.0)
+	var text_height: float = NAME_SIZE * 1.15 * lines.size() + 6.0
+	var art: Rect2 = Rect2(3, 7, size.x - 6, size.y - 9)
+	if _icon != null:
+		# Дом крупно: картинка по пропорции поля, чуть выше середины (без пустого неба).
+		var source: Vector2 = Vector2(_icon.get_size())
+		var fit: float = minf(source.x / art.size.x, source.y / art.size.y) * 0.86
+		var crop: Vector2 = art.size * fit
+		var region: Rect2 = Rect2(Vector2((source.x - crop.x) * 0.5, (source.y - crop.y) * 0.2), crop)
+		draw_texture_rect_region(_icon, art, region)
+	# Затемнение снизу под имя — читается на любой крыше.
+	var shade_top: float = size.y - text_height - 14.0
+	draw_polygon(PackedVector2Array([Vector2(2, shade_top), Vector2(size.x - 2, shade_top),
+			Vector2(size.x - 2, size.y - 2), Vector2(2, size.y - 2)]),
+			PackedColorArray([Color(0, 0, 0, 0), Color(0, 0, 0, 0), Color(0.02, 0.03, 0.05, 0.92),
+			Color(0.02, 0.03, 0.05, 0.92)]))
 	var color: Color = GodSymbols.get_color(data.god)
 	draw_rect(Rect2(4, 2, size.x - 8, 4), color)
-	var font: Font = get_theme_default_font()
-	var art: Rect2 = Rect2(6, 9, size.x - 12, size.y - 44)
-	if _icon != null:
-		# Середина картинки по пропорции поля: постройка крупно, без пустого неба.
-		var source: Vector2 = Vector2(_icon.get_size())
-		var scale: float = minf(source.x / art.size.x, source.y / art.size.y)
-		var crop: Vector2 = art.size * scale
-		var region: Rect2 = Rect2(Vector2((source.x - crop.x) * 0.5, (source.y - crop.y) * 0.55), crop)
-		draw_texture_rect_region(_icon, art, region)
 	var symbol: Texture2D = GodSymbols.get_icon(data.god)
 	if symbol != null:
-		draw_rect(Rect2(art.position + Vector2(2, 2), Vector2(20, 20)), Color(0.02, 0.04, 0.06, 0.75))
-		draw_texture_rect(symbol, Rect2(art.position + Vector2(3, 3), Vector2(18, 18)), false)
-	draw_string(font, Vector2(6, size.y - 22), data.display_name, HORIZONTAL_ALIGNMENT_CENTER, size.x - 12, 12,
-		NAME_COLOR)
+		draw_rect(Rect2(Vector2(5, 9), Vector2(20, 20)), Color(0.02, 0.04, 0.06, 0.75))
+		draw_texture_rect(symbol, Rect2(Vector2(6, 10), Vector2(18, 18)), false)
+	for row: int in lines.size():
+		var baseline: float = size.y - 6.0 - (lines.size() - 1 - row) * NAME_SIZE * 1.15
+		draw_string(font, Vector2(4, baseline), lines[row], HORIZONTAL_ALIGNMENT_CENTER, size.x - 8, NAME_SIZE,
+				NAME_COLOR)
 	if locked_text.is_empty():
-		var label: String = "◉ %d" % price
-		var price_color: Color = NIGHT_PRICE if at_night else PRICE_COLOR
-		var width: float = font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, 15).x
-		var x: float = (size.x - width - (12.0 if at_night else 0.0)) * 0.5
-		draw_string(font, Vector2(x, size.y - 6), label, HORIZONTAL_ALIGNMENT_LEFT, -1, 15, price_color)
-		if at_night:
-			draw_string(font, Vector2(x + width + 2, size.y - 6), "↑", HORIZONTAL_ALIGNMENT_LEFT, -1, 15, NIGHT_ARROW)
+		# Цена — бейджем в правом верхнем углу; ночью жёлтая со стрелкой (наценка).
+		var label: String = "◉ %d%s" % [price, "↑" if at_night else ""]
+		var width: float = font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, PRICE_SIZE).x
+		var badge: Rect2 = Rect2(size.x - width - 12.0, 9.0, width + 8.0, PRICE_SIZE + 5.0)
+		draw_rect(badge, Color(0.02, 0.04, 0.06, 0.82))
+		draw_string(font, badge.position + Vector2(4, PRICE_SIZE + 0.5), label, HORIZONTAL_ALIGNMENT_LEFT, -1,
+				PRICE_SIZE, NIGHT_PRICE if at_night else PRICE_COLOR)
 	if not locked_text.is_empty():
 		draw_rect(rect.grow(-1), Color(0, 0, 0, 0.6))
-		draw_string(font, Vector2(6, size.y - 6), "🔒 " + locked_text, HORIZONTAL_ALIGNMENT_CENTER, size.x - 12, 12,
-			Color(0.85, 0.85, 0.85, 0.9))
+		draw_string(font, Vector2(4, size.y * 0.45), "🔒 " + locked_text, HORIZONTAL_ALIGNMENT_CENTER, size.x - 8,
+				NAME_SIZE, Color(0.85, 0.85, 0.85, 0.9))
 	elif not affordable:
 		draw_rect(rect.grow(-1), Color(0, 0, 0, 0.38))
+
+
+## Имя в одну строку, а длинное — в две по пробелу; не влезает и так — многоточие
+## (было: «Жаровня Свар» обрезалось без знака).
+func _name_lines(font: Font, width: float) -> PackedStringArray:
+	var title: String = data.display_name
+	if font.get_string_size(title, HORIZONTAL_ALIGNMENT_LEFT, -1, NAME_SIZE).x <= width:
+		return PackedStringArray([title])
+	var space: int = title.find(" ")
+	if space < 0:
+		return PackedStringArray([_ellipsis(font, title, width)])
+	return PackedStringArray([_ellipsis(font, title.substr(0, space), width),
+			_ellipsis(font, title.substr(space + 1), width)])
+
+
+static func _ellipsis(font: Font, text: String, width: float) -> String:
+	if font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, NAME_SIZE).x <= width:
+		return text
+	var cut: String = text
+	while cut.length() > 1 and font.get_string_size(cut + "…", HORIZONTAL_ALIGNMENT_LEFT, -1, NAME_SIZE).x > width:
+		cut = cut.substr(0, cut.length() - 1)
+	return cut + "…"
