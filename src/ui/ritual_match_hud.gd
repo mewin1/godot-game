@@ -7,6 +7,7 @@ var _portrait_path: String = ""
 var hero_name_width: float = 185.0
 ## Док забега: частокол — плитка с числом и клавишей (critique_2 п. 23); null — прежняя кнопка.
 var palisade_tile: RitualActionTile
+var _pause_mark: RitualPauseMark
 
 
 func _init() -> void:
@@ -14,6 +15,9 @@ func _init() -> void:
 	_chip_row.hide()
 	_speed_button.hide()
 	_sound_button.hide()
+	_pause_mark = RitualPauseMark.new()
+	_pause_mark.name = "PauseMark"
+	_pause_mark.hide()
 
 
 func refresh_ritual(trial: RitualTrial, paused: bool) -> void:
@@ -34,9 +38,13 @@ func refresh_ritual(trial: RitualTrial, paused: bool) -> void:
 		var left: int = ceili(float((nights.night_end(night) if at_night else nights.night_start(night))
 				- trial.tick_count) / trial.settings.combat.ticks_per_second)
 		_phase_label.text = "%s через %d:%02d" % ["рассвет" if at_night else "ночь", left / 60, left % 60]
-		# Пауза — пометкой у таймера, а не надписью посреди карты (critique_2 п. 31).
-		if paused and trial.phase == RitualTrial.Phase.RUNNING:
-			_phase_label.text += " · пауза"
+	# Пауза — значком у таймера (critique_3 п. 45), а не словом. Таймер переезжает в шапку забега
+	# после _init — значок ставится рядом с ним там, где он сейчас.
+	if _pause_mark.get_parent() != _phase_label.get_parent():
+		if _pause_mark.get_parent() != null:
+			_pause_mark.get_parent().remove_child(_pause_mark)
+		_phase_label.add_sibling(_pause_mark)
+	_pause_mark.visible = trial.settings.is_endless() and paused and trial.phase == RitualTrial.Phase.RUNNING
 	if trial.phase == RitualTrial.Phase.PREP:
 		_phase_label.text = "Подготовка"
 	# Забег: HP принадлежит герою в сторожке перед теремом (docs/34 §4, docs/36 §1).

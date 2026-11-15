@@ -520,7 +520,7 @@ func _spawn_puff(at: Vector2, color: Color) -> void:
 	particles.scale_amount_min = base_scale * 0.4
 	particles.scale_amount_max = base_scale * 0.9
 	var ramp: Gradient = Gradient.new()
-	ramp.set_color(0, Color(color.lightened(0.3), 0.9))
+	ramp.set_color(0, Color(color.lightened(0.1), 0.5))
 	ramp.set_color(1, Color(color.darkened(0.3), 0.0))
 	particles.color_ramp = ramp
 	particles.emitting = true

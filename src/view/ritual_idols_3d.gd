@@ -79,6 +79,7 @@ func _init(style: Arena3DStyle) -> void:
 		light.omni_range = LIGHT_REACH
 		light.omni_attenuation = 1.5
 		light.shadow_enabled = false
+		light.light_specular = 0.2
 		light.position = face * 0.9 + Vector3(0.0, 1.4, 0.0)
 		base.add_child(light)
 		_lights.append(light)

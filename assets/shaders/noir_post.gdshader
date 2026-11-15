@@ -20,6 +20,8 @@ uniform float black_point = 0.007;
 uniform float vignette : hint_range(0.0, 1.0) = 0.31;
 uniform vec2 vignette_center = vec2(0.6, 0.55);  // двор правее центра (слева панели)
 uniform float grain : hint_range(0.0, 0.05) = 0.0;
+// Пауза «Обряда» (critique_3 п. 11): обесцвечивание вместо затемнения — карту на паузе рассматривают.
+uniform float pause_gray : hint_range(0.0, 1.0) = 0.0;
 
 vec3 to_ycc(vec3 c) {
 	float y = dot(c, vec3(0.299, 0.587, 0.114));
@@ -55,6 +57,7 @@ void fragment() {
 	c += (1.0 - smoothstep(0.0, 0.3, l)) * shadow_tint + smoothstep(0.45, 0.9, l) * light_tint;
 	c = max(c - black_point, 0.0) / (1.0 - black_point);
 
+	c = mix(c, vec3(dot(c, vec3(0.2126, 0.7152, 0.0722))), pause_gray);
 	vec2 d = (UV - vignette_center) / vec2(0.75, 0.65);
 	c *= 1.0 - vignette * smoothstep(0.45, 1.15, length(d));
 

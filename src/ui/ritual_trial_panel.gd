@@ -991,6 +991,9 @@ func _process(delta: float) -> void:
 	if _overlay != null:
 		var modal: bool = (_hero_panel != null and _hero_panel.visible) or _gift_panel.visible or _defeat.visible
 		_overlay.refresh(trial, _paused, modal, delta)
+		if board.stage is RitualStage3D:
+			(board.stage as RitualStage3D).set_pause_look(_paused and trial.phase == RitualTrial.Phase.RUNNING \
+					and not modal)
 
 
 ## Сообщение гаснет через TOAST_SECONDS после последней смены текста; подсказка выбора цели

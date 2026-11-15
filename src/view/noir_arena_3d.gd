@@ -319,6 +319,11 @@ func set_open(field: FieldState) -> void:
 			_ambience.add_wild_block(block)
 
 
+## Масштаб жаровен у ворот (в «Обряде» меньше, critique_3 п. 15).
+func _gate_bowl_scale() -> float:
+	return GATE_BOWL_SCALE
+
+
 ## Куда зверью нельзя сверх двора (critique_3 п. 35): в «Обряде» — улицы текущего уровня.
 func _wildlife_block(_cells: Dictionary[Vector2i, bool]) -> Rect2:
 	return Rect2()
@@ -915,9 +920,10 @@ func _build_walls(fine: Dictionary[Vector2i, bool], entry: Vector2, door: Vector
 		var along: Vector2 = Vector2(-gate_run.out.y, gate_run.out.x)
 		for side: float in [-1.0, 1.0]:
 			var spot: Vector2 = gate_point + along * side * (gate_half + 0.5) + gate_run.out * 0.9
-			_add_flame(_place("fire_bowl", Vector3(spot.x, 0, spot.y), _rng.randf() * TAU, GATE_BOWL_SCALE),
-					FLAME_HEIGHT * GATE_BOWL_SCALE)
-			_warm_light(Vector3(spot.x, 1.5, spot.y), GATE_BOWL_ENERGY, 5.0)
+			var bowl_scale: float = _gate_bowl_scale()
+			_add_flame(_place("fire_bowl", Vector3(spot.x, 0, spot.y), _rng.randf() * TAU, bowl_scale),
+					FLAME_HEIGHT * bowl_scale)
+			_warm_light(Vector3(spot.x, 1.5 * bowl_scale / GATE_BOWL_SCALE, spot.y), GATE_BOWL_ENERGY, 5.0)
 
 
 ## Точка ворот на стене: створки не должны заходить на угол двора — ворота у угла сдвигаются

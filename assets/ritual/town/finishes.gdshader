@@ -54,8 +54,8 @@ vec3 quiet_roof(vec3 paint) {
 	}
 	// Тёмный тёс: рисунок черепицы сохраняется, цвет школы — четвертью.
 	float detail = dot(srgb, vec3(0.299, 0.587, 0.114)) / max(dot(mean, vec3(0.299, 0.587, 0.114)), 0.01);
-	vec3 hue = hsv2rgb(vec3(rgb2hsv(mean).x, 0.5, 0.32));
-	return to_linear(mix(vec3(0.2, 0.16, 0.14), hue, 0.4) * detail);
+	vec3 hue = hsv2rgb(vec3(rgb2hsv(mean).x, 0.5, 0.4));
+	return to_linear(mix(vec3(0.26, 0.21, 0.18), hue, 0.4) * detail);
 }
 
 void fragment() {

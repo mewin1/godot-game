@@ -15,6 +15,8 @@ uniform float moon_radius = 1.3;  // м
 uniform float flow = 0.5;  // м/с
 uniform float ripple_scale = 0.9;
 uniform float water_specular = 0.15;
+// Светлые гребни ряби (пруду ночью — x0,3, critique_3 п. 29: без белых «запятых»).
+uniform float crest_gain = 1.0;
 
 varying vec3 world;
 
@@ -81,8 +83,8 @@ void fragment() {
 	float glow = exp(-dot(d, d) * 0.35) * 0.35;
 	float crest = smoothstep(0.62, 0.84, h + gradient.y * 0.12);
 	float ribbon = crest * (0.16 + fresnel) * smoothstep(0.08, 0.5, edge);
-	EMISSION = sky * ((0.08 + fresnel * 0.28) * smoothstep(0.05, 0.4, edge) + ribbon * 0.28)
-			+ moon_color * (disc * 0.34 + glow * 0.15) * mix(0.18, 1.10, crest);
+	EMISSION = sky * ((0.08 + fresnel * 0.28) * smoothstep(0.05, 0.4, edge) + ribbon * 0.28 * crest_gain)
+			+ moon_color * (disc * 0.34 + glow * 0.15) * mix(0.18, 1.10, crest * crest_gain);
 	ROUGHNESS = mix(0.21, 0.43, shoal);
 	SPECULAR = water_specular;  // тёплые блики факелов почти не берёт: иначе вода выглядит как нефть
 	ALPHA = smoothstep(0.0, 0.25, edge);

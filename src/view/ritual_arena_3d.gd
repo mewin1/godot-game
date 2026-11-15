@@ -23,6 +23,10 @@ const PLAZA: Rect2i = Rect2i(16, 8, 8, 5)
 const TEREM_AT: Vector3 = Vector3(43.5, 0.0, 1.0)
 const TEREM_FRONT: Vector3 = Vector3(-1.0, 0.0, 0.0)
 const TEREM_SIZE: float = 1.9
+## Частокол: темнее и холоднее (critique_3 п. 7); не темнее x0,7 — иначе поле ночью ниже нормы SCN-3.
+const WALL_TINT: Color = Color(0.64, 0.69, 0.8)
+## Жаровни у главных ворот вдвое ниже ворот (п. 15).
+const GATE_BOWL_RITUAL: float = 0.72
 ## Обрезанный терем и его подклет (в единицах модели; tools/make_terem_trim.gd).
 const TEREM_TRIM: String = "res://assets/noir/courtyard/terem_trim.res"
 const TEREM_KEEP: Rect2 = Rect2(-0.84, -0.92, 1.84, 1.84)
@@ -323,6 +327,29 @@ func _build_terem_curb(house: Node3D) -> void:
 ## Терем внутри частокола — проёма у крыльца, как в PvP, нет (ворота остаются только у входа).
 func _build_walls(fine: Dictionary[Vector2i, bool], entry: Vector2, _door: Vector2) -> void:
 	super._build_walls(fine, entry, Vector2(INF, INF))
+	# Частокол темнее и не оранжевый (critique_3 п. 7): тёмно-бурая рамка города, как на концепте.
+	for node: Node in _yard.get_children():
+		var prop: Node3D = node as Node3D
+		if prop == null or not (prop.scene_file_path.ends_with("palisade.glb") \
+				or prop.scene_file_path.ends_with("palisade_post.glb")):
+			continue
+		for part: MeshInstance3D in NoirArena3D._mesh_parts(prop):
+			for surface: int in part.mesh.get_surface_count():
+				part.set_surface_override_material(surface, _dark_wall(part.mesh.surface_get_material(surface)))
+
+
+static var _dark_walls: Dictionary[Material, Material] = {}
+
+
+static func _dark_wall(source: Material) -> Material:
+	var standard: StandardMaterial3D = source as StandardMaterial3D
+	if standard == null:
+		return source
+	if not _dark_walls.has(source):
+		var copy: StandardMaterial3D = standard.duplicate() as StandardMaterial3D
+		copy.albedo_color = standard.albedo_color * WALL_TINT
+		_dark_walls[source] = copy
+	return _dark_walls[source]
 
 
 ## Дорога от конца пути сворачивает к крыльцу терема на площади. Дороги улиц кончаются
@@ -612,11 +639,22 @@ func _trail_mist(at: Vector3) -> void:
 func _wall_height(center: Vector2, out: Vector2) -> float:
 	if not _town or out.y <= 0.0:
 		return WALL_SCALE
+	# Переход по панелям 1,0 → 0,86 → 0,72 (critique_3 п. 13): не ступенька на одном столбе.
+	var height: float = 1.0
 	for road: Vector2i in _roads_now:
 		var middle: Vector3 = _layout.cell_center(road)
-		if absf(middle.x - center.x) < 2.2 and center.y - middle.z > 0.0 and center.y - middle.z < 2.6:
-			return WALL_SCALE * LOW_WALL
-	return WALL_SCALE
+		if center.y - middle.z <= 0.0 or center.y - middle.z >= 2.6:
+			continue
+		var across: float = absf(middle.x - center.x)
+		if across < 2.2:
+			height = minf(height, LOW_WALL)
+		elif across < 4.4:
+			height = minf(height, (1.0 + LOW_WALL) * 0.5)
+	return WALL_SCALE * height
+
+
+func _gate_bowl_scale() -> float:
+	return GATE_BOWL_RITUAL
 
 
 ## Жаровни снаружи — только у главных (западных) ворот: огней в кадре было ~12 при норме SCN-9 «≤ 3».
@@ -709,6 +747,8 @@ func _build_pond() -> void:
 	material.set_shader_parameter("moon_spot", POND_MOON)
 	material.set_shader_parameter("moon_radius", 0.8)
 	material.set_shader_parameter("water_specular", 0.1)
+	material.set_shader_parameter("crest_gain", 0.3)
+	material.set_shader_parameter("ripple_scale", 0.55)
 	var water: MeshInstance3D = MeshInstance3D.new()
 	water.name = "Pond"
 	water.mesh = tool.commit()
@@ -1061,7 +1101,8 @@ func _build_paving(fine: Dictionary[Vector2i, bool]) -> Material:
 			if material != null and material.shader == PAVING_SHADER:
 				material.set_shader_parameter("custom_palette", true)
 				material.set_shader_parameter("scatter", true)
-				material.set_shader_parameter("grout_color", Color("47514f"))
-				material.set_shader_parameter("stone_dark", Color("343e3e"))
-				material.set_shader_parameter("stone_light", Color("545e5c"))
+				# Плитка на 12% светлее (17 ноября): тёмные крыши и частокол опустили поле ниже нормы.
+				material.set_shader_parameter("grout_color", Color("4f5957"))
+				material.set_shader_parameter("stone_dark", Color("3b4646"))
+				material.set_shader_parameter("stone_light", Color("5e6967"))
 	return paving

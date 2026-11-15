@@ -256,8 +256,6 @@ func _refresh_skill(trial: RitualTrial, running: bool) -> void:
 
 
 func _draw() -> void:
-	if _pause.visible:
-		draw_rect(Rect2(0, 0, size.x, size.y - bottom_inset), Color(0.0, 0.01, 0.03, 0.28))
 	if not _boss_name.is_empty():
 		_draw_boss_bar()
 	var strength: float = 0.0

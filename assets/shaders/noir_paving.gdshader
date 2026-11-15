@@ -80,6 +80,12 @@ void fragment() {
 	ROUGHNESS = mix(clamp(r.b + rim * 0.12, 0.50, 0.96), 0.32, wet);
 	SPECULAR = 0.42;
 	CLEARCOAT = wet * 0.24;
+	if (custom_palette) {
+		// Без «лавы» у огней (critique_3 п. 8): мокрые пятна матовее, без лака.
+		SPECULAR = 0.25;
+		CLEARCOAT = 0.0;
+		ROUGHNESS = max(ROUGHNESS, 0.55);
+	}
 	CLEARCOAT_ROUGHNESS = 0.23;
 	vec2 slope = transpose(turn) * ((r.rg * 2.0 - 1.0) * 0.85);
 	NORMAL = normalize((VIEW_MATRIX * vec4(normalize(vec3(slope.x, 1.0, slope.y)), 0.0)).xyz);

@@ -8,11 +8,16 @@ const BREACH_SECONDS: float = 0.6
 ## За сколько тиков до ночи начинают гореть ворота её входов.
 const WARN_TICKS: int = 220
 const WARN_COLOR: Color = Color("ff4a3a")
+const LANTERN_ENERGY: float = 0.9
 
 var _gatehouse: Node3D
 var _glow: StandardMaterial3D
 var _gate_lights: Array[OmniLight3D] = []
-var _gate_marks: Array[MeshInstance3D] = []
+## Фонари на столбах ворот снаружи (critique_3 п. 14): ворота читаются с игровой камеры;
+## перед ночью краснеют вместе с дымкой (п. 10) — без «обруча» на плитке.
+var _lanterns: Array[StandardMaterial3D] = []
+var _hazes: Array[FogVolume] = []
+const LANTERN_COLOR: Color = Color("ffb35c")
 var _last_hp: int = -1
 var _breach_age: float = BREACH_SECONDS
 var _clock: float = 0.0
@@ -57,31 +62,62 @@ func build_gatehouse(at: Vector3, along: Vector3) -> void:
 	ArenaMaterials3D.part(_gatehouse, ArenaMaterials3D.cylinder(0.12, 0.1, 0.04, 6), dark, lantern - Vector3(0, 0.13, 0))
 
 
-## Ворота (точки входа дорог в мире): создаются по числу дорог, светятся по sync.
-func set_gates(points: Array[Vector3]) -> void:
+## Ворота (точки входа дорог в мире) и направление наружу: фонари на столбах, свет и дымка
+## предупреждения. Создаются по числу дорог, светятся по sync.
+func set_gates(points: Array[Vector3], outwards: Array[Vector3] = []) -> void:
 	for light: OmniLight3D in _gate_lights:
 		light.queue_free()
-	for mark: MeshInstance3D in _gate_marks:
-		mark.queue_free()
+	for haze: FogVolume in _hazes:
+		haze.queue_free()
+	for child: Node in get_children():
+		if child.name.begins_with("GateLantern"):
+			child.queue_free()
 	_gate_lights.clear()
-	_gate_marks.clear()
-	for point: Vector3 in points:
+	_hazes.clear()
+	_lanterns.clear()
+	for index: int in points.size():
+		var point: Vector3 = points[index]
+		var out: Vector3 = outwards[index] if index < outwards.size() else Vector3.ZERO
+		var side: Vector3 = Vector3(-out.z, 0.0, out.x)
 		var light: OmniLight3D = OmniLight3D.new()
-		light.light_color = WARN_COLOR
-		light.omni_range = 6.0
-		light.light_energy = 0.0
+		light.light_color = LANTERN_COLOR
+		light.omni_range = 5.0
+		light.light_energy = LANTERN_ENERGY
+		light.light_specular = 0.2
 		light.shadow_enabled = false
-		light.position = point + Vector3(0, 1.6, 0)
+		light.position = point + out * 0.8 + Vector3(0, 2.0, 0)
 		add_child(light)
 		_gate_lights.append(light)
-		var ring: TorusMesh = TorusMesh.new()
-		ring.inner_radius = 1.1
-		ring.outer_radius = 1.3
-		var mark: MeshInstance3D = ArenaMaterials3D.part(self, ring, ArenaMaterials3D.glow(WARN_COLOR, 2.0),
-			point + Vector3(0, 0.08, 0))
-		mark.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		mark.visible = false
-		_gate_marks.append(mark)
+		var glow: StandardMaterial3D = ArenaMaterials3D.glow(LANTERN_COLOR, 2.2).duplicate() as StandardMaterial3D
+		_lanterns.append(glow)
+		if out != Vector3.ZERO:
+			for flank: float in [-1.0, 1.0]:
+				_lantern(point + side * flank * 2.15 + out * 0.35, glow, index)
+			var haze: FogVolume = FogVolume.new()
+			haze.shape = RenderingServer.FOG_VOLUME_SHAPE_ELLIPSOID
+			haze.size = Vector3(5.0, 2.4, 5.0)
+			haze.position = point + out * 3.2 + Vector3(0, 0.6, 0)
+			var fog: FogMaterial = FogMaterial.new()
+			fog.albedo = WARN_COLOR.darkened(0.35)
+			fog.emission = WARN_COLOR.darkened(0.6)
+			fog.density = 0.0
+			fog.edge_fade = 0.8
+			haze.material = fog
+			add_child(haze)
+			_hazes.append(haze)
+
+
+## Фонарь на столбе ворот: столбик, колпак и светящийся короб (тёплый; перед ночью — красный).
+func _lantern(at: Vector3, glow: StandardMaterial3D, gate: int) -> void:
+	var holder: Node3D = Node3D.new()
+	holder.name = "GateLantern%d" % gate
+	holder.position = at
+	add_child(holder)
+	var post: StandardMaterial3D = ArenaMaterials3D.wood(0.5)
+	ArenaMaterials3D.part(holder, ArenaMaterials3D.cylinder(0.06, 0.07, 2.2, 6), post, Vector3(0, 1.1, 0))
+	ArenaMaterials3D.part(holder, ArenaMaterials3D.cylinder(0.13, 0.16, 0.06, 6), post, Vector3(0, 2.48, 0))
+	ArenaMaterials3D.part(holder, ArenaMaterials3D.cylinder(0.1, 0.1, 0.24, 6), glow, Vector3(0, 2.32, 0))
+	ArenaMaterials3D.part(holder, ArenaMaterials3D.cylinder(0.14, 0.11, 0.04, 6), post, Vector3(0, 2.18, 0))
 
 
 ## open_tonight[i] — вход i будет открыт в ближайшую ночь.
@@ -104,6 +140,13 @@ func sync(trial: RitualTrial, open_tonight: Array[bool], delta: float) -> void:
 	var warn: bool = not settings.is_night(trial.tick_count) and left >= 0 and left <= WARN_TICKS
 	var pulse: float = 0.5 + 0.5 * sin(_clock * 5.0)
 	for index: int in _gate_lights.size():
-		var lit: bool = warn and index < open_tonight.size() and open_tonight[index]
-		_gate_lights[index].light_energy = 2.6 * pulse if lit else 0.0
-		_gate_marks[index].visible = lit
+		var open: bool = index < open_tonight.size() and open_tonight[index]
+		var lit: bool = warn and open
+		_gate_lights[index].light_color = WARN_COLOR if lit else LANTERN_COLOR
+		_gate_lights[index].light_energy = (1.4 + 1.6 * pulse) if lit else (LANTERN_ENERGY if open else 0.0)
+		var glow: StandardMaterial3D = _lanterns[index]
+		glow.emission = WARN_COLOR if lit else LANTERN_COLOR
+		glow.albedo_color = glow.emission
+		glow.emission_energy_multiplier = (2.0 + 2.0 * pulse) if lit else (2.2 if open else 0.3)
+		if index < _hazes.size():
+			(_hazes[index].material as FogMaterial).density = 0.9 * (0.6 + 0.4 * pulse) if lit else 0.0

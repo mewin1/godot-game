@@ -18,7 +18,11 @@ func _initialize() -> void:
 func _run() -> void:
 	for argument: String in OS.get_cmdline_user_args():
 		if argument.begins_with("--out="):
-			_out = "res://" + argument.trim_prefix("--out=").trim_prefix("res://")
+			_out = argument.trim_prefix("--out=")
+			if not _out.begins_with("/"):
+				_out = "res://" + _out.trim_prefix("res://")
+			if not _out.ends_with("/"):
+				_out += "/"
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(_out))
 	root.mode = Window.MODE_WINDOWED
 	# Без рамки и без изменения размера: тайловый менеджер не ужмёт окно (critique_2).

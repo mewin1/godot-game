@@ -26,7 +26,7 @@ func _init(rule: ReactionData, point: Vector2i) -> void:
 		&"curse":
 			color = GodSymbols.get_color(&"curse")
 		&"fire":
-			color = Color("efcfac") if rule.id == &"steam" else GodSymbols.get_color(&"svarog")
+			color = Color("9aa6a8") if rule.id == &"steam" else GodSymbols.get_color(&"svarog")
 		_:
 			color = GodSymbols.get_color(&"war")
 
@@ -36,8 +36,9 @@ func draw(canvas: CanvasItem, foot: Vector2, cell: float) -> void:
 	var t: float = clampf(age / LIFETIME, 0.0, 1.0)
 	var fade: float = (1.0 - t) * smoothstep(0.0, 0.065, t)
 	var extent: Vector2 = Vector2(1.40, 0.62) * cell * (0.65 + t)
+	# Пар и дым прозрачнее и мельче (critique_3 п. 42): враг под облаком виден.
 	canvas.draw_texture_rect(GLOW, Rect2(foot - extent * 0.5, extent), false,
-			Color(color, fade * 0.72))
+			Color(color, fade * (0.3 if element == &"fire" else 0.72)))
 	var center: Vector2 = foot - Vector2(0, cell * 0.34)
 	var ink: Color = Color(color, fade)
 	for i: int in 5:
@@ -46,10 +47,10 @@ func draw(canvas: CanvasItem, foot: Vector2, cell: float) -> void:
 		var at: Vector2 = center + dir * cell * (0.12 + 0.54 * ease(t, 0.5))
 		match element:
 			&"fire":
-				var plume: Vector2 = Vector2.ONE * cell * (0.30 + 0.55 * t)
+				var plume: Vector2 = Vector2.ONE * cell * (0.30 + 0.55 * t) * 0.6
 				at.y -= cell * t * 0.50
 				canvas.draw_texture_rect(GLOW, Rect2(at - plume * 0.5, plume),
-						false, Color(color, fade * 0.85))
+						false, Color(color, fade * 0.35))
 			&"ice", &"physical":
 				var side: Vector2 = dir.orthogonal() * cell * 0.06 * (1.0 - t)
 				# В конце жизни осколок сжимается в линию: такой многоугольник не триангулируется.

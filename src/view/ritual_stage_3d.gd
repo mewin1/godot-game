@@ -58,6 +58,8 @@ var _appear: Dictionary[int, Vector2] = {}
 ## сила — по фазе суток. Только видимость: облик нежити ждёт моделей автора.
 const ENEMY_RIM_SHADER: Shader = preload("res://assets/shaders/ritual_enemy_rim.gdshader")
 const ENEMY_RIM_NIGHT: float = 0.85
+const PAUSE_GRAY: float = 0.3
+var _pause_gray: float = 0.0
 var _enemy_rim: ShaderMaterial
 
 
@@ -201,10 +203,12 @@ func _build_gates(ritual: RitualField) -> void:
 	var end: float = layout.road_end_length()
 	_gates.build_gatehouse(layout.road_point(end - 0.6), layout.road_direction(end - 0.6))
 	var points: Array[Vector3] = [layout.road_point(0.4)]
+	var outwards: Array[Vector3] = [-layout.road_direction(0.0)]
 	for street: int in ritual.settings.streets.size():
 		if not ritual.settings.streets[street].path_cells.is_empty():
 			points.append(_lanes[street + 1].road_point(0.4))
-	_gates.set_gates(points)
+			outwards.append(-_lanes[street + 1].road_direction(0.0))
+	_gates.set_gates(points, outwards)
 
 
 ## Герой забега в сторожке — конец главной улицы, у крыльца терема, чуть в стороне от колеи.
@@ -507,3 +511,12 @@ func _frame_perspective(target: Rect2, basis: Basis) -> void:
 	var adjusted: Rect2 = Rect2(target.position - Vector2(0, target.size.y * SKY_SHARE / (1.0 - SKY_SHARE)),
 		Vector2(target.size.x, target.size.y / (1.0 - SKY_SHARE)))
 	super._frame_perspective(adjusted, basis)
+
+
+## Пауза: картинка сцены обесцвечена на 30% (critique_3 п. 11); яркость не меняется.
+func set_pause_look(paused: bool) -> void:
+	var post: ShaderMaterial = material as ShaderMaterial
+	var gray: float = PAUSE_GRAY if paused else 0.0
+	if post != null and not is_equal_approx(_pause_gray, gray):
+		_pause_gray = gray
+		post.set_shader_parameter(&"pause_gray", gray)
