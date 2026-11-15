@@ -414,6 +414,7 @@ func _dump_all() -> void:
 	_dump_grass()
 	_dump_hero()
 	_dump_wildlife()
+	_dump_frame_share()
 	_dump_ui()
 	_dump_fonts()
 	await _dump_dock()
@@ -665,3 +666,17 @@ func _dump_wildlife() -> void:
 		var at: Vector3 = bear.global_position
 		var cell: Vector2i = Vector2i(floori(at.x / NoirArena3D.CELL), floori((at.z - NoirArena3D.BOARD_MIN.y) / NoirArena3D.CELL))
 		print("BEAR: at %s in_city=%s" % [at, _arena()._open_now.has(cell)])
+
+
+## Доля ширины кадра под частоколом (critique_3 п. 2: SCN-1 — 0,65-0,75).
+func _dump_frame_share() -> void:
+	var low: float = INF
+	var high: float = -INF
+	for node: Node3D in _props("palisade.glb") + _props("palisade_post.glb"):
+		var box: AABB = _world_box(node)
+		for index: int in 8:
+			var point: Vector2 = _stage().project(box.get_endpoint(index))
+			low = minf(low, point.x)
+			high = maxf(high, point.x)
+	var width: float = _panel.get_viewport_rect().size.x
+	print("FRAME: palisade share %.2f (%.0f..%.0f of %.0f)" % [(high - low) / width, low, high, width])

@@ -53,6 +53,11 @@ var _defeat_text: Label
 var _hero_panel: PanelContainer
 ## Затемнение под окнами забега (critique_3 п. 68, 73): фон не спорит с окном и не ловит щелчки.
 var _modal_shade: ColorRect
+var _top_bar: HBoxContainer
+var _scout_strip: Control
+var _compact: bool = false
+## Уже этой ширины (логические пиксели) — раскладка портрета (critique_3 п. 3).
+const COMPACT_WIDTH: float = 1100.0
 var _defeat_title: Label
 var _hero_choice: int = 0
 var _omen_night: int = 0
@@ -276,6 +281,8 @@ func _build_top_bar(strip: PanelContainer) -> void:
 	left_gap.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	bar.add_child(left_gap)
 	bar.add_child(strip)
+	_top_bar = bar
+	_scout_strip = strip
 	var right_gap: Control = Control.new()
 	right_gap.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	right_gap.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -1628,6 +1635,7 @@ func _announce_omen() -> void:
 
 
 func _refresh() -> void:
+	_fit_screen()
 	if _dock != null:
 		# До выбора героя док пуст: в нём нет чужого героя по умолчанию (critique_3 п. 53).
 		_dock.set_content_visible(_hero_panel == null or not _hero_panel.visible)
@@ -1817,3 +1825,31 @@ func _toggle_tools() -> void:
 func _sell_tower(tower_id: int) -> void:
 	board.selected_id = tower_id
 	_sell()
+
+
+## Портрет и узкие окна (critique_3 п. 3): док в два ряда, разведка — вторым рядом шапки,
+## тост по ширине экрана. Широкий экран — прежняя раскладка.
+func _fit_screen() -> void:
+	if _dock == null or _top_bar == null:
+		return
+	var width: float = size.x
+	var narrow: bool = width < COMPACT_WIDTH
+	_dock.set_compact(narrow, width)
+	if narrow == _compact:
+		return
+	_compact = narrow
+	if narrow:
+		_scout_strip.reparent(self, false)
+		_scout_strip.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP, Control.PRESET_MODE_MINSIZE)
+		_scout_strip.position.y = 62.0
+		_toast.offset_left = -width * 0.5 + 12.0
+		_toast.offset_right = width * 0.5 - 12.0
+		_toast.offset_top = 150.0
+		_message.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	else:
+		_scout_strip.reparent(_top_bar, false)
+		_top_bar.move_child(_scout_strip, 2)
+		_toast.offset_left = -380.0
+		_toast.offset_right = 380.0
+		_toast.offset_top = 90.0
+		_message.autowrap_mode = TextServer.AUTOWRAP_OFF

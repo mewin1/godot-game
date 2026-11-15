@@ -294,6 +294,6 @@ func _fit_flow() -> void:
 		var card: Control = child as Control
 		if card != null and card.visible:
 			total += card.get_combined_minimum_size().x + 4.0
-	var width: float = minf(total, MAX_FLOW_WIDTH)
+	var width: float = minf(total, minf(MAX_FLOW_WIDTH, get_viewport_rect().size.x - 60.0))
 	if not is_equal_approx(_flow.custom_minimum_size.x, width):
 		_flow.custom_minimum_size.x = width

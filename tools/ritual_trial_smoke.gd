@@ -119,8 +119,9 @@ func _check_endless(scene: PackedScene) -> void:
 	while panel.trial.phase == RitualTrial.Phase.RUNNING:
 		panel.trial.tick()
 	panel._process(0.0)
-	_check(panel._defeat.visible and panel._defeat_text.text.contains("Продержались ночей"), "Нет экрана поражения")
-	_check(panel._defeat_text.text.begins_with("Илья пал"), "Поражение не от гибели Ильи: " + panel._defeat_text.text)
+	# С 17 ноября (critique_3 п. 73): заголовок «Илья пал» отдельно (Kurale), итог — строкой ниже.
+	_check(panel._defeat.visible and panel._defeat_text.text.contains("Ночей"), "Нет экрана поражения")
+	_check(panel._defeat_title.text.begins_with("Илья пал"), "Поражение не от гибели Ильи: " + panel._defeat_title.text)
 	_check(panel._defeat_columns.get_child_count() == 3, "На экране поражения нет разбивки")
 	_check(panel._status.text == "0/%d" % panel.trial.max_hp() and panel._hud._hero_name.text.begins_with("Илья"),
 		"В доке нет «Илья» и «HP/макс»: " + panel._status.text)

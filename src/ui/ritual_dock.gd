@@ -14,6 +14,8 @@ signal placement_cancelled()
 ## Высота одна и та же с выбранным домом и без (п. 54): островки не растут от содержимого.
 const HEIGHT: float = 146.0
 const CONTEXT_WIDTH: float = 340.0
+## Портрет: островок дома уже, его кнопки бывают в три ряда — запас, чтобы док не прыгал.
+const COMPACT_EXTRA: float = 40.0
 const TIER_NAMES: Array[String] = ["I", "II", "III"]
 
 ## Сюда панель переносит портрет, HP, золото героя (MatchHud).
@@ -32,6 +34,13 @@ var _grid: GridContainer
 var _tier_tabs: Array[Button] = []
 var shown_tier: int = 1
 var _row: HBoxContainer
+## Портрет (critique_3 п. 3): второй ряд дока — герой и выбранный дом под каталогом.
+var _row2: HBoxContainer
+var _stack: VBoxContainer
+var _scroll: ScrollContainer
+var compact: bool = false
+var _context_island: Control
+var _left_island: Control
 
 
 func _init() -> void:
@@ -43,11 +52,20 @@ func _init() -> void:
 	add_theme_stylebox_override("panel", frame)
 	custom_minimum_size.y = HEIGHT
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_stack = VBoxContainer.new()
+	_stack.add_theme_constant_override("separation", 6)
+	_stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_stack)
 	var row: HBoxContainer = HBoxContainer.new()
 	row.add_theme_constant_override("separation", 8)
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(row)
+	_stack.add_child(row)
 	_row = row
+	_row2 = HBoxContainer.new()
+	_row2.add_theme_constant_override("separation", 8)
+	_row2.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_row2.hide()
+	_stack.add_child(_row2)
 	var left: VBoxContainer = VBoxContainer.new()
 	left.add_theme_constant_override("separation", 6)
 	left.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -81,9 +99,18 @@ func _init() -> void:
 	_grid.name = "Catalogue"
 	_grid.add_theme_constant_override("h_separation", 4)
 	_grid.add_theme_constant_override("v_separation", 4)
-	middle.add_child(_grid)
+	# Каталог в прокрутке: на широком экране она во всю ширину карточек и не видна, в портрете —
+	# по ширине экрана, карточки листаются (critique_3 п. 3).
+	_scroll = ScrollContainer.new()
+	_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_NEVER
+	_scroll.mouse_filter = Control.MOUSE_FILTER_PASS
+	middle.add_child(_scroll)
+	_scroll.add_child(_grid)
 	row.add_child(_spacer())
 	var context: PanelContainer = _island(row)
+	_context_island = context
+	_left_island = left.get_parent() as Control
 	context.custom_minimum_size.x = CONTEXT_WIDTH
 	var right: VBoxContainer = VBoxContainer.new()
 	right.add_theme_constant_override("separation", 2)
@@ -94,6 +121,8 @@ func _init() -> void:
 	context_title.add_theme_color_override("font_color", Color("e9cea2"))
 	context_title.add_theme_constant_override("outline_size", 0)
 	context_title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	# Постоянные высоты строк: док не дёргается от разных букв заголовка (critique_3 п. 54).
+	context_title.custom_minimum_size.y = 30
 	context_title.mouse_filter = Control.MOUSE_FILTER_PASS
 	right.add_child(context_title)
 	context_text = Label.new()
@@ -103,6 +132,7 @@ func _init() -> void:
 	context_text.custom_minimum_size.x = CONTEXT_WIDTH
 	# Одна строка: вторая раздвигала док (critique_3 п. 54); всё описание — в подсказке.
 	context_text.max_lines_visible = 1
+	context_text.custom_minimum_size.y = 24
 	context_text.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	context_text.mouse_filter = Control.MOUSE_FILTER_PASS
 	right.add_child(context_text)
@@ -244,3 +274,33 @@ func chip_count() -> int:
 func set_content_visible(shown: bool) -> void:
 	if _row != null and _row.visible != shown:
 		_row.visible = shown
+
+
+## Узкий экран (портрет): каталог — первым рядом с прокруткой, герой и выбранный дом — вторым.
+## Высота дока в этом режиме двойная; на широком — прежний один ряд.
+func set_compact(on: bool, width: float) -> void:
+	var catalogue: Vector2 = _grid.get_combined_minimum_size()
+	var room: float = width - 20.0 - 60.0
+	_scroll.custom_minimum_size = Vector2(minf(catalogue.x, room) if on else catalogue.x, catalogue.y)
+	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO if on and catalogue.x > room \
+			else ScrollContainer.SCROLL_MODE_SHOW_NEVER
+	if on == compact:
+		return
+	compact = on
+	if on:
+		_left_island.reparent(_row2, false)
+		_context_island.reparent(_row2, false)
+		_context_island.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		_context_island.custom_minimum_size.x = 0.0
+		context_text.custom_minimum_size.x = 0.0
+		_row2.show()
+		custom_minimum_size.y = HEIGHT * 2.0 + COMPACT_EXTRA
+	else:
+		_left_island.reparent(_row, false)
+		_row.move_child(_left_island, 0)
+		_context_island.reparent(_row, false)
+		_context_island.size_flags_horizontal = Control.SIZE_FILL
+		_context_island.custom_minimum_size.x = CONTEXT_WIDTH
+		context_text.custom_minimum_size.x = CONTEXT_WIDTH
+		_row2.hide()
+		custom_minimum_size.y = HEIGHT

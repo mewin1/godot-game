@@ -31,9 +31,9 @@ const DAY_SKY_HORIZON: Color = Color("a1b5bd")
 const DAY_FOG: Color = Color("86a2ad")
 const DAY_FOG_DENSITY: float = 0.1
 ## День заметно светлее ночи (docs/37 SCN-3: поле днём от 100 по яркости, ночью 45-60).
-## 1,7 и ночь x1,03 (17 ноября): тёмные крыши и частокол (critique_3 п. 5, 7) опустили поле ниже таблицы.
-const DAY_EXPOSURE: float = 1.72
-const NIGHT_EXPOSURE_GAIN: float = 1.03
+## 1,78 и ночь x1,06 (17 ноября): тёмные крыши и частокол (critique_3 п. 5, 7) опустили поле ниже таблицы.
+const DAY_EXPOSURE: float = 1.78
+const NIGHT_EXPOSURE_GAIN: float = 1.06
 const DAY_GLOW: float = 0.5
 const DAY_BLOOM: float = 0.05
 const DAY_SATURATION: float = 1.12

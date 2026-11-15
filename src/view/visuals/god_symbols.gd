@@ -45,7 +45,7 @@ static func get_power_name(god: StringName) -> String:
 		&"curse":
 			return "Проклятие · Чернобог"
 		&"war":
-			return "Война"
+			return "Война · Бог войны"
 	return "Без стихии"
 
 

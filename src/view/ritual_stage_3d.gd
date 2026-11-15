@@ -23,6 +23,13 @@ const FRAME_NEAR_PAD: float = 2.0
 ## Наклон круче PvP: при пологом взгляде мокрые лужи мостовой бликуют белым.
 const CAMERA_PITCH_RITUAL: float = -0.85
 const CAMERA_YAW_RITUAL: float = 0.3
+## Наклон на 21:9 и при каком соотношении сторон места под карту он включается (плавно).
+const CAMERA_PITCH_WIDE: float = -0.6
+## Сколько логических пикселей кадр заходит под шапку на альбомном экране.
+const HEADER_UNDER: float = 64.0
+const WIDE_FROM: float = 1.9
+const WIDE_TO: float = 2.9
+const PORTRAIT_TURN: float = -PI * 0.5
 ## Враги забега мельче домов (решение автора 15 ноября: враг ~0,7 высоты дома тира I, дома x2).
 ## Читаемость держит плотная доска 17x14: камера ближе, чем на прежней 20x18.
 const MOB_SCALE: float = 0.75
@@ -512,6 +519,20 @@ func _open_key() -> int:
 
 
 func _frame_perspective(target: Rect2, basis: Basis) -> void:
+	# Широкий экран (critique_3 п. 2): камера положе — город вписывается по ширине, а не по высоте.
+	# Портрет (п. 3): поворот на четверть круга — длинная сторона города вдоль экрана.
+	var aspect: float = target.size.x / maxf(1.0, target.size.y)
+	var pitch: float = lerpf(CAMERA_PITCH_RITUAL, CAMERA_PITCH_WIDE, smoothstep(WIDE_FROM, WIDE_TO, aspect))
+	var yaw: float = CAMERA_YAW_RITUAL + (PORTRAIT_TURN if aspect < 0.9 else 0.0)
+	if not is_equal_approx(_camera.rotation.x, pitch) or not is_equal_approx(_camera.rotation.y, yaw):
+		_camera.rotation = Vector3(pitch, yaw, 0.0)
+		basis = _camera.transform.basis
+	# На альбомных экранах кадр заходит под шапку (она теперь островками по краям, critique_3 п. 43):
+	# город крупнее по ширине (п. 2, SCN-1 0,65-0,75).
+	if aspect > 1.5:
+		# На 21:9 под шапку не заходим: там положе камера, а северные ворота ушли бы под разведку.
+		var lift: float = HEADER_UNDER * smoothstep(1.5, 2.0, aspect) * (1.0 - smoothstep(2.4, 2.9, aspect))
+		target = Rect2(target.position - Vector2(0.0, lift), target.size + Vector2(0.0, lift))
 	# Кадр занимает выделенное место полностью, без прежнего запаса под PvP-шапку.
 	var adjusted: Rect2 = Rect2(target.position - Vector2(0, target.size.y * SKY_SHARE / (1.0 - SKY_SHARE)),
 		Vector2(target.size.x, target.size.y / (1.0 - SKY_SHARE)))
