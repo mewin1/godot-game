@@ -14,18 +14,17 @@ const SPOTS: Array[Vector3] = [Vector3(46.66, 0.0, -1.0), Vector3(47.8, 0.0, 1.2
 const SPOT_LIFT: Array[float] = [0.0, 0.22, 0.0, 0.34]
 ## Идолы темнее (critique_3 п. 19): светлое дерево читалось как гидранты.
 const MODEL_TONE: float = 0.72
-## Чаша огня у ног идола (п. 12): огонь в ней, а не на голом камне.
-const BOWL: PackedScene = preload("res://assets/noir/courtyard/fire_bowl.glb")
-const BOWL_SCALE: float = 0.35
-## Верх чаши в единицах модели fire_bowl.glb (как FLAME_HEIGHT у жаровен NoirArena3D).
-const BOWL_TOP: float = 1.15
+## Кострище у ног идола (critique_4 п. 12): кольцо камней и поленья на плите, а не серая чаша
+## жаровни ворот; FIRE_LIFT — высота плиты, на которой оно лежит, FIRE_OUT — от центра к лицу идола.
+const FIRE_LIFT: float = 0.13
+const FIRE_OUT: float = 0.5
 const MODEL_SCALE: float = 0.85
 ## Плита меньше фигуры: восточная полоса площади между цоколем терема и частоколом — 2,1 м.
 const PLATE_SCALE: float = 0.74
 ## Плита стоит по осям мира (как мостовая и терем); к дороге (−x) и чуть к камере повёрнута только фигура.
 const FACE_YAW: float = -PI * 0.5 + 0.35
 ## Огонь у подножия: пустой идол — лампадка, каждый заговор чуть больше (до предела).
-const FLAME_BASE: float = 0.42
+const FLAME_BASE: float = 0.6
 const FLAME_STEP: float = 0.05
 const FLAME_MAX: float = 1.35
 const LIGHT_BASE: float = 2.2
@@ -62,16 +61,13 @@ func _init(style: Arena3DStyle) -> void:
 					ArenaMaterials3D.stone(Color(0.4, 0.4, 0.38)), Vector3.DOWN * SPOT_LIFT[index] * 0.5)
 			step.name = "Step"
 		var face: Vector3 = Vector3(sin(FACE_YAW), 0.0, cos(FACE_YAW))
-		var bowl: Node3D = BOWL.instantiate() as Node3D
-		bowl.scale = Vector3.ONE * BOWL_SCALE
-		bowl.position = face * 0.6
-		base.add_child(bowl)
+		_build_hearth(base, face * FIRE_OUT + Vector3.UP * FIRE_LIFT)
 		_gods.append(&"?")
 		_rites.append(-1)
 		_models.append(null)
 		var flame: MeshInstance3D = _make_flame(index)
-		# Огонь — в чаше у подножия фигуры, со стороны лица (не у частокола).
-		flame.position = face * 0.6 + Vector3(0.0, BOWL_TOP * BOWL_SCALE, 0.0)
+		# Огонь — в кострище у подножия фигуры, со стороны лица (не у частокола).
+		flame.position = face * FIRE_OUT + Vector3(0.0, FIRE_LIFT + 0.03, 0.0)
 		base.add_child(flame)
 		_flames.append(flame)
 		var light: OmniLight3D = OmniLight3D.new()
@@ -97,6 +93,26 @@ func _init(style: Arena3DStyle) -> void:
 		var bands: Node3D = Node3D.new()
 		base.add_child(bands)
 		_bands.append(bands)
+
+
+## Кострище: семь тёмных камней кольцом, два скрещённых полена и тлеющие угли.
+func _build_hearth(base: Node3D, at: Vector3) -> void:
+	var stone: StandardMaterial3D = ArenaMaterials3D.stone(Color(0.3, 0.3, 0.29))
+	var log_wood: StandardMaterial3D = ArenaMaterials3D.wood(0.45)
+	for index: int in 7:
+		var angle: float = TAU * index / 7.0 + 0.3
+		var rock: SphereMesh = SphereMesh.new()
+		rock.radius = 0.075 + 0.015 * sin(index * 2.3)
+		rock.height = rock.radius * 1.3
+		rock.radial_segments = 7
+		rock.rings = 4
+		ArenaMaterials3D.part(base, rock, stone, at + Vector3(cos(angle), 0.03, sin(angle)) * Vector3(0.2, 1.0, 0.2)
+				+ Vector3.UP * 0.03, Vector3(0.0, angle, 0.0))
+	for turn: float in [0.5, -0.6]:
+		ArenaMaterials3D.part(base, ArenaMaterials3D.cylinder(0.035, 0.035, 0.34, 6), log_wood,
+				at + Vector3.UP * 0.05, Vector3(0.0, turn, PI * 0.5))
+	ArenaMaterials3D.part(base, ArenaMaterials3D.cylinder(0.13, 0.13, 0.02, 8),
+			ArenaMaterials3D.glow(Color("ff6a2a"), 1.6), at + Vector3.UP * 0.02)
 
 
 func _make_flame(index: int) -> MeshInstance3D:

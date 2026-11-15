@@ -33,6 +33,10 @@ const PORTRAIT_TURN: float = -PI * 0.5
 ## Враги забега мельче домов (решение автора 15 ноября: враг ~0,7 высоты дома тира I, дома x2).
 ## Читаемость держит плотная доска 17x14: камера ближе, чем на прежней 20x18.
 const MOB_SCALE: float = 0.75
+## Сторожка: центр на столько метров до конца главной дороги; герой — перед её проёмом и чуть к камере.
+const GATEHOUSE_BACK: float = 2.2
+const HERO_BEFORE_GATE: float = 0.65
+const HERO_OFF_AXIS: float = 0.45
 ## Солнце, закат, ночь и тени облаков (ночь — свет PvP-двора).
 var _daylight: RitualDaylight
 var _catalogue_profile: bool = false
@@ -213,7 +217,7 @@ func _build_gates(ritual: RitualField) -> void:
 	_gates.name = "RitualGates"
 	_world.add_child(_gates)
 	var end: float = layout.road_end_length()
-	_gates.build_gatehouse(layout.road_point(end - 0.6), layout.road_direction(end - 0.6))
+	_gates.build_gatehouse(layout.road_point(end - GATEHOUSE_BACK), layout.road_direction(end - GATEHOUSE_BACK))
 	var points: Array[Vector3] = [layout.road_point(0.4)]
 	var outwards: Array[Vector3] = [-layout.road_direction(0.0)]
 	for street: int in ritual.settings.streets.size():
@@ -231,8 +235,12 @@ func _spawn_hero() -> void:
 	_hero = scene.instantiate() as Node3D
 	_world.add_child(_hero)
 	ArenaTower3D._tune_materials(_hero, STYLE.noir_model_glow, STYLE.noir_model_tone, STYLE.noir_model_rim)
-	# Сбоку от оси дороги, между столбами сторожки (±1,5 м): не в столбе (critique_3 п. 21).
-	_hero.position = layout.cell_center(_field.layout.path_cells[-1]) + Vector3(0.2, 0, 0.85)
+	# Перед западным проёмом сторожки (critique_4 п. 10, 54): вне тени крыши — виден целиком с игровой
+	# камеры; чуть к камере от оси, враги идут мимо, а не сквозь героя.
+	var end: float = layout.road_end_length()
+	var spot: float = end - GATEHOUSE_BACK - RitualGates3D.GATE_HALF_DEPTH - HERO_BEFORE_GATE
+	var along: Vector3 = layout.road_direction(spot)
+	_hero.position = layout.road_point(spot) + Vector3(along.z, 0.0, -along.x) * -HERO_OFF_AXIS
 	_hero.rotation.y = PI * 0.5
 
 

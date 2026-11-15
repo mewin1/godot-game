@@ -35,6 +35,17 @@ const TEREM_KEEP: Rect2 = Rect2(-0.84, -0.92, 1.84, 1.84)
 const CURB_WIDTH: float = 0.16
 ## Верх оставшейся плиты под срубом в единицах модели (0,28 x 1,9 = 0,53 м).
 const PLINTH_TOP: float = 0.285
+## Верх подклета (critique_4 п. 11): до низа сруба (0,4 x 1,9 = 0,76 м) — остатки плиты внутри.
+const PODKLET_TOP: float = 0.4
+## Предметы площади (мир): у северной стены и у южной, мимо дороги к терему (п. 14).
+const PLAZA_WELL: Vector3 = Vector3(38.6, 0.0, -3.0)
+const PLAZA_HITCH: Vector3 = Vector3(41.0, 0.0, 4.9)
+const PLAZA_WOODPILE: Vector3 = Vector3(40.9, 0.0, -4.4)
+const PLAZA_CART: Vector3 = Vector3(38.4, 0.0, 4.3)
+## Ступени подклета к дороге: число, глубина и ширина, м.
+const STEP_COUNT: int = 3
+const STEP_DEPTH: float = 0.3
+const STEP_WIDTH: float = 1.9
 const FILL: CourtyardForestLayout = preload("res://assets/noir/courtyard/ritual_fill.tres")
 ## Запас от открытой клетки до травы и камней (частокол стоит в 1 м от клетки).
 const GRASS_GAP: float = 1.6
@@ -293,6 +304,7 @@ func _build_terem(_at: Vector3, _out3: Vector3) -> void:
 	house.scale = Vector3.ONE * TEREM_SIZE
 	terem_bounds = house.transform * _bounds(house)
 	_build_terem_curb(house)
+	_build_plaza_props()
 	_warm_light(TEREM_AT + TEREM_FRONT * 4.0 + Vector3(0, 2.4, 0), 4.0, 9.0)
 
 
@@ -309,22 +321,88 @@ func _trim_terem(house: Node3D) -> void:
 		return
 
 
-## Подклет 3,5x3,5 м из камня под срубом (critique_3 п. 17): закрывает рваный край обрезанной плиты
-## (её верх — 0,53 м над мостовой), сверху — венец-бордюр.
+## Подклет 3,6x3,6 м под срубом (critique_4 п. 11): облицован тем же булыжником, что мостовая, высотой
+## до низа сруба — прячет остатки обрезанной плиты; сверху венец, к дороге — три ступени и крыльцо-настил.
 func _build_terem_curb(house: Node3D) -> void:
-	var stone: StandardMaterial3D = ArenaMaterials3D.stone(Color(0.36, 0.36, 0.35))
-	var rim: StandardMaterial3D = ArenaMaterials3D.stone(Color(0.46, 0.45, 0.42))
+	var cobble: ShaderMaterial = _terem_stone()
+	# Окладной венец — тёмное бревно под срубом, а не гладкая светлая плита.
+	var rim: StandardMaterial3D = ArenaMaterials3D.wood(0.55)
 	var keep: Rect2 = TEREM_KEEP
 	var center: Vector2 = keep.get_center() * TEREM_SIZE
 	var size: Vector2 = keep.size * TEREM_SIZE + Vector2.ONE * 0.12
-	var top: float = PLINTH_TOP * TEREM_SIZE
+	var top: float = PODKLET_TOP * TEREM_SIZE
 	var basis: Basis = house.basis.orthonormalized()
+	var turn: Vector3 = Vector3(0.0, house.rotation.y, 0.0)
 	var at: Vector3 = house.position + basis * Vector3(center.x, top * 0.5 - 0.02, center.y)
-	ArenaMaterials3D.part(_yard, ArenaMaterials3D.box(Vector3(size.x, top, size.y)), stone, at,
-			Vector3(0.0, house.rotation.y, 0.0))
+	ArenaMaterials3D.part(_yard, ArenaMaterials3D.box(Vector3(size.x, top, size.y)), cobble, at, turn).name = "TeremPodklet"
 	var lip: Vector3 = house.position + basis * Vector3(center.x, top - 0.03, center.y)
 	ArenaMaterials3D.part(_yard, ArenaMaterials3D.box(Vector3(size.x + CURB_WIDTH, 0.08, size.y + CURB_WIDTH)), rim, lip,
-			Vector3(0.0, house.rotation.y, 0.0))
+			turn)
+	# Ступени к дороге (фасад модели +z → в мире TEREM_FRONT): каждая ниже и дальше предыдущей.
+	var front: float = center.y + size.y * 0.5
+	var rise: float = top / (STEP_COUNT + 1)
+	for step: int in STEP_COUNT:
+		var height: float = top - rise * (step + 1)
+		var middle: Vector3 = house.position + basis * Vector3(center.x, height * 0.5 - 0.02,
+				front + STEP_DEPTH * (step + 0.5))
+		ArenaMaterials3D.part(_yard, ArenaMaterials3D.box(Vector3(STEP_WIDTH - step * 0.1, height, STEP_DEPTH)), cobble,
+				middle, turn)
+	# Крыльцо — дощатая площадка у двери, поверх подклета.
+	var porch: Vector3 = house.position + basis * Vector3(center.x, top + 0.04, front - 0.32)
+	ArenaMaterials3D.part(_yard, ArenaMaterials3D.box(Vector3(STEP_WIDTH, 0.07, 0.7)), ArenaMaterials3D.wood(0.8, true),
+			porch, turn)
+
+
+## Площадь не пустой плац (critique_4 п. 14): у северной стены — колодец, коновязь и поленница, у южной —
+## телега. Всё ниже 0,8 м (дворы не закрывают дорогу и врагов), мимо дороги, сторожки и терема.
+func _build_plaza_props() -> void:
+	var logs: StandardMaterial3D = ArenaMaterials3D.wood(0.7)
+	var dark: StandardMaterial3D = ArenaMaterials3D.wood(0.5)
+	var planks: StandardMaterial3D = ArenaMaterials3D.wood(0.85, true)
+	var stone: StandardMaterial3D = ArenaMaterials3D.stone(Color(0.4, 0.41, 0.4))
+	var holder: Node3D = Node3D.new()
+	holder.name = "PlazaProps"
+	_yard.add_child(holder)
+	# Колодец: каменный сруб-кольцо, дощатая крышка и ведро.
+	var well: Vector3 = PLAZA_WELL
+	ArenaMaterials3D.part(holder, ArenaMaterials3D.cylinder(0.5, 0.55, 0.5, 10), stone, well + Vector3(0, 0.25, 0))
+	ArenaMaterials3D.part(holder, ArenaMaterials3D.cylinder(0.46, 0.46, 0.06, 10), planks, well + Vector3(0, 0.53, 0))
+	ArenaMaterials3D.part(holder, ArenaMaterials3D.cylinder(0.11, 0.09, 0.2, 8), dark, well + Vector3(0.65, 0.1, 0.25))
+	# Коновязь: два столба и жердь.
+	for side: float in [-0.7, 0.7]:
+		ArenaMaterials3D.part(holder, ArenaMaterials3D.cylinder(0.07, 0.08, 0.78, 6), logs,
+				PLAZA_HITCH + Vector3(side, 0.39, 0.0))
+	ArenaMaterials3D.part(holder, ArenaMaterials3D.cylinder(0.05, 0.05, 1.6, 6), logs, PLAZA_HITCH + Vector3(0, 0.66, 0),
+			Vector3(0.0, 0.0, PI * 0.5))
+	# Поленница вдоль стены: три ряда поленьев торцами наружу.
+	for row: int in 3:
+		for index: int in 7 - row:
+			var at: Vector3 = PLAZA_WOODPILE + Vector3((index - (6 - row) * 0.5) * 0.24, 0.12 + row * 0.2, 0.0)
+			ArenaMaterials3D.part(holder, ArenaMaterials3D.cylinder(0.11, 0.11, 0.7, 7), logs if (index + row) % 3 else dark,
+					at, Vector3(PI * 0.5, 0.0, 0.0))
+	# Телега: кузов из досок, два колеса и оглобли.
+	var cart: Vector3 = PLAZA_CART
+	ArenaMaterials3D.part(holder, ArenaMaterials3D.box(Vector3(1.5, 0.08, 0.9)), planks, cart + Vector3(0, 0.42, 0))
+	for side: float in [-1.0, 1.0]:
+		ArenaMaterials3D.part(holder, ArenaMaterials3D.box(Vector3(1.5, 0.22, 0.05)), planks, cart + Vector3(0, 0.55, side * 0.43))
+		ArenaMaterials3D.part(holder, ArenaMaterials3D.cylinder(0.36, 0.36, 0.07, 12), dark, cart + Vector3(0.1, 0.36, side * 0.52),
+				Vector3(PI * 0.5, 0.0, 0.0))
+		ArenaMaterials3D.part(holder, ArenaMaterials3D.cylinder(0.03, 0.03, 1.3, 5), logs, cart + Vector3(-1.25, 0.32, side * 0.3),
+				Vector3(0.0, 0.0, PI * 0.5 + 0.25))
+
+
+## Камень подклета и ступеней — та же кладка, что мостовая (шейдер с облицовкой стен).
+func _terem_stone() -> ShaderMaterial:
+	var material: ShaderMaterial = ShaderMaterial.new()
+	material.shader = PAVING_SHADER
+	material.set_shader_parameter("custom_palette", true)
+	material.set_shader_parameter("scatter", true)
+	material.set_shader_parameter("walls", true)
+	material.set_shader_parameter("stone_size", 0.3)
+	material.set_shader_parameter("grout_color", Color("3e4645"))
+	material.set_shader_parameter("stone_dark", Color("3b4646"))
+	material.set_shader_parameter("stone_light", Color("5e6967"))
+	return material
 
 
 ## Терем внутри частокола — проёма у крыльца, как в PvP, нет (ворота остаются только у входа).

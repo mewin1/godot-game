@@ -15,12 +15,20 @@ uniform vec3 grout_color : source_color;
 uniform bool scatter = false;
 // Средний размер камня, м.
 uniform float stone_size = 0.42;
+// Облицовка стен (подклет терема, critique_4 п. 11): на боковых гранях кладка по (x+z, y), свет — по
+// нормали грани; мох по швам выключен.
+uniform bool walls = false;
 varying vec2 ground;
 varying float border;
 
+varying float upright;
+
 void vertex() {
-	ground = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xz - origin;
-	border = COLOR.r;
+	vec3 world = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+	vec3 facing = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
+	upright = walls ? 1.0 - step(0.5, abs(facing.y)) : 0.0;
+	ground = upright > 0.5 ? vec2(world.x + world.z, world.y) : world.xz - origin;
+	border = walls ? 0.0 : COLOR.r;
 }
 
 float hash(vec2 p) {
@@ -130,5 +138,7 @@ void fragment() {
 	}
 	CLEARCOAT_ROUGHNESS = 0.23;
 	vec2 slope = transpose(turn) * ((r.rg * 2.0 - 1.0) * 0.85);
-	NORMAL = normalize((VIEW_MATRIX * vec4(normalize(vec3(slope.x, 1.0, slope.y)), 0.0)).xyz);
+	if (upright < 0.5) {
+		NORMAL = normalize((VIEW_MATRIX * vec4(normalize(vec3(slope.x, 1.0, slope.y)), 0.0)).xyz);
+	}
 }

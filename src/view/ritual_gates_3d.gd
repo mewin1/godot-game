@@ -23,43 +23,84 @@ var _breach_age: float = BREACH_SECONDS
 var _clock: float = 0.0
 
 
-## Сторожка у конца главной дороги (critique_2 п. 14, SCN-7): рубленая арка над проездом —
-## столбы-брёвна, полустенки из брёвен по бокам, балки и двускатная тёсовая крыша с коньком.
-## Фонарь под коньком вспыхивает на прорыве. Лицом вдоль дороги.
+## Сторожка у конца главной дороги (critique_4 п. 10, 54, SCN-7): проезд вдоль дороги под низкой
+## двускатной крышей — конёк вдоль дороги, фронтоны со светлыми причелинами смотрят навстречу нежити.
+## Сторона к камере открыта (без полустенки), с дальней — низкая жердь. Фонарь висит у западного проёма:
+## вспыхивает на прорыве, тлеет при малом здоровье. Герой стоит перед проёмом (RitualStage3D).
+## Местные оси: +z — вдоль дороги к терему, +x — от камеры.
+const GATE_HALF_WIDTH: float = 1.25
+const GATE_HALF_DEPTH: float = 1.2
+const GATE_POST_HEIGHT: float = 2.05
+
+
 func build_gatehouse(at: Vector3, along: Vector3) -> void:
 	_gatehouse = Node3D.new()
 	_gatehouse.name = "Gatehouse"
 	_gatehouse.position = at
 	_gatehouse.rotation.y = atan2(along.x, along.z)
 	add_child(_gatehouse)
-	# Фактура брёвен частокола вместо гладкого цвета (critique_3 п. 20).
 	var logs: StandardMaterial3D = ArenaMaterials3D.wood(0.95)
 	var dark: StandardMaterial3D = ArenaMaterials3D.wood(0.6)
 	var shingle: StandardMaterial3D = ArenaMaterials3D.wood(0.55, true)
-	# Столбы на ±1,5 от оси дороги: герой стоит у правого края проезда, а не в столбе (critique_3 п. 21).
-	for side: float in [-1.5, 1.5]:
-		for depth: float in [-0.5, 0.5]:
-			ArenaMaterials3D.part(_gatehouse, ArenaMaterials3D.cylinder(0.13, 0.12, 2.45, 8), logs,
-				Vector3(side, 1.22, depth))
-		# Полустенка из трёх брёвен: проезд вдоль дороги открыт.
-		for row: int in 3:
-			ArenaMaterials3D.part(_gatehouse, ArenaMaterials3D.cylinder(0.11, 0.11, 1.25, 7), logs,
-				Vector3(side, 0.14 + row * 0.22, 0.0), Vector3(PI * 0.5, 0.0, 0.0))
-	for depth: float in [-0.5, 0.5]:
-		ArenaMaterials3D.part(_gatehouse, ArenaMaterials3D.cylinder(0.11, 0.11, 3.35, 7), dark,
-			Vector3(0.0, 2.42, depth), Vector3(0.0, 0.0, PI * 0.5))
+	var trim: StandardMaterial3D = ArenaMaterials3D.wood(1.35)
+	var w: float = GATE_HALF_WIDTH
+	var d: float = GATE_HALF_DEPTH
+	var top: float = GATE_POST_HEIGHT
+	for side: float in [-w, w]:
+		for depth: float in [-d, d]:
+			ArenaMaterials3D.part(_gatehouse, ArenaMaterials3D.cylinder(0.11, 0.13, top, 8), logs,
+				Vector3(side, top * 0.5, depth))
+		# Брус-обвязка вдоль проезда.
+		ArenaMaterials3D.part(_gatehouse, ArenaMaterials3D.box(Vector3(0.16, 0.16, d * 2.0 + 0.4)), dark,
+			Vector3(side, top, 0.0))
+	for depth: float in [-d, d]:
+		# Перекладины проёмов поперёк дороги.
+		ArenaMaterials3D.part(_gatehouse, ArenaMaterials3D.cylinder(0.1, 0.1, w * 2.0 + 0.4, 7), dark,
+			Vector3(0.0, top + 0.1, depth), Vector3(0.0, 0.0, PI * 0.5))
+	# Низкая жердь только с дальней стороны: проезд и герой открыты с игровой камеры.
+	for height: float in [0.42, 0.82]:
+		ArenaMaterials3D.part(_gatehouse, ArenaMaterials3D.cylinder(0.06, 0.06, d * 2.0, 6), logs,
+			Vector3(w, height, 0.0), Vector3(PI * 0.5, 0.0, 0.0))
+	# Шатёр: четыре ската к навершию — с игровой камеры не «доска», а башенка ворот.
+	var eave: Vector2 = Vector2(w + 0.32, d + 0.32)
+	var rise: float = 1.35
+	var roof: MeshInstance3D = ArenaMaterials3D.part(_gatehouse, _tent_mesh(eave, rise), shingle,
+		Vector3(0.0, top + 0.18, 0.0))
+	roof.name = "TentRoof"
+	# Светлая обвязка по свесу (причелины) и навершие — силуэт читается и ночью.
 	for side: float in [-1.0, 1.0]:
-		ArenaMaterials3D.part(_gatehouse, ArenaMaterials3D.box(Vector3(3.7, 0.07, 0.95)), shingle,
-			Vector3(0.0, 2.78, side * 0.36), Vector3(side * 0.52, 0.0, 0.0))
-	ArenaMaterials3D.part(_gatehouse, ArenaMaterials3D.cylinder(0.07, 0.07, 3.8, 6), dark,
-		Vector3(0.0, 3.02, 0.0), Vector3(0.0, 0.0, PI * 0.5))
-	# Фонарь под коньком вместо неоновой полосы (п. 20): тлеет при малом здоровье, вспыхивает на прорыве.
+		ArenaMaterials3D.part(_gatehouse, ArenaMaterials3D.box(Vector3(0.07, 0.13, eave.y * 2.0 + 0.07)), trim,
+			Vector3(side * eave.x, top + 0.2, 0.0))
+		ArenaMaterials3D.part(_gatehouse, ArenaMaterials3D.box(Vector3(eave.x * 2.0 + 0.07, 0.13, 0.07)), trim,
+			Vector3(0.0, top + 0.2, side * eave.y))
+	ArenaMaterials3D.part(_gatehouse, ArenaMaterials3D.cylinder(0.05, 0.09, 0.42, 6), trim,
+		Vector3(0.0, top + 0.18 + rise + 0.12, 0.0))
+	# Фонарь у западного проёма (навстречу нежити): тлеет при малом здоровье, вспыхивает на прорыве.
 	_glow = ArenaMaterials3D.glow(Color("ff5a2e"), 0.0)
-	var lantern: Vector3 = Vector3(0.0, 2.05, 0.55)
-	ArenaMaterials3D.part(_gatehouse, ArenaMaterials3D.cylinder(0.012, 0.012, 0.32, 4), dark, lantern + Vector3(0, 0.3, 0))
+	var lantern: Vector3 = Vector3(0.0, top - 0.32, -d)
+	ArenaMaterials3D.part(_gatehouse, ArenaMaterials3D.cylinder(0.012, 0.012, 0.3, 4), dark, lantern + Vector3(0, 0.27, 0))
 	ArenaMaterials3D.part(_gatehouse, ArenaMaterials3D.cylinder(0.11, 0.13, 0.05, 6), dark, lantern + Vector3(0, 0.15, 0))
 	ArenaMaterials3D.part(_gatehouse, ArenaMaterials3D.cylinder(0.09, 0.09, 0.22, 6), _glow, lantern)
 	ArenaMaterials3D.part(_gatehouse, ArenaMaterials3D.cylinder(0.12, 0.1, 0.04, 6), dark, lantern - Vector3(0, 0.13, 0))
+
+
+## Шатровая крыша: четыре треугольных ската с плоскими нормалями (половины свеса eave, высота rise).
+static func _tent_mesh(eave: Vector2, rise: float) -> ArrayMesh:
+	var tool: SurfaceTool = SurfaceTool.new()
+	tool.begin(Mesh.PRIMITIVE_TRIANGLES)
+	tool.set_smooth_group(-1)
+	var apex: Vector3 = Vector3(0.0, rise, 0.0)
+	var corners: Array[Vector3] = [Vector3(-eave.x, 0.0, -eave.y), Vector3(eave.x, 0.0, -eave.y),
+			Vector3(eave.x, 0.0, eave.y), Vector3(-eave.x, 0.0, eave.y)]
+	for index: int in 4:
+		var a: Vector3 = corners[index]
+		var b: Vector3 = corners[(index + 1) % 4]
+		for point: Vector3 in [b, apex, a]:
+			tool.set_uv(Vector2(point.x + point.y * 0.7, point.z + point.y * 0.7) * 0.6)
+			tool.add_vertex(point)
+	tool.generate_normals()
+	tool.generate_tangents()
+	return tool.commit()
 
 
 ## Ворота (точки входа дорог в мире) и направление наружу: фонари на столбах, свет и дымка
