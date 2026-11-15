@@ -10,9 +10,11 @@ uniform bool custom_palette = false;
 uniform vec3 stone_dark : source_color;
 uniform vec3 stone_light : source_color;
 uniform vec3 grout_color : source_color;
-// Без «кафеля» (critique_3 п. 23): каждая клетка 2 м берёт одну из четырёх плиток карты без рамки,
-// повёрнутую по хэшу клетки; границы клеток волнистые. Выключено — прежняя кладка PvP.
+// Без «кафеля» и без швов (critique_4 п. 15): булыжник строится в шейдере (ячейки Вороного) —
+// камни непрерывны по всему двору, сетки клеток нет. Выключено — прежняя кладка PvP по карте фактуры.
 uniform bool scatter = false;
+// Средний размер камня, м.
+uniform float stone_size = 0.42;
 varying vec2 ground;
 varying float border;
 
@@ -23,6 +25,44 @@ void vertex() {
 
 float hash(vec2 p) {
 	return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+}
+
+vec2 hash2(vec2 p) {
+	return fract(sin(vec2(dot(p, vec2(127.1, 311.7)), dot(p, vec2(269.5, 183.3)))) * 43758.5453);
+}
+
+// Кладка Вороного (по И. Квилесу): x — расстояние до шва, yz — смещение от центра камня, w — хэш камня.
+vec4 cobble(vec2 p) {
+	vec2 n = floor(p);
+	vec2 f = fract(p);
+	vec2 mg;
+	vec2 mr;
+	float md = 8.0;
+	for (int j = -1; j <= 1; j++) {
+		for (int i = -1; i <= 1; i++) {
+			vec2 g = vec2(float(i), float(j));
+			vec2 o = 0.12 + 0.76 * hash2(n + g);
+			vec2 r = g + o - f;
+			float d = dot(r, r);
+			if (d < md) {
+				md = d;
+				mr = r;
+				mg = g;
+			}
+		}
+	}
+	float edge = 8.0;
+	for (int j = -2; j <= 2; j++) {
+		for (int i = -2; i <= 2; i++) {
+			vec2 g = mg + vec2(float(i), float(j));
+			vec2 o = 0.12 + 0.76 * hash2(n + g);
+			vec2 r = g + o - f;
+			if (dot(mr - r, mr - r) > 0.00001) {
+				edge = min(edge, dot(0.5 * (mr + r), normalize(r - mr)));
+			}
+		}
+	}
+	return vec4(edge, -mr, hash(n + mg));
 }
 
 float value_noise(vec2 p) {
@@ -37,25 +77,27 @@ void fragment() {
 	vec2 du = dFdx(uv);
 	vec2 dv = dFdy(uv);
 	mat2 turn = mat2(1.0);
+	vec3 r;
+	vec3 stone;
 	if (scatter) {
-		vec2 warp = vec2(value_noise(ground * 0.45), value_noise(ground * 0.45 + 17.3)) * 0.8 - 0.4;
-		vec2 g = (ground + warp) * 0.5;
-		vec2 cell = floor(g);
-		vec2 local = fract(g) - 0.5;
-		float h = hash(cell);
-		float quarter = floor(h * 4.0);
-		float c = quarter == 1.0 ? 0.0 : (quarter == 3.0 ? 0.0 : (quarter == 2.0 ? -1.0 : 1.0));
-		float s = quarter == 1.0 ? 1.0 : (quarter == 3.0 ? -1.0 : 0.0);
-		turn = mat2(vec2(c, s), vec2(-s, c));
-		local = turn * local + 0.5;
-		vec2 tile = vec2(floor(fract(h * 7.13) * 2.0), floor(fract(h * 3.77) * 2.0));
-		const float CROP = 0.08;
-		uv = (tile + CROP + local * (1.0 - 2.0 * CROP)) * 0.5;
-		du = turn * du * (1.0 - 2.0 * CROP);
-		dv = turn * dv * (1.0 - 2.0 * CROP);
+		// Камни: тёмный шов, скруглённый край (уклон наружу у шва), свой тон и наклон каждого камня.
+		vec2 q = ground / stone_size + vec2(value_noise(ground * 1.7), value_noise(ground * 1.7 + 9.1)) * 0.35;
+		vec4 c = cobble(q);
+		float px = length(fwidth(q));
+		float seam = 1.0 - smoothstep(0.035, 0.075 + px, c.x);
+		float bevel = 1.0 - smoothstep(0.0, 0.2, c.x);
+		vec2 tilt = (hash2(vec2(c.w * 91.7, c.w * 17.3)) - 0.5) * 0.25;
+		vec2 out_dir = normalize(c.yz + vec2(0.0001));
+		vec2 slope = out_dir * bevel * 0.9 + tilt;
+		float grain = value_noise(ground * 9.0) * 0.5 + value_noise(ground * 23.0) * 0.5;
+		float tone = 0.075 + 0.05 * fract(c.w * 13.7) + 0.02 * (grain - 0.5);
+		// Тон в шкале карты фактуры: дальше та же палитра custom_palette, что и у прежней кладки.
+		stone = vec3(mix(tone * (1.0 - 0.25 * bevel), 0.0, seam));
+		r = vec3(clamp(slope * 0.5 + 0.5, 0.0, 1.0), mix(0.62 + 0.1 * grain, 0.95, max(seam, bevel * 0.35)));
+	} else {
+		r = textureGrad(relief, uv, du, dv).rgb;
+		stone = textureGrad(setts, uv, du, dv).rgb;
 	}
-	vec3 r = textureGrad(relief, uv, du, dv).rgb;
-	vec3 stone = textureGrad(setts, uv, du, dv).rgb;
 	if (custom_palette) {
 		float value = dot(stone, vec3(0.29, 0.58, 0.13));
 		vec3 slab = mix(stone_dark, stone_light, smoothstep(0.03, 0.115, value));
