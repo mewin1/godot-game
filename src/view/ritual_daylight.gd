@@ -85,7 +85,8 @@ const STREAM_SHADER: Shader = preload("res://assets/shaders/noir_stream.gdshader
 const NIGHT_STREAM_SKY: Color = Color(0.3, 0.4, 0.48)
 const DAY_STREAM_SKY: Color = Color(0.62, 0.74, 0.84)
 const NIGHT_STREAM_DEEP: Color = Color(0.025, 0.06, 0.075)
-const DAY_STREAM_DEEP: Color = Color(0.012, 0.035, 0.05)
+## Глубина ручья днём темнее x0,6 (critique_4 п. 24).
+const DAY_STREAM_DEEP: Color = Color(0.007, 0.021, 0.03)
 var _streams: Array[ShaderMaterial] = []
 var _stream_day: float = -1.0
 
@@ -261,6 +262,9 @@ func _tint_stream(day: float) -> void:
 	for material: ShaderMaterial in _streams:
 		material.set_shader_parameter(&"sky", NIGHT_STREAM_SKY.lerp(DAY_STREAM_SKY, day))
 		material.set_shader_parameter(&"deep", NIGHT_STREAM_DEEP.lerp(DAY_STREAM_DEEP, day))
+		# Днём дно только у берегов, отражение неба сильнее (critique_4 п. 24).
+		material.set_shader_parameter(&"shoal_end", lerpf(0.79, 0.38, day))
+		material.set_shader_parameter(&"sky_gain", lerpf(1.0, 1.45, day))
 
 
 func _light_paving(lift: float) -> void:

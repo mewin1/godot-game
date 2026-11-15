@@ -124,24 +124,28 @@ static func _wattle_texture() -> ImageTexture:
 	image.fill(Color(0, 0, 0, 0))
 	var rng: RandomNumberGenerator = RandomNumberGenerator.new()
 	rng.seed = 91
-	# Неровный верх: высота верхнего прута плавно гуляет.
-	var rods: int = 7
+	# Плетень (critique_4 п. 16): толстые горизонтальные прутья (9-10 px) огибают колья через один — период
+	# плетения равен двум кольям, у кола прут то спереди (светлее), то сзади (темнее); без ромбовых просветов.
+	var rods: int = 8
 	for rod: int in rods:
-		var base: float = H - 10.0 - rod * 11.5
+		var base: float = H - 8.0 - rod * 10.5
 		var phase: float = rng.randf() * TAU
-		var tone: float = rng.randf_range(0.8, 1.15)
+		var tone: float = rng.randf_range(0.82, 1.12)
+		var flip: float = PI if rod % 2 == 1 else 0.0
 		for x: int in W:
-			var weave: float = sin(x / float(W) * TAU * 4.0 + (PI if rod % 2 == 1 else 0.0)) * 2.4
-			var wobble: float = sin(x * 0.045 + phase) * 1.6
-			var y_mid: float = base + weave + wobble
-			if rod == rods - 1 and sin(x * 0.03 + phase) > 0.35:
+			# Колья на x = 30 + 64k: между кольями прут выгибается, у кола — перед ним или за ним.
+			var weave: float = sin((x - 30.0) / 64.0 * PI + flip)
+			var wobble: float = sin(x * 0.03 + phase) * 1.0
+			var y_mid: float = base + wobble
+			if rod == rods - 1 and sin(x * 0.03 + phase) > 0.45:
 				continue
-			for dy: int in range(-4, 5):
+			for dy: int in range(-5, 6):
 				var y: int = roundi(y_mid) + dy
 				if y < 0 or y >= H:
 					continue
-				var shade: float = tone * (1.0 - absf(dy) / 6.0) * (0.9 + 0.1 * sin(x * 0.7 + rod))
-				image.set_pixel(x, y, Color(shade, shade * 0.97, shade * 0.93, 1.0))
+				var round_shade: float = 1.0 - pow(absf(dy) / 5.5, 2.0) * 0.55
+				var shade: float = tone * round_shade * (0.86 + 0.14 * weave) * (0.93 + 0.07 * sin(x * 0.9 + rod * 2.0))
+				image.set_pixel(x, y, Color(shade, shade * 0.95, shade * 0.88, 1.0))
 	# Колья через 64 px — темнее прутьев.
 	for stake: int in 4:
 		var x0: int = 30 + stake * 64

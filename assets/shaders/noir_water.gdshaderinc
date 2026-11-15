@@ -17,6 +17,12 @@ uniform float ripple_scale = 0.9;
 uniform float water_specular = 0.15;
 // Светлые гребни ряби (пруду ночью — x0,3, critique_3 п. 29: без белых «запятых»).
 uniform float crest_gain = 1.0;
+// critique_4 п. 24: где кончается галечное мелководье (доля от берега до середины) и сила отражения неба —
+// у дневного ручья «Обряда» дно только у берегов, небо сильнее (вода, а не мощёная дорожка).
+uniform float shoal_end = 0.79;
+uniform float sky_gain = 1.0;
+// critique_4 п. 23: блики огней на воде гаснут дальше этой доли от берега (1 — везде, как было).
+uniform float glint_reach = 1.0;
 
 varying vec3 world;
 
@@ -75,7 +81,7 @@ void fragment() {
 	float fresnel = pow(1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0), 3.0);
 	vec2 bed_uv = world.xz * 0.85 + gradient * 0.018;
 	vec3 gravel = texture(bed, bed_uv).rgb;
-	float shoal = 1.0 - smoothstep(0.12, 0.79, edge);
+	float shoal = 1.0 - smoothstep(0.12 * shoal_end / 0.79, shoal_end, edge);
 	ALBEDO = mix(deep, mix(shallow, gravel * vec3(0.46, 0.61, 0.57), 0.68), shoal);
 	// луна: светлое пятно, растянутое вдоль взгляда камеры (ось x), дрожит на ряби
 	vec2 d = (world.xz - moon_spot.xz + slope * 0.08) / vec2(moon_radius * 1.8, moon_radius);
@@ -83,9 +89,9 @@ void fragment() {
 	float glow = exp(-dot(d, d) * 0.35) * 0.35;
 	float crest = smoothstep(0.62, 0.84, h + gradient.y * 0.12);
 	float ribbon = crest * (0.16 + fresnel) * smoothstep(0.08, 0.5, edge);
-	EMISSION = sky * ((0.08 + fresnel * 0.28) * smoothstep(0.05, 0.4, edge) + ribbon * 0.28 * crest_gain)
+	EMISSION = sky * ((0.08 + fresnel * 0.28) * sky_gain * smoothstep(0.05, 0.4, edge) + ribbon * 0.28 * crest_gain)
 			+ moon_color * (disc * 0.34 + glow * 0.15) * mix(0.18, 1.10, crest * crest_gain);
 	ROUGHNESS = mix(0.21, 0.43, shoal);
-	SPECULAR = water_specular;  // тёплые блики факелов почти не берёт: иначе вода выглядит как нефть
+	SPECULAR = water_specular * (1.0 - smoothstep(glint_reach * 0.6, glint_reach, edge));  // тёплые блики факелов почти не берёт: иначе вода выглядит как нефть
 	ALPHA = smoothstep(0.0, 0.25, edge);
 }

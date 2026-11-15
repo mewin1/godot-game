@@ -92,7 +92,8 @@ const SHRINE: Rect2i = Rect2i(10, 4, 1, 1)
 const FENCE_HEIGHT: float = 0.7
 const FENCE_COLOR: Color = Color(0.17, 0.12, 0.08)
 ## Прутья плетня и тына: цвет частокола x0,8 (critique_3 п. 16) — светлее чёрных досок, с просветами.
-const WATTLE_COLOR: Color = Color(0.5, 0.36, 0.25)
+## Плетень светлее на 20% (critique_4 п. 16): ночью L >= 40, а не чугунная ограда.
+const WATTLE_COLOR: Color = Color(0.6, 0.43, 0.3)
 ## Клетки поля (пути и места, включая ещё не пристроенные кварталы) — задаёт RitualStage3D
 ## до постройки леса: лес, камни и луг сюда не садятся.
 var yard_cells: Dictionary[Vector2i, bool] = {}
@@ -829,7 +830,9 @@ func _build_pond() -> void:
 	material.set_shader_parameter("moon_spot", POND_MOON)
 	material.set_shader_parameter("moon_radius", 0.8)
 	material.set_shader_parameter("water_specular", 0.1)
-	material.set_shader_parameter("crest_gain", 0.3)
+	# Гладь пруда тёмная с одним бликом луны (critique_4 п. 23): гребни тише, блики огней — только у берега.
+	material.set_shader_parameter("crest_gain", 0.12)
+	material.set_shader_parameter("glint_reach", 0.25)
 	material.set_shader_parameter("ripple_scale", 0.55)
 	var water: MeshInstance3D = MeshInstance3D.new()
 	water.name = "Pond"
@@ -915,12 +918,17 @@ func _build_boardwalk(from: Vector3, to: Vector3) -> void:
 		for side: float in [-0.95, 0.95]:
 			ArenaMaterials3D.part(holder, ArenaMaterials3D.cylinder(0.09, 0.08, 0.7, 6), dark,
 					Vector3(side, -0.35, z))
-	# Перила с северной (дальней) стороны: камера с юга смотрит поверх них на настил.
+	# Перила с обеих сторон, той же фактуры, на толстых столбиках (critique_4 п. 58); ближние ниже —
+	# камера с юга смотрит поверх них на настил.
 	var far_side: float = 1.0 if sin(holder.rotation.y) >= 0.0 else -1.0
-	for index: int in piles:
-		var z: float = -length * 0.5 + length * index / (piles - 1)
-		ArenaMaterials3D.part(holder, ArenaMaterials3D.cylinder(0.04, 0.035, 0.5, 5), dark, Vector3(far_side * 1.0, 0.25, z))
-	ArenaMaterials3D.part(holder, ArenaMaterials3D.box(Vector3(0.06, 0.05, length)), rails, Vector3(far_side * 1.0, 0.48, 0.0))
+	for side: float in [far_side, -far_side]:
+		var height: float = 0.5 if side == far_side else 0.36
+		for index: int in piles:
+			var z: float = -length * 0.5 + length * index / (piles - 1)
+			ArenaMaterials3D.part(holder, ArenaMaterials3D.box(Vector3(0.09, height, 0.09)), rails,
+					Vector3(side * 1.0, height * 0.5, z))
+		ArenaMaterials3D.part(holder, ArenaMaterials3D.box(Vector3(0.08, 0.06, length)), rails,
+				Vector3(side * 1.0, height - 0.02, 0.0))
 
 
 ## Точка уреза, ближе всего лежащая в направлении direction от середины пруда.
@@ -948,10 +956,17 @@ func _build_fishing_pier(at: Vector2, out: Vector2) -> void:
 	for corner: Vector2 in [Vector2(-0.55, 0.4), Vector2(0.55, 0.4), Vector2(-0.55, 2.8), Vector2(0.55, 2.8)]:
 		ArenaMaterials3D.part(holder, ArenaMaterials3D.cylinder(0.08, 0.07, 0.8, 6), dark, Vector3(corner.x, -0.3, corner.y))
 	# Долблёнка у мостков (critique_3 п. 24): корпус с заострёнными носом и кормой, на воде, с тенью.
-	var boat: MeshInstance3D = ArenaMaterials3D.part(holder, _boat_mesh(2.7, 0.62, 0.3), ArenaMaterials3D.wood(0.6),
-			Vector3(1.35, 0.12, 1.9), Vector3(0.0, 0.06, 0.0))
+	# critique_4 п. 17: тёмный борт, две светлые банки поперёк, корма на воде (нос не упирается в берег).
+	var boat_at: Vector3 = Vector3(1.35, 0.12, 2.35)
+	var boat: MeshInstance3D = ArenaMaterials3D.part(holder, _boat_mesh(2.7, 0.62, 0.3), ArenaMaterials3D.wood(0.42),
+			boat_at, Vector3(0.0, 0.06, 0.0))
 	boat.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
-	ArenaMaterials3D.part(holder, ArenaMaterials3D.box(Vector3(0.5, 0.04, 0.14)), dark, Vector3(1.35, 0.05, 1.7))
+	var thwart: StandardMaterial3D = ArenaMaterials3D.wood(0.95, true)
+	for offset: float in [-0.5, 0.45]:
+		ArenaMaterials3D.part(holder, ArenaMaterials3D.box(Vector3(0.5 - absf(offset) * 0.2, 0.04, 0.13)), thwart,
+				boat_at + Vector3(0.0, -0.03, offset), Vector3(0.0, 0.06, 0.0))
+	ArenaMaterials3D.part(holder, ArenaMaterials3D.box(Vector3(0.06, 0.03, 1.3)), dark, boat_at + Vector3(0.12, -0.08, 0.1),
+			Vector3(0.0, 0.2, 0.0))
 	ArenaMaterials3D.part(holder, ArenaMaterials3D.cylinder(0.14, 0.11, 0.26, 8), dark, Vector3(-0.3, 0.16, 0.7))
 
 
