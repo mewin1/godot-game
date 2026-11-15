@@ -44,31 +44,33 @@ var _legend: PanelContainer
 func _init() -> void:
 	name = "RitualHudOverlay"
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# Баннер без коробки с рамкой (critique.md п. 21): крупный заголовок с тенью и одна строка.
 	_banner = PanelContainer.new()
-	_banner.add_theme_stylebox_override("panel", DuskTheme.panel(Color(0.04, 0.06, 0.09, 0.9), DuskTheme.GOLD, 12))
+	var soft: StyleBoxFlat = DuskTheme.glass(0.45, 12)
+	soft.border_color = Color.TRANSPARENT
+	_banner.add_theme_stylebox_override("panel", soft)
 	_banner.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_banner)
 	var box: VBoxContainer = VBoxContainer.new()
 	box.alignment = BoxContainer.ALIGNMENT_CENTER
 	_banner.add_child(box)
 	_banner_title = Label.new()
-	_banner_title.add_theme_font_size_override("font_size", 28)
+	_banner_title.theme_type_variation = &"HeaderLabel"
+	_banner_title.add_theme_font_size_override("font_size", 34)
+	_banner_title.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.8))
+	_banner_title.add_theme_constant_override("shadow_offset_y", 2)
 	_banner_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(_banner_title)
 	_banner_text = Label.new()
-	_banner_text.add_theme_font_size_override("font_size", 15)
+	_banner_text.add_theme_font_size_override("font_size", 17)
 	_banner_text.add_theme_color_override("font_color", Color("dfe6ea"))
 	_banner_text.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_banner_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_banner_text.custom_minimum_size.x = 520
 	box.add_child(_banner_text)
 	_banner.hide()
+	# Пауза — лёгкое затемнение карты (critique_2 п. 31); пометка «пауза» — у таймера в шапке.
 	_pause = Label.new()
-	_pause.text = "ПАУЗА · Пробел"
-	_pause.add_theme_font_size_override("font_size", 34)
-	_pause.add_theme_color_override("font_color", Color("f0c869"))
-	_pause.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
-	_pause.add_theme_constant_override("outline_size", 8)
 	_pause.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_pause)
 	_pause.hide()
@@ -108,7 +110,6 @@ func refresh(trial: RitualTrial, paused: bool, modal: bool, delta: float) -> voi
 	var settings: RitualTrialConfig = trial.settings
 	var running: bool = trial.phase == RitualTrial.Phase.RUNNING
 	_pause.visible = paused and running and not modal
-	_pause.position = Vector2((size.x - _pause.get_combined_minimum_size().x) * 0.5, size.y * 0.32)
 	_refresh_gifts(trial)
 	if running and settings.is_endless():
 		_watch_phase(trial)
@@ -188,30 +189,32 @@ func _watch_phase(trial: RitualTrial) -> void:
 	if at_night and not _was_night:
 		var lines: PackedStringArray = []
 		var color: Color = Color("9fc4ff")
+		# Коротко (critique_2 п. 32): баннер стоит над улицами, когда выходят враги; описание
+		# приметы — в полосе разведки.
 		for pack: RitualPack in trial.plan().packs(night):
 			if pack.boss:
 				color = Color("ff7a5c")
 				lines.append("Босс: %s%s" % [settings.enemies[pack.leader].display_name,
-					"" if pack.resist == &"" else " · неуязвим к стихии: " + RitualScoutQueue.element_name(pack.resist)])
+					"" if pack.resist == &"" else " · неуязвим: " + RitualScoutQueue.element_name(pack.resist)])
 		var night_omen: RitualOmenData = trial.plan().omen(night)
 		if night_omen != null:
-			lines.append("Примета — %s: %s" % [night_omen.title, night_omen.description])
+			lines.append("Примета: %s" % night_omen.title)
 		if trial.street_nights.has(night):
-			lines.append("Открылся новый вход в город")
-		show_banner("Ночь %d" % night, "\n".join(lines), color)
+			lines.append("Новый вход в город")
+		show_banner("Ночь %d" % night, " · ".join(lines), color)
 		if sound_bank != null and color != Color("9fc4ff"):
 			sound_bank.play(&"siege", 0.0)
 	elif not at_night and _was_night:
+		# Одна строка с итогом золота вместо бухгалтерии (critique.md п. 21).
 		var lines: PackedStringArray = []
 		var tribute: int = trial.tribute_due(trial.nights_survived()) if trial.nights_survived() > 0 else 0
-		if tribute > 0:
-			lines.append("Подать с улиц: +%d золота" % tribute)
-		if trial.last_clean_bonus > 0:
-			lines.append("Чистая ночь, ни одного прорыва: +%d золота" % trial.last_clean_bonus)
+		var earned: int = tribute + trial.last_clean_bonus
+		if earned > 0:
+			lines.append("+%d ◉%s" % [earned, " · чистая ночь" if trial.last_clean_bonus > 0 else ""])
 		var next_omen: RitualOmenData = trial.plan().omen(night)
 		if next_omen != null:
-			lines.append("Следующая ночь — %s: %s" % [next_omen.title, next_omen.description])
-		show_banner("Ночь %d отбита" % trial.nights_survived(), "\n".join(lines), Color("ffd98a"))
+			lines.append("дальше: %s" % next_omen.title)
+		show_banner("Ночь %d отбита" % trial.nights_survived(), " · ".join(lines), Color("ffd98a"))
 	_was_night = at_night
 	_night_seen = night
 
@@ -253,6 +256,8 @@ func _refresh_skill(trial: RitualTrial, running: bool) -> void:
 
 
 func _draw() -> void:
+	if _pause.visible:
+		draw_rect(Rect2(0, 0, size.x, size.y - bottom_inset), Color(0.0, 0.01, 0.03, 0.28))
 	if not _boss_name.is_empty():
 		_draw_boss_bar()
 	var strength: float = 0.0

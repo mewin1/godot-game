@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <!-- Смола: глиняный горшок с чёрной смолой и потёком -->
+  <path d="M14 22 Q14 18 18 18 L46 18 Q50 18 50 22 L48 48 Q47 56 38 56 L26 56 Q17 56 16 48 Z" fill="#7a4a2c" stroke="#2a1a10" stroke-width="2.5"/>
+  <path d="M16 30 L48 30" stroke="#5c3720" stroke-width="2"/>
+  <ellipse cx="32" cy="19" rx="17" ry="5" fill="#141110" stroke="#2a1a10" stroke-width="2"/>
+  <path d="M41 20 Q43 28 41 34 Q40 37 42 39" fill="none" stroke="#141110" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="27" cy="18" r="2.2" fill="#3b3430"/>
+  <circle cx="35" cy="17.5" r="1.4" fill="#3b3430"/>
+</svg>

@@ -9,7 +9,7 @@ signal hovered(index: int)
 signal cancelled()
 
 ## Крупная карточка вкладки тира (просьба автора 13 ноября: иконки крупнее, на весь отсек).
-const CHIP_SIZE: Vector2 = Vector2(96, 112)
+const CHIP_SIZE: Vector2 = Vector2(96, 104)
 const TIER_NAMES: Array[String] = ["I", "II", "III"]
 const TIER_COLORS: Array[Color] = [Color("b9814f"), Color("b8c3cc"), Color("f0c869")]
 const NIGHT_PRICE: Color = Color("ffe066")
@@ -18,7 +18,7 @@ const PRICE_COLOR: Color = Color("ffe2a8")
 const NAME_COLOR: Color = Color("f1e6cf")
 ## Иконки домов «Городища» по id постройки; нет файла — прежняя картинка машины (VisualCatalog).
 const HOUSE_ICONS: String = "res://assets/ritual/town/icons/%s.png"
-const NAME_SIZE: int = 13
+const NAME_SIZE: int = 14
 const PRICE_SIZE: int = 15
 
 var index: int = 0

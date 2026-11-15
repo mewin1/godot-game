@@ -5,6 +5,8 @@ extends MatchHud
 var _portrait_path: String = ""
 ## Ширина имени героя: в нижнем доке забега уже, чем у прежнего блока героя.
 var hero_name_width: float = 185.0
+## Док забега: частокол — плитка с числом и клавишей (critique_2 п. 23); null — прежняя кнопка.
+var palisade_tile: RitualActionTile
 
 
 func _init() -> void:
@@ -16,7 +18,9 @@ func _init() -> void:
 
 func refresh_ritual(trial: RitualTrial, paused: bool) -> void:
 	if trial.settings.is_endless():
-		_round_label.text = "Обряд · ночь %d" % trial.current_night()
+		# Днём — день перед ночью N, ночью — ночь N; слово «Обряд» и «ночь 3» днём путали (critique_2 п. 21).
+		_round_label.text = "%s %d" % ["Ночь" if trial.settings.nights.is_night(trial.tick_count) else "День",
+				trial.current_night()]
 	else:
 		var cycle: int = mini(trial.tick_count / trial.settings.cycle_ticks + 1, trial.settings.cycles)
 		_round_label.text = "Обряд · %d / %d" % [cycle, trial.settings.cycles]
@@ -29,8 +33,10 @@ func refresh_ritual(trial: RitualTrial, paused: bool) -> void:
 		var at_night: bool = nights.is_night(trial.tick_count)
 		var left: int = ceili(float((nights.night_end(night) if at_night else nights.night_start(night))
 				- trial.tick_count) / trial.settings.combat.ticks_per_second)
-		_phase_label.text = "%s · до %s %d:%02d" % [nights.period_name(trial.tick_count),
-				"рассвета" if at_night else "ночи", left / 60, left % 60]
+		_phase_label.text = "%s через %d:%02d" % ["рассвет" if at_night else "ночь", left / 60, left % 60]
+		# Пауза — пометкой у таймера, а не надписью посреди карты (critique_2 п. 31).
+		if paused and trial.phase == RitualTrial.Phase.RUNNING:
+			_phase_label.text += " · пауза"
 	if trial.phase == RitualTrial.Phase.PREP:
 		_phase_label.text = "Подготовка"
 	# Забег: HP принадлежит герою в сторожке перед теремом (docs/34 §4, docs/36 §1).
@@ -54,7 +60,15 @@ func refresh_ritual(trial: RitualTrial, paused: bool) -> void:
 	_skill_button.disabled = trial.phase != RitualTrial.Phase.RUNNING or trial.tick_count < trial.hero_ready or trial.hero_due >= 0
 	_skill_button.tooltip_text = "%s\n%s" % [hero.skill_text, hero.passive_text] if hero != null \
 			else "Указать дорогу. Через 1 с — физический удар по области; не оглушает."
-	_reserve_button.text = "Частокол · %d · F" % trial.palisades
-	_reserve_button.visible = true
-	_reserve_button.disabled = trial.phase != RitualTrial.Phase.RUNNING or trial.palisades <= 0
+	var palisade_tip: String = "Частокол поперёк дороги (F): враги стоят, пока первый тяжёлый не сломает его.\nВ запасе: %d." % trial.palisades
+	if palisade_tile != null:
+		palisade_tile.set_state(trial.palisades, trial.palisades <= 0, -1)
+		palisade_tile.tooltip_text = palisade_tip
+		palisade_tile.disabled = trial.phase != RitualTrial.Phase.RUNNING or trial.palisades <= 0
+		_reserve_button.disabled = palisade_tile.disabled
+	else:
+		_reserve_button.text = "Частокол · %d · F" % trial.palisades
+		_reserve_button.tooltip_text = palisade_tip
+		_reserve_button.visible = true
+		_reserve_button.disabled = trial.phase != RitualTrial.Phase.RUNNING or trial.palisades <= 0
 	set_paused(paused)

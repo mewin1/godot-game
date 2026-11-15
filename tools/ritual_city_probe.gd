@@ -21,6 +21,9 @@ func _run() -> void:
 			_size = Vector2i(parts[0].to_int(), parts[1].to_int())
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(_out))
 	root.mode = Window.MODE_WINDOWED
+	# Без рамки и без изменения размера: тайловый менеджер не ужмёт окно (critique_2).
+	root.borderless = true
+	root.unresizable = true
 	root.size = _size
 	_panel = (load("res://scenes/ritual_trial.tscn") as PackedScene).instantiate() as RitualTrialPanel
 	root.add_child(_panel)

@@ -21,6 +21,9 @@ func _run() -> void:
 			_out = "res://" + argument.trim_prefix("--out=").trim_prefix("res://")
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(_out))
 	root.mode = Window.MODE_WINDOWED
+	# Без рамки и без изменения размера: тайловый менеджер не ужмёт окно (critique_2).
+	root.borderless = true
+	root.unresizable = true
 	root.size = Vector2i(1920, 1080)
 	_panel = (load("res://scenes/ritual_trial.tscn") as PackedScene).instantiate() as RitualTrialPanel
 	root.add_child(_panel)
@@ -58,10 +61,10 @@ func _measure(phase: String) -> void:
 	for frame: int in 40:
 		_panel._process(1.0 / 60.0)
 		await process_frame
-	# Надписи поверх поля («ПАУЗА», баннеры, выбор усиления) не должны попадать в замер;
+	# Надписи поверх поля (затемнение паузы, баннеры, выбор усиления) не должны попадать в замер;
 	# панель на время кадра не обновляется, иначе сама вернёт их на экран.
 	_panel.set_process(false)
-	for node_name: String in ["RitualHudOverlay", "BoonPanel"]:
+	for node_name: String in ["RitualHudOverlay", "BoonPanel", "BoonShade"]:
 		var node: CanvasItem = _panel.find_child(node_name, true, false) as CanvasItem
 		if node != null:
 			node.visible = false

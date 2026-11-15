@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <!-- Частокол: заострённые колья с перекладиной -->
+  <g stroke="#2a1a10" stroke-width="2.5" stroke-linejoin="round">
+    <path d="M8 58 L8 20 L13 10 L18 20 L18 58 Z" fill="#a8743f"/>
+    <path d="M21 58 L21 16 L26 6 L31 16 L31 58 Z" fill="#8f5f33"/>
+    <path d="M34 58 L34 18 L39 8 L44 18 L44 58 Z" fill="#a8743f"/>
+    <path d="M47 58 L47 22 L52 12 L57 22 L57 58 Z" fill="#8f5f33"/>
+    <rect x="4" y="34" width="56" height="7" rx="2" fill="#6b4428"/>
+  </g>
+</svg>

@@ -12,6 +12,11 @@ const GLASS: Color = Color("0a0f12")
 const GLASS_EDGE: Color = Color(1.0, 0.96, 0.9, 0.14)
 ## Цена, на которую не хватает золота.
 const SHORT: Color = Color("ff8a72")
+## Шрифты (выбор автора 15 ноября, OFL, assets/fonts/README.md): Fira Sans — подписи, полужирный —
+## числа; Kurale — заголовки (HeaderLabel): «летопись» поверх современного интерфейса.
+const BODY_FONT: FontFile = preload("res://assets/fonts/fira_sans/FiraSans-Regular.ttf")
+const NUMBER_FONT: FontFile = preload("res://assets/fonts/fira_sans/FiraSans-SemiBold.ttf")
+const TITLE_FONT: FontFile = preload("res://assets/fonts/kurale/Kurale-Regular.ttf")
 
 
 ## Копия базовой темы: прежние экраны и авторский ресурс остаются самостоятельными.
@@ -19,6 +24,8 @@ static func create() -> Theme:
 	var base: Theme = load("res://data/ui/ui_theme.tres") as Theme
 	var result: Theme = base.duplicate(true) as Theme
 	result.default_font_size = 17
+	result.default_font = BODY_FONT
+	result.set_font(&"font", &"HeaderLabel", TITLE_FONT)
 	for type: StringName in [&"Label", &"Button", &"RichTextLabel"]:
 		result.set_color(&"font_color", type, TEXT)
 	result.set_color(&"font_disabled_color", &"Button", Color("76818d"))

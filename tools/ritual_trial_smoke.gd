@@ -104,7 +104,8 @@ func _check_endless(scene: PackedScene) -> void:
 	while panel.trial.tick_count < nights.night_start(1) + 1:
 		panel.trial.tick()
 	panel._refresh()
-	_check(panel._clock.text.begins_with("Ночь 1"), "Ночь не наступила после вечера: " + panel._clock.text)
+	_check(panel._hud._round_label.text == "Ночь 1" and panel._clock.text.begins_with("рассвет через"),
+		"Ночь не наступила после вечера: %s %s" % [panel._hud._round_label.text, panel._clock.text])
 	var boss: RitualMob = panel.trial.field.spawn_mob(nights.boss_enemy)
 	panel.trial.field.deal_mob_damage(boss, boss.hp * 10)
 	panel._refresh()

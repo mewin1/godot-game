@@ -17,6 +17,7 @@ var _shots: PackedStringArray = PackedStringArray(["ui"])
 var _dump: bool = false
 var _houses: bool = true
 var _tag: String = ""
+var _select: bool = false
 
 
 func _initialize() -> void:
@@ -46,6 +47,8 @@ func _run() -> void:
 			_dump = true
 		elif argument == "--empty":
 			_houses = false
+		elif argument == "--select":
+			_select = true
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(_out))
 	# Точный размер: без рамки и без изменения размера окно не ужимается менеджером окон.
 	root.mode = Window.MODE_WINDOWED
@@ -64,6 +67,8 @@ func _run() -> void:
 	if _houses:
 		_fill_plots(trial)
 	_advance_to_moment(trial)
+	if _select and not trial.field.towers.is_empty():
+		_panel.board.selected_id = trial.field.towers[trial.field.towers.size() - 1].id
 	var prefix: String = "l%d_%s_%dx%d%s" % [_level, _moment, _size.x, _size.y, "_" + _tag if not _tag.is_empty() else ""]
 	await _settle()
 	if _dump:
@@ -390,6 +395,9 @@ func _dump_ui() -> void:
 	var root_box: Control = _panel._hud.get_parent() as Control
 	print("UI: screen ", screen.size, " root_box ", root_box.size, " dock min ",
 			_panel._dock.get_combined_minimum_size() if _panel._dock != null else Vector2.ZERO)
+	if _panel._dock != null:
+		for island: Node in _panel._dock.get_child(0).get_children():
+			print("  DOCK part ", (island as Control).get_combined_minimum_size())
 	var outside: int = 0
 	for node: Node in _panel.find_children("*", "Control", true, false):
 		var control: Control = node as Control

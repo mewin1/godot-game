@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <!-- Дождевая чаша: деревянная чаша с водой и каплями -->
+  <path d="M8 32 L56 32 Q54 50 32 52 Q10 50 8 32 Z" fill="#8a5a34" stroke="#2a1a10" stroke-width="2.5"/>
+  <ellipse cx="32" cy="32" rx="24" ry="5.5" fill="#4fa3c7" stroke="#2a1a10" stroke-width="2"/>
+  <ellipse cx="27" cy="31" rx="8" ry="1.6" fill="#a9dcef"/>
+  <path d="M26 54 L38 54 L36 58 L28 58 Z" fill="#6b4428" stroke="#2a1a10" stroke-width="2"/>
+  <path d="M20 8 Q24 15 20 18 Q16 15 20 8 Z" fill="#7cc6e6" stroke="#1d4f66" stroke-width="1.5"/>
+  <path d="M34 4 Q38 11 34 14 Q30 11 34 4 Z" fill="#7cc6e6" stroke="#1d4f66" stroke-width="1.5"/>
+  <path d="M46 11 Q50 18 46 21 Q42 18 46 11 Z" fill="#7cc6e6" stroke="#1d4f66" stroke-width="1.5"/>
+</svg>

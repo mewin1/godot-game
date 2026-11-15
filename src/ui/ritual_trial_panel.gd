@@ -84,6 +84,12 @@ var _boon_panel: PanelContainer
 var _boon_buttons: HBoxContainer
 var _boon_key: String = ""
 var _supply_menu: MenuButton
+var _boon_shade: ColorRect
+const PALISADE_ICON: Texture2D = preload("res://assets/ui/ritual/palisade.svg")
+## Усиление без бога (плотники, купцы, ремесло) — общий знак дара.
+const BOON_ICON: Texture2D = preload("res://assets/ui/ritual/supply_charm.svg")
+const SUPPLY_ICONS: Array[Texture2D] = [preload("res://assets/ui/ritual/supply_tar.svg"),
+	preload("res://assets/ui/ritual/supply_bowl.svg"), preload("res://assets/ui/ritual/supply_charm.svg")]
 ## Итоги забега для экрана поражения (docs/37 UI-14).
 var _stats: RitualRunStats = RitualRunStats.new()
 var _defeat_columns: HBoxContainer
@@ -140,7 +146,8 @@ func _build_ui() -> void:
 	else:
 		_build_legacy(root_box)
 	_skill_button = _hud._skill_button
-	_palisade_button = _hud._reserve_button
+	if _palisade_button == null:
+		_palisade_button = _hud._reserve_button
 	_pause_button = _hud._pause_button
 	_start_button = _shop._ready if _shop != null else null
 	_clock = _hud._phase_label
@@ -221,7 +228,7 @@ func _build_ui() -> void:
 		# Под шапкой (она до ~80 px), а не на нижнем крае полосы разведки.
 		_toast.offset_top = 90
 		_toast.offset_bottom = 120
-	_message = _label(_toast, "", 12)
+	_message = _label(_toast, "", 14)
 	_message.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_message.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_message.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
@@ -373,26 +380,37 @@ func _build_dock(root_box: VBoxContainer) -> void:
 	_dock.building_chosen.connect(_choose_purchase)
 	_dock.building_hovered.connect(_hover_building)
 	_dock.placement_cancelled.connect(_cancel_from_catalogue)
-	_hud.hero_name_width = 118.0
+	_hud.hero_name_width = 150.0
 	_hud.move_hero_controls(_dock.hero_row)
 	# Портрет мельче прежнего блока героя: док делит ширину экрана с каталогом.
-	_hud._hero_portrait.custom_minimum_size = Vector2.ONE * 64
-	for button: Button in [_hud._skill_button, _hud._reserve_button]:
-		button.custom_minimum_size = Vector2(150, 34)
-	_repair_button = _button(_dock.utility_row, "", _repair)
-	_repair_button.name = "HealHero"
+	_hud._hero_portrait.custom_minimum_size = Vector2.ONE * 48
+	for value: Label in [_hud._hp_label, _hud._gold_label]:
+		value.add_theme_font_override("font", DuskTheme.NUMBER_FONT)
+		value.add_theme_font_size_override("font_size", 20)
+	# Действия героя одним рядом плиток (critique_2 п. 23-24): умение, частокол, три припаса.
+	var orders: Node = _hud._skill_button.get_parent()
+	_hud._skill_button.reparent(_dock.utility_row)
+	_hud._skill_button.custom_minimum_size = Vector2(116, 44)
+	_hud._skill_button.add_theme_font_size_override("font_size", 15)
+	_hud._reserve_button.reparent(_dock.utility_row)
+	_hud._reserve_button.hide()
+	orders.queue_free()
+	var palisade: RitualActionTile = _tile(PALISADE_ICON, "F", _choose_palisade)
+	palisade.name = "PalisadeTile"
+	_hud.palisade_tile = palisade
+	_palisade_button = palisade
 	for kind: int in RitualTrial.SUPPLY_NAMES.size():
-		_supply_buttons.append(_button(_dock.utility_row, "", _choose_supply.bind(kind)))
-	if not settings.supply_costs.is_empty():
-		# Припасы за золото днём (docs/37 SUP-2).
-		_supply_menu = MenuButton.new()
-		_supply_menu.name = "BuySupplies"
-		_supply_menu.text = "+"
-		_supply_menu.tooltip_text = "Купить припас (днём)"
-		_supply_menu.flat = false
-		_supply_menu.focus_mode = Control.FOCUS_NONE
-		_dock.utility_row.add_child(_supply_menu)
-		_supply_menu.get_popup().id_pressed.connect(_buy_supply)
+		var tile: RitualActionTile = _tile(SUPPLY_ICONS[kind], str(kind + 1), _supply_pressed.bind(kind))
+		tile.name = "Supply%d" % kind
+		_supply_buttons.append(tile)
+	# Лечение — рядом с HP героя (сердце-кнопка путалось с меткой здоровья).
+	_repair_button = Button.new()
+	_repair_button.name = "HealHero"
+	_repair_button.focus_mode = Control.FOCUS_NONE
+	_repair_button.custom_minimum_size = Vector2(0, 26)
+	_repair_button.add_theme_font_size_override("font_size", 14)
+	_repair_button.pressed.connect(_repair)
+	(_hud._hp_label.get_parent() as Control).add_child(_repair_button)
 	_selection = _dock.context_text
 	_selection_title = _dock.context_title
 	_upgrade_button = _button(_dock.house_actions, "Улучшить", _upgrade_selected.bind(-1))
@@ -416,17 +434,37 @@ func _build_dock(root_box: VBoxContainer) -> void:
 		_barricade_buttons.append(barricade)
 	_repair_all_button = _button(_dock.city_actions, "Починить всё", _repair_houses.bind(0))
 	_repair_all_button.tooltip_text = "Вернуть полную прочность всем домам. Ремонт дешевле новой постройки."
+	# Кнопки города и дома компактнее (14 px): два ряда влезают в островок дока.
+	for group: Container in [_dock.city_actions, _dock.house_actions]:
+		for child: Node in group.get_children():
+			if child is Button:
+				(child as Button).add_theme_font_size_override("font_size", 14)
+	# Выбор усиления на рассвете — три карточки по центру поверх затемнения (critique.md п. 22):
+	# раньше — плоские кнопки в окне-диалоге поверх домов.
+	_boon_shade = ColorRect.new()
+	_boon_shade.name = "BoonShade"
+	_boon_shade.color = Color(0.0, 0.01, 0.02, 0.45)
+	_boon_shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_boon_shade.z_index = 4  # выше затемнения паузы и подсказок оверлея
+	add_child(_boon_shade)
+	_boon_shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_boon_shade.hide()
 	_boon_panel = PanelContainer.new()
 	_boon_panel.name = "BoonPanel"
-	_boon_panel.add_theme_stylebox_override("panel", DuskTheme.panel(Color(0.04, 0.07, 0.11, 0.93), DuskTheme.GOLD, 10))
+	_boon_panel.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
+	_boon_panel.z_index = 5
 	add_child(_boon_panel)
 	var boon_box: VBoxContainer = VBoxContainer.new()
+	boon_box.add_theme_constant_override("separation", 10)
 	_boon_panel.add_child(boon_box)
-	var boon_title: Label = _label(boon_box, "Рассвет: выберите усиление (до ночи)", 15)
+	var boon_title: Label = _label(boon_box, "Рассвет: выберите усиление до ночи", 26)
+	boon_title.theme_type_variation = &"HeaderLabel"
+	boon_title.add_theme_font_size_override("font_size", 26)
 	boon_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	boon_title.add_theme_color_override("font_color", DuskTheme.GOLD)
 	_boon_buttons = HBoxContainer.new()
-	_boon_buttons.add_theme_constant_override("separation", 8)
+	_boon_buttons.alignment = BoxContainer.ALIGNMENT_CENTER
+	_boon_buttons.add_theme_constant_override("separation", 14)
 	boon_box.add_child(_boon_buttons)
 	_boon_panel.hide()
 	_idol_popup = RitualIdolPopup.new()
@@ -452,16 +490,35 @@ func _build_dock(root_box: VBoxContainer) -> void:
 	var hud_tools: Node = _hud._pause_button.get_parent()
 	hud_tools.add_child(legend)
 	hud_tools.move_child(legend, 0)
-	# Числа урона: нет / важные / все (docs/37 RX-8, D11).
+	# Числа урона: нет / важные / все (docs/37 RX-8, D11) — настройка, а не действие боя:
+	# в шапке короткий значок «123», режим — в подсказке (critique_2: «Числа: важные» занимали шапку).
 	_numbers_button = Button.new()
 	_numbers_button.name = "DamageNumbers"
-	_numbers_button.text = "Числа: %s" % RitualBoard.NUMBER_NAMES[board.damage_numbers]
-	_numbers_button.tooltip_text = "Числа урона над врагами: нет / важные (реакции, боссы, крупные удары) / все"
-	_numbers_button.custom_minimum_size = Vector2(0, 36)
+	_numbers_button.text = "123"
+	_numbers_button.custom_minimum_size = Vector2(44, 36)
 	_numbers_button.focus_mode = Control.FOCUS_NONE
-	_numbers_button.pressed.connect(func() -> void: _numbers_button.text = "Числа: " + board.cycle_damage_numbers())
+	_numbers_button.pressed.connect(func() -> void:
+		board.cycle_damage_numbers()
+		_show_numbers_mode())
 	hud_tools.add_child(_numbers_button)
 	hud_tools.move_child(_numbers_button, 1)
+	_show_numbers_mode()
+
+
+func _show_numbers_mode() -> void:
+	var mode: String = RitualBoard.NUMBER_NAMES[board.damage_numbers]
+	_numbers_button.tooltip_text = "Числа урона над врагами: %s.\nЩелчок — нет / важные (реакции, боссы, крупные удары) / все." % mode
+	_numbers_button.modulate = Color(1, 1, 1, 0.5) if board.damage_numbers == 0 else Color.WHITE
+
+
+## Плитка действия в ряду героя (иконка, клавиша, число).
+func _tile(picture: Texture2D, key_hint: String, callback: Callable) -> RitualActionTile:
+	var tile: RitualActionTile = RitualActionTile.new()
+	tile.picture = picture
+	tile.key_hint = key_hint
+	tile.pressed.connect(callback)
+	_dock.utility_row.add_child(tile)
+	return tile
 
 
 ## Экран поражения бесконечного забега: ночи, рекорд на устройстве, убитые боссы.
@@ -591,21 +648,25 @@ func _refresh_boons() -> void:
 			child.queue_free()
 		for index: int in trial.boon_choice:
 			var boon: RitualGiftData = settings.boons[index]
-			var button: Button = _button(_boon_buttons, "%s\n%s" % [boon.display_name, boon.description],
+			var button: Button = _button(_boon_buttons, "%s\n\n%s" % [boon.display_name, boon.description],
 				_take_boon.bind(index))
 			button.name = "Boon_%s" % boon.id
-			button.custom_minimum_size = Vector2(250, 58)
+			button.custom_minimum_size = Vector2(190, 200)
 			button.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-			button.add_theme_font_size_override("font_size", 13)
-			if boon.god != &"":
-				button.icon = GodSymbols.get_icon(boon.god)
-				button.expand_icon = true
-				button.add_theme_constant_override("icon_max_width", 30)
+			button.add_theme_font_size_override("font_size", 16)
+			button.vertical_icon_alignment = VERTICAL_ALIGNMENT_TOP
+			button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			button.expand_icon = true
+			button.add_theme_constant_override("icon_max_width", 56)
+			button.add_theme_stylebox_override("normal", DuskTheme.panel(Color(0.05, 0.08, 0.12, 0.95),
+					GodSymbols.get_color(boon.god) if boon.god != &"" else DuskTheme.GLASS_EDGE, 14))
+			button.icon = GodSymbols.get_icon(boon.god) if boon.god != &"" else BOON_ICON
 		_boon_panel.reset_size()
 	_boon_panel.visible = not trial.boon_choice.is_empty() and trial.phase == RitualTrial.Phase.RUNNING
+	_boon_shade.visible = _boon_panel.visible
 	if _boon_panel.visible:
 		_boon_panel.position = Vector2((size.x - _boon_panel.size.x) * 0.5,
-			size.y - RitualDock.HEIGHT - _boon_panel.size.y - 40)
+			(size.y - RitualDock.HEIGHT - _boon_panel.size.y) * 0.5)
 
 
 func _take_boon(index: int) -> void:
@@ -958,7 +1019,7 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		elif key.keycode in [KEY_1, KEY_2, KEY_3] and _supply_buttons.size() == 3:
 			var kind: int = key.keycode - KEY_1
 			if not _supply_buttons[kind].disabled:
-				_choose_supply(kind)
+				_supply_pressed(kind)
 		elif key.keycode == KEY_R and not settings.uses_plots() and board.action in [&"buy", &"move"]:
 			board.preview_rotation = (board.preview_rotation + 1) % TowerState.ROTATIONS
 			board.queue_redraw()
@@ -1195,6 +1256,9 @@ func _refresh_wear(selected: TowerState) -> void:
 	var total: int = trial.repair_all_cost()
 	_repair_all_button.text = "Починить всё · %d" % total
 	_repair_all_button.disabled = total == 0 or trial.gold < total
+	# Чинить нечего — кнопки нет (critique_2 п. 27: «Починить всё · 0» висела всегда).
+	if _dock != null:
+		_repair_all_button.visible = total > 0
 	var one: int = trial.repair_cost(selected) if selected != null else 0
 	_repair_house_button.visible = one > 0
 	_repair_house_button.text = "Починить дом · %d" % one
@@ -1251,8 +1315,9 @@ func _refresh_streets() -> void:
 		return
 	var street: RitualStreetData = settings.streets[trial.street_nights.size()]
 	if _dock != null:
-		_street_button.text = "Укрепить город · %d" % street.cost
-		_street_button.tooltip_text = "Город %d — %s: %s.\nУчастки — сразу; новый вход для нежити — со следующей ночи." % [
+		# «Укрепить» обещало защиту, а улица открывает новый вход врагам (critique_2 п. 26).
+		_street_button.text = "Новая улица · %d" % street.cost
+		_street_button.tooltip_text = "Город %d — %s: %s.\nУчастки под дома — сразу; новый вход для нежити — со следующей ночи.\nОткрывает дома следующего уровня в каталоге." % [
 			trial.city_level() + 1, street.title, street.summary]
 		_street_button.disabled = trial.phase != RitualTrial.Phase.RUNNING or trial.gold < street.cost
 		return
@@ -1282,15 +1347,34 @@ func _choose_supply(kind: int) -> void:
 
 
 func _refresh_supplies() -> void:
+	var running: bool = trial.phase == RitualTrial.Phase.RUNNING
+	var day: bool = not settings.is_night(trial.tick_count)
 	for kind: int in _supply_buttons.size():
 		var button: Button = _supply_buttons[kind]
 		var count: int = trial.supplies[kind]
-		button.text = "%s ×%d" % [SUPPLY_SHORT[kind], count]
+		var cost: int = settings.supply_costs[kind] if kind < settings.supply_costs.size() else -1
+		var buy_tip: String = ""
+		if cost >= 0:
+			buy_tip = "\nПусто — щелчок днём покупает за %d золота." % cost if day \
+					else "\nНочью мастера спят: купить — днём (%d золота)." % cost
+		button.tooltip_text = "%s\nКаждый рассвет — один случайный припас, в запасе до %d.%s" % [
+			SUPPLY_TIPS[kind], settings.supply_cap, buy_tip]
 		if kind == RitualTrial.Supply.CHARM and trial.charm_left > 0:
-			button.text += " · щит %d" % trial.charm_left
-		button.tooltip_text = "%s\nКаждый рассвет — один случайный припас, в запасе до %d." % [
-			SUPPLY_TIPS[kind], settings.supply_cap]
-		button.disabled = trial.phase != RitualTrial.Phase.RUNNING or count <= 0
+			button.tooltip_text += "\nЩит на сторожке: ещё %d прорывов." % trial.charm_left
+		var buyable: bool = count <= 0 and cost >= 0 and day
+		if button is RitualActionTile:
+			(button as RitualActionTile).set_state(count, count <= 0, cost if buyable else -1)
+		else:
+			button.text = "%s ×%d" % [SUPPLY_SHORT[kind], count]
+		button.disabled = not running or (count <= 0 and not (buyable and trial.gold >= cost))
+
+
+## Плитка припаса: есть — выбрать место (оберег — сразу); пусто днём — купить (docs/37 SUP-2).
+func _supply_pressed(kind: int) -> void:
+	if trial.supplies[kind] > 0:
+		_choose_supply(kind)
+	elif kind < settings.supply_costs.size():
+		_buy_supply(kind)
 
 
 func _choose_skill() -> void:
@@ -1510,7 +1594,7 @@ func _refresh() -> void:
 	if settings.is_endless():
 		var accusative: String = trial.hero().accusative if trial.hero() != null else "Илью"
 		_repair_button.text = "Лечить %s +%d · %d" % [accusative, settings.repair_hp, settings.repair_cost] \
-			if _dock == null else "♥ +%d · %d" % [settings.repair_hp, settings.repair_cost]
+			if _dock == null else "+%d ◉%d" % [settings.repair_hp, settings.repair_cost]
 		_repair_button.tooltip_text = "%s в сторожке +%d HP за %d золота (не выше %d). Враг, дошедший до сторожки, бьёт героя." % [
 			trial.hero_name(), settings.repair_hp, settings.repair_cost, trial.max_hp()]
 	_repair_button.disabled = trial.phase != RitualTrial.Phase.RUNNING or trial.hp >= trial.max_hp() \
@@ -1532,13 +1616,18 @@ func _refresh_context(selected: TowerState) -> void:
 		var lines: PackedStringArray = _selection_text(selected).split("\n", true, 1)
 		_selection_title.text = lines[0]
 		_selection.text = lines[1] if lines.size() > 1 else ""
+		# В доке видно две строки; всё описание дома — в подсказке.
+		_selection_title.tooltip_text = _selection.text
+		_selection.tooltip_text = _selection.text
 		return
 	var free: int = 0
 	for cell: Vector2i in trial.field.get_buildable_cells():
 		free += int(trial.field.get_tower_at(cell) == null)
-	_selection_title.text = "Город · уровень %d" % trial.city_level()
-	_selection.text = "Свободных участков: %d · домов: %d\nИдолы — на площади у терема: щёлкните идол (или 4/5/6).\nДом на карте — выбор и улучшение; Alt — уровни всех домов." % [
-		free, trial.field.towers.size()]
+	_selection_title.text = "Город %d" % trial.city_level()
+	# Статус одной строкой; инструкции — в подсказке (critique_2 п. 25).
+	_selection.text = "Свободно участков: %d · домов: %d" % [free, trial.field.towers.size()]
+	_selection_title.tooltip_text = "Идолы — на площади у терема: щёлкните идол (или 4/5/6).\nДом на карте — выбор и улучшение; Alt — уровни всех домов."
+	_selection.tooltip_text = _selection_title.tooltip_text
 
 
 ## Выбранная постройка: материал (уровень) и что он даёт, вложения и готовность.

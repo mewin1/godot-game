@@ -8,89 +8,98 @@ signal building_chosen(index: int)
 signal building_hovered(index: int)
 signal placement_cancelled()
 
-const HEIGHT: float = 172.0
-## Док должен влезать в логическую ширину 1600 (critique_2 п. 18): при 1676 корневой столбец
-## растягивался, и правый край дока и кнопки шапки уезжали за экран на 16:9 и 4:3.
-const CONTEXT_WIDTH: float = 260.0
+## Док легче (critique.md п. 16, spec §10.1): вместо сплошной плиты 172 px — три стеклянных
+## островка 132 px, между ними видна сцена. Ширина влезает в логические 1600 (critique_2 п. 18).
+const HEIGHT: float = 132.0
+const CONTEXT_WIDTH: float = 320.0
+const TIER_NAMES: Array[String] = ["I", "II", "III"]
 
-## Сюда панель переносит портрет, HP, золото, умение и частокол героя (MatchHud).
+## Сюда панель переносит портрет, HP, золото героя (MatchHud).
 var hero_row: HBoxContainer
-## Ряд припасов и лечения героя под портретом.
+## Ряд действий героя: умение, частокол, припасы — плитками с клавишами.
 var utility_row: HBoxContainer
 var chips: Array[RitualBuildChip] = []
 var context_title: Label
 var context_text: Label
 ## Кнопки выбранного дома (улучшить, ветки, починить, продать).
 var house_actions: HFlowContainer
-## Кнопки города, когда ничего не выбрано (новая улица, починить всё) — переносятся в два ряда.
+## Кнопки города, когда ничего не выбрано (новая улица, завал, починить всё) — переносятся.
 var city_actions: HFlowContainer
 var _grid: GridContainer
-## Вкладки тиров каталога (просьба автора 13 ноября): на вкладке — 7 крупных карточек богов.
+## Переключатель тиров каталога I-II-III (просьба автора 13 ноября: на вкладке — 7 крупных карточек).
 var _tier_tabs: Array[Button] = []
 var shown_tier: int = 1
 
 
 func _init() -> void:
 	name = "RitualDock"
-	add_theme_stylebox_override("panel", DuskTheme.glass(0.82, 8))
+	var frame: StyleBoxEmpty = StyleBoxEmpty.new()
+	frame.content_margin_left = 10
+	frame.content_margin_right = 10
+	frame.content_margin_bottom = 6
+	add_theme_stylebox_override("panel", frame)
 	custom_minimum_size.y = HEIGHT
-	mouse_filter = Control.MOUSE_FILTER_STOP
+	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var row: HBoxContainer = HBoxContainer.new()
-	row.add_theme_constant_override("separation", 10)
+	row.add_theme_constant_override("separation", 12)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(row)
 	var left: VBoxContainer = VBoxContainer.new()
 	left.add_theme_constant_override("separation", 6)
 	left.alignment = BoxContainer.ALIGNMENT_CENTER
-	row.add_child(left)
+	_island(row).add_child(left)
 	hero_row = HBoxContainer.new()
 	hero_row.add_theme_constant_override("separation", 8)
 	left.add_child(hero_row)
 	utility_row = HBoxContainer.new()
 	utility_row.add_theme_constant_override("separation", 4)
 	left.add_child(utility_row)
-	row.add_child(_separator())
-	var middle: VBoxContainer = VBoxContainer.new()
-	middle.alignment = BoxContainer.ALIGNMENT_CENTER
-	middle.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_child(middle)
-	var tabs: HBoxContainer = HBoxContainer.new()
+	row.add_child(_spacer())
+	var middle: HBoxContainer = HBoxContainer.new()
+	middle.add_theme_constant_override("separation", 6)
+	_island(row).add_child(middle)
+	var tabs: VBoxContainer = VBoxContainer.new()
 	tabs.alignment = BoxContainer.ALIGNMENT_CENTER
-	tabs.add_theme_constant_override("separation", 6)
+	tabs.add_theme_constant_override("separation", 4)
 	middle.add_child(tabs)
 	for index: int in 3:
 		var tab: Button = Button.new()
 		tab.name = "TierTab%d" % (index + 1)
+		tab.text = TIER_NAMES[index]
 		tab.toggle_mode = true
 		tab.focus_mode = Control.FOCUS_NONE
-		tab.custom_minimum_size = Vector2(150, 26)
-		tab.add_theme_font_size_override("font_size", 13)
+		tab.custom_minimum_size = Vector2(36, 32)
+		tab.add_theme_font_size_override("font_size", 15)
 		tab.pressed.connect(show_tier.bind(index + 1))
 		tabs.add_child(tab)
 		_tier_tabs.append(tab)
-	var center: CenterContainer = CenterContainer.new()
-	middle.add_child(center)
 	_grid = GridContainer.new()
 	_grid.name = "Catalogue"
 	_grid.add_theme_constant_override("h_separation", 4)
 	_grid.add_theme_constant_override("v_separation", 4)
-	center.add_child(_grid)
-	row.add_child(_separator())
+	middle.add_child(_grid)
+	row.add_child(_spacer())
+	var context: PanelContainer = _island(row)
+	context.custom_minimum_size.x = CONTEXT_WIDTH
 	var right: VBoxContainer = VBoxContainer.new()
-	right.custom_minimum_size.x = CONTEXT_WIDTH
-	right.add_theme_constant_override("separation", 4)
-	row.add_child(right)
+	right.add_theme_constant_override("separation", 3)
+	context.add_child(right)
 	context_title = Label.new()
-	context_title.add_theme_font_size_override("font_size", 15)
+	context_title.theme_type_variation = &"HeaderLabel"
+	context_title.add_theme_font_size_override("font_size", 17)
 	context_title.add_theme_color_override("font_color", Color("e9cea2"))
+	context_title.add_theme_constant_override("outline_size", 0)
 	context_title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	context_title.mouse_filter = Control.MOUSE_FILTER_PASS
 	right.add_child(context_title)
 	context_text = Label.new()
 	context_text.name = "Selection"
-	context_text.add_theme_font_size_override("font_size", 12)
+	context_text.add_theme_font_size_override("font_size", 14)
+	context_text.add_theme_color_override("font_color", DuskTheme.MUTED)
 	context_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	context_text.custom_minimum_size.x = CONTEXT_WIDTH
-	context_text.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	context_text.max_lines_visible = 3
+	context_text.max_lines_visible = 2
+	context_text.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	context_text.mouse_filter = Control.MOUSE_FILTER_PASS
 	right.add_child(context_text)
 	# Ветки на 3-м уровне длинные: кнопки переносятся во второй ряд, а не раздвигают док.
@@ -104,10 +113,20 @@ func _init() -> void:
 	right.add_child(city_actions)
 
 
-func _separator() -> VSeparator:
-	var line: VSeparator = VSeparator.new()
-	line.modulate = Color(1, 1, 1, 0.35)
-	return line
+## Стеклянный островок дока: ловит мышь, промежутки между островками — нет.
+func _island(row: HBoxContainer) -> PanelContainer:
+	var island: PanelContainer = PanelContainer.new()
+	island.add_theme_stylebox_override("panel", DuskTheme.glass(0.8, 6))
+	island.mouse_filter = Control.MOUSE_FILTER_STOP
+	row.add_child(island)
+	return island
+
+
+func _spacer() -> Control:
+	var gap: Control = Control.new()
+	gap.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	gap.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return gap
 
 
 ## Карточки по столбцам богов (в порядке каталога), строки — тиры I/II/III.
@@ -164,10 +183,11 @@ func refresh_catalogue(trial: RitualTrial, chosen: int) -> void:
 			break
 	var at_night: bool = trial.settings.is_night(trial.tick_count)
 	var city: int = trial.city_level()
-	var names: Array[String] = ["I", "II", "III"]
 	for index: int in _tier_tabs.size():
 		var open: bool = city >= index + 1
-		_tier_tabs[index].text = "Тир %s" % names[index] if open else "Тир %s · город %d" % [names[index], index + 1]
+		# Условие открытия — в подсказке, а не в надписи вкладки (critique_2: «Тир» — жаргон).
+		_tier_tabs[index].tooltip_text = "Дома %s уровня" % TIER_NAMES[index] if open \
+				else "Дома %s уровня — с города %d («Новая улица»)" % [TIER_NAMES[index], index + 1]
 		_tier_tabs[index].modulate = Color.WHITE if open else Color(1, 1, 1, 0.55)
 	for chip: RitualBuildChip in chips:
 		var price: int = trial.building_cost(chip.index)
