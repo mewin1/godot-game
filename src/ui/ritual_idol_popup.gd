@@ -28,7 +28,7 @@ func _init() -> void:
 	var head: HBoxContainer = HBoxContainer.new()
 	box.add_child(head)
 	_title = Label.new()
-	_title.add_theme_font_size_override("font_size", 16)
+	_title.add_theme_font_size_override("font_size", 18)
 	_title.add_theme_color_override("font_color", Color("e9cea2"))
 	_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_child(_title)
@@ -150,7 +150,7 @@ func _fill_rites(trial: RitualTrial, god: StringName, preview: bool) -> void:
 		text.tooltip_text = "\n".join(lines)
 		text.mouse_filter = Control.MOUSE_FILTER_PASS
 		text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		text.add_theme_font_size_override("font_size", 12)
+		text.add_theme_font_size_override("font_size", 18)
 		text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		# Ширина обязательна: перенос по словам без неё считает высоту по одной букве в строке.
 		text.custom_minimum_size.x = WIDTH - 140.0
@@ -181,7 +181,7 @@ func _fill_milestones(trial: RitualTrial, god: StringName) -> void:
 	var count: int = trial.idol_rites(idol) if idol.god == god else 0
 	var title: Label = Label.new()
 	title.text = "Вехи идола · заговоров %d" % count
-	title.add_theme_font_size_override("font_size", 13)
+	title.add_theme_font_size_override("font_size", 18)
 	title.add_theme_color_override("font_color", Color("e9cea2"))
 	_body.add_child(title)
 	for milestone: RitualIdolMilestone in milestones:
@@ -191,7 +191,7 @@ func _fill_milestones(trial: RitualTrial, god: StringName) -> void:
 			milestone.description, "" if reached else " (ещё %d)" % (milestone.rites - count)]
 		line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		line.custom_minimum_size.x = WIDTH - 24.0
-		line.add_theme_font_size_override("font_size", 12)
+		line.add_theme_font_size_override("font_size", 18)
 		line.add_theme_color_override("font_color", Color("f0c869") if reached else Color("b9c4c9"))
 		_body.add_child(line)
 
@@ -201,6 +201,6 @@ func _note(text: String) -> void:
 	label.text = text
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	label.custom_minimum_size.x = WIDTH - 24.0
-	label.add_theme_font_size_override("font_size", 12)
+	label.add_theme_font_size_override("font_size", 18)
 	label.add_theme_color_override("font_color", Color("b9c4c9"))
 	_body.add_child(label)

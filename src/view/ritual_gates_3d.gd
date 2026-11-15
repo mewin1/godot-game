@@ -30,7 +30,8 @@ func build_gatehouse(at: Vector3, along: Vector3) -> void:
 	var logs: StandardMaterial3D = ArenaMaterials3D.solid(Color(0.42, 0.29, 0.18), 0.9)
 	var dark: StandardMaterial3D = ArenaMaterials3D.solid(Color(0.24, 0.16, 0.1), 0.9)
 	var shingle: StandardMaterial3D = ArenaMaterials3D.solid(Color(0.27, 0.22, 0.19), 0.85)
-	for side: float in [-1.2, 1.2]:
+	# Столбы на ±1,5 от оси дороги: герой стоит у правого края проезда, а не в столбе (critique_3 п. 21).
+	for side: float in [-1.5, 1.5]:
 		for depth: float in [-0.5, 0.5]:
 			ArenaMaterials3D.part(_gatehouse, ArenaMaterials3D.cylinder(0.13, 0.12, 2.45, 8), logs,
 				Vector3(side, 1.22, depth))
@@ -39,12 +40,12 @@ func build_gatehouse(at: Vector3, along: Vector3) -> void:
 			ArenaMaterials3D.part(_gatehouse, ArenaMaterials3D.cylinder(0.11, 0.11, 1.25, 7), logs,
 				Vector3(side, 0.14 + row * 0.22, 0.0), Vector3(PI * 0.5, 0.0, 0.0))
 	for depth: float in [-0.5, 0.5]:
-		ArenaMaterials3D.part(_gatehouse, ArenaMaterials3D.cylinder(0.11, 0.11, 2.75, 7), dark,
+		ArenaMaterials3D.part(_gatehouse, ArenaMaterials3D.cylinder(0.11, 0.11, 3.35, 7), dark,
 			Vector3(0.0, 2.42, depth), Vector3(0.0, 0.0, PI * 0.5))
 	for side: float in [-1.0, 1.0]:
-		ArenaMaterials3D.part(_gatehouse, ArenaMaterials3D.box(Vector3(3.1, 0.07, 0.95)), shingle,
+		ArenaMaterials3D.part(_gatehouse, ArenaMaterials3D.box(Vector3(3.7, 0.07, 0.95)), shingle,
 			Vector3(0.0, 2.78, side * 0.36), Vector3(side * 0.52, 0.0, 0.0))
-	ArenaMaterials3D.part(_gatehouse, ArenaMaterials3D.cylinder(0.07, 0.07, 3.2, 6), dark,
+	ArenaMaterials3D.part(_gatehouse, ArenaMaterials3D.cylinder(0.07, 0.07, 3.8, 6), dark,
 		Vector3(0.0, 3.02, 0.0), Vector3(0.0, 0.0, PI * 0.5))
 	_glow = ArenaMaterials3D.glow(Color("ff3b2a"), 0.0)
 	ArenaMaterials3D.part(_gatehouse, ArenaMaterials3D.box(Vector3(2.3, 0.07, 0.12)), _glow, Vector3(0, 2.28, 0.52))

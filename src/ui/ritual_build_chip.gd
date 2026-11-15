@@ -9,17 +9,20 @@ signal hovered(index: int)
 signal cancelled()
 
 ## Крупная карточка вкладки тира (просьба автора 13 ноября: иконки крупнее, на весь отсек).
-const CHIP_SIZE: Vector2 = Vector2(96, 104)
+const CHIP_SIZE: Vector2 = Vector2(98, 124)
+## Верхний ярус (значок бога, цена) и полоса имени снизу.
+const TOP_BAND: float = 26.0
+const NAME_STRIP: float = 40.0
 const TIER_NAMES: Array[String] = ["I", "II", "III"]
 const TIER_COLORS: Array[Color] = [Color("b9814f"), Color("b8c3cc"), Color("f0c869")]
-const NIGHT_PRICE: Color = Color("ffe066")
+const NIGHT_PRICE: Color = Color("ffa04a")
 const NIGHT_ARROW: Color = Color("ff6258")
 const PRICE_COLOR: Color = Color("ffe2a8")
 const NAME_COLOR: Color = Color("f1e6cf")
 ## Иконки домов «Городища» по id постройки; нет файла — прежняя картинка машины (VisualCatalog).
 const HOUSE_ICONS: String = "res://assets/ritual/town/icons/%s.png"
-const NAME_SIZE: int = 14
-const PRICE_SIZE: int = 15
+const NAME_SIZE: int = 18
+const PRICE_SIZE: int = 18
 
 var index: int = 0
 var data: TowerData
@@ -84,46 +87,52 @@ func _draw() -> void:
 	var hovered_now: bool = rect.has_point(get_local_mouse_position())
 	draw_style_box(_chosen if is_chosen else _hover if hovered_now else _normal, rect)
 	var font: Font = get_theme_default_font()
-	var lines: PackedStringArray = _name_lines(font, size.x - 8.0)
-	var text_height: float = NAME_SIZE * 1.15 * lines.size() + 6.0
-	var art: Rect2 = Rect2(3, 7, size.x - 6, size.y - 9)
+	var number_font: Font = DuskTheme.NUMBER_FONT
+	# Три яруса (critique_3 п. 58, 60, 4): сверху значок бога и цена, в середине дом с машиной на
+	# коньке (ничем не закрыта), снизу имя на сплошной полосе. Кегли не мельче 18 (14 px на 1280x720).
+	var strip_top: float = size.y - NAME_STRIP
+	var art: Rect2 = Rect2(3, TOP_BAND, size.x - 6, strip_top - TOP_BAND)
 	if _icon != null:
-		# Дом крупно: картинка по пропорции поля, чуть выше середины (без пустого неба).
 		var source: Vector2 = Vector2(_icon.get_size())
-		var fit: float = minf(source.x / art.size.x, source.y / art.size.y) * 0.86
+		var fit: float = minf(source.x / art.size.x, source.y / art.size.y) * 0.92
 		var crop: Vector2 = art.size * fit
-		var region: Rect2 = Rect2(Vector2((source.x - crop.x) * 0.5, (source.y - crop.y) * 0.2), crop)
+		var region: Rect2 = Rect2(Vector2((source.x - crop.x) * 0.5, (source.y - crop.y) * 0.32), crop)
 		draw_texture_rect_region(_icon, art, region)
-	# Затемнение снизу под имя — читается на любой крыше.
-	var shade_top: float = size.y - text_height - 14.0
-	draw_polygon(PackedVector2Array([Vector2(2, shade_top), Vector2(size.x - 2, shade_top),
-			Vector2(size.x - 2, size.y - 2), Vector2(2, size.y - 2)]),
-			PackedColorArray([Color(0, 0, 0, 0), Color(0, 0, 0, 0), Color(0.02, 0.03, 0.05, 0.92),
-			Color(0.02, 0.03, 0.05, 0.92)]))
+	draw_rect(Rect2(2, strip_top, size.x - 4, NAME_STRIP - 2), Color(0.02, 0.03, 0.05, 0.92))
 	var color: Color = GodSymbols.get_color(data.god)
 	draw_rect(Rect2(4, 2, size.x - 8, 4), color)
 	var symbol: Texture2D = GodSymbols.get_icon(data.god)
 	if symbol != null:
-		draw_rect(Rect2(Vector2(5, 9), Vector2(20, 20)), Color(0.02, 0.04, 0.06, 0.75))
-		draw_texture_rect(symbol, Rect2(Vector2(6, 10), Vector2(18, 18)), false)
+		draw_texture_rect(symbol, Rect2(Vector2(5, 7), Vector2(20, 20)), false)
+	var lines: PackedStringArray = _name_lines(font, size.x - 6.0)
+	var line_height: float = NAME_SIZE * 1.05
+	var first: float = strip_top + (NAME_STRIP - line_height * lines.size()) * 0.5 + NAME_SIZE * 0.8
 	for row: int in lines.size():
-		var baseline: float = size.y - 6.0 - (lines.size() - 1 - row) * NAME_SIZE * 1.15
-		draw_string(font, Vector2(4, baseline), lines[row], HORIZONTAL_ALIGNMENT_CENTER, size.x - 8, NAME_SIZE,
-				NAME_COLOR)
+		draw_string(font, Vector2(3, first + row * line_height), lines[row], HORIZONTAL_ALIGNMENT_CENTER,
+				size.x - 6, NAME_SIZE, NAME_COLOR)
 	if locked_text.is_empty():
-		# Цена — бейджем в правом верхнем углу; ночью жёлтая со стрелкой (наценка).
-		var label: String = "◉ %d%s" % [price, "↑" if at_night else ""]
-		var width: float = font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, PRICE_SIZE).x
-		var badge: Rect2 = Rect2(size.x - width - 12.0, 9.0, width + 8.0, PRICE_SIZE + 5.0)
-		draw_rect(badge, Color(0.02, 0.04, 0.06, 0.82))
-		draw_string(font, badge.position + Vector2(4, PRICE_SIZE + 0.5), label, HORIZONTAL_ALIGNMENT_LEFT, -1,
-				PRICE_SIZE, NIGHT_PRICE if at_night else PRICE_COLOR)
+		# Цена — справа в верхнем ярусе, над небом иконки. Ночью оранжевая с луной (наценка —
+		# в подсказке): стрелка «↑» путалась со стрелкой улучшения (critique_3 п. 62).
+		var amount: String = str(price)
+		var width: float = DuskTheme.price_width(number_font, amount, PRICE_SIZE)
+		var left: float = size.x - width - 5.0
+		if at_night:
+			left -= 12.0
+			_draw_moon(Vector2(size.x - 10.0, 15.0))
+		DuskTheme.draw_price(self, number_font, Vector2(left, 6.0 + PRICE_SIZE * 0.9), amount, PRICE_SIZE,
+				NIGHT_PRICE if at_night else PRICE_COLOR)
 	if not locked_text.is_empty():
 		draw_rect(rect.grow(-1), Color(0, 0, 0, 0.6))
-		draw_string(font, Vector2(4, size.y * 0.45), "🔒 " + locked_text, HORIZONTAL_ALIGNMENT_CENTER, size.x - 8,
+		draw_string(font, Vector2(3, size.y * 0.42), "🔒 " + locked_text, HORIZONTAL_ALIGNMENT_CENTER, size.x - 6,
 				NAME_SIZE, Color(0.85, 0.85, 0.85, 0.9))
 	elif not affordable:
 		draw_rect(rect.grow(-1), Color(0, 0, 0, 0.38))
+
+
+## Серп луны — знак ночной цены.
+func _draw_moon(center: Vector2) -> void:
+	draw_circle(center, 5.5, NIGHT_PRICE)
+	draw_circle(center + Vector2(2.6, -1.6), 4.6, Color(0.05, 0.09, 0.14))
 
 
 ## Имя в одну строку, а длинное — в две по пробелу; не влезает и так — многоточие

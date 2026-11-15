@@ -62,7 +62,7 @@ func _init() -> void:
 	_banner_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(_banner_title)
 	_banner_text = Label.new()
-	_banner_text.add_theme_font_size_override("font_size", 17)
+	_banner_text.add_theme_font_size_override("font_size", 18)
 	_banner_text.add_theme_color_override("font_color", Color("dfe6ea"))
 	_banner_text.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_banner_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -149,12 +149,12 @@ func toggle_legend(settings: RitualTrialConfig) -> void:
 		_legend.add_child(box)
 		var title: Label = Label.new()
 		title.text = "Метки на врагах и реакции · «?» — закрыть"
-		title.add_theme_font_size_override("font_size", 16)
+		title.add_theme_font_size_override("font_size", 18)
 		title.add_theme_color_override("font_color", DuskTheme.GOLD)
 		box.add_child(title)
 		var marks: Label = Label.new()
 		marks.text = "Капля — мокрый · треугольник — горит · ромб — заряд · квадрат — холод (светлый — скован) · крест — проклятие"
-		marks.add_theme_font_size_override("font_size", 13)
+		marks.add_theme_font_size_override("font_size", 18)
 		box.add_child(marks)
 		var seen: Dictionary[String, bool] = {}
 		for reaction: ReactionData in settings.combat.reactions:
@@ -165,7 +165,7 @@ func toggle_legend(settings: RitualTrialConfig) -> void:
 			line.text = "%s — %s" % [reaction.display_name, reaction.explanation]
 			line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 			line.custom_minimum_size.x = 640
-			line.add_theme_font_size_override("font_size", 13)
+			line.add_theme_font_size_override("font_size", 18)
 			box.add_child(line)
 		_legend.hide()
 	_legend.visible = not _legend.visible
@@ -210,7 +210,7 @@ func _watch_phase(trial: RitualTrial) -> void:
 		var tribute: int = trial.tribute_due(trial.nights_survived()) if trial.nights_survived() > 0 else 0
 		var earned: int = tribute + trial.last_clean_bonus
 		if earned > 0:
-			lines.append("+%d ◉%s" % [earned, " · чистая ночь" if trial.last_clean_bonus > 0 else ""])
+			lines.append("+%d золота%s" % [earned, " · чистая ночь" if trial.last_clean_bonus > 0 else ""])
 		var next_omen: RitualOmenData = trial.plan().omen(night)
 		if next_omen != null:
 			lines.append("дальше: %s" % next_omen.title)

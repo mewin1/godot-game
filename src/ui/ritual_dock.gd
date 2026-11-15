@@ -10,8 +10,10 @@ signal placement_cancelled()
 
 ## Док легче (critique.md п. 16, spec §10.1): вместо сплошной плиты 172 px — три стеклянных
 ## островка 132 px, между ними видна сцена. Ширина влезает в логические 1600 (critique_2 п. 18).
-const HEIGHT: float = 132.0
-const CONTEXT_WIDTH: float = 320.0
+## 146 вместо 132 (critique_3 п. 4, 58): кегли не мельче 18 и цена над домом, а не на машине.
+## Высота одна и та же с выбранным домом и без (п. 54): островки не растут от содержимого.
+const HEIGHT: float = 146.0
+const CONTEXT_WIDTH: float = 340.0
 const TIER_NAMES: Array[String] = ["I", "II", "III"]
 
 ## Сюда панель переносит портрет, HP, золото героя (MatchHud).
@@ -29,6 +31,7 @@ var _grid: GridContainer
 ## Переключатель тиров каталога I-II-III (просьба автора 13 ноября: на вкладке — 7 крупных карточек).
 var _tier_tabs: Array[Button] = []
 var shown_tier: int = 1
+var _row: HBoxContainer
 
 
 func _init() -> void:
@@ -41,9 +44,10 @@ func _init() -> void:
 	custom_minimum_size.y = HEIGHT
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var row: HBoxContainer = HBoxContainer.new()
-	row.add_theme_constant_override("separation", 12)
+	row.add_theme_constant_override("separation", 8)
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(row)
+	_row = row
 	var left: VBoxContainer = VBoxContainer.new()
 	left.add_theme_constant_override("separation", 6)
 	left.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -68,8 +72,8 @@ func _init() -> void:
 		tab.text = TIER_NAMES[index]
 		tab.toggle_mode = true
 		tab.focus_mode = Control.FOCUS_NONE
-		tab.custom_minimum_size = Vector2(36, 32)
-		tab.add_theme_font_size_override("font_size", 15)
+		tab.custom_minimum_size = Vector2(40, 36)
+		tab.add_theme_font_size_override("font_size", 18)
 		tab.pressed.connect(show_tier.bind(index + 1))
 		tabs.add_child(tab)
 		_tier_tabs.append(tab)
@@ -82,11 +86,11 @@ func _init() -> void:
 	var context: PanelContainer = _island(row)
 	context.custom_minimum_size.x = CONTEXT_WIDTH
 	var right: VBoxContainer = VBoxContainer.new()
-	right.add_theme_constant_override("separation", 3)
+	right.add_theme_constant_override("separation", 2)
 	context.add_child(right)
 	context_title = Label.new()
 	context_title.theme_type_variation = &"HeaderLabel"
-	context_title.add_theme_font_size_override("font_size", 17)
+	context_title.add_theme_font_size_override("font_size", 19)
 	context_title.add_theme_color_override("font_color", Color("e9cea2"))
 	context_title.add_theme_constant_override("outline_size", 0)
 	context_title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
@@ -94,11 +98,11 @@ func _init() -> void:
 	right.add_child(context_title)
 	context_text = Label.new()
 	context_text.name = "Selection"
-	context_text.add_theme_font_size_override("font_size", 14)
+	context_text.add_theme_font_size_override("font_size", 18)
 	context_text.add_theme_color_override("font_color", DuskTheme.MUTED)
-	context_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	context_text.custom_minimum_size.x = CONTEXT_WIDTH
-	context_text.max_lines_visible = 2
+	# Одна строка: вторая раздвигала док (critique_3 п. 54); всё описание — в подсказке.
+	context_text.max_lines_visible = 1
 	context_text.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	context_text.mouse_filter = Control.MOUSE_FILTER_PASS
 	right.add_child(context_text)
@@ -234,3 +238,9 @@ static func _chip_tooltip(trial: RitualTrial, chip: RitualBuildChip, unlock: Str
 ## Сколько карточек каталога (для проверок без доступа к самим карточкам).
 func chip_count() -> int:
 	return chips.size()
+
+
+## Содержимое дока (до выбора героя — пусто); высота дока при этом не меняется.
+func set_content_visible(shown: bool) -> void:
+	if _row != null and _row.visible != shown:
+		_row.visible = shown

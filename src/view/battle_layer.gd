@@ -428,10 +428,14 @@ func _draw_projectile(projectile: Projectile) -> void:
 			draw_arc(point, _cell_size * 0.13, _time * 5, _time * 5 + TAU * 0.8,
 					12, color, 3.0, true)
 		TowerVisual.Projectile.BOLT:
-			var tail: Vector2 = point - direction * _cell_size * 0.4
-			draw_line(tail, point, Color(0.15, 0.1, 0.07), 4.0)
-			draw_line(tail, point, color, 2.0)
-			draw_circle(point, 2.5, Color(0.75, 0.78, 0.8))
+			# Трассер цвета стихии с мягким хвостом (critique_3 п. 41): белая линия через полкадра
+			# читалась как отладочная. Хвост тает к концу, наконечник — того же цвета.
+			var reach: float = _cell_size * 0.55
+			for i: int in 4:
+				var a: Vector2 = point - direction * reach * (i / 4.0)
+				var b: Vector2 = point - direction * reach * ((i + 1) / 4.0)
+				draw_line(a, b, Color(color, 0.85 * (1.0 - i / 4.0)), 3.0 - i * 0.5, true)
+			draw_circle(point, 2.5, color.lightened(0.25))
 
 
 func _draw_impact(impact: Impact) -> void:

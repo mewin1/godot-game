@@ -45,6 +45,7 @@ class Hit:
 		amount = text
 
 var _hits: Array[Hit] = []
+const SCENE_FONT: Font = preload("res://assets/fonts/fira_sans/FiraSans-SemiBold.ttf")
 var _next_hit_text: Dictionary[int, int] = {}
 ## Числа урона (docs/37 RX-8, решение D11): 0 — нет, 1 — важные (по умолчанию), 2 — все.
 enum Numbers { NONE, IMPORTANT, ALL }
@@ -245,8 +246,12 @@ func road_spot(cell: Vector2i) -> Vector2i:
 	return trial.field.locate_road(cell) if trial != null else Vector2i(-1, -1)
 
 
-func _text(at: Vector2, text: String, color: Color, font_size: int = 14) -> void:
-	draw_string(ThemeDB.fallback_font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, color)
+## Подписи и числа на сцене — шрифтом темы с тёмной обводкой 3 px (critique_3 п. 40):
+## системный шрифт Godot был третьим и без обводки не читался на светлой брусчатке.
+func _text(at: Vector2, text: String, color: Color, font_size: int = 16) -> void:
+	draw_string_outline(SCENE_FONT, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, 3 * 2,
+			Color(0.02, 0.02, 0.03, 0.9 * color.a))
+	draw_string(SCENE_FONT, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, color)
 
 
 func _draw() -> void:
@@ -283,7 +288,7 @@ func _draw() -> void:
 		if hit.amount == "":
 			draw_line(stage.project_milli(hit.start, 2.0), endpoint, hit.color, 2, true)
 		else:
-			_text(endpoint + Vector2(0, -18 * (1.0 - hit.life / 0.5)), hit.amount, hit.color, 14)
+			_text(endpoint + Vector2(0, -18 * (1.0 - hit.life / 0.5)), hit.amount, hit.color, 18)
 	_draw_preview()
 
 
@@ -386,7 +391,7 @@ func _draw_combo_links() -> void:
 		var tint: Color = GodSymbols.get_color(data.god).lerp(GodSymbols.get_color(other.data.god), 0.5)
 		draw_line(from, to, Color(tint, 0.85), 3.0, true)
 		var middle: Vector2 = (from + to) * 0.5
-		var font: Font = ThemeDB.fallback_font
+		var font: Font = SCENE_FONT
 		var width: float = font.get_string_size(reaction.display_name, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
 		draw_rect(Rect2(middle - Vector2(width * 0.5 + 4, 11), Vector2(width + 8, 16)), Color(0.03, 0.05, 0.08, 0.85))
 		draw_string(font, middle + Vector2(-width * 0.5, 2), reaction.display_name, HORIZONTAL_ALIGNMENT_LEFT,

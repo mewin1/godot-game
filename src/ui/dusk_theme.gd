@@ -17,13 +17,31 @@ const SHORT: Color = Color("ff8a72")
 const BODY_FONT: FontFile = preload("res://assets/fonts/fira_sans/FiraSans-Regular.ttf")
 const NUMBER_FONT: FontFile = preload("res://assets/fonts/fira_sans/FiraSans-SemiBold.ttf")
 const TITLE_FONT: FontFile = preload("res://assets/fonts/kurale/Kurale-Regular.ttf")
+## Одна монета на весь интерфейс (critique_3 п. 49): та же, что у золота в доке; кружок-мишень читался как «цель».
+const COIN: Texture2D = preload("res://assets/ui/icon_gold.svg")
+
+
+## Цена с монетой в своём _draw: монета высотой с кегль, число справа. Возвращает ширину.
+static func draw_price(canvas: CanvasItem, font: Font, left_baseline: Vector2, amount: String, font_size: int,
+		color: Color) -> float:
+	var coin: float = font_size * 0.95
+	canvas.draw_texture_rect(COIN, Rect2(left_baseline + Vector2(0, -coin * 0.86), Vector2(coin, coin)), false,
+			Color(1, 1, 1, color.a))
+	canvas.draw_string(font, left_baseline + Vector2(coin + 3, 0), amount, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size,
+			color)
+	return coin + 3 + font.get_string_size(amount, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
+
+
+static func price_width(font: Font, amount: String, font_size: int) -> float:
+	return font_size * 0.95 + 3 + font.get_string_size(amount, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
 
 
 ## Копия базовой темы: прежние экраны и авторский ресурс остаются самостоятельными.
 static func create() -> Theme:
 	var base: Theme = load("res://data/ui/ui_theme.tres") as Theme
 	var result: Theme = base.duplicate(true) as Theme
-	result.default_font_size = 17
+	# 18 логических — 14 px на 1280x720 (critique_3 п. 4, SCN-12).
+	result.default_font_size = 18
 	result.default_font = BODY_FONT
 	result.set_font(&"font", &"HeaderLabel", TITLE_FONT)
 	for type: StringName in [&"Label", &"Button", &"RichTextLabel"]:

@@ -32,11 +32,11 @@ func _init() -> void:
 	var header: HBoxContainer = HBoxContainer.new()
 	header.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(header)
-	_title = _small_label(header, 16)
-	_omen = _small_label(header, 16)
+	_title = _small_label(header, 18)
+	_omen = _small_label(header, 18)
 	_omen.add_theme_color_override("font_color", Color("c9a6f2"))
 	_omen.mouse_filter = Control.MOUSE_FILTER_STOP
-	_warning = _small_label(header, 15)
+	_warning = _small_label(header, 18)
 	_warning.add_theme_color_override("font_color", Color("ffab65"))
 	# Полоса делит шапку с таймером и кнопками: длинные строки сокращаются, а не раздвигают шапку.
 	for label: Label in [_omen, _warning]:
@@ -201,7 +201,7 @@ func _card(trial: RitualTrial, pack: RitualPack) -> Control:
 	card.add_child(row)
 	if trial.entrances(pack.night) > 1:
 		var lane: int = trial.pack_lane(pack)
-		var mark: Label = _small_label(row, 17)
+		var mark: Label = _small_label(row, 18)
 		mark.text = LANE_MARKS[lane % LANE_MARKS.size()]
 		mark.add_theme_color_override("font_color", LANE_COLORS[lane % LANE_COLORS.size()])
 	for kind: Vector2i in kinds(pack):
@@ -212,7 +212,7 @@ func _card(trial: RitualTrial, pack: RitualPack) -> Control:
 		icon.custom_minimum_size = ICON_SIZE
 		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		row.add_child(icon)
-		var count: Label = _small_label(row, 13)
+		var count: Label = _small_label(row, 18)
 		count.text = "×%d" % kind.y
 	if pack.elite.size() > pack.elite.count(0):
 		var crown: TextureRect = TextureRect.new()

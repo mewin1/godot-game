@@ -7,6 +7,7 @@ extends Button
 const COUNT_COLOR: Color = Color("fff0cf")
 const PRICE_COLOR: Color = Color("ffe2a8")
 const BADGE: Color = Color(0.02, 0.04, 0.06, 0.86)
+const BADGE_SIZE: int = 15
 
 var picture: Texture2D
 var key_hint: String = ""
@@ -18,7 +19,7 @@ var empty: bool = false
 
 
 func _init() -> void:
-	custom_minimum_size = Vector2(44, 44)
+	custom_minimum_size = Vector2(48, 48)
 	focus_mode = Control.FOCUS_NONE
 	mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 
@@ -38,19 +39,22 @@ func _draw() -> void:
 	if picture != null:
 		var alpha: float = 0.3 if empty else 0.5 if disabled else 1.0
 		draw_texture_rect(picture, art, false, Color(1, 1, 1, alpha))
+	# Бейджи не мельче 15 (critique_3 п. 4): клавиша слева сверху, число или цена — внизу.
 	if not key_hint.is_empty():
-		var key_width: float = font.get_string_size(key_hint, HORIZONTAL_ALIGNMENT_LEFT, -1, 11).x
-		draw_rect(Rect2(2, 2, key_width + 6, 14), BADGE)
-		draw_string(font, Vector2(5, 13), key_hint, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(0.8, 0.84, 0.86))
+		var key_width: float = font.get_string_size(key_hint, HORIZONTAL_ALIGNMENT_LEFT, -1, BADGE_SIZE).x
+		draw_rect(Rect2(2, 2, key_width + 6, BADGE_SIZE + 3), BADGE)
+		draw_string(font, Vector2(5, BADGE_SIZE + 1), key_hint, HORIZONTAL_ALIGNMENT_LEFT, -1, BADGE_SIZE,
+				Color(0.8, 0.84, 0.86))
+	var numbers: Font = DuskTheme.NUMBER_FONT
 	if empty and price >= 0:
-		var label: String = "◉%d" % price
-		var width: float = font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
-		draw_rect(Rect2((size.x - width) * 0.5 - 3, size.y - 17, width + 6, 15), BADGE)
-		draw_string(font, Vector2((size.x - width) * 0.5, size.y - 5), label, HORIZONTAL_ALIGNMENT_LEFT, -1, 13,
+		var amount: String = str(price)
+		var width: float = DuskTheme.price_width(numbers, amount, BADGE_SIZE)
+		draw_rect(Rect2((size.x - width) * 0.5 - 3, size.y - BADGE_SIZE - 5, width + 6, BADGE_SIZE + 3), BADGE)
+		DuskTheme.draw_price(self, numbers, Vector2((size.x - width) * 0.5, size.y - 5), amount, BADGE_SIZE,
 				PRICE_COLOR)
 	elif count >= 0 and not empty:
 		var number: String = str(count)
-		var width: float = font.get_string_size(number, HORIZONTAL_ALIGNMENT_LEFT, -1, 15).x
-		draw_rect(Rect2(size.x - width - 8, size.y - 18, width + 6, 16), BADGE)
-		draw_string(font, Vector2(size.x - width - 5, size.y - 5), number, HORIZONTAL_ALIGNMENT_LEFT, -1, 15,
+		var width: float = numbers.get_string_size(number, HORIZONTAL_ALIGNMENT_LEFT, -1, 17).x
+		draw_rect(Rect2(size.x - width - 8, size.y - 21, width + 6, 19), BADGE)
+		draw_string(numbers, Vector2(size.x - width - 5, size.y - 5), number, HORIZONTAL_ALIGNMENT_LEFT, -1, 17,
 				COUNT_COLOR)

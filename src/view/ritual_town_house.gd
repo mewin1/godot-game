@@ -32,7 +32,11 @@ const MACHINES: Dictionary[StringName, PackedScene] = {
 	&"water": preload("res://assets/ritual/town/water.glb"),
 	&"wind": preload("res://assets/ritual/town/wind.glb"),
 }
-const IDLE_ENERGY: Array[float] = [0.72, 0.95, 1.55]
+## Свечение машины в покое по тиру (critique_3 п. 6: тир I вдвое тише, ночью ярче всего — враги и идолы).
+const IDLE_ENERGY: Array[float] = [0.36, 0.55, 0.9]
+## Вид крыш (critique_3 п. 5, сравнение по кадрам 17 ноября): 0 — цвет школы приглушён (крыши 148-164
+## при дороге 158 — ярче нормы 130), 1 — тёмный тёс с оттенком школы (94-102) — выбран.
+static var roof_mode: int = 1
 ## Модель вдвое крупнее сборки Blender: дом выше врага и шире клетки, через клетку-зазор (D8)
 ## соседние дома стоят почти вплотную, улица выглядит сплошной.
 const MODEL_SCALE: float = 2.0
@@ -85,6 +89,7 @@ static func _finish(school: StringName) -> ShaderMaterial:
 		paint.shader = FINISH_SHADER
 		paint.set_shader_parameter(&"finishes", FINISHES)
 		paint.set_shader_parameter(&"roof_column", PALETTES.find(school))
+		paint.set_shader_parameter(&"roof_mode", roof_mode)
 		_paints[school] = paint
 	return _paints[school]
 

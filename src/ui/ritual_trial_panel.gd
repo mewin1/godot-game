@@ -228,7 +228,7 @@ func _build_ui() -> void:
 		# Под шапкой (она до ~80 px), а не на нижнем крае полосы разведки.
 		_toast.offset_top = 90
 		_toast.offset_bottom = 120
-	_message = _label(_toast, "", 14)
+	_message = _label(_toast, "", 18)
 	_message.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_message.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_message.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
@@ -263,6 +263,10 @@ func _build_top_bar(strip: PanelContainer) -> void:
 	var tools: HBoxContainer = _hud._prep_tools
 	tools.reparent(bar, false)
 	tools.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	# Кегль 18 у инструментов шапки (critique_3 п. 4): общий MatchHud ставит 17.
+	for child: Node in tools.get_children():
+		if child is Button:
+			(child as Button).add_theme_font_size_override("font_size", 18)
 
 
 ## Прежняя раскладка (4-суточный опыт): лавка и правка слева, идолы и герой под картой.
@@ -390,8 +394,8 @@ func _build_dock(root_box: VBoxContainer) -> void:
 	# Действия героя одним рядом плиток (critique_2 п. 23-24): умение, частокол, три припаса.
 	var orders: Node = _hud._skill_button.get_parent()
 	_hud._skill_button.reparent(_dock.utility_row)
-	_hud._skill_button.custom_minimum_size = Vector2(116, 44)
-	_hud._skill_button.add_theme_font_size_override("font_size", 15)
+	_hud._skill_button.custom_minimum_size = Vector2(112, 48)
+	_hud._skill_button.add_theme_font_size_override("font_size", 18)
 	_hud._reserve_button.reparent(_dock.utility_row)
 	_hud._reserve_button.hide()
 	orders.queue_free()
@@ -407,8 +411,12 @@ func _build_dock(root_box: VBoxContainer) -> void:
 	_repair_button = Button.new()
 	_repair_button.name = "HealHero"
 	_repair_button.focus_mode = Control.FOCUS_NONE
-	_repair_button.custom_minimum_size = Vector2(0, 26)
-	_repair_button.add_theme_font_size_override("font_size", 14)
+	_repair_button.custom_minimum_size = Vector2(0, 28)
+	_repair_button.add_theme_font_size_override("font_size", 18)
+	# Монета иконкой справа (critique_3 п. 49): одна валюта — один знак.
+	_repair_button.icon = DuskTheme.COIN
+	_repair_button.icon_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_repair_button.add_theme_constant_override("icon_max_width", 16)
 	_repair_button.pressed.connect(_repair)
 	(_hud._hp_label.get_parent() as Control).add_child(_repair_button)
 	_selection = _dock.context_text
@@ -434,11 +442,12 @@ func _build_dock(root_box: VBoxContainer) -> void:
 		_barricade_buttons.append(barricade)
 	_repair_all_button = _button(_dock.city_actions, "Починить всё", _repair_houses.bind(0))
 	_repair_all_button.tooltip_text = "Вернуть полную прочность всем домам. Ремонт дешевле новой постройки."
-	# Кнопки города и дома компактнее (14 px): два ряда влезают в островок дока.
+	# Кнопки города и дома — 18 (14 px на 1280x720, critique_3 п. 4); не больше двух рядов,
+	# высота островка постоянная (п. 54).
 	for group: Container in [_dock.city_actions, _dock.house_actions]:
 		for child: Node in group.get_children():
 			if child is Button:
-				(child as Button).add_theme_font_size_override("font_size", 14)
+				(child as Button).add_theme_font_size_override("font_size", 18)
 	# Выбор усиления на рассвете — три карточки по центру поверх затемнения (critique.md п. 22):
 	# раньше — плоские кнопки в окне-диалоге поверх домов.
 	_boon_shade = ColorRect.new()
@@ -583,7 +592,7 @@ func _build_heroes() -> void:
 		vitals.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		vitals.add_theme_color_override("font_color", Color("e7b2a4"))
 		for text: String in [hero.passive_text, hero.skill_text]:
-			var line: Label = _label(card, text, 15)
+			var line: Label = _label(card, text, 18)
 			line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 			line.custom_minimum_size = Vector2(250, 0)
 		var spacer: Control = Control.new()
@@ -653,7 +662,7 @@ func _refresh_boons() -> void:
 			button.name = "Boon_%s" % boon.id
 			button.custom_minimum_size = Vector2(190, 200)
 			button.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-			button.add_theme_font_size_override("font_size", 16)
+			button.add_theme_font_size_override("font_size", 18)
 			button.vertical_icon_alignment = VERTICAL_ALIGNMENT_TOP
 			button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 			button.expand_icon = true
@@ -713,7 +722,7 @@ func _refresh_gifts() -> void:
 		var button: Button = _button(_gift_buttons, text, _choose_gift.bind(index))
 		button.custom_minimum_size = Vector2(600, 56)
 		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		button.add_theme_font_size_override("font_size", 17)
+		button.add_theme_font_size_override("font_size", 18)
 		if gift.god != &"":
 			button.icon = GodSymbols.get_icon(gift.god)
 			button.expand_icon = true
@@ -773,7 +782,7 @@ func _defeat_column(title: String, lines: PackedStringArray) -> void:
 	var column: VBoxContainer = VBoxContainer.new()
 	column.custom_minimum_size.x = 230
 	_defeat_columns.add_child(column)
-	var head: Label = _label(column, title, 15)
+	var head: Label = _label(column, title, 18)
 	head.add_theme_color_override("font_color", DuskTheme.GOLD)
 	head.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	head.custom_minimum_size.x = 230
@@ -797,7 +806,7 @@ func _build_schedule() -> void:
 	var title: Label = _label(header, "Полное расписание · время от начала опыта", 23)
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_button(header, "Закрыть", _hide_schedule)
-	_label(content, "Бой на паузе. Все появления известны заранее; оставшиеся враги переходят в следующий день.", 16)
+	_label(content, "Бой на паузе. Все появления известны заранее; оставшиеся враги переходят в следующий день.", 18)
 	var columns: HBoxContainer = HBoxContainer.new()
 	columns.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	columns.add_theme_constant_override("separation", 16)
@@ -851,7 +860,7 @@ func _button(parent: Node, text: String, callback: Callable) -> Button:
 	button.custom_minimum_size.y = 30
 	# Без фокуса: иначе пробел (пауза) повторно нажимает последнюю кнопку, например «Продать».
 	button.focus_mode = Control.FOCUS_NONE
-	button.add_theme_font_size_override("font_size", 15)
+	button.add_theme_font_size_override("font_size", 18)
 	for state: StringName in [&"normal", &"hover", &"pressed", &"disabled"]:
 		var style: StyleBox = theme.get_stylebox(state, &"Button").duplicate() as StyleBox
 		style.content_margin_top = 2
@@ -1299,7 +1308,8 @@ func _refresh_barricades() -> void:
 		var alley: RitualAlley = settings.alleys[index]
 		button.visible = trial.city_level() >= alley.city_level
 		var closed: bool = index < trial.barricades.size() and trial.barricades[index]
-		button.text = "Разобрать завал" if closed else "Завалить проулок · %d" % alley.barricade_cost
+		# Коротко (critique_3 п. 54): две кнопки города в ряд; что делает завал — в подсказке.
+		button.text = "Разобрать завал" if closed else "Завал · %d" % alley.barricade_cost
 		button.tooltip_text = "Проулок срезает подкову западной дороги: быстрые враги (упыри, волкодлаки) идут им всегда, остальные — если впереди частокол или смола.\nЗавал закрывает проулок для всех; разбор бесплатный, без возврата."
 		button.disabled = trial.phase != RitualTrial.Phase.RUNNING or (not closed and trial.gold < alley.barricade_cost)
 
@@ -1558,6 +1568,9 @@ func _announce_omen() -> void:
 
 
 func _refresh() -> void:
+	if _dock != null:
+		# До выбора героя док пуст: в нём нет чужого героя по умолчанию (critique_3 п. 53).
+		_dock.set_content_visible(_hero_panel == null or not _hero_panel.visible)
 	if trial == null:
 		return
 	var at_night: bool = settings.is_endless() and settings.is_night(trial.tick_count)
@@ -1594,7 +1607,7 @@ func _refresh() -> void:
 	if settings.is_endless():
 		var accusative: String = trial.hero().accusative if trial.hero() != null else "Илью"
 		_repair_button.text = "Лечить %s +%d · %d" % [accusative, settings.repair_hp, settings.repair_cost] \
-			if _dock == null else "+%d ◉%d" % [settings.repair_hp, settings.repair_cost]
+			if _dock == null else "+%d за %d" % [settings.repair_hp, settings.repair_cost]
 		_repair_button.tooltip_text = "%s в сторожке +%d HP за %d золота (не выше %d). Враг, дошедший до сторожки, бьёт героя." % [
 			trial.hero_name(), settings.repair_hp, settings.repair_cost, trial.max_hp()]
 	_repair_button.disabled = trial.phase != RitualTrial.Phase.RUNNING or trial.hp >= trial.max_hp() \

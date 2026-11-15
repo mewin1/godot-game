@@ -54,6 +54,11 @@ var _approach_lengths: Array[PackedFloat32Array] = []
 var _arrived: Dictionary[int, int] = {}
 ## Проявление врага у ворот: x — прошло секунд, y — полная непрозрачность (скрытный — полупрозрачен).
 var _appear: Dictionary[int, Vector2] = {}
+## Холодный контур врагов и фантомов ночью (critique_3 п. 34, VIS-3): один материал на всех,
+## сила — по фазе суток. Только видимость: облик нежити ждёт моделей автора.
+const ENEMY_RIM_SHADER: Shader = preload("res://assets/shaders/ritual_enemy_rim.gdshader")
+const ENEMY_RIM_NIGHT: float = 0.85
+var _enemy_rim: ShaderMaterial
 
 
 func _init() -> void:
@@ -210,7 +215,8 @@ func _spawn_hero() -> void:
 	_hero = scene.instantiate() as Node3D
 	_world.add_child(_hero)
 	ArenaTower3D._tune_materials(_hero, STYLE.noir_model_glow, STYLE.noir_model_tone, STYLE.noir_model_rim)
-	_hero.position = layout.cell_center(_field.layout.path_cells[-1]) + Vector3(0.2, 0, 1.1)
+	# Сбоку от оси дороги, между столбами сторожки (±1,5 м): не в столбе (critique_3 п. 21).
+	_hero.position = layout.cell_center(_field.layout.path_cells[-1]) + Vector3(0.2, 0, 0.85)
 	_hero.rotation.y = PI * 0.5
 
 
@@ -250,6 +256,11 @@ func _make_unit(data: MobData) -> ArenaUnit3D:
 	_world.add_child(unit)
 	unit.build(STYLE.get_mob_model(id), STYLE.get_mob_tint(id), STYLE.get_mob_height(id) * MOB_SCALE,
 		Color.TRANSPARENT, id)
+	if _enemy_rim == null:
+		_enemy_rim = ShaderMaterial.new()
+		_enemy_rim.shader = ENEMY_RIM_SHADER
+	for node: Node in unit.find_children("*", "MeshInstance3D", true, false):
+		(node as MeshInstance3D).material_overlay = _enemy_rim
 	if data.tags.has(&"banner"):
 		ArenaMaterials3D.part(unit, ArenaMaterials3D.cylinder(0.025, 0.025, 1.6, 5),
 			ArenaMaterials3D.solid(ArenaMaterials3D.WOOD), Vector3(0.3, 0.8, 0))
@@ -384,6 +395,8 @@ func update_ritual(trial: RitualTrial, delta: float) -> void:
 			_spawn_hero()
 	_daylight.camera_distance = _camera.position.distance_to((_frame_min + _frame_max) * 0.5)
 	_daylight.apply(trial)
+	if _enemy_rim != null:
+		_enemy_rim.set_shader_parameter(&"strength", RitualDaylight.sun_phase(trial).y * ENEMY_RIM_NIGHT)
 	_sync_phantoms(trial, delta)
 	if _gates != null:
 		var night: int = trial.current_night()

@@ -46,7 +46,7 @@ func refresh_ritual(trial: RitualTrial, paused: bool) -> void:
 	_gold_label.text = str(trial.gold)
 	(_income_label.get_parent() as Control).hide()
 	_hero_name.text = hero.display_name if hero != null else "Илья Муромец"
-	_hero_name.add_theme_font_size_override("font_size", 17)
+	_hero_name.add_theme_font_size_override("font_size", 18)
 	_hero_name.custom_minimum_size.x = hero_name_width
 	var portrait: String = hero.portrait if hero != null else "res://data/visuals/portraits/ilya.tres"
 	if portrait != _portrait_path:
