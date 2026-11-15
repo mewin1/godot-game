@@ -47,12 +47,16 @@ static var _paints: Dictionary[StringName, ShaderMaterial] = {}
 const OUTLINE_SHADER: Shader = preload("res://assets/shaders/ritual_outline.gdshader")
 const GHOST_SHADER: Shader = preload("res://assets/shaders/ritual_ghost.gdshader")
 static var _outlines: Dictionary[Color, ShaderMaterial] = {}
+## Плита участка в стенах модели — до этой высоты (единицы модели), контур её не обводит.
+const OUTLINE_CUT: float = 0.1
 var _outline: Color = Color.TRANSPARENT
 var _wear: float = -1.0
 
 var _tower: RitualTower
 var _installation: Node3D
 var _pick_meshes: Array[MeshInstance3D] = []
+## Стены и крыша — их обводит контур (без машины и плиты участка, critique_4 п. 25).
+var _shell_meshes: Array[MeshInstance3D] = []
 var _label_height: float = 0.0
 var _works: MeshInstance3D
 var _moving: MeshInstance3D
@@ -86,6 +90,8 @@ func build(tower: TowerState, style: Arena3DStyle, offsets: Array[Vector3]) -> v
 	for node: Node in _model.find_children("*", "MeshInstance3D", true, false):
 		var part: MeshInstance3D = node as MeshInstance3D
 		_pick_meshes.append(part)
+		if part.get_parent() == _model:
+			_shell_meshes.append(part)
 		var box: AABB = part.transform * part.get_aabb()
 		_label_height = maxf(_label_height, box.end.y)
 	_add_workshop_marks(offsets, tower.level, style.get_god_color(data.god))
@@ -168,22 +174,26 @@ func _process(delta: float) -> void:
 		_moving.rotation.x = 0.24 * flash
 
 
-## Контур цветом color по сетке дома и машины (TRANSPARENT — снять). Толщина — в метрах модели.
-func set_outline(color: Color, width: float = 0.022) -> void:
-	if color == _outline:
+## Контур цветом color по стенам и крыше (TRANSPARENT — снять); машина и плита без контура
+## (critique_4 п. 25). Толщина — в метрах модели; pulse — пульс выбранного (п. 26).
+func set_outline(color: Color, width: float = 0.022, pulse: float = 0.0) -> void:
+	var key: Color = Color(color.r, color.g, color.b, color.a * 0.5 + width + pulse * 0.25)
+	if key == _outline:
 		return
-	_outline = color
+	_outline = key
 	var material: ShaderMaterial = null
 	if color.a > 0.0:
-		var key: Color = Color(color, width)
 		if not _outlines.has(key):
 			var outline: ShaderMaterial = ShaderMaterial.new()
 			outline.shader = OUTLINE_SHADER
 			outline.set_shader_parameter(&"color", Color(color, 1.0))
+			outline.set_shader_parameter(&"glow", 1.6 * color.a)
 			outline.set_shader_parameter(&"width", width)
+			outline.set_shader_parameter(&"pulse", pulse)
+			outline.set_shader_parameter(&"cut_below", OUTLINE_CUT)
 			_outlines[key] = outline
 		material = _outlines[key]
-	for part: MeshInstance3D in _pick_meshes:
+	for part: MeshInstance3D in _shell_meshes:
 		part.material_overlay = material
 
 
@@ -195,6 +205,66 @@ func set_wear(amount: float) -> void:
 	_wear = amount
 	for part: MeshInstance3D in _pick_meshes:
 		part.set_instance_shader_parameter(&"wear", amount)
+	# Молчащий дом дымит (critique_4 п. 30): тонкая серая струйка над коньком.
+	var smoke: Node = get_node_or_null("WearSmoke")
+	if amount >= 1.0 and smoke == null:
+		add_child(_wear_smoke())
+	elif amount < 1.0 and smoke != null:
+		smoke.queue_free()
+
+
+func _wear_smoke() -> CPUParticles3D:
+	var smoke: CPUParticles3D = CPUParticles3D.new()
+	smoke.name = "WearSmoke"
+	smoke.amount = 14
+	smoke.lifetime = 2.6
+	smoke.position = Vector3.UP * (_label_height * MODEL_SCALE - 0.1)
+	smoke.direction = Vector3.UP
+	smoke.spread = 12.0
+	smoke.gravity = Vector3(0.15, 0.25, 0.0)
+	smoke.initial_velocity_min = 0.35
+	smoke.initial_velocity_max = 0.55
+	smoke.scale_amount_min = 0.5
+	smoke.scale_amount_max = 0.9
+	var grow: Curve = Curve.new()
+	grow.add_point(Vector2(0.0, 0.35))
+	grow.add_point(Vector2(1.0, 1.0))
+	smoke.scale_amount_curve = grow
+	var fade: Gradient = Gradient.new()
+	fade.set_color(0, Color(0.35, 0.34, 0.33, 0.55))
+	fade.set_color(1, Color(0.3, 0.3, 0.3, 0.0))
+	smoke.color_ramp = fade
+	var puff: QuadMesh = QuadMesh.new()
+	puff.size = Vector2.ONE * 0.6
+	var material: StandardMaterial3D = StandardMaterial3D.new()
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	material.vertex_color_use_as_albedo = true
+	material.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
+	material.albedo_texture = _puff_texture()
+	puff.material = material
+	smoke.mesh = puff
+	return smoke
+
+
+static var _puff: Texture2D
+
+
+## Мягкое круглое пятно для клубов дыма.
+static func _puff_texture() -> Texture2D:
+	if _puff == null:
+		var gradient: Gradient = Gradient.new()
+		gradient.set_color(0, Color(1, 1, 1, 1))
+		gradient.set_color(1, Color(1, 1, 1, 0))
+		var texture: GradientTexture2D = GradientTexture2D.new()
+		texture.gradient = gradient
+		texture.fill = GradientTexture2D.FILL_RADIAL
+		texture.fill_from = Vector2(0.5, 0.5)
+		texture.fill_to = Vector2(0.5, 0.0)
+		texture.width = 64
+		texture.height = 64
+		_puff = texture
+	return _puff
 
 
 ## Призрак дома data для режима постройки: та же модель тира и машина, полупрозрачная;

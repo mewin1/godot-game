@@ -48,6 +48,8 @@ var _hits: Array[Hit] = []
 ## Контуры домов этого кадра: id → цвет (выбранный — золотой, родня — цвет стихии).
 var _outlines: Dictionary[int, Color] = {}
 const SCENE_FONT: Font = preload("res://assets/fonts/fira_sans/FiraSans-SemiBold.ttf")
+## Цифра уровня над домом — шрифт с засечками (critique_4 п. 29).
+const LEVEL_FONT: Font = preload("res://assets/fonts/kurale/Kurale-Regular.ttf")
 var _next_hit_text: Dictionary[int, int] = {}
 ## Числа урона (docs/37 RX-8, решение D11): 0 — нет, 1 — важные (по умолчанию), 2 — все.
 enum Numbers { NONE, IMPORTANT, ALL }
@@ -235,6 +237,26 @@ func _tile(cell: Vector2i, color: Color, filled: bool = true) -> void:
 		draw_polyline(points, color, 2, true)
 
 
+## Мягкое пятно на участке: три слоя скруглённого квадрата, к краю прозрачнее.
+const SPOT_REACH: Array[float] = [470.0, 400.0, 310.0]
+const SPOT_ALPHA: Array[float] = [0.3, 0.35, 0.45]
+
+
+func _soft_spot(cell: Vector2i, color: Color, strength: float) -> void:
+	var center: Vector2 = Vector2(cell) * 1000.0 + Vector2(500, 500)
+	for layer: int in 3:
+		var reach: float = SPOT_REACH[layer]
+		var points: PackedVector2Array = []
+		for index: int in 32:
+			var angle: float = TAU * index / 32.0
+			var direction: Vector2 = Vector2(cos(angle), sin(angle))
+			# Суперэллипс: скруглённый квадрат по форме плиты.
+			var shape: Vector2 = Vector2(signf(direction.x) * pow(absf(direction.x), 0.5),
+					signf(direction.y) * pow(absf(direction.y), 0.5))
+			points.append(stage.project_milli(center + shape * reach, 0.13))
+		draw_colored_polygon(points, Color(color, strength * SPOT_ALPHA[layer]))
+
+
 func _ring(center: Vector2i, radius: int, color: Color, width: float = 2.0) -> void:
 	var points: PackedVector2Array = []
 	for index: int in 65:
@@ -266,13 +288,12 @@ func _draw() -> void:
 		var glow: float = 0.55 + 0.45 * absf(sin(_pulse / 1.6 * TAU)) if wanted else 1.0
 		for cell: Vector2i in field.get_buildable_cells():
 			if field.get_tower_at(cell) == null:
-				_tile(cell, Color(0.3, 0.34, 0.33, 0.35))
+				# Свободный участок — мягкое пятно по плите без прямых рамок (critique_4 п. 33, SCN-11):
+				# в режиме постройки — тёплое и пульсирует, иначе — едва заметное.
 				if wanted:
-					# Свободные участки светятся мягко, 3 px с ореолом (critique_3 п. 66), а не рамкой 2 px.
-					_tile_outline(cell, Color(Color("f0c27a"), glow * 0.28), 7.0)
-					_tile_outline(cell, Color(Color("f0c27a"), glow), 3.0)
+					_soft_spot(cell, Color("f0c27a"), 0.22 + 0.2 * glow)
 				else:
-					_tile_outline(cell, Color("7f8a85"), 2.0)
+					_soft_spot(cell, Color("9aa6a0"), 0.12)
 	elif action in [&"buy", &"move"]:
 		for cell: Vector2i in field.get_buildable_cells():
 			_tile(cell, Color(0.6, 0.8, 0.75, 0.13), false)
@@ -284,6 +305,9 @@ func _draw() -> void:
 			_draw_kin(tower)
 		_draw_combo_links()
 		(stage as RitualStage3D).set_house_outlines(_outlines)
+		var chosen: TowerState = field.get_tower(selected_id)
+		(stage as RitualStage3D).show_selected_range(chosen, field.get_tower_range(chosen) if chosen != null else 0,
+				GodSymbols.get_color(chosen.data.god) if chosen != null else Color.WHITE)
 		var ghost: TowerData = null
 		if action == &"buy" and preview_index >= 0 and field.is_buildable(hover_cell) \
 				and field.get_tower_at(hover_cell) == null:
@@ -333,7 +357,9 @@ func _draw_tower(tower: TowerState) -> void:
 		var wind_end: Vector2i = tower.center_milli() + direction * tower.data.wind_length_milli
 		var end: Vector2 = _point(wind_end)
 		var arrow: Vector2 = (end - center).normalized()
-		draw_line(center, end, Color(0.7, 0.95, 1, 0.6), 2, true)
+		# 3 px со свечением, как связи (critique_4 п. 32), а не линия 2 px.
+		draw_line(center, end, Color(0.7, 0.95, 1, 0.22), 9, true)
+		draw_line(center, end, Color(0.75, 0.96, 1, 0.9), 3, true)
 		draw_colored_polygon(PackedVector2Array([end, end - arrow * 10 + arrow.orthogonal() * 5,
 			end - arrow * 10 - arrow.orthogonal() * 5]), Color("b3f2ff"))
 		if tower.id == selected_id:
@@ -344,11 +370,9 @@ func _draw_tower(tower: TowerState) -> void:
 			draw_colored_polygon(strip, Color(0.6, 0.85, 1, 0.12))
 	if tower.is_action_blocked():
 		_text(stage.house_label(tower.id), "Установка…", Color.WHITE, 14)
-	if tower.id == selected_id:
-		var width: float = 3.0 if trial.settings.uses_plots() else 1.5
-		if trial.settings.uses_plots():
-			_ring(tower.center_milli(), trial.field.get_tower_range(tower), Color(color, 0.22), 9.0)
-		_ring(tower.center_milli(), trial.field.get_tower_range(tower), Color(color, 0.8), width)
+	# Круг дальности выбранного в забеге — 3D-плоскость (RitualStage3D.show_selected_range, critique_4 п. 31).
+	if tower.id == selected_id and not trial.settings.uses_plots():
+		_ring(tower.center_milli(), trial.field.get_tower_range(tower), Color(color, 0.8), 1.5)
 
 
 ## Дома того же типа, что выбранный или наведённый в каталоге (docs/37 UI-8, UI-9): обводка,
@@ -366,10 +390,11 @@ func _draw_kin(tower: TowerState) -> void:
 		return
 	var top: Vector2 = stage.house_label(tower.id) + Vector2(0, -6)
 	_level_mark(top, tower.level, GodSymbols.get_color(tower.data.god))
-	if tower.level < trial.settings.combat.max_tower_level and kin:
+	# Стрелка улучшения — только у выбранного (critique_4 п. 29): у родни «I ↑» читалось «1↑».
+	if tower.level < trial.settings.combat.max_tower_level and tower.id == selected_id:
 		var ready: bool = trial.upgrade_error(tower, 0 if tower.level == 2 else -1).is_empty() \
 			and trial.gold >= trial.upgrade_cost(tower)
-		_text(top + Vector2(20, 6), "↑", Color("ffd36b") if ready else Color(0.6, 0.6, 0.6, 0.8), 18)
+		_text(top + Vector2(17, 2), "↑", Color("ffd36b") if ready else Color(0.6, 0.6, 0.6, 0.8), 20)
 
 
 ## Связки реакций (docs/37 RX-5): от выбранного дома или от участка под покупку — линии к соседям
@@ -460,13 +485,6 @@ func _level_pips(at: Vector2, level: int, color: Color) -> void:
 			draw_circle(point, 3.4, Color("ffe4a5"))
 		else:
 			draw_arc(point, 3.0, 0, TAU, 12, Color(color, 0.7), 1.2)
-
-
-func _tile_outline(cell: Vector2i, color: Color, width: float) -> void:
-	var points: PackedVector2Array = []
-	for corner: Vector2 in [Vector2.ZERO, Vector2.RIGHT, Vector2.ONE, Vector2.DOWN, Vector2.ZERO]:
-		points.append(stage.project_cell_corner(cell, corner, 0.13))
-	draw_polyline(points, color, width, true)
 
 
 func _draw_mob(mob: RitualMob) -> void:
@@ -774,11 +792,20 @@ func _hammer_badge(at: Vector2, color: Color) -> void:
 	draw_colored_polygon(head, color)
 
 
-## Уровень дома над коньком римской цифрой с обводкой (critique_3 п. 65): без тёмных плашек.
+## Уровень дома над коньком (critique_4 п. 29): тёмный щиток-ромб с обводкой цветом стихии и римская
+## цифра шрифтом с засечками (Kurale) — «I» без засечек читалась палочкой.
 func _level_mark(at: Vector2, level: int, color: Color) -> void:
 	var numeral: String = ["I", "II", "III", "IV"][clampi(level, 1, 4) - 1]
-	var width: float = SCENE_FONT.get_string_size(numeral, HORIZONTAL_ALIGNMENT_LEFT, -1, 20).x
-	_text(at + Vector2(-width * 0.5, 0), numeral, color.lerp(Color("ffe4a5"), 0.75), 20)
+	var center: Vector2 = at + Vector2(0, -7)
+	var half: Vector2 = Vector2(13.0 + 3.0 * numeral.length(), 14.0)
+	var shield: PackedVector2Array = PackedVector2Array([center + Vector2(0, -half.y), center + Vector2(half.x, 0),
+			center + Vector2(0, half.y), center + Vector2(-half.x, 0)])
+	draw_colored_polygon(shield, Color(0.04, 0.04, 0.05, 0.88))
+	shield.append(shield[0])
+	draw_polyline(shield, color.lerp(Color("ffe4a5"), 0.35), 2.0, true)
+	var width: float = LEVEL_FONT.get_string_size(numeral, HORIZONTAL_ALIGNMENT_LEFT, -1, 19).x
+	draw_string(LEVEL_FONT, center + Vector2(-width * 0.5, 6.5), numeral, HORIZONTAL_ALIGNMENT_LEFT, -1, 19,
+			color.lerp(Color("ffe4a5"), 0.75))
 
 
 ## Значок реакции на связи: кружок из двух половин — стихии пары.

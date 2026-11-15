@@ -31,7 +31,7 @@ const LIGHT_BASE: float = 2.2
 const LIGHT_STEP: float = 0.12
 const LIGHT_MAX: float = 4.4
 const LIGHT_REACH: float = 8.0
-## Пятно выбора и подсветки под курсором.
+## Выбор и подсветка под курсором — контур фигуры, как у домов (critique_4 п. 52), а не обруч на плите.
 const RING_COLOR: Color = Color("f0c27a")
 
 var _gods: Array[StringName] = []
@@ -39,7 +39,10 @@ var _rites: Array[int] = []
 var _models: Array[Node3D] = []
 var _flames: Array[MeshInstance3D] = []
 var _lights: Array[OmniLight3D] = []
-var _rings: Array[MeshInstance3D] = []
+## Сетки фигуры каждого идола (без плиты) — на них надевается контур.
+var _figures: Array[Array] = []
+var _outline_strong: ShaderMaterial
+var _outline_soft: ShaderMaterial
 ## Золотые обручи на пьедестале: по одному за пройденную веху 5/10/15 (docs/37 IDL-3).
 var _bands: Array[Node3D] = []
 ## Пороги вех: обруч за каждый пройденный (данные режима, RitualTrialConfig.idol_milestones).
@@ -79,17 +82,7 @@ func _init(style: Arena3DStyle) -> void:
 		light.position = face * 0.9 + Vector3(0.0, 1.4, 0.0)
 		base.add_child(light)
 		_lights.append(light)
-		var ring: MeshInstance3D = MeshInstance3D.new()
-		var torus: TorusMesh = TorusMesh.new()
-		torus.inner_radius = 1.05
-		torus.outer_radius = 1.2
-		ring.mesh = torus
-		ring.material_override = ArenaMaterials3D.glow(RING_COLOR, 2.2)
-		ring.position.y = 0.3
-		ring.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		ring.visible = false
-		base.add_child(ring)
-		_rings.append(ring)
+		_figures.append([])
 		var bands: Node3D = Node3D.new()
 		base.add_child(bands)
 		_bands.append(bands)
@@ -151,9 +144,11 @@ func sync(idols: Array[IdolState], hovered: int, selected: int) -> void:
 			var tint: Color = GodSymbols.get_color(idol.god) if idol.god != &"" else NoirArena3D.FIRE_COLOR
 			_lights[index].light_color = NoirArena3D.FIRE_COLOR.lerp(tint, 0.35)
 			_set_bands(index, count, tint)
-		_rings[index].visible = index == hovered or index == selected
-		(_rings[index].material_override as StandardMaterial3D).emission_energy_multiplier = \
-				3.2 if index == selected else 1.6
+		var overlay: ShaderMaterial = _outline(true) if index == selected \
+				else (_outline(false) if index == hovered else null)
+		for figure: MeshInstance3D in _figures[index]:
+			if is_instance_valid(figure):
+				figure.material_overlay = overlay
 
 
 func _set_bands(index: int, count: int, tint: Color) -> void:
@@ -187,10 +182,29 @@ func _set_model(index: int, god: StringName) -> void:
 		part.scale = Vector3.ONE * (PLATE_SCALE if plate else MODEL_SCALE)
 		part.rotation.y = 0.0 if plate else FACE_YAW
 		holder.add_child(part)
+		if not plate:
+			_figures[index] = part.find_children("*", "MeshInstance3D", true, false)
 	ArenaTower3D._tune_materials(holder, _style.noir_model_glow, _style.noir_model_tone * MODEL_TONE,
 			_style.noir_model_rim)
 	(get_child(index) as Node3D).add_child(holder)
 	_models[index] = holder
+
+
+## Контур фигуры: выбранный — толще и ярче, под курсором — тоньше.
+func _outline(strong: bool) -> ShaderMaterial:
+	if (_outline_strong if strong else _outline_soft) == null:
+		var material: ShaderMaterial = ShaderMaterial.new()
+		material.shader = RitualTownHouse.OUTLINE_SHADER
+		material.set_shader_parameter(&"color", RING_COLOR)
+		material.set_shader_parameter(&"along_normal", true)
+		material.set_shader_parameter(&"width", 0.07 if strong else 0.045)
+		material.set_shader_parameter(&"glow", 1.8 if strong else 1.1)
+		material.set_shader_parameter(&"pulse", 0.35 if strong else 0.0)
+		if strong:
+			_outline_strong = material
+		else:
+			_outline_soft = material
+	return _outline_strong if strong else _outline_soft
 
 
 ## Сколько пьедесталов стоит (3, с детинцем 4).

@@ -74,6 +74,9 @@ const RANGE_RING_SHADER: Shader = preload("res://assets/shaders/ritual_range_rin
 const SELECTED_OUTLINE: Color = Color("ffe4a5")
 var _ghost: Node3D
 var _range_ring: MeshInstance3D
+## Круг дальности выбранного дома — та же 3D-плоскость, что у призрака (critique_4 п. 31).
+var _selected_ring: MeshInstance3D
+var _selected_key: String = ""
 var _ghost_key: String = ""
 var _pause_gray: float = 0.0
 var _enemy_rim: ShaderMaterial
@@ -563,8 +566,12 @@ func set_house_outlines(marks: Dictionary[int, Color]) -> void:
 		if house == null:
 			continue
 		var color: Color = marks.get(id, Color.TRANSPARENT)
-		# Толщина в единицах модели (дом x2): 0,14 и 0,1 м в мире — 3-4 px с игровой камеры.
-		house.set_outline(color, 0.07 if color == SELECTED_OUTLINE else 0.05)
+		# Выбранный — вдвое толще родни и пульсирует; родня — тонко и вполсилы (critique_4 п. 26).
+		# Толщина в единицах модели (дом x2): 0,2 и 0,08 м в мире.
+		if color == SELECTED_OUTLINE:
+			house.set_outline(color, 0.1, 0.45)
+		else:
+			house.set_outline(Color(color, color.a * 0.55), 0.04)
 
 
 ## Износ видно домом (п. 64): копоть и пробоины, у молчащего — сильнее.
@@ -576,6 +583,37 @@ func sync_house_wear(field: RitualField, settings: RitualTrialConfig) -> void:
 		var full: int = settings.max_durability(tower.level)
 		var amount: float = 1.0 if tower.durability == 0 else (0.55 if tower.durability * 2 <= full else 0.0)
 		house.set_wear(amount)
+
+
+## Круг дальности выбранного дома (tower == null — убрать): мягкий край цветом стихии.
+func show_selected_range(tower: TowerState, reach_milli: int, color: Color) -> void:
+	var key: String = "%d:%d:%s" % [tower.id if tower != null else 0, reach_milli, color.to_html()]
+	if key == _selected_key:
+		return
+	_selected_key = key
+	if _selected_ring != null:
+		_selected_ring.queue_free()
+		_selected_ring = null
+	if tower == null or reach_milli <= 0:
+		return
+	_selected_ring = _range_plane(float(reach_milli) / 1000.0 * layout.cell_m, color, 0.05)
+	_selected_ring.name = "SelectedRange"
+	_selected_ring.position = _tower_position(tower.cells()) + Vector3.UP * 0.12
+
+
+func _range_plane(radius: float, color: Color, fill: float) -> MeshInstance3D:
+	var plane: PlaneMesh = PlaneMesh.new()
+	plane.size = Vector2.ONE * radius * 2.0
+	var ring: ShaderMaterial = ShaderMaterial.new()
+	ring.shader = RANGE_RING_SHADER
+	ring.set_shader_parameter(&"color", color)
+	ring.set_shader_parameter(&"fill", fill)
+	var mesh: MeshInstance3D = MeshInstance3D.new()
+	mesh.mesh = plane
+	mesh.material_override = ring
+	mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_world.add_child(mesh)
+	return mesh
 
 
 ## Призрак дома и круг дальности на участке под курсором (п. 66); data == null — убрать.
@@ -604,17 +642,6 @@ func show_ghost(data: TowerData, cell: Vector2i, valid: bool, reach_milli: int) 
 	_ghost.add_child(model)
 	if reach_milli <= 0 or not valid:
 		return
-	var radius: float = float(reach_milli) / 1000.0 * layout.cell_m
-	var plane: PlaneMesh = PlaneMesh.new()
-	plane.size = Vector2.ONE * radius * 2.0
-	var ring: ShaderMaterial = ShaderMaterial.new()
-	ring.shader = RANGE_RING_SHADER
-	ring.set_shader_parameter(&"color", color)
-	ring.set_shader_parameter(&"fill", 0.02)
-	_range_ring = MeshInstance3D.new()
+	_range_ring = _range_plane(float(reach_milli) / 1000.0 * layout.cell_m, color, 0.02)
 	_range_ring.name = "RangeRing"
-	_range_ring.mesh = plane
-	_range_ring.material_override = ring
-	_range_ring.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_range_ring.position = _ghost.position + Vector3.UP * 0.12
-	_world.add_child(_range_ring)

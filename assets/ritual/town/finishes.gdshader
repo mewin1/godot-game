@@ -17,8 +17,10 @@ uniform float night = 0.0;
 uniform bool debug_mask = false;
 varying flat int swatch;
 varying vec2 atlas_uv;
+varying vec3 body;
 
 void vertex() {
+	body = VERTEX;
 	ivec2 slot = ivec2(floor(UV * vec2(8., 4.)));
 	swatch = slot.y * 8 + slot.x;
 	atlas_uv = UV;
@@ -87,10 +89,14 @@ void fragment() {
 		ALBEDO = quiet_roof(paint);
 	}
 	if (wear > 0.0) {
-		vec2 spot = UV * 36.0;
+		// critique_4 п. 30: пятна копоти крупные — по объёму дома (видны с игровой камеры), а не по атласу;
+		// весь дом темнее и серее.
+		vec2 spot = vec2(body.x + body.z, body.y + 0.6 * body.z) * 5.0;
 		float n = wear_noise(spot) * 0.65 + wear_noise(spot * 2.3 + 5.1) * 0.35;
-		float soot = smoothstep(0.62 - 0.22 * wear, 0.82 - 0.2 * wear, n);
-		ALBEDO *= 1.0 - 0.7 * soot;
+		float soot = smoothstep(0.6 - 0.2 * wear, 0.74 - 0.18 * wear, n);
+		float gray = dot(ALBEDO, vec3(0.3, 0.59, 0.11));
+		ALBEDO = mix(ALBEDO, vec3(gray), 0.55 * wear) * (1.0 - 0.3 * wear);
+		ALBEDO *= 1.0 - 0.75 * soot;
 		if (swatch == 8) {
 			// Пробоины в кровле: чёрные провалы с краем.
 			float hole = smoothstep(0.86 - 0.18 * wear, 0.9 - 0.18 * wear, wear_noise(spot * 0.7 + 13.0));
@@ -108,7 +114,9 @@ void fragment() {
 		ROUGHNESS = 0.51;
 	}
 	if (swatch == 22) {
-		EMISSION = paint * 0.42;
+		// Молчащий дом — тёмные окна (critique_4 п. 30).
+		EMISSION = paint * 0.42 * (1.0 - smoothstep(0.7, 1.0, wear));
+		ALBEDO *= 1.0 - 0.6 * smoothstep(0.7, 1.0, wear);
 	}
 	if (swatch >= 24 && swatch <= 28) {
 		// Рабочие грани машины (critique_3 п. 6): тело темнее, свечение — цветом стихии и слабее;
