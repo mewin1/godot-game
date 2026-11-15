@@ -32,6 +32,19 @@ const GRASS_GAP: float = 1.6
 ## Дома стоят севернее широтных дорог (камера смотрит с юга): дом x2 южнее дороги закрывал бы её.
 const TOWN_BOARD: String = "res://data/ritual/board_city2.tres"
 const POND: Rect2i = Rect2i(7, 7, 7, 6)
+## Пруд (critique_2 п. 1-6): естественный контур-«боб» внутри подковы дорог — от осей дорог не ближе
+## 2,2 м (обочина + берег), от южного частокола не ближе 1,8 м. Вода ниже мостовой, берег —
+## откос как у ручья, мостовая обрывается за полосой земли POND_SHORE, под водой — чаша в земле.
+const POND_CENTER: Vector2 = Vector2(21.0, 0.35)
+const POND_RADII: Vector2 = Vector2(5.3, 4.7)
+const POND_STEPS: int = 96
+const POND_WATER_Y: float = -0.06
+const POND_SHORE: float = 1.0
+const POND_DEPTH: float = 0.5
+## Кольца сетки воды — расстояния от уреза внутрь (м): мель и прозрачность по всему берегу.
+const POND_RINGS: Array[float] = [0.0, 0.3, 0.75, 1.5]
+## Отражение луны — у дальнего (северного) берега, небольшое, как у ручья.
+const POND_MOON: Vector3 = Vector3(21.5, 0.0, -2.9)
 const SHRINE: Rect2i = Rect2i(10, 4, 1, 1)
 ## Тын ниже 0,4 клетки (docs/37 SCN-4), чтобы не закрывать врагов.
 const FENCE_HEIGHT: float = 0.7
@@ -264,42 +277,126 @@ func _build_fires(_fine: Dictionary[Vector2i, bool], _terem: Vector2) -> void:
 		_build_fences()
 
 
-func _cell_rect(cells: Rect2i) -> Rect2:
-	return Rect2(Vector2(cells.position) * CELL + BOARD_MIN, Vector2(cells.size) * CELL)
-
-
-## Пруд внутри подковы главной дороги. Проулок через него (с города 2) рисуется дорогой поверх воды - кладки.
-func _build_pond() -> void:
-	# Полоса берега у дорог - мостовая.
-	var area: Rect2 = _cell_rect(POND).grow(-0.3)
-	var tool: SurfaceTool = SurfaceTool.new()
-	tool.begin(Mesh.PRIMITIVE_TRIANGLES)
-	tool.set_normal(Vector3.UP)
-	var corners: Array[Vector2] = [area.position, Vector2(area.end.x, area.position.y), area.end,
-		Vector2(area.position.x, area.end.y)]
 ## На площади свет дают огни идолов (RitualIdols3D): факел и чаша посреди стены встали бы на их ряд.
 func _wall_light_allowed(at: Vector2) -> bool:
 	return not _cell_rect(PLAZA).grow(1.2).has_point(at)
 
 
-	for index: int in [0, 1, 2, 0, 2, 3]:
-		var corner: Vector2 = corners[index]
-		# Шейдер ручья: UV.x - метры вдоль, UV.y - поперек 0..1 (темнее к середине).
-		tool.set_uv(Vector2(corner.x, (corner.y - area.position.y) / area.size.y))
-		tool.add_vertex(Vector3(corner.x, 0.005, corner.y))
+func _cell_rect(cells: Rect2i) -> Rect2:
+	return Rect2(Vector2(cells.position) * CELL + BOARD_MIN, Vector2(cells.size) * CELL)
+
+
+## Урез пруда (мир x, z), отодвинутый наружу на grow м: эллипс с «шумом» радиуса.
+## vary > 0 — ширина отступа гуляет по берегу (край мостовой не повторяет урез кольцом).
+static func pond_contour(grow: float = 0.0, vary: float = 0.0) -> PackedVector2Array:
+	var points: PackedVector2Array = PackedVector2Array()
+	for index: int in POND_STEPS:
+		var angle: float = TAU * index / POND_STEPS
+		var wobble: float = minf(1.09, 1.0 + 0.045 * sin(2.0 * angle + 0.7) + 0.035 * sin(3.0 * angle + 1.9)
+				+ 0.02 * sin(5.0 * angle + 0.4))
+		points.append(POND_CENTER + Vector2(cos(angle) * POND_RADII.x, sin(angle) * POND_RADII.y) * wobble)
+	if grow != 0.0:
+		var normals: PackedVector2Array = _outward(points)
+		for index: int in points.size():
+			var angle: float = TAU * index / POND_STEPS
+			var swing: float = 1.0 + vary * (0.6 * sin(3.0 * angle + 2.3) + 0.4 * sin(7.0 * angle + 0.9))
+			points[index] += normals[index] * grow * swing
+	return points
+
+
+## Нормали контура наружу (от середины пруда).
+static func _outward(points: PackedVector2Array) -> PackedVector2Array:
+	var normals: PackedVector2Array = PackedVector2Array()
+	var count: int = points.size()
+	for index: int in count:
+		var tangent: Vector2 = points[(index + 1) % count] - points[(index - 1 + count) % count]
+		var normal: Vector2 = Vector2(tangent.y, -tangent.x).normalized()
+		if normal.dot(points[index] - POND_CENTER) < 0.0:
+			normal = -normal
+		normals.append(normal)
+	return normals
+
+
+## Мостовая обрывается за полосой земли у пруда (раньше плитка лежала под всей водой — «дно = брусчатка»).
+func _paving_cut() -> PackedVector2Array:
+	return pond_contour(POND_SHORE, 0.45) if _town else PackedVector2Array()
+
+
+## Пруд внутри подковы главной дороги: вода ручья (общий шейдер), берег-откос, чаша в земле.
+func _build_pond() -> void:
+	var shore: PackedVector2Array = pond_contour()
+	var normals: PackedVector2Array = _outward(shore)
+	var count: int = shore.size()
+	var tool: SurfaceTool = SurfaceTool.new()
+	tool.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for ring: int in POND_RINGS.size() - 1:
+		for index: int in count:
+			var next: int = (index + 1) % count
+			for corner: Vector2i in [Vector2i(index, ring), Vector2i(next, ring), Vector2i(index, ring + 1),
+					Vector2i(next, ring), Vector2i(next, ring + 1), Vector2i(index, ring + 1)]:
+				var depth: float = POND_RINGS[corner.y]
+				_pond_vertex(tool, shore[corner.x] - normals[corner.x] * depth, depth)
+	var last: float = POND_RINGS[-1]
+	for index: int in count:
+		var next: int = (index + 1) % count
+		_pond_vertex(tool, POND_CENTER, last)
+		_pond_vertex(tool, shore[index] - normals[index] * last, last)
+		_pond_vertex(tool, shore[next] - normals[next] * last, last)
 	tool.generate_tangents()
 	var material: ShaderMaterial = ShaderMaterial.new()
-	material.shader = STREAM_SHADER
+	material.shader = POND_SHADER
 	material.set_shader_parameter("bed", preload("res://assets/noir/courtyard/river_gravel.png"))
-	material.set_shader_parameter("flow", 0.05)
-	var center: Vector2 = area.get_center()
-	material.set_shader_parameter("moon_spot", Vector3(center.x, 0.0, center.y))
+	material.set_shader_parameter("flow", 0.0)
+	material.set_shader_parameter("moon_spot", POND_MOON)
+	material.set_shader_parameter("moon_radius", 0.8)
+	material.set_shader_parameter("water_specular", 0.1)
 	var water: MeshInstance3D = MeshInstance3D.new()
 	water.name = "Pond"
 	water.mesh = tool.commit()
 	water.material_override = material
 	water.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_yard.add_child(water)
+	_build_pond_banks(shore, normals)
+	if _ground != null:
+		_ground.set_shader_parameter("pond_center", POND_CENTER)
+		_ground.set_shader_parameter("pond_radii", POND_RADII)
+		_ground.set_shader_parameter("pond_depth", POND_DEPTH)
+
+
+## UV.y воды пруда — расстояние до берега (0 на урезе, 0,5 глубже 1,1 м): мель по всему контуру.
+static func _pond_vertex(tool: SurfaceTool, at: Vector2, depth: float) -> void:
+	tool.set_normal(Vector3.UP)
+	tool.set_uv(Vector2(0.0, minf(depth / 2.2, 0.5)))
+	tool.add_vertex(Vector3(at.x, POND_WATER_Y, at.y))
+
+
+## Берег пруда — профиль берега ручья: подводная ступень, урез чуть выше воды, гребень на уровне
+## мостовой, дальше откос уходит под плитку. Гравий у воды, земля выше (тот же шейдер).
+func _build_pond_banks(shore: PackedVector2Array, normals: PackedVector2Array) -> void:
+	var tool: SurfaceTool = SurfaceTool.new()
+	tool.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var count: int = shore.size()
+	for index: int in count:
+		var bar: float = smoothstep(0.05, 0.92, 0.5 + 0.5 * sin(index * 0.41 + 1.3))
+		var ridge: float = -0.014 + 0.01 * sin(index * 0.77)
+		for row: Vector3 in [Vector3(-0.7, -0.27, 0.0), Vector3(0.05 + bar * 0.12, POND_WATER_Y + 0.02, 0.22),
+				Vector3(0.3 + bar * 0.4, ridge, 0.61), Vector3(1.1 + bar * 0.4, -0.05, 1.0)]:
+			var at: Vector2 = shore[index] + normals[index] * row.x
+			tool.set_uv(Vector2(float(index), row.z))
+			tool.add_vertex(Vector3(at.x, row.y, at.y))
+	for index: int in count:
+		var next: int = (index + 1) % count
+		for row: int in 3:
+			var a: int = index * 4 + row
+			var b: int = next * 4 + row
+			for vertex: int in [a, a + 1, b, a + 1, b + 1, b]:
+				tool.add_index(vertex)
+	tool.generate_normals()
+	var banks: MeshInstance3D = MeshInstance3D.new()
+	banks.name = "PondBanks"
+	banks.mesh = tool.commit()
+	banks.material_override = _bank_material()
+	_yard.add_child(banks)
 
 
 ## Капище перед северными воротами: из-за него северная дорога сворачивает на восток.

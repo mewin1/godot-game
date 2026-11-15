@@ -88,6 +88,7 @@ const PAVING_SHADER: Shader = preload("res://assets/shaders/noir_paving.gdshader
 const FLAME_SHADER: Shader = preload("res://assets/shaders/noir_flame.gdshader")
 const FOREST_FOG: Shader = preload("res://assets/shaders/noir_forest_fog.gdshader")
 const STREAM_SHADER: Shader = preload("res://assets/shaders/noir_stream.gdshader")
+const POND_SHADER: Shader = preload("res://assets/shaders/noir_pond.gdshader")
 ## Ручей через лес слева от двора (точки русла в координатах вида, см. _w): из глубины леса к переднему краю.
 const STREAM_POINTS: Array[Vector2] = [Vector2(-30.0, -90.0), Vector2(-17.0, -55.0), Vector2(-9.0, -32.0),
 		Vector2(-6.4, -17.0), Vector2(-7.2, -6.0), Vector2(-5.5, 3.0), Vector2(-9.0, 12.0), Vector2(-18.0, 20.0)]
@@ -120,6 +121,10 @@ uniform float bumps = 0.085;
 // поляна вокруг двора: за ней земля днём в тени леса (noir_forest_shade.gdshaderinc)
 uniform vec4 glade_a = vec4(-1e5, -1e5, 1e5, 1e5);
 uniform vec4 glade_b = vec4(-1e5, -1e5, 1e5, 1e5);
+// чаша пруда (режим с прудом во дворе): земля опускается под водой, в PvP глубина 0
+uniform vec2 pond_center = vec2(0.0);
+uniform vec2 pond_radii = vec2(1.0);
+uniform float pond_depth = 0.0;
 #include "res://assets/shaders/noir_forest_shade.gdshaderinc"
 varying vec3 world;
 
@@ -133,6 +138,7 @@ void vertex() {
 	float n = textureLod(blend_noise, world.xz * 0.045, 0.0).r;
 	vec2 creek_uv = ((env_from_world * vec4(world, 1.0)).xz - margin_extent.xy) / margin_extent.zw;
 	VERTEX.y -= n * bumps * yard_fade(world.xz) + 0.24 * textureLod(river_margin, creek_uv, 0.0).r;
+	VERTEX.y -= pond_depth * (1.0 - smoothstep(0.82, 1.12, length((world.xz - pond_center) / pond_radii)));
 }
 
 void fragment() {
@@ -204,6 +210,8 @@ const CORNER_FIRE_REACH: float = 9.0
 const TORCH_REACH: float = 4.8
 
 var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
+## Материал земли леса и двора: режим с прудом опускает под ним землю (pond_*).
+var _ground: ShaderMaterial
 var _layout: ArenaLayout3D
 var _cellars: CellarGeometry
 var _yard: Node3D
@@ -524,13 +532,14 @@ static func _textured(path: String, uv_scale: Vector3, roughness: float = 0.9) -
 
 
 func _build_ground() -> void:
+	_ground = _ground_material()
 	var outside: MeshInstance3D = MeshInstance3D.new()
 	var plane: PlaneMesh = PlaneMesh.new()
 	plane.size = Vector2(320, 320)
 	plane.subdivide_width = 159
 	plane.subdivide_depth = 159
 	outside.mesh = plane
-	outside.material_override = _ground_material()
+	outside.material_override = _ground
 	outside.position = Vector3(9, -0.04, -14)
 	add_child(outside)
 
@@ -575,9 +584,18 @@ func _build_paving(fine: Dictionary[Vector2i, bool]) -> Material:
 	tool.begin(Mesh.PRIMITIVE_TRIANGLES)
 	tool.set_normal(Vector3.UP)
 	var offsets: Array[Vector2i] = [Vector2i(0, 0), Vector2i(1, 0), Vector2i(1, 1), Vector2i(0, 1)]
+	var cut: PackedVector2Array = _paving_cut()
+	var cut_box: Rect2 = Rect2()
+	if not cut.is_empty():
+		cut_box = Rect2(cut[0], Vector2.ZERO)
+		for point: Vector2 in cut:
+			cut_box = cut_box.expand(point)
 	for cell: Vector2i in fine:
 		var a: Vector2 = _fine_to_world(Vector2(cell))
 		var b: Vector2 = a + Vector2(FINE, FINE)
+		if not cut.is_empty() and cut_box.intersects(Rect2(a, Vector2(FINE, FINE))):
+			_cut_tile(tool, a, b, cut)
+			continue
 		var corners: Array[Vector3] = [Vector3(a.x, -0.01, a.y), Vector3(b.x, -0.01, a.y),
 				Vector3(b.x, -0.01, b.y), Vector3(a.x, -0.01, b.y)]
 		for index: int in [0, 1, 2, 0, 2, 3]:
@@ -598,6 +616,26 @@ func _build_paving(fine: Dictionary[Vector2i, bool]) -> Material:
 	yard.material_override = material
 	_yard.add_child(yard)
 	return material
+
+
+## Где плиток нет (мир x, z, замкнутый контур): режим с прудом обрывает мостовую у берега.
+func _paving_cut() -> PackedVector2Array:
+	return PackedVector2Array()
+
+
+## Плитка, срезанная контуром: остаётся часть вне контура; у среза — мох (как у частокола).
+static func _cut_tile(tool: SurfaceTool, a: Vector2, b: Vector2, cut: PackedVector2Array) -> void:
+	var quad: PackedVector2Array = PackedVector2Array([a, Vector2(b.x, a.y), b, Vector2(a.x, b.y)])
+	for piece: PackedVector2Array in Geometry2D.clip_polygons(quad, cut):
+		if Geometry2D.is_polygon_clockwise(piece) != Geometry2D.is_polygon_clockwise(quad):
+			continue  # дыра внутри плитки (контур целиком в ней) — не бывает: контур крупнее плитки
+		var indices: PackedInt32Array = Geometry2D.triangulate_polygon(piece)
+		for index: int in indices:
+			var point: Vector2 = piece[index]
+			var corner: bool = point.is_equal_approx(quad[0]) or point.is_equal_approx(quad[1]) \
+					or point.is_equal_approx(quad[2]) or point.is_equal_approx(quad[3])
+			tool.set_color(Color.BLACK if corner else Color.RED)
+			tool.add_vertex(Vector3(point.x, -0.01, point.y))
 
 
 ## Утоптанная светлая дорога поверх плит: от ворот до конца открытого пути и дальше к крыльцу терема.
@@ -1294,15 +1332,10 @@ func _build_stream() -> void:
 	water.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(water)
 	banks_tool.generate_normals()
-	var shore_mat: ShaderMaterial = ShaderMaterial.new()
-	shore_mat.shader = preload("res://assets/shaders/noir_stream_bank.gdshader")
-	shore_mat.render_priority = -1  # влажный грунт за прозрачной водой
-	shore_mat.set_shader_parameter("gravel", preload("res://assets/noir/courtyard/river_gravel.png"))
-	shore_mat.set_shader_parameter("soil", preload("res://assets/noir_h3d/arena/ground/brown_mud_leaves_01_diff_1k.jpg"))
 	var shore: MeshInstance3D = MeshInstance3D.new()
 	shore.name = "StreamBanks"
 	shore.mesh = banks_tool.commit()
-	shore.material_override = shore_mat
+	shore.material_override = _bank_material()
 	add_child(shore)
 	# берега: камни и папоротник вперемешку, чтобы лента не лежала на голой земле
 	var banks: Dictionary[String, Array] = {}
@@ -1331,6 +1364,16 @@ func _build_stream() -> void:
 
 
 ## Русло ручья точками через ~0,7 м (координаты вида).
+## Материал берега воды: мокрый гравий у уреза → земля на гребне (ручей и пруд).
+static func _bank_material() -> ShaderMaterial:
+	var shore_mat: ShaderMaterial = ShaderMaterial.new()
+	shore_mat.shader = preload("res://assets/shaders/noir_stream_bank.gdshader")
+	shore_mat.render_priority = -1  # влажный грунт за прозрачной водой
+	shore_mat.set_shader_parameter("gravel", preload("res://assets/noir/courtyard/river_gravel.png"))
+	shore_mat.set_shader_parameter("soil", preload("res://assets/noir_h3d/arena/ground/brown_mud_leaves_01_diff_1k.jpg"))
+	return shore_mat
+
+
 func _stream_line() -> Array[Vector2]:
 	var line: Array[Vector2] = []
 	var points: Array[Vector2] = []
