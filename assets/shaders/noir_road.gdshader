@@ -38,7 +38,8 @@ void fragment() {
 	ALBEDO = worn * (0.73 + 0.57 * grit) * (1.0 - 0.36 * rut + 0.12 * lip);
 	// Тропа темнее дороги двора (ночью дорога должна быть самой светлой линией кадра).
 	ALBEDO = mix(ALBEDO, mix(soil * 0.42, ALBEDO * 0.36, 0.5), wild);
-	EMISSION = ALBEDO * moonlit * vec3(0.78, 0.86, 1.0);
+	// Лесная тропа ночью почти не светится: лес за частоколом должен оставаться тёмным (SCN-3).
+	EMISSION = ALBEDO * moonlit * (1.0 - 0.8 * wild) * vec3(0.78, 0.86, 1.0);
 	ROUGHNESS = mix(mix(0.89, 0.65, tread * (1.0 - grit)), 0.39, rut);
 	SPECULAR = 0.26;
 	vec2 slope = (texture(earth_normal, ground * 0.44).rg * 2.0 - 1.0) * mix(0.29, 0.13, tread);

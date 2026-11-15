@@ -490,7 +490,8 @@ func _trail_mist(at: Vector3) -> void:
 		return
 	var fog: FogMaterial = FogMaterial.new()
 	fog.density = 1.1
-	fog.albedo = Color(0.6, 0.66, 0.68)
+	# Тёмная дымка: под луной светлый туман поднимал яркость леса за частоколом выше нормы SCN-3.
+	fog.albedo = Color(0.36, 0.41, 0.44)
 	fog.edge_fade = 0.7
 	fog.height_falloff = 0.6
 	var volume: FogVolume = FogVolume.new()
