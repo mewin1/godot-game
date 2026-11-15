@@ -96,6 +96,9 @@ const PALISADE_ICON: Texture2D = preload("res://assets/ui/ritual/palisade.svg")
 ## Уровень дома в заголовке дока — римской цифрой и материалом (critique_4 п. 53).
 const ROMAN: Array[String] = ["I", "II", "III", "IV"]
 const MATERIALS: Array[String] = ["дерево", "камень", "кирпич", "белый камень"]
+## Тост на широком экране — под шапкой у левого края (critique_4 п. 60).
+const TOAST_LEFT: float = 12.0
+const TOAST_TOP: float = 70.0
 ## Высота тоста в портрете: две строки сообщения (critique_4 п. 34).
 const TOAST_COMPACT_HEIGHT: float = 64.0
 ## Молоток ремонта — тот же знак, что бейдж износа над домом.
@@ -235,17 +238,14 @@ func _build_ui() -> void:
 	_toast.offset_top = -258
 	_toast.offset_bottom = -228
 	if _dock != null:
-		# Забег: сообщения сверху по центру под шапкой (docs/37 UI-12), карту снизу не закрывают.
-		_toast.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
-		_toast.offset_left = -380
-		_toast.offset_right = 380
-		# Под шапкой (она до ~80 px), а не на нижнем крае полосы разведки.
-		_toast.offset_top = 90
-		_toast.offset_bottom = 120
+		# Забег: сообщение под шапкой у левого края, ширина по тексту (critique_4 п. 60): по центру сверху
+		# оно ложилось на северную улицу и ворота, откуда выходят враги.
+		_place_toast_wide()
 	_message = _label(_toast, "", 18)
 	_message.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_message.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_message.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	_message.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING if _dock != null \
+			else TextServer.OVERRUN_TRIM_ELLIPSIS
 	# Надпись заполняет плашку по высоте: с переносом (портрет) её мин. высота до раскладки — 1 px.
 	_message.size_flags_vertical = Control.SIZE_FILL
 	_message.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -1101,6 +1101,8 @@ func _age_toast(delta: float) -> void:
 	if _message.text != _toast_text:
 		_toast_text = _message.text
 		_toast_age = 0.0
+		if _dock != null and not _compact:
+			_toast.reset_size()
 	_toast_age += delta
 	_toast.visible = not _toast_text.is_empty() and (_toast_age < TOAST_SECONDS or board.action != &"")
 
@@ -1756,7 +1758,9 @@ func _refresh_context(selected: TowerState) -> void:
 		free += int(trial.field.get_tower_at(cell) == null)
 	_selection_title.text = "Город %d" % trial.city_level()
 	# Статус одной строкой; инструкции — в подсказке (critique_2 п. 25).
-	_selection.text = "Свободно участков: %d · домов: %d" % [free, trial.field.towers.size()]
+	# В портрете короче (critique_4 п. 35): «домов: …» обрезалось.
+	_selection.text = ("Свободно: %d · домов: %d" if _compact else "Свободно участков: %d · домов: %d") \
+			% [free, trial.field.towers.size()]
 	_selection_title.tooltip_text = "Идолы — на площади у терема: щёлкните идол (или 4/5/6).\nДом на карте — выбор и улучшение; Alt — уровни всех домов."
 	_selection.tooltip_text = _selection_title.tooltip_text
 
@@ -1877,6 +1881,17 @@ func _sell_tower(tower_id: int) -> void:
 	_sell()
 
 
+## Тост на широком экране: под левым островом шапки, по ширине текста (не шире TOAST_MAX_WIDTH).
+func _place_toast_wide() -> void:
+	_toast.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT, Control.PRESET_MODE_MINSIZE)
+	_toast.position = Vector2(TOAST_LEFT, TOAST_TOP)
+	if _message != null:
+		# Ширина по тексту: с обрезкой многоточием мин. ширина надписи — 1 px, плашка сжималась.
+		_message.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING
+	_toast.custom_minimum_size = Vector2.ZERO
+	_toast.size = Vector2.ZERO
+
+
 ## Портрет и узкие окна (critique_3 п. 3): док в два ряда, разведка — вторым рядом шапки,
 ## тост по ширине экрана. Широкий экран — прежняя раскладка.
 func _fit_screen() -> void:
@@ -1892,6 +1907,7 @@ func _fit_screen() -> void:
 		_scout_strip.reparent(self, false)
 		_scout_strip.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP, Control.PRESET_MODE_MINSIZE)
 		_scout_strip.position.y = 62.0
+		_toast.set_anchors_preset(Control.PRESET_CENTER_TOP)
 		_toast.offset_left = -width * 0.5 + 12.0
 		_toast.offset_right = width * 0.5 - 12.0
 		# Две строки сообщения целиком (critique_4 п. 34): низ задан явно, иначе плашка сплющивалась
@@ -1902,8 +1918,5 @@ func _fit_screen() -> void:
 	else:
 		_scout_strip.reparent(_top_bar, false)
 		_top_bar.move_child(_scout_strip, 2)
-		_toast.offset_left = -380.0
-		_toast.offset_right = 380.0
-		_toast.offset_top = 90.0
-		_toast.offset_bottom = 120.0
 		_message.autowrap_mode = TextServer.AUTOWRAP_OFF
+		_place_toast_wide()

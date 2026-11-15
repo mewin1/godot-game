@@ -16,6 +16,7 @@ const HEIGHT: float = 146.0
 const CONTEXT_WIDTH: float = 340.0
 ## Портрет: островок дома уже, его кнопки бывают в три ряда — запас, чтобы док не прыгал.
 const COMPACT_EXTRA: float = 40.0
+const FADE_WIDTH: float = 44.0
 const TIER_NAMES: Array[String] = ["I", "II", "III"]
 
 ## Сюда панель переносит портрет, HP, золото героя (MatchHud).
@@ -38,6 +39,8 @@ var _row: HBoxContainer
 var _row2: HBoxContainer
 var _stack: VBoxContainer
 var _scroll: ScrollContainer
+## Затухание правого края каталога в портрете (critique_4 п. 35): видно, что карточки дальше листаются.
+var _fade: TextureRect
 var compact: bool = false
 var _context_island: Control
 var _left_island: Control
@@ -284,6 +287,7 @@ func set_compact(on: bool, width: float) -> void:
 	_scroll.custom_minimum_size = Vector2(minf(catalogue.x, room) if on else catalogue.x, catalogue.y)
 	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO if on and catalogue.x > room \
 			else ScrollContainer.SCROLL_MODE_SHOW_NEVER
+	_place_fade(on and catalogue.x > room)
 	if on == compact:
 		return
 	compact = on
@@ -304,3 +308,37 @@ func set_compact(on: bool, width: float) -> void:
 		context_text.custom_minimum_size.x = CONTEXT_WIDTH
 		_row2.hide()
 		custom_minimum_size.y = HEIGHT
+
+
+## Тёмная полоса-затухание у правого края прокрутки каталога; держится над ней при прокрутке.
+func _place_fade(shown: bool) -> void:
+	if _fade == null:
+		if not shown:
+			return
+		var gradient: Gradient = Gradient.new()
+		gradient.set_color(0, Color(0.02, 0.03, 0.05, 0.0))
+		gradient.set_color(1, Color(0.02, 0.03, 0.05, 0.95))
+		var texture: GradientTexture2D = GradientTexture2D.new()
+		texture.gradient = gradient
+		texture.width = 64
+		texture.height = 8
+		_fade = TextureRect.new()
+		_fade.name = "CatalogueFade"
+		_fade.texture = texture
+		_fade.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		_fade.stretch_mode = TextureRect.STRETCH_SCALE
+		_fade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_fade.top_level = true
+		add_child(_fade)
+	_fade.visible = shown
+	set_process(shown)
+
+
+func _process(_delta: float) -> void:
+	if _fade == null or not _fade.visible:
+		return
+	var rect: Rect2 = _scroll.get_global_rect()
+	var at_end: bool = _scroll.scroll_horizontal >= int(_grid.size.x - rect.size.x) - 2
+	_fade.modulate.a = 0.0 if at_end else 1.0
+	_fade.global_position = Vector2(rect.end.x - FADE_WIDTH, rect.position.y)
+	_fade.size = Vector2(FADE_WIDTH, rect.size.y)

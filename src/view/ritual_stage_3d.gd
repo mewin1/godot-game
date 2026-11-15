@@ -28,6 +28,11 @@ const CAMERA_PITCH_WIDE: float = -0.6
 ## Сколько логических пикселей кадр заходит под шапку на альбомном экране.
 const HEADER_UNDER: float = 64.0
 const WIDE_FROM: float = 1.9
+## 21:9: насколько кадр крупнее и насколько город сдвинут влево (доли места под карту).
+const WIDE_ZOOM: float = 0.14
+const WIDE_SHIFT: float = 0.02
+## Портрет: кадр поднят на эту долю места под карту (над городом был пустой лес).
+const PORTRAIT_LIFT: float = 0.06
 const WIDE_TO: float = 2.9
 const PORTRAIT_TURN: float = -PI * 0.5
 ## Враги забега мельче домов (решение автора 15 ноября: враг ~0,7 высоты дома тира I, дома x2).
@@ -544,6 +549,15 @@ func _frame_perspective(target: Rect2, basis: Basis) -> void:
 		# На 21:9 под шапку не заходим: там положе камера, а северные ворота ушли бы под разведку.
 		var lift: float = HEADER_UNDER * smoothstep(1.5, 2.0, aspect) * (1.0 - smoothstep(2.4, 2.9, aspect))
 		target = Rect2(target.position - Vector2(0.0, lift), target.size + Vector2(0.0, lift))
+	# 21:9 (critique_4 п. 9): по высоте у города запас (сверху и снизу пустой лес) — кадр крупнее на
+	# WIDE_ZOOM, город чуть левее (он стоял правее середины): частокол >= 0,65 ширины.
+	var wide: float = smoothstep(2.0, 2.4, aspect)
+	if wide > 0.0:
+		var grow: Vector2 = target.size * WIDE_ZOOM * wide
+		target = Rect2(target.position - grow * 0.5 - Vector2(target.size.x * WIDE_SHIFT * wide, 0.0), target.size + grow)
+	# Портрет (critique_4 п. 35): сверху над городом полоса пустого леса — кадр выше на её долю.
+	if aspect < 0.9:
+		target = Rect2(target.position - Vector2(0.0, target.size.y * PORTRAIT_LIFT), target.size)
 	# Кадр занимает выделенное место полностью, без прежнего запаса под PvP-шапку.
 	var adjusted: Rect2 = Rect2(target.position - Vector2(0, target.size.y * SKY_SHARE / (1.0 - SKY_SHARE)),
 		Vector2(target.size.x, target.size.y / (1.0 - SKY_SHARE)))

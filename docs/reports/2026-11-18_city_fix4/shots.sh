@@ -11,7 +11,7 @@ run() {
 	if [[ -n "$FILTER" && "$name" != *$FILTER* ]]; then return; fi
 	echo "== $name"
 	timeout 180 godot --path . --screen 1 -s res://tools/ritual_view_probe.gd -- --out="$OUT" "$@" 2>&1 \
-		| grep -E '^(VIEW|TOAST|MASK|  DOCK|WALLS|IDOL|HERO|UI:|FONTS|DOCK|GRASS|  OUTSIDE|  SMALL|SCRIPT ERROR|ERROR|DEFEAT)' | grep -v 'leaked'
+		| grep -E '^(VIEW|FRAME|TOAST|MASK|  DOCK|WALLS|IDOL|HERO|UI:|FONTS|DOCK|GRASS|  OUTSIDE|  SMALL|SCRIPT ERROR|ERROR|DEFEAT)' | grep -v 'leaked'
 }
 run l1eve   --size=1920x1080 --level=1 --moment=evening --shots=ui,game,gatehouse,plazatop,idols,plaza,terem,gatewest,westwall,south --dump
 run l1day   --size=1920x1080 --level=1 --moment=day --shots=ui,stream,bridge,top
