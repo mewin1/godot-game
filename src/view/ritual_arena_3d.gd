@@ -56,6 +56,11 @@ const DEAD_WOOD: Color = Color(0.07, 0.065, 0.06)
 const BONE: Color = Color(0.7, 0.67, 0.58)
 ## Южные (к камере) стены у дороги ниже: за ними враг на въезде виден целиком (critique_2 п. 13).
 const LOW_WALL: float = 0.72
+## Кладки и мостки пруда: верх настила на уровне колеи дорог; доски светлее двора ночью.
+const DECK_Y: float = 0.08
+const DECK_WOOD: Color = Color(0.5, 0.38, 0.26)
+## Мостки для рыбалки — у восточного берега, лицом к камере (юго-восток).
+const PIER_DIRECTION: Vector2 = Vector2(0.85, 0.53)
 const SHRINE: Rect2i = Rect2i(10, 4, 1, 1)
 ## Тын ниже 0,4 клетки (docs/37 SCN-4), чтобы не закрывать врагов.
 const FENCE_HEIGHT: float = 0.7
@@ -80,6 +85,9 @@ var _town: bool = false
 ## Тропа каждого входа (мир x, z): от ворот наружу в лес; задаётся до посадки леса.
 var trails: Array[PackedVector2Array] = []
 var _trail_boxes: Array[Rect2] = []
+## Проулок над прудом рисуется настилом: дорога там, где мостовой нет, не кладётся.
+var _road_over_water: bool = false
+var _land: PackedVector2Array = PackedVector2Array()
 
 
 func _yard_rect() -> Rect2:
@@ -279,7 +287,10 @@ func _build_road(finish: float, _door: Vector3, out3: Vector3) -> PackedVector2A
 		_layout = shortcut_layouts[index]
 		var tail: float = _layout.road_end_length()
 		var along: Vector3 = _layout.road_direction(tail)
+		# Над прудом проулок — кладки (_build_boardwalk), дорога кладётся только на суше.
+		_road_over_water = _town
 		_extra_lanes.append(super._build_road(tail, _layout.road_point(tail) + along * 0.05, along))
+		_road_over_water = false
 	_layout = main
 	return main_bank
 
@@ -502,6 +513,11 @@ func _wall_height(center: Vector2, out: Vector2) -> float:
 	return WALL_SCALE
 
 
+## Жаровни снаружи — только у главных (западных) ворот: огней в кадре было ~12 при норме SCN-9 «≤ 3».
+func _gate_bowls(gate: int) -> bool:
+	return gate == 0
+
+
 ## На площади свет дают огни идолов (RitualIdols3D): факел и чаша посреди стены встали бы на их ряд.
 func _wall_light_allowed(at: Vector2) -> bool:
 	return not _cell_rect(PLAZA).grow(1.2).has_point(at)
@@ -544,7 +560,19 @@ static func _outward(points: PackedVector2Array) -> PackedVector2Array:
 
 ## Мостовая обрывается за полосой земли у пруда (раньше плитка лежала под всей водой — «дно = брусчатка»).
 func _paving_cut() -> PackedVector2Array:
-	return pond_contour(POND_SHORE, 0.45) if _town else PackedVector2Array()
+	return _land_cut() if _town else PackedVector2Array()
+
+
+## Край мостовой у пруда (урез + полоса земли неровной ширины).
+func _land_cut() -> PackedVector2Array:
+	if _land.is_empty():
+		_land = pond_contour(POND_SHORE, 0.45)
+	return _land
+
+
+func _road_hidden(a: Vector3, b: Vector3) -> bool:
+	var land: PackedVector2Array = _land_cut()
+	return _road_over_water and Geometry2D.is_point_in_polygon(Vector2(a.x, a.z), land) 			and Geometry2D.is_point_in_polygon(Vector2(b.x, b.z), land)
 
 
 ## Пруд внутри подковы главной дороги: вода ручья (общий шейдер), берег-откос, чаша в земле.
@@ -582,10 +610,171 @@ func _build_pond() -> void:
 	water.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_yard.add_child(water)
 	_build_pond_banks(shore, normals)
+	_build_pond_life(shore, normals)
 	if _ground != null:
 		_ground.set_shader_parameter("pond_center", POND_CENTER)
 		_ground.set_shader_parameter("pond_radii", POND_RADII)
 		_ground.set_shader_parameter("pond_depth", POND_DEPTH)
+
+
+## Пруд как место (critique_2 п. 7-8): кладки проулка на сваях, мостки для рыбалки с лодкой,
+## плетень кусками вдоль дорог, осока не выше 0,6 м и валуны у воды. Всё ниже 0,8 м, кроме перил
+## кладок с дальней от камеры стороны. Только вид.
+func _build_pond_life(shore: PackedVector2Array, normals: PackedVector2Array) -> void:
+	var rng: RandomNumberGenerator = RandomNumberGenerator.new()
+	rng.seed = 4242
+	var gaps: Array[Vector2] = []
+	for index: int in shortcut_layouts.size():
+		if shortcut_levels[index] > _city_level:
+			continue
+		var span: PackedVector3Array = _deck_span(shortcut_layouts[index])
+		if span.size() == 2:
+			_build_boardwalk(span[0], span[1])
+			gaps.append(Vector2(span[0].x, span[0].z))
+			gaps.append(Vector2(span[1].x, span[1].z))
+	var pier: int = _shore_index(shore, PIER_DIRECTION)
+	_build_fishing_pier(shore[pier], normals[pier])
+	gaps.append(shore[pier] + normals[pier] * POND_SHORE)
+	_build_wattle(gaps, rng)
+	_build_reeds(shore, normals, pier, rng)
+
+
+## Где проулок идёт над прудом (по краю мостовой): начало и конец настила; пусто — не пересекает.
+func _deck_span(road: ArenaLayout3D) -> PackedVector3Array:
+	var land: PackedVector2Array = _land_cut()
+	var first: float = -1.0
+	var last: float = -1.0
+	var length: float = 0.0
+	var end: float = road.road_end_length()
+	while length <= end:
+		var at: Vector3 = road.road_point(length)
+		if Geometry2D.is_point_in_polygon(Vector2(at.x, at.z), land):
+			if first < 0.0:
+				first = length
+			last = length
+		length += 0.2
+	if first < 0.0:
+		return PackedVector3Array()
+	return PackedVector3Array([road.road_point(maxf(0.0, first - 0.5)), road.road_point(minf(end, last + 0.5))])
+
+
+## Настил кладок: доски поперёк, два бруса, сваи парами; перила — с дальней от камеры стороны.
+func _build_boardwalk(from: Vector3, to: Vector3) -> void:
+	var holder: Node3D = Node3D.new()
+	holder.name = "Boardwalk"
+	var along: Vector3 = Vector3(to.x - from.x, 0.0, to.z - from.z)
+	var length: float = along.length()
+	holder.position = Vector3((from.x + to.x) * 0.5, DECK_Y, (from.z + to.z) * 0.5)
+	holder.rotation.y = atan2(along.x, along.z)
+	_yard.add_child(holder)
+	var boards: Array[StandardMaterial3D] = [_deck_material(DECK_WOOD), _deck_material(DECK_WOOD.darkened(0.12))]
+	var dark: StandardMaterial3D = ArenaMaterials3D.solid(DECK_WOOD.darkened(0.45))
+	var count: int = ceili(length / 0.3)
+	var step: float = length / count
+	for index: int in count:
+		var z: float = -length * 0.5 + step * (index + 0.5)
+		ArenaMaterials3D.part(holder, ArenaMaterials3D.box(Vector3(2.1, 0.06, step - 0.035)), boards[index % 2],
+				Vector3(sin(index * 1.7) * 0.04, sin(index * 2.3) * 0.008, z), Vector3(0.0, sin(index * 0.9) * 0.025, 0.0))
+	for side: float in [-0.75, 0.75]:
+		ArenaMaterials3D.part(holder, ArenaMaterials3D.box(Vector3(0.14, 0.12, length)), dark, Vector3(side, -0.09, 0.0))
+	var piles: int = maxi(2, ceili(length / 1.6) + 1)
+	for index: int in piles:
+		var z: float = -length * 0.5 + length * index / (piles - 1)
+		for side: float in [-0.95, 0.95]:
+			ArenaMaterials3D.part(holder, ArenaMaterials3D.cylinder(0.09, 0.08, 0.7, 6), dark,
+					Vector3(side, -0.35, z))
+	# Перила с северной (дальней) стороны: камера с юга смотрит поверх них на настил.
+	var far_side: float = 1.0 if sin(holder.rotation.y) >= 0.0 else -1.0
+	for index: int in piles:
+		var z: float = -length * 0.5 + length * index / (piles - 1)
+		ArenaMaterials3D.part(holder, ArenaMaterials3D.cylinder(0.04, 0.035, 0.5, 5), dark, Vector3(far_side * 1.0, 0.25, z))
+	ArenaMaterials3D.part(holder, ArenaMaterials3D.box(Vector3(0.06, 0.05, length)), dark, Vector3(far_side * 1.0, 0.48, 0.0))
+
+
+## Доски чуть светятся ночью: настил — дорога врагов и должен быть светлее двора (docs/37 SCN-3).
+static func _deck_material(color: Color) -> StandardMaterial3D:
+	var material: StandardMaterial3D = ArenaMaterials3D.solid(color, 0.82)
+	material.emission_enabled = true
+	material.emission = color
+	material.emission_energy_multiplier = 0.1
+	return material
+
+
+## Точка уреза, ближе всего лежащая в направлении direction от середины пруда.
+static func _shore_index(shore: PackedVector2Array, direction: Vector2) -> int:
+	var best: int = 0
+	for index: int in shore.size():
+		if (shore[index] - POND_CENTER).normalized().dot(direction) > (shore[best] - POND_CENTER).normalized().dot(direction):
+			best = index
+	return best
+
+
+## Мостки для рыбалки: три доски на четырёх сваях с берега в воду, рядом долблёнка и ведро.
+func _build_fishing_pier(at: Vector2, out: Vector2) -> void:
+	var holder: Node3D = Node3D.new()
+	holder.name = "FishingPier"
+	var start: Vector2 = at + out * 0.9
+	holder.position = Vector3(start.x, DECK_Y - 0.02, start.y)
+	holder.rotation.y = atan2(-out.x, -out.y)
+	_yard.add_child(holder)
+	var wood: StandardMaterial3D = _deck_material(DECK_WOOD.darkened(0.05))
+	var dark: StandardMaterial3D = ArenaMaterials3D.solid(DECK_WOOD.darkened(0.45))
+	for board: int in 3:
+		ArenaMaterials3D.part(holder, ArenaMaterials3D.box(Vector3(0.38, 0.05, 3.0)), wood,
+				Vector3((board - 1) * 0.41, 0.0, 1.5), Vector3(0.0, (board - 1) * 0.015, 0.0))
+	for corner: Vector2 in [Vector2(-0.55, 0.4), Vector2(0.55, 0.4), Vector2(-0.55, 2.8), Vector2(0.55, 2.8)]:
+		ArenaMaterials3D.part(holder, ArenaMaterials3D.cylinder(0.08, 0.07, 0.8, 6), dark, Vector3(corner.x, -0.3, corner.y))
+	# Долблёнка у мостков и ведро на досках.
+	var boat: MeshInstance3D = ArenaMaterials3D.part(holder, ArenaMaterials3D.cylinder(0.32, 0.32, 2.6, 10),
+			ArenaMaterials3D.solid(DECK_WOOD.darkened(0.3)), Vector3(1.05, -0.12, 1.9), Vector3(PI * 0.5, 0.0, 0.0),
+			Vector3(1.0, 1.0, 0.55))
+	boat.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	ArenaMaterials3D.part(holder, ArenaMaterials3D.cylinder(0.14, 0.11, 0.26, 8), dark, Vector3(-0.3, 0.16, 0.7))
+
+
+## Плетень 0,55 м кусками вдоль края мостовой (не кольцом), с разрывами у кладок и мостков.
+func _build_wattle(gaps: Array[Vector2], rng: RandomNumberGenerator) -> void:
+	var line: PackedVector2Array = pond_contour(POND_SHORE * 0.8, 0.45)
+	var wood: StandardMaterial3D = ArenaMaterials3D.solid(Color(0.36, 0.27, 0.18), 0.95)
+	var count: int = line.size()
+	for start: int in range(0, count, 24):
+		for index: int in range(start, start + 11):
+			var a: Vector2 = line[index % count]
+			var b: Vector2 = line[(index + 1) % count]
+			var middle: Vector2 = (a + b) * 0.5
+			var blocked: bool = false
+			for gap: Vector2 in gaps:
+				blocked = blocked or middle.distance_to(gap) < 2.2
+			if blocked:
+				continue
+			var along: Vector2 = b - a
+			var yaw: float = atan2(along.x, along.y)
+			ArenaMaterials3D.part(_yard, ArenaMaterials3D.cylinder(0.03, 0.025, 0.62, 5), wood,
+					Vector3(a.x, 0.29, a.y), Vector3(rng.randf_range(-0.05, 0.05), 0.0, rng.randf_range(-0.05, 0.05)))
+			for rod: int in 3:
+				ArenaMaterials3D.part(_yard, ArenaMaterials3D.box(Vector3(0.035, 0.05, along.length() + 0.06)), wood,
+						Vector3(middle.x, 0.14 + rod * 0.15, middle.y), Vector3(0.0, yaw, 0.0))
+
+
+## Осока куртинами у воды (не выше 0,6 м; у северной дороги — только у самой воды) и валуны.
+func _build_reeds(shore: PackedVector2Array, normals: PackedVector2Array, pier: int, rng: RandomNumberGenerator) -> void:
+	var plants: Dictionary[String, Array] = {}
+	var count: int = shore.size()
+	for index: int in range(0, count, 3):
+		if absi(index - pier) < 5 or absi(index - pier) > count - 5:
+			continue
+		if rng.randf() < 0.35:
+			continue
+		var north: bool = normals[index].y < -0.6
+		var reach: float = rng.randf_range(0.05, 0.25) if north else rng.randf_range(0.1, 0.65)
+		var at: Vector2 = shore[index] + normals[index] * reach
+		super._collect(plants, "sedge" if rng.randf() < 0.7 else "seed_grass", at, rng.randf_range(0.42, 0.6))
+	_build_collected(plants, _yard)
+	for stone: int in 5:
+		var index: int = (stone * 19 + 7) % count
+		var at: Vector2 = shore[index] + normals[index] * rng.randf_range(0.15, 0.5)
+		_place("rock_flat" if stone % 2 == 0 else "rock_boulder", Vector3(at.x, -0.05, at.y), rng.randf() * TAU,
+				rng.randf_range(0.35, 0.55))
 
 
 ## UV.y воды пруда — расстояние до берега (0 на урезе, 0,5 глубже 1,1 м): мель по всему контуру.

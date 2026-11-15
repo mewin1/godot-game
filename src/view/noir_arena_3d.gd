@@ -638,6 +638,11 @@ static func _cut_tile(tool: SurfaceTool, a: Vector2, b: Vector2, cut: PackedVect
 			tool.add_vertex(Vector3(point.x, -0.01, point.y))
 
 
+## Отрезок дороги не рисуется (режим кладёт там настил над водой).
+func _road_hidden(_a: Vector3, _b: Vector3) -> bool:
+	return false
+
+
 ## Утоптанная светлая дорога поверх плит: от ворот до конца открытого пути и дальше к крыльцу терема.
 func _build_road(finish: float, door: Vector3, out3: Vector3) -> PackedVector2Array:
 	var points: PackedVector3Array = PackedVector3Array()
@@ -671,6 +676,9 @@ func _build_road(finish: float, door: Vector3, out3: Vector3) -> PackedVector2Ar
 	for i: int in points.size() - 1:
 		var a: Vector3 = points[i]
 		var b: Vector3 = points[i + 1]
+		if _road_hidden(a, b):
+			along += (b - a).length()
+			continue
 		var side_a: Vector3 = sides[i] * ROAD_HALF_WIDTH
 		var side_b: Vector3 = sides[i + 1] * ROAD_HALF_WIDTH
 		var v0: float = along / 4.0
@@ -893,6 +901,8 @@ func _build_walls(fine: Dictionary[Vector2i, bool], entry: Vector2, door: Vector
 		var gate_yaw: float = 0.0 if gate_run.out.y != 0.0 else PI * 0.5
 		_place("gate", Vector3(gate_point.x, 0, gate_point.y), gate_yaw)
 		_warm_light(Vector3(gate_point.x, 2.15, gate_point.y), 2.2, 4.5)
+		if not _gate_bowls(index):
+			continue
 		# ворота — тёплый акцент слева (как на концепте 05): по жаровне с огнём по обе стороны, снаружи двора
 		var along: Vector2 = Vector2(-gate_run.out.y, gate_run.out.x)
 		for side: float in [-1.0, 1.0]:
@@ -931,6 +941,11 @@ static func _wall_pieces(length: float, openings: Array[Vector2]) -> Array[Vecto
 ## Высота панели частокола (масштаб модели): режим может опустить стену, за которой не видно дорогу.
 func _wall_height(_center: Vector2, _out: Vector2) -> float:
 	return WALL_SCALE
+
+
+## Ставить ли жаровни снаружи ворот gate (0 — главные).
+func _gate_bowls(_gate: int) -> bool:
+	return true
 
 
 ## Можно ли ставить факел или чашу у стены в этой точке (режим со своим светом площади запрещает).
