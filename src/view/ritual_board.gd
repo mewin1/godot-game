@@ -45,6 +45,8 @@ class Hit:
 		amount = text
 
 var _hits: Array[Hit] = []
+## Контуры домов этого кадра: id → цвет (выбранный — золотой, родня — цвет стихии).
+var _outlines: Dictionary[int, Color] = {}
 const SCENE_FONT: Font = preload("res://assets/fonts/fira_sans/FiraSans-SemiBold.ttf")
 var _next_hit_text: Dictionary[int, int] = {}
 ## Числа урона (docs/37 RX-8, решение D11): 0 — нет, 1 — важные (по умолчанию), 2 — все.
@@ -264,17 +266,32 @@ func _draw() -> void:
 		var glow: float = 0.55 + 0.45 * absf(sin(_pulse / 1.6 * TAU)) if wanted else 1.0
 		for cell: Vector2i in field.get_buildable_cells():
 			if field.get_tower_at(cell) == null:
-				_tile(cell, Color(0.3, 0.34, 0.33, 0.45))
-				_tile(cell, Color(Color("f0c27a"), glow) if wanted else Color("7f8a85"), false)
+				_tile(cell, Color(0.3, 0.34, 0.33, 0.35))
+				if wanted:
+					# Свободные участки светятся мягко, 3 px с ореолом (critique_3 п. 66), а не рамкой 2 px.
+					_tile_outline(cell, Color(Color("f0c27a"), glow * 0.28), 7.0)
+					_tile_outline(cell, Color(Color("f0c27a"), glow), 3.0)
+				else:
+					_tile_outline(cell, Color("7f8a85"), 2.0)
 	elif action in [&"buy", &"move"]:
 		for cell: Vector2i in field.get_buildable_cells():
 			_tile(cell, Color(0.6, 0.8, 0.75, 0.13), false)
 	for tower: TowerState in field.towers:
 		_draw_tower(tower)
 	if trial.settings.uses_plots():
+		_outlines.clear()
 		for tower: TowerState in field.towers:
 			_draw_kin(tower)
 		_draw_combo_links()
+		(stage as RitualStage3D).set_house_outlines(_outlines)
+		var ghost: TowerData = null
+		if action == &"buy" and preview_index >= 0 and field.is_buildable(hover_cell) \
+				and field.get_tower_at(hover_cell) == null:
+			ghost = trial.settings.combat.towers[preview_index]
+		(stage as RitualStage3D).show_ghost(ghost, hover_cell,
+				ghost != null and trial.building_unlock_error(preview_index).is_empty(),
+				ghost.range_milli if ghost != null else 0)
+		(stage as RitualStage3D).sync_house_wear(field, trial.settings)
 	for base: MobState in field.mobs:
 		_draw_mob(base as RitualMob)
 	if trial.hero_due >= 0:
@@ -303,12 +320,10 @@ func _draw_tower(tower: TowerState) -> void:
 	if trial.settings.uses_plots() and tower.durability >= 0:
 		var full: int = trial.settings.max_durability(tower.level)
 		if tower.durability * 2 <= full:
-			var roof: Vector2 = stage.house_label(tower.id)
-			var worn: Color = Color("ff6555") if tower.durability == 0 else Color("ffc36b")
-			_ring(tower.center_milli(), 480, worn, 2.5)
-			_text(roof + Vector2(-4, -5), "!" if tower.durability > 0 else "X", worn, 20)
-			draw_polyline(PackedVector2Array([roof + Vector2(-7, 5), roof + Vector2(0, 9),
-				roof + Vector2(-2, 15), roof + Vector2(6, 19)]), Color("271e18"), 2.5, true)
+			# Износ — сам дом (копоть и пробоины, RitualTownHouse.set_wear) и бейдж с молотком над
+			# коньком (critique_3 п. 64): без колец, «!» и зигзагов поверх крыши.
+			_hammer_badge(stage.house_label(tower.id) + Vector2(0, -14),
+					Color("ff6555") if tower.durability == 0 else Color("ffc36b"))
 	# Стрелка ветра - у выбранной, под курсором и пока ищем место: пять домов ветра иначе
 	# расчерчивают всю карту (docs/37 BUG-18).
 	var wind_shown: bool = tower.id == selected_id or action in [&"buy", &"move"] \
@@ -330,8 +345,10 @@ func _draw_tower(tower: TowerState) -> void:
 	if tower.is_action_blocked():
 		_text(stage.house_label(tower.id), "Установка…", Color.WHITE, 14)
 	if tower.id == selected_id:
-		var width: float = 2.5 if trial.settings.uses_plots() else 1.5
-		_ring(tower.center_milli(), trial.field.get_tower_range(tower), Color(color, 0.7), width)
+		var width: float = 3.0 if trial.settings.uses_plots() else 1.5
+		if trial.settings.uses_plots():
+			_ring(tower.center_milli(), trial.field.get_tower_range(tower), Color(color, 0.22), 9.0)
+		_ring(tower.center_milli(), trial.field.get_tower_range(tower), Color(color, 0.8), width)
 
 
 ## Дома того же типа, что выбранный или наведённый в каталоге (docs/37 UI-8, UI-9): обводка,
@@ -340,17 +357,15 @@ func _draw_kin(tower: TowerState) -> void:
 	var selected: TowerState = trial.field.get_tower(selected_id)
 	var kin: bool = (selected != null and selected.data == tower.data) \
 		or (highlight_data != null and highlight_data == tower.data)
+	# Выбранный и родня — контуром по сетке дома (RitualStage3D.set_house_outlines, critique_3 п. 63).
 	if tower.id == selected_id:
-		for cell: Vector2i in tower.cells():
-			_tile(cell, Color(1, 0.86, 0.5, 0.18))
-			_tile_outline(cell, Color("ffe4a5"), 4.0)
+		_outlines[tower.id] = RitualStage3D.SELECTED_OUTLINE
 	elif kin:
-		for cell: Vector2i in tower.cells():
-			_tile_outline(cell, Color(GodSymbols.get_color(tower.data.god), 0.95), 3.0)
+		_outlines[tower.id] = GodSymbols.get_color(tower.data.god)
 	if not (kin or show_all_marks):
 		return
 	var top: Vector2 = stage.house_label(tower.id) + Vector2(0, -6)
-	_level_pips(top, tower.level, GodSymbols.get_color(tower.data.god))
+	_level_mark(top, tower.level, GodSymbols.get_color(tower.data.god))
 	if tower.level < trial.settings.combat.max_tower_level and kin:
 		var ready: bool = trial.upgrade_error(tower, 0 if tower.level == 2 else -1).is_empty() \
 			and trial.gold >= trial.upgrade_cost(tower)
@@ -389,13 +404,14 @@ func _draw_combo_links() -> void:
 			continue
 		var to: Vector2 = _point(other.center_milli()) + Vector2(0, -_cell * 0.6)
 		var tint: Color = GodSymbols.get_color(data.god).lerp(GodSymbols.get_color(other.data.god), 0.5)
-		draw_line(from, to, Color(tint, 0.85), 3.0, true)
+		# Линия 3 px со свечением, посередине — значок реакции (две стихии); имя — только у дома под
+		# курсором (critique_3 п. 67): подписи не лежат на крышах.
+		draw_line(from, to, Color(tint, 0.22), 9.0, true)
+		draw_line(from, to, Color(tint, 0.9), 3.0, true)
 		var middle: Vector2 = (from + to) * 0.5
-		var font: Font = SCENE_FONT
-		var width: float = font.get_string_size(reaction.display_name, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
-		draw_rect(Rect2(middle - Vector2(width * 0.5 + 4, 11), Vector2(width + 8, 16)), Color(0.03, 0.05, 0.08, 0.85))
-		draw_string(font, middle + Vector2(-width * 0.5, 2), reaction.display_name, HORIZONTAL_ALIGNMENT_LEFT,
-			-1, 13, tint.lightened(0.45))
+		_reaction_badge(middle, GodSymbols.get_color(data.god), GodSymbols.get_color(other.data.god))
+		if other.cells().has(hover_cell):
+			_text(middle + Vector2(14, 6), reaction.display_name, tint.lightened(0.45), 17)
 
 
 ## Статус, который ставит постройка (для подсказок о реакциях), или пусто.
@@ -611,6 +627,8 @@ func _draw_preview() -> void:
 			_text(Vector2(_origin.x + 8, _origin.y + 18), "Слияние → уровень %d" % (twin.level + 1),
 				Color("f4dca0"), 15)
 			return
+	if trial.settings.uses_plots():
+		return  # призрак дома и круг дальности — в 3D (RitualStage3D.show_ghost, critique_3 п. 66)
 	var cells: Array[Vector2i] = TowerState.shape_cells_at(data.shape, hover_cell, preview_rotation)
 	var valid: bool = trial.field.can_place(cells, selected_id if action == &"move" else 0)
 	for cell: Vector2i in cells:
@@ -736,3 +754,30 @@ func _input(event: InputEvent) -> void:
 			preview_rotation = payload.rotation
 			queue_redraw()
 			get_viewport().set_input_as_handled()
+
+
+## Бейдж ремонта: тёмный кружок с молотком цвета состояния.
+func _hammer_badge(at: Vector2, color: Color) -> void:
+	draw_circle(at, 11.0, Color(0.03, 0.03, 0.04, 0.85))
+	draw_arc(at, 11.0, 0.0, TAU, 24, Color(color, 0.9), 1.6, true)
+	var handle: PackedVector2Array = PackedVector2Array([at + Vector2(-5, 6), at + Vector2(-3, 8), at + Vector2(3, 1),
+			at + Vector2(1, -1)])
+	draw_colored_polygon(handle, color)
+	var head: PackedVector2Array = PackedVector2Array([at + Vector2(-1, -6), at + Vector2(6, 1), at + Vector2(8, -1),
+			at + Vector2(1, -8)])
+	draw_colored_polygon(head, color)
+
+
+## Уровень дома над коньком римской цифрой с обводкой (critique_3 п. 65): без тёмных плашек.
+func _level_mark(at: Vector2, level: int, color: Color) -> void:
+	var numeral: String = ["I", "II", "III", "IV"][clampi(level, 1, 4) - 1]
+	var width: float = SCENE_FONT.get_string_size(numeral, HORIZONTAL_ALIGNMENT_LEFT, -1, 20).x
+	_text(at + Vector2(-width * 0.5, 0), numeral, color.lerp(Color("ffe4a5"), 0.75), 20)
+
+
+## Значок реакции на связи: кружок из двух половин — стихии пары.
+func _reaction_badge(at: Vector2, first: Color, second: Color) -> void:
+	draw_circle(at, 10.0, Color(0.03, 0.04, 0.06, 0.9))
+	draw_arc(at, 6.0, PI * 0.5, PI * 1.5, 12, first, 6.0, true)
+	draw_arc(at, 6.0, -PI * 0.5, PI * 0.5, 12, second, 6.0, true)
+	draw_arc(at, 10.0, 0.0, TAU, 20, Color(1, 1, 1, 0.5), 1.2, true)

@@ -41,6 +41,12 @@ static var roof_mode: int = 1
 ## соседние дома стоят почти вплотную, улица выглядит сплошной.
 const MODEL_SCALE: float = 2.0
 static var _paints: Dictionary[StringName, ShaderMaterial] = {}
+## Контур по сетке дома (critique_3 п. 63) и призрак в режиме постройки (п. 66).
+const OUTLINE_SHADER: Shader = preload("res://assets/shaders/ritual_outline.gdshader")
+const GHOST_SHADER: Shader = preload("res://assets/shaders/ritual_ghost.gdshader")
+static var _outlines: Dictionary[Color, ShaderMaterial] = {}
+var _outline: Color = Color.TRANSPARENT
+var _wear: float = -1.0
 
 var _tower: RitualTower
 var _installation: Node3D
@@ -146,3 +152,52 @@ func _process(delta: float) -> void:
 		_moving.rotation.z = 0.34 * flash
 	elif _tower.data.id == &"plague":
 		_moving.rotation.x = 0.24 * flash
+
+
+## Контур цветом color по сетке дома и машины (TRANSPARENT — снять). Толщина — в метрах модели.
+func set_outline(color: Color, width: float = 0.022) -> void:
+	if color == _outline:
+		return
+	_outline = color
+	var material: ShaderMaterial = null
+	if color.a > 0.0:
+		var key: Color = Color(color, width)
+		if not _outlines.has(key):
+			var outline: ShaderMaterial = ShaderMaterial.new()
+			outline.shader = OUTLINE_SHADER
+			outline.set_shader_parameter(&"color", Color(color, 1.0))
+			outline.set_shader_parameter(&"width", width)
+			_outlines[key] = outline
+		material = _outlines[key]
+	for part: MeshInstance3D in _pick_meshes:
+		part.material_overlay = material
+
+
+## Износ домом, а не каракулями (critique_3 п. 64): копоть и пробоины на крыше и стенах.
+## 0 — цел, 0,5 — ослаб, 1 — молчит.
+func set_wear(amount: float) -> void:
+	if is_equal_approx(amount, _wear):
+		return
+	_wear = amount
+	for part: MeshInstance3D in _pick_meshes:
+		part.set_instance_shader_parameter(&"wear", amount)
+
+
+## Призрак дома data для режима постройки: та же модель тира и машина, полупрозрачная.
+static func ghost(data: TowerData, color: Color) -> Node3D:
+	var model: Node3D = HOUSES[data.tier - 1].instantiate() as Node3D
+	for level: int in range(2, 5):
+		var walls: Node = model.get_node_or_null("Level%d" % level)
+		if walls != null:
+			walls.free()
+	if MACHINES.has(data.id):
+		model.add_child(MACHINES[data.id].instantiate())
+	var material: ShaderMaterial = ShaderMaterial.new()
+	material.shader = GHOST_SHADER
+	material.set_shader_parameter(&"color", color)
+	for node: Node in model.find_children("*", "MeshInstance3D", true, false):
+		var part: MeshInstance3D = node as MeshInstance3D
+		part.material_override = material
+		part.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	model.scale = Vector3.ONE * MODEL_SCALE
+	return model

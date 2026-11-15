@@ -8,6 +8,8 @@ uniform int roof_column : hint_range(0, 6) = 0;
 uniform int roof_mode : hint_range(0, 1) = 1;
 // Working faces and windows share the atlas so that one mesh needs one surface.
 instance uniform float working_light = 1.0;
+// Износ (critique_3 п. 64): копоть пятнами и тёмные пробоины на кровле; 0 — цел, 1 — молчит.
+instance uniform float wear = 0.0;
 varying flat int swatch;
 varying vec2 atlas_uv;
 
@@ -58,11 +60,33 @@ vec3 quiet_roof(vec3 paint) {
 	return to_linear(mix(vec3(0.26, 0.21, 0.18), hue, 0.4) * detail);
 }
 
+float wear_noise(vec2 p) {
+	vec2 i = floor(p);
+	vec2 f = fract(p);
+	f = f * f * (3.0 - 2.0 * f);
+	float a = fract(sin(dot(i, vec2(127.1, 311.7))) * 43758.5453);
+	float b = fract(sin(dot(i + vec2(1.0, 0.0), vec2(127.1, 311.7))) * 43758.5453);
+	float c = fract(sin(dot(i + vec2(0.0, 1.0), vec2(127.1, 311.7))) * 43758.5453);
+	float d = fract(sin(dot(i + vec2(1.0, 1.0), vec2(127.1, 311.7))) * 43758.5453);
+	return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+}
+
 void fragment() {
 	vec3 paint = texture(finishes, atlas_uv).rgb;
 	ALBEDO = paint;
 	if (swatch == 8) {
 		ALBEDO = quiet_roof(paint);
+	}
+	if (wear > 0.0) {
+		vec2 spot = UV * 36.0;
+		float n = wear_noise(spot) * 0.65 + wear_noise(spot * 2.3 + 5.1) * 0.35;
+		float soot = smoothstep(0.62 - 0.22 * wear, 0.82 - 0.2 * wear, n);
+		ALBEDO *= 1.0 - 0.7 * soot;
+		if (swatch == 8) {
+			// Пробоины в кровле: чёрные провалы с краем.
+			float hole = smoothstep(0.86 - 0.18 * wear, 0.9 - 0.18 * wear, wear_noise(spot * 0.7 + 13.0));
+			ALBEDO = mix(ALBEDO, vec3(0.012, 0.01, 0.01), hole * step(0.3, wear));
+		}
 	}
 	ROUGHNESS = 0.88;
 	if ((swatch >= 16 && swatch <= 19) || swatch == 31) {

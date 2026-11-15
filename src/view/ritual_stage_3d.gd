@@ -59,6 +59,11 @@ var _appear: Dictionary[int, Vector2] = {}
 const ENEMY_RIM_SHADER: Shader = preload("res://assets/shaders/ritual_enemy_rim.gdshader")
 const ENEMY_RIM_NIGHT: float = 0.85
 const PAUSE_GRAY: float = 0.3
+const RANGE_RING_SHADER: Shader = preload("res://assets/shaders/ritual_range_ring.gdshader")
+const SELECTED_OUTLINE: Color = Color("ffe4a5")
+var _ghost: Node3D
+var _range_ring: MeshInstance3D
+var _ghost_key: String = ""
 var _pause_gray: float = 0.0
 var _enemy_rim: ShaderMaterial
 
@@ -520,3 +525,64 @@ func set_pause_look(paused: bool) -> void:
 	if post != null and not is_equal_approx(_pause_gray, gray):
 		_pause_gray = gray
 		post.set_shader_parameter(&"pause_gray", gray)
+
+
+## Контуры домов по их сетке (critique_3 п. 63): id дома → цвет; остальные без контура.
+func set_house_outlines(marks: Dictionary[int, Color]) -> void:
+	for id: int in _towers:
+		var house: RitualTownHouse = _towers[id] as RitualTownHouse
+		if house == null:
+			continue
+		var color: Color = marks.get(id, Color.TRANSPARENT)
+		# Толщина в единицах модели (дом x2): 0,14 и 0,1 м в мире — 3-4 px с игровой камеры.
+		house.set_outline(color, 0.07 if color == SELECTED_OUTLINE else 0.05)
+
+
+## Износ видно домом (п. 64): копоть и пробоины, у молчащего — сильнее.
+func sync_house_wear(field: RitualField, settings: RitualTrialConfig) -> void:
+	for tower: TowerState in field.towers:
+		var house: RitualTownHouse = _towers[tower.id] as RitualTownHouse if _towers.has(tower.id) else null
+		if house == null or tower.durability < 0:
+			continue
+		var full: int = settings.max_durability(tower.level)
+		var amount: float = 1.0 if tower.durability == 0 else (0.55 if tower.durability * 2 <= full else 0.0)
+		house.set_wear(amount)
+
+
+## Призрак дома и круг дальности на участке под курсором (п. 66); data == null — убрать.
+func show_ghost(data: TowerData, cell: Vector2i, valid: bool, reach_milli: int) -> void:
+	var key: String = "%s:%s:%s:%d" % [data.id if data != null else &"", cell, valid, reach_milli]
+	if key == _ghost_key:
+		return
+	_ghost_key = key
+	if _ghost != null:
+		_ghost.queue_free()
+		_ghost = null
+	if _range_ring != null:
+		_range_ring.queue_free()
+		_range_ring = null
+	if data == null:
+		return
+	var color: Color = GodSymbols.get_color(data.god) if valid else Color("ff5a48")
+	_ghost = Node3D.new()
+	_ghost.name = "PlacementGhost"
+	_world.add_child(_ghost)
+	_ghost.position = _tower_position([cell])
+	var model: Node3D = RitualTownHouse.ghost(data, color.lightened(0.25))
+	model.rotation.y = atan2(float(_house_front(cell).x), float(_house_front(cell).y))
+	_ghost.add_child(model)
+	if reach_milli <= 0:
+		return
+	var radius: float = float(reach_milli) / 1000.0 * layout.cell_m
+	var plane: PlaneMesh = PlaneMesh.new()
+	plane.size = Vector2.ONE * radius * 2.0
+	var ring: ShaderMaterial = ShaderMaterial.new()
+	ring.shader = RANGE_RING_SHADER
+	ring.set_shader_parameter(&"color", color)
+	_range_ring = MeshInstance3D.new()
+	_range_ring.name = "RangeRing"
+	_range_ring.mesh = plane
+	_range_ring.material_override = ring
+	_range_ring.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_range_ring.position = _ghost.position + Vector3.UP * 0.12
+	_world.add_child(_range_ring)
