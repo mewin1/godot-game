@@ -10,6 +10,11 @@ uniform int roof_mode : hint_range(0, 1) = 1;
 instance uniform float working_light = 1.0;
 // Износ (critique_3 п. 64): копоть пятнами и тёмные пробоины на кровле; 0 — цел, 1 — молчит.
 instance uniform float wear = 0.0;
+// Ночь 0..1 (critique_4 п. 1): тёмный тёс ночью светлее и с лунным блеском — дом средним тоном
+// между лесом-рамкой и дорогой, а не чёрным провалом. Задаёт RitualDaylight через RitualTownHouse.
+uniform float night = 0.0;
+// Маска для замеров пробника: крыша — красный, окна — зелёный, рабочие грани машины — синий.
+uniform bool debug_mask = false;
 varying flat int swatch;
 varying vec2 atlas_uv;
 
@@ -44,6 +49,9 @@ vec3 swatch_mean(vec2 uv) {
 	return to_srgb(textureLod(finishes, cell, 6.0).rgb);
 }
 
+// Насколько светлеет тёс ночью (по sRGB): крыши ночью 40-55 при рамке <= 30 (critique_4 п. 1).
+const float ROOF_NIGHT_LIFT = 0.3;
+
 vec3 quiet_roof(vec3 paint) {
 	vec3 srgb = to_srgb(paint);
 	vec3 mean = swatch_mean(atlas_uv);
@@ -57,7 +65,8 @@ vec3 quiet_roof(vec3 paint) {
 	// Тёмный тёс: рисунок черепицы сохраняется, цвет школы — четвертью.
 	float detail = dot(srgb, vec3(0.299, 0.587, 0.114)) / max(dot(mean, vec3(0.299, 0.587, 0.114)), 0.01);
 	vec3 hue = hsv2rgb(vec3(rgb2hsv(mean).x, 0.5, 0.4));
-	return to_linear(mix(vec3(0.26, 0.21, 0.18), hue, 0.4) * detail);
+	vec3 roof = mix(vec3(0.26, 0.21, 0.18), hue, mix(0.4, 0.5, night)) * detail;
+	return to_linear(roof * (1.0 + ROOF_NIGHT_LIFT * night));
 }
 
 float wear_noise(vec2 p) {
@@ -89,6 +98,11 @@ void fragment() {
 		}
 	}
 	ROUGHNESS = 0.88;
+	if (swatch == 8) {
+		// Лунный блеск на тёсе: ночью крыша ловит луну и отделяется от леса.
+		ROUGHNESS = mix(0.88, 0.7, night);
+		SPECULAR = mix(0.5, 0.6, night);
+	}
 	if ((swatch >= 16 && swatch <= 19) || swatch == 31) {
 		METALLIC = 0.52;
 		ROUGHNESS = 0.51;
@@ -99,12 +113,21 @@ void fragment() {
 	if (swatch >= 24 && swatch <= 28) {
 		// Рабочие грани машины (critique_3 п. 6): тело темнее, свечение — цветом стихии и слабее;
 		// белые «фонари» Инея и Росника больше не самые яркие пятна ночи.
+		// critique_4 п. 3: ядро не белее value 0,7 (ледяные лезвия были ярче врагов и идолов ночью).
 		float strength = swatch == 26 ? 0.38 : (swatch == 24 ? 0.66 : 1.0);
 		vec3 hsv = rgb2hsv(to_srgb(paint));
 		vec3 mean = rgb2hsv(swatch_mean(atlas_uv));
-		vec3 core = to_linear(hsv2rgb(vec3(mean.x, max(mean.y, 0.55), hsv.z)));
-		ALBEDO = mix(paint, core, 0.6) * 0.5;
+		vec3 core = to_linear(hsv2rgb(vec3(mean.x, max(mean.y, 0.55), min(hsv.z, 0.6))));
+		ALBEDO = mix(paint, core, 0.6) * 0.42;
 		EMISSION = core * working_light * strength * 0.55;
 		ROUGHNESS = swatch == 24 ? 0.78 : 0.28;
+	}
+	if (debug_mask) {
+		ALBEDO = vec3(0.0);
+		SPECULAR = 0.0;
+		ROUGHNESS = 1.0;
+		METALLIC = 0.0;
+		EMISSION = swatch == 8 ? vec3(0.5, 0.0, 0.0) : (swatch == 22 ? vec3(0.0, 0.5, 0.0)
+				: ((swatch >= 24 && swatch <= 28) ? vec3(0.0, 0.0, 0.5) : vec3(0.0)));
 	}
 }

@@ -222,6 +222,7 @@ func apply(trial: RitualTrial) -> void:
 	RenderingServer.global_shader_parameter_set(&"noir_forest_shade", forest_shade * up * (1.0 - night))
 	_clouds.set_strength(CLOUD_STRENGTH * up * lerpf(1.0, 0.55, warmth) * (1.0 - night))
 	_dim_fires(lerpf(1.0, DAY_FIRE, up * (1.0 - night)))
+	RitualTownHouse.set_night(smoothstep(0.3, 1.0, night))
 	_light_roads(ROAD_MOONLIT * smoothstep(0.3, 1.0, night))
 	_tint_stream(up * (1.0 - night))
 

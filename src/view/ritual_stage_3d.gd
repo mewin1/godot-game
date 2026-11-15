@@ -584,15 +584,17 @@ func show_ghost(data: TowerData, cell: Vector2i, valid: bool, reach_milli: int) 
 		_range_ring = null
 	if data == null:
 		return
-	var color: Color = GodSymbols.get_color(data.god) if valid else Color("ff5a48")
+	# Сюда нельзя — серый призрак и перечёркнутый круг на карте (critique_4 п. 27): красный был
+	# неотличим от круга дальности «Жаровни Сварога». Круг дальности — только у допустимого места.
+	var color: Color = GodSymbols.get_color(data.god)
 	_ghost = Node3D.new()
 	_ghost.name = "PlacementGhost"
 	_world.add_child(_ghost)
 	_ghost.position = _tower_position([cell])
-	var model: Node3D = RitualTownHouse.ghost(data, color.lightened(0.25))
+	var model: Node3D = RitualTownHouse.ghost(data, color.lightened(0.25), not valid)
 	model.rotation.y = atan2(float(_house_front(cell).x), float(_house_front(cell).y))
 	_ghost.add_child(model)
-	if reach_milli <= 0:
+	if reach_milli <= 0 or not valid:
 		return
 	var radius: float = float(reach_milli) / 1000.0 * layout.cell_m
 	var plane: PlaneMesh = PlaneMesh.new()
@@ -600,6 +602,7 @@ func show_ghost(data: TowerData, cell: Vector2i, valid: bool, reach_milli: int) 
 	var ring: ShaderMaterial = ShaderMaterial.new()
 	ring.shader = RANGE_RING_SHADER
 	ring.set_shader_parameter(&"color", color)
+	ring.set_shader_parameter(&"fill", 0.02)
 	_range_ring = MeshInstance3D.new()
 	_range_ring.name = "RangeRing"
 	_range_ring.mesh = plane

@@ -72,7 +72,8 @@ const LOW_WALL: float = 0.72
 const DECK_Y: float = 0.08
 const DECK_WOOD: Color = Color(0.5, 0.38, 0.26)
 ## Яркость досок настила и мостков (дерево частокола x1,6): светлее мостовой ночью без свечения.
-const DECK_SHADE: float = 1.6
+## Настил кладок (critique_4 п. 4): тоном дороги, а не ярче её (было 1,6 — ярчайшее пятно вечера).
+const DECK_SHADE: float = 1.15
 ## Мостки для рыбалки — у восточного берега, лицом к камере (юго-восток).
 const PIER_DIRECTION: Vector2 = Vector2(0.85, 0.53)
 const SHRINE: Rect2i = Rect2i(10, 4, 1, 1)
@@ -860,7 +861,7 @@ func _build_fishing_pier(at: Vector2, out: Vector2) -> void:
 	holder.position = Vector3(start.x, DECK_Y - 0.02, start.y)
 	holder.rotation.y = atan2(-out.x, -out.y)
 	_yard.add_child(holder)
-	var wood: StandardMaterial3D = ArenaMaterials3D.wood(DECK_SHADE * 0.85)
+	var wood: StandardMaterial3D = ArenaMaterials3D.wood(DECK_SHADE * 0.9)
 	var dark: StandardMaterial3D = ArenaMaterials3D.wood(0.5)
 	for board: int in 3:
 		ArenaMaterials3D.part(holder, ArenaMaterials3D.box(Vector3(0.38, 0.05, 3.0)), wood,

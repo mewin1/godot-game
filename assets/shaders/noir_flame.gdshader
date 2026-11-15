@@ -1,5 +1,6 @@
 shader_type spatial;
-render_mode unshaded, blend_add, depth_draw_never, cull_disabled, shadows_disabled;
+render_mode unshaded, blend_add, depth_draw_never, cull_disabled, shadows_disabled, fog_disabled;
+// fog_disabled (critique_4 п. 5): туман прибавлялся по всей площади квада — у огня был виден край «стекла».
 // Язык пламени над чашей-жаровней (как на концепте): всегда лицом к камере, живой (шум по времени),
 // ядро ярче единицы — его подхватывает glow окружения и даёт тёплый ореол.
 

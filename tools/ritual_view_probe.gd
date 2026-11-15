@@ -10,7 +10,7 @@ extends SceneTree
 ##     --shots=ui,game,top,gates,<камера> --out=<папка> --tag=x --empty --run=<сек> --dump
 ## Камеры: terem, idols, gatehouse, pier, bridge, trailend, enemy, enemy2, hero, pond, pondclose,
 ##     pondnight, plaza, plazatop, stream, spawn, shrine, machines, gatewest, northrow, wide, house,
-##     westwall, south.
+##     westwall, south. mask — замер яркости крыш, окон и машин по маске (critique_4 п. 1, 3, 55).
 
 const GATE_SHOTS: Array[String] = ["west", "north", "south"]
 
@@ -335,6 +335,9 @@ func _capture_named(shot: String, prefix: String) -> void:
 			await _save(prefix + "_game")
 			_hide_ui(false)
 			return
+		"mask":
+			await _mask_stats()
+			return
 		"terem":
 			camera = _look(Vector3(37.5, 6.0, 9.0), Vector3(43.0, 1.8, 1.0), 45.0)
 		"idols":
@@ -544,6 +547,8 @@ func _dump_ui() -> void:
 	var root_box: Control = _panel._hud.get_parent() as Control
 	print("UI: screen ", screen.size, " root_box ", root_box.size, " dock min ",
 			_panel._dock.get_combined_minimum_size() if _panel._dock != null else Vector2.ZERO)
+	print("TOAST: visible %s rect %s text '%s' label %s" % [_panel._toast.visible, _panel._toast.get_global_rect(),
+			_panel._message.text, _panel._message.size])
 	if _panel._dock != null:
 		for island: Node in _panel._dock.get_child(0).get_children():
 			print("  DOCK part ", (island as Control).get_combined_minimum_size())
@@ -638,6 +643,16 @@ func _dump_dock() -> void:
 	var chosen: float = _panel._dock.size.y
 	var top_chosen: float = _panel._dock.get_global_rect().position.y
 	print("DOCK: height plain %.1f selected %.1f  top %.1f / %.1f" % [plain, chosen, top_plain, top_chosen])
+	if not is_equal_approx(plain, chosen):
+		# Что растёт: высота рядов правой части дока.
+		for node: Node in _panel._dock.house_actions.get_parent().get_children():
+			var control: Control = node as Control
+			if control != null and control.visible:
+				print("  DOCK ROW %s %s min %s" % [control.name, control.size, control.get_combined_minimum_size()])
+		for node: Node in _panel._dock.house_actions.get_children():
+			var item: Control = node as Control
+			if item != null and item.visible:
+				print("  DOCK ITEM %s %s min %s" % [item.name, item.size, item.get_combined_minimum_size()])
 	_panel.board.selected_id = keep
 	await _settle(4)
 
@@ -680,3 +695,50 @@ func _dump_frame_share() -> void:
 			high = maxf(high, point.x)
 	var width: float = _panel.get_viewport_rect().size.x
 	print("FRAME: palisade share %.2f (%.0f..%.0f of %.0f)" % [(high - low) / width, low, high, width])
+
+
+## Яркость крыш, окон и рабочих граней машин с игровой камеры (L 0..255, sRGB, Rec.709):
+## второй кадр с маской (крыша — красный, окна — зелёный, машина — синий) выделяет пиксели.
+func _mask_stats() -> void:
+	_hide_ui(true)
+	await _settle(10)
+	await RenderingServer.frame_post_draw
+	var plain: Image = root.get_texture().get_image()
+	var environment: Environment = (_stage()._world.get_node("Environment") as WorldEnvironment).environment
+	var glow: bool = environment.glow_enabled
+	environment.glow_enabled = false
+	RitualTownHouse.set_debug_mask(true)
+	await _settle(4)
+	await RenderingServer.frame_post_draw
+	var mask: Image = root.get_texture().get_image()
+	mask.save_jpg(ProjectSettings.globalize_path(_out + "mask.jpg"), 0.8)
+	RitualTownHouse.set_debug_mask(false)
+	environment.glow_enabled = glow
+	_hide_ui(false)
+	var values: Array[PackedFloat32Array] = [PackedFloat32Array(), PackedFloat32Array(), PackedFloat32Array()]
+	for y: int in range(0, plain.get_height(), 2):
+		for x: int in range(0, plain.get_width(), 2):
+			var m: Color = mask.get_pixel(x, y)
+			var channel: int = -1
+			# Чистый канал: тональная кривая и туман разбавляют цвет маски, поэтому — по перевесу.
+			if m.r > 0.2 and m.r > 2.2 * maxf(m.g, m.b):
+				channel = 0
+			elif m.g > 0.2 and m.g > 2.2 * maxf(m.r, m.b):
+				channel = 1
+			elif m.b > 0.2 and m.b > 2.2 * maxf(m.r, m.g):
+				channel = 2
+			if channel >= 0:
+				var c: Color = plain.get_pixel(x, y)
+				values[channel].append((0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b) * 255.0)
+	var names: Array[String] = ["roofs", "windows", "machines"]
+	for index: int in 3:
+		var list: PackedFloat32Array = values[index]
+		if list.is_empty():
+			print("MASK: %s none" % names[index])
+			continue
+		list.sort()
+		var total: float = 0.0
+		for value: float in list:
+			total += value
+		print("MASK: %-8s mean %5.1f  p95 %5.1f  px %d" % [names[index], total / list.size(),
+				list[int(list.size() * 0.95)], list.size()])

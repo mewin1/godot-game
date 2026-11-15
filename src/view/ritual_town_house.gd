@@ -32,8 +32,10 @@ const MACHINES: Dictionary[StringName, PackedScene] = {
 	&"water": preload("res://assets/ritual/town/water.glb"),
 	&"wind": preload("res://assets/ritual/town/wind.glb"),
 }
-## Свечение машины в покое по тиру (critique_3 п. 6: тир I вдвое тише, ночью ярче всего — враги и идолы).
-const IDLE_ENERGY: Array[float] = [0.36, 0.55, 0.9]
+## Свечение машины в покое по тиру (critique_4 п. 3: в покое ядро не ярче 0,3 — ночью ярче всего враги,
+## идолы и окна терема), вспышка — на выстреле (FLASH_ENERGY сверху).
+const IDLE_ENERGY: Array[float] = [0.18, 0.24, 0.3]
+const FLASH_ENERGY: float = 1.1
 ## Вид крыш (critique_3 п. 5, сравнение по кадрам 17 ноября): 0 — цвет школы приглушён (крыши 148-164
 ## при дороге 158 — ярче нормы 130), 1 — тёмный тёс с оттенком школы (94-102) — выбран.
 static var roof_mode: int = 1
@@ -100,6 +102,18 @@ static func _finish(school: StringName) -> ShaderMaterial:
 	return _paints[school]
 
 
+## Ночь 0..1 для всех домов (critique_4 п. 1): тёс светлее и с лунным блеском.
+static func set_night(amount: float) -> void:
+	for paint: ShaderMaterial in _paints.values():
+		paint.set_shader_parameter(&"night", amount)
+
+
+## Маска крыш, окон и машин для замеров пробника (не для игры).
+static func set_debug_mask(enabled: bool) -> void:
+	for paint: ShaderMaterial in _paints.values():
+		paint.set_shader_parameter(&"debug_mask", enabled)
+
+
 func get_top() -> Vector3:
 	return _outlet.global_position
 
@@ -139,7 +153,7 @@ func _process(delta: float) -> void:
 	var growth: float = ease(1.0 - _pop_left / POP_SECONDS, 0.4)
 	_model.scale = Vector3.ONE * maxf(0.001, growth) * MODEL_SCALE
 	var flash: float = sin(_pulse_left / PULSE_SECONDS * PI) if operational else 0.0
-	var energy: float = _idle_energy * (1.0 + 1.4 * flash) if operational else 0.0
+	var energy: float = _idle_energy + FLASH_ENERGY * flash if operational else 0.0
 	if energy != _previous_energy:
 		_works.set_instance_shader_parameter(&"working_light", energy)
 		_previous_energy = energy
@@ -183,8 +197,9 @@ func set_wear(amount: float) -> void:
 		part.set_instance_shader_parameter(&"wear", amount)
 
 
-## Призрак дома data для режима постройки: та же модель тира и машина, полупрозрачная.
-static func ghost(data: TowerData, color: Color) -> Node3D:
+## Призрак дома data для режима постройки: та же модель тира и машина, полупрозрачная;
+## blocked — сюда нельзя: серый, без цвета стихии (critique_4 п. 27).
+static func ghost(data: TowerData, color: Color, blocked: bool = false) -> Node3D:
 	var model: Node3D = HOUSES[data.tier - 1].instantiate() as Node3D
 	for level: int in range(2, 5):
 		var walls: Node = model.get_node_or_null("Level%d" % level)
@@ -195,6 +210,7 @@ static func ghost(data: TowerData, color: Color) -> Node3D:
 	var material: ShaderMaterial = ShaderMaterial.new()
 	material.shader = GHOST_SHADER
 	material.set_shader_parameter(&"color", color)
+	material.set_shader_parameter(&"blocked", blocked)
 	for node: Node in model.find_children("*", "MeshInstance3D", true, false):
 		var part: MeshInstance3D = node as MeshInstance3D
 		part.material_override = material

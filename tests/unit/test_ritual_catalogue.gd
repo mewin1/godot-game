@@ -334,11 +334,11 @@ func test_panel_exposes_upgrade_branches_and_night_price_explanation() -> void:
 			assert_string_contains(chip.tooltip_text, "Ночной вызов")
 			assert_string_contains(chip.tooltip_text, "+50%")
 	assert_eq(night, 7, "Ночная цена у всех открытых домов первого тира")
-	var upgrade_badge: Label = panel.find_child("UpgradeNightSurcharge", true, false) as Label
-	assert_not_null(upgrade_badge, "Наценка видна и возле улучшений")
-	if upgrade_badge != null:
-		assert_true(upgrade_badge.is_visible_in_tree())
-		assert_string_contains(upgrade_badge.tooltip_text, "Ночной вызов")
+	# Наценка у улучшения — луной у цены и в подсказке (critique_4 п. 36-37), без отдельной «↑».
+	assert_null(panel.find_child("UpgradeNightSurcharge", true, false))
+	var night_upgrade: Button = _button_in(panel, "SpecialiseHouse0")
+	assert_not_null(night_upgrade.icon, "Ночью у цены улучшения — луна")
+	assert_string_contains(night_upgrade.tooltip_text, "Ночной вызов")
 
 
 func test_right_click_on_catalogue_card_cancels_without_rotation() -> void:

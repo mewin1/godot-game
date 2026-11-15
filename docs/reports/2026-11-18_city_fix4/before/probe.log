@@ -1,0 +1,243 @@
+== l1eve
+WALLS: holes=0
+IDOL 0 at (46.66, 0.0, -1.0) box x 45.88..47.36 z -1.74..-0.26  gap wall 1.48 terem 0.34  yaw 0.00
+IDOL 1 at (47.8, 0.22, 1.2) box x 47.02..48.50 z 0.46..1.94  gap wall 0.34 terem 1.48  yaw 0.00
+IDOL 2 at (46.66, 0.0, 3.4) box x 45.88..47.36 z 2.66..4.14  gap wall 1.48 terem 0.34  yaw 0.00
+GRASS on paving: 0 cells []
+HERO: to post 0.60 m  hero (37.2, 0.08, 1.85)
+UI: screen (1600.0, 900.0) root_box (1600.0, 900.0) dock min (1598.0, 146.0)
+UI: outside=0
+FONTS: smallest 21.6 px at @Label@127 'Соловей-Разбойник'  below14=0
+DOCK: height plain 146.0 selected 146.0  top 750.0 / 750.0
+VIEW: l1_evening_1920x1080_ui (1920, 1080)
+VIEW: l1_evening_1920x1080_game (1920, 1080)
+VIEW: l1_evening_1920x1080_gatehouse (1920, 1080)
+VIEW: l1_evening_1920x1080_plazatop (1920, 1080)
+VIEW: l1_evening_1920x1080_idols (1920, 1080)
+VIEW: l1_evening_1920x1080_plaza (1920, 1080)
+VIEW: l1_evening_1920x1080_terem (1920, 1080)
+VIEW: l1_evening_1920x1080_gatewest (1920, 1080)
+VIEW: l1_evening_1920x1080_westwall (1920, 1080)
+VIEW: l1_evening_1920x1080_south (1920, 1080)
+== l1day
+VIEW: l1_day_1920x1080_ui (1920, 1080)
+VIEW: l1_day_1920x1080_stream (1920, 1080)
+VIEW: l1_day_1920x1080_bridge (1920, 1080)
+VIEW: l1_day_1920x1080_top (1920, 1080)
+== l1d1280
+WALLS: holes=0
+IDOL 0 at (46.66, 0.0, -1.0) box x 45.88..47.36 z -1.74..-0.26  gap wall 1.48 terem 0.34  yaw 0.00
+IDOL 1 at (47.8, 0.22, 1.2) box x 47.02..48.50 z 0.46..1.94  gap wall 0.34 terem 1.48  yaw 0.00
+IDOL 2 at (46.66, 0.0, 3.4) box x 45.88..47.36 z 2.66..4.14  gap wall 1.48 terem 0.34  yaw 0.00
+GRASS on paving: 0 cells []
+HERO: to post 0.60 m  hero (37.2, 0.08, 1.85)
+UI: screen (1600.0, 900.0) root_box (1600.0, 900.0) dock min (1595.0, 146.0)
+UI: outside=0
+FONTS: smallest 14.4 px at @Label@127 'Соловей-Разбойник'  below14=0
+DOCK: height plain 146.0 selected 146.0  top 750.0 / 750.0
+VIEW: l1_day_1280x720_ui (1280, 720)
+== l1night
+VIEW: l1_night_1920x1080_game (1920, 1080)
+VIEW: l1_night_1920x1080_trailend (1920, 1080)
+VIEW: l1_night_1920x1080_enemy (1920, 1080)
+VIEW: l1_night_1920x1080_enemy2 (1920, 1080)
+VIEW: l1_night_1920x1080_spawn (1920, 1080)
+== l1spawn
+VIEW: l1_spawn_1280x720_ui (1280, 720)
+VIEW: l1_spawn_1280x720_game (1280, 720)
+VIEW: l1_spawn_1280x720_spawn (1280, 720)
+VIEW: l1_spawn_1280x720_gate_west (1280, 720)
+== l1dusk
+VIEW: l1_dusk_1920x1080_game (1920, 1080)
+VIEW: l1_dusk_1920x1080_gate_west (1920, 1080)
+== l1boss
+VIEW: l1_boss_1920x1080_game (1920, 1080)
+== l2eve
+VIEW: l2_evening_1920x1080_pond (1920, 1080)
+VIEW: l2_evening_1920x1080_pondclose (1920, 1080)
+VIEW: l2_evening_1920x1080_pier (1920, 1080)
+VIEW: l2_evening_1920x1080_machines (1920, 1080)
+VIEW: l2_evening_1920x1080_house (1920, 1080)
+== l2night
+VIEW: l2_night_1920x1080_game (1920, 1080)
+VIEW: l2_night_1920x1080_pondnight (1920, 1080)
+VIEW: l2_night_1920x1080_pier (1920, 1080)
+== l4night
+WALLS: holes=0
+IDOL 0 at (46.66, 0.0, -1.0) box x 45.88..47.36 z -1.74..-0.26  gap wall 1.48 terem 0.34  yaw 0.00
+IDOL 1 at (47.8, 0.22, 1.2) box x 47.02..48.50 z 0.46..1.94  gap wall 0.34 terem 1.48  yaw 0.00
+IDOL 2 at (46.66, 0.0, 3.4) box x 45.88..47.36 z 2.66..4.14  gap wall 1.48 terem 0.34  yaw 0.00
+IDOL 3 at (47.8, 0.34, -3.1) box x 47.02..48.50 z -3.84..-2.36  gap wall 0.34 terem 2.03  yaw 0.00
+GRASS on paving: 0 cells []
+HERO: to post 0.60 m  hero (37.2, 0.08, 1.85)
+UI: screen (1600.0, 900.0) root_box (1600.0, 900.0) dock min (1595.0, 146.0)
+UI: outside=0
+FONTS: smallest 21.6 px at @Label@127 'Соловей-Разбойник'  below14=0
+DOCK: height plain 146.0 selected 146.0  top 750.0 / 750.0
+VIEW: l4_night_1920x1080_ui (1920, 1080)
+VIEW: l4_night_1920x1080_game (1920, 1080)
+VIEW: l4_night_1920x1080_northrow (1920, 1080)
+== l4n2520
+WALLS: holes=0
+IDOL 0 at (46.66, 0.0, -1.0) box x 45.88..47.36 z -1.74..-0.26  gap wall 1.48 terem 0.34  yaw 0.00
+IDOL 1 at (47.8, 0.22, 1.2) box x 47.02..48.50 z 0.46..1.94  gap wall 0.34 terem 1.48  yaw 0.00
+IDOL 2 at (46.66, 0.0, 3.4) box x 45.88..47.36 z 2.66..4.14  gap wall 1.48 terem 0.34  yaw 0.00
+IDOL 3 at (47.8, 0.34, -3.1) box x 47.02..48.50 z -3.84..-2.36  gap wall 0.34 terem 2.03  yaw 0.00
+GRASS on paving: 0 cells []
+HERO: to post 0.60 m  hero (37.2, 0.08, 1.85)
+UI: screen (2100.0, 900.0) root_box (2100.0, 900.0) dock min (1595.0, 146.0)
+UI: outside=0
+FONTS: smallest 21.6 px at @Label@127 'Соловей-Разбойник'  below14=0
+DOCK: height plain 146.0 selected 146.0  top 750.0 / 750.0
+VIEW: l4_night_2520x1080_ui (2520, 1080)
+== l3n1280
+WALLS: holes=0
+IDOL 0 at (46.66, 0.0, -1.0) box x 45.88..47.36 z -1.74..-0.26  gap wall 1.48 terem 0.34  yaw 0.00
+IDOL 1 at (47.8, 0.22, 1.2) box x 47.02..48.50 z 0.46..1.94  gap wall 0.34 terem 1.48  yaw 0.00
+IDOL 2 at (46.66, 0.0, 3.4) box x 45.88..47.36 z 2.66..4.14  gap wall 1.48 terem 0.34  yaw 0.00
+GRASS on paving: 0 cells []
+HERO: to post 0.60 m  hero (37.2, 0.08, 1.85)
+UI: screen (1600.0, 900.0) root_box (1600.0, 900.0) dock min (1597.0, 146.0)
+UI: outside=0
+FONTS: smallest 14.4 px at @Label@127 'Соловей-Разбойник'  below14=0
+DOCK: height plain 146.0 selected 146.0  top 750.0 / 750.0
+VIEW: l3_night_1280x720_ui (1280, 720)
+== l4n1440
+WALLS: holes=0
+IDOL 0 at (46.66, 0.0, -1.0) box x 45.88..47.36 z -1.74..-0.26  gap wall 1.48 terem 0.34  yaw 0.00
+IDOL 1 at (47.8, 0.22, 1.2) box x 47.02..48.50 z 0.46..1.94  gap wall 0.34 terem 1.48  yaw 0.00
+IDOL 2 at (46.66, 0.0, 3.4) box x 45.88..47.36 z 2.66..4.14  gap wall 1.48 terem 0.34  yaw 0.00
+IDOL 3 at (47.8, 0.34, -3.1) box x 47.02..48.50 z -3.84..-2.36  gap wall 0.34 terem 2.03  yaw 0.00
+GRASS on paving: 0 cells []
+HERO: to post 0.60 m  hero (37.2, 0.08, 1.85)
+UI: screen (1600.0, 1200.0) root_box (1600.0, 1200.0) dock min (1594.0, 146.0)
+UI: outside=0
+FONTS: smallest 16.2 px at @Label@127 'Соловей-Разбойник'  below14=0
+DOCK: height plain 146.0 selected 146.0  top 1050.0 / 1050.0
+VIEW: l4_night_1440x1080_ui (1440, 1080)
+== l4day
+VIEW: l4_day_1920x1080_top (1920, 1080)
+VIEW: l4_day_1920x1080_ui (1920, 1080)
+== portr
+WALLS: holes=0
+IDOL 0 at (46.66, 0.0, -1.0) box x 45.88..47.36 z -1.74..-0.26  gap wall 1.48 terem 0.34  yaw 0.00
+IDOL 1 at (47.8, 0.22, 1.2) box x 47.02..48.50 z 0.46..1.94  gap wall 0.34 terem 1.48  yaw 0.00
+IDOL 2 at (46.66, 0.0, 3.4) box x 45.88..47.36 z 2.66..4.14  gap wall 1.48 terem 0.34  yaw 0.00
+GRASS on paving: 0 cells []
+HERO: to post 0.60 m  hero (37.2, 0.08, 1.85)
+UI: screen (720.0, 1281.0) root_box (734.0, 1281.0) dock min (734.0, 332.0)
+UI: outside=0
+FONTS: smallest 15.2 px at TierTab1 'I'  below14=0
+DOCK: height plain 332.0 selected 332.0  top 945.0 / 945.0
+VIEW: l1_day_607x1080_ui (607, 1080)
+== heroes
+VIEW: l1_day_1920x1080_heroes_ui (1920, 1080)
+== select
+WALLS: holes=0
+IDOL 0 at (46.66, 0.0, -1.0) box x 45.88..47.36 z -1.74..-0.26  gap wall 1.48 terem 0.34  yaw 0.00
+IDOL 1 at (47.8, 0.22, 1.2) box x 47.02..48.50 z 0.46..1.94  gap wall 0.34 terem 1.48  yaw 0.00
+IDOL 2 at (46.66, 0.0, 3.4) box x 45.88..47.36 z 2.66..4.14  gap wall 1.48 terem 0.34  yaw 0.00
+GRASS on paving: 0 cells []
+HERO: to post 0.60 m  hero (37.2, 0.08, 1.85)
+UI: screen (1600.0, 900.0) root_box (1600.0, 900.0) dock min (1591.0, 146.0)
+UI: outside=0
+FONTS: smallest 21.6 px at @Label@127 'Соловей-Разбойник'  below14=0
+DOCK: height plain 146.0 selected 146.0  top 750.0 / 750.0
+VIEW: l2_day_1920x1080_select_ui (1920, 1080)
+== alt
+VIEW: l2_day_1920x1080_select-alt_ui (1920, 1080)
+== damaged
+VIEW: l2_day_1920x1080_damaged_ui (1920, 1080)
+== place
+VIEW: l1_day_1920x1080_place_ui (1920, 1080)
+== idol
+VIEW: l1_day_1920x1080_idol_ui (1920, 1080)
+== legend
+VIEW: l1_day_1920x1080_legend_ui (1920, 1080)
+== tier2
+VIEW: l1_day_1920x1080_tier2_ui (1920, 1080)
+== tier3
+VIEW: l1_day_1920x1080_tier3_ui (1920, 1080)
+== tooltip
+VIEW: l1_day_1920x1080_tooltip_ui (1920, 1080)
+== dawn
+VIEW: l1_dawn_1920x1080_ui (1920, 1080)
+== defeat
+DEFEAT after 4875 ticks
+VIEW: l1_night_1920x1080_defeat_ui (1920, 1080)
+== banner
+VIEW: l1_spawn_1920x1080_banner_ui (1920, 1080)
+== smoke
+VIEW: l2_night_1920x1080_live_game (1920, 1080)
+VIEW: l2_night_1920x1080_live_enemy2 (1920, 1080)
+== portpl
+WALLS: holes=0
+IDOL 0 at (46.66, 0.0, -1.0) box x 45.88..47.36 z -1.74..-0.26  gap wall 1.48 terem 0.34  yaw 0.00
+IDOL 1 at (47.8, 0.22, 1.2) box x 47.02..48.50 z 0.46..1.94  gap wall 0.34 terem 1.48  yaw 0.00
+IDOL 2 at (46.66, 0.0, 3.4) box x 45.88..47.36 z 2.66..4.14  gap wall 1.48 terem 0.34  yaw 0.00
+GRASS on paving: 0 cells []
+HERO: to post 0.60 m  hero (37.2, 0.08, 1.85)
+UI: screen (720.0, 1281.0) root_box (734.0, 1281.0) dock min (734.0, 332.0)
+  OUTSIDE @Label@193 '' [P: (597.5, 68.0), S: (165.0, 22.0)]
+  OUTSIDE @Label@282 '×1' [P: (738.5, 99.0), S: (17.0, 22.0)]
+UI: outside=2
+FONTS: smallest 15.2 px at TierTab1 'I'  below14=0
+DOCK: height plain 332.0 selected 332.0  top 945.0 / 945.0
+VIEW: l1_day_607x1080_place-toast_ui (607, 1080)
+== nsel
+WALLS: holes=0
+IDOL 0 at (46.66, 0.0, -1.0) box x 45.88..47.36 z -1.74..-0.26  gap wall 1.48 terem 0.34  yaw 0.00
+IDOL 1 at (47.8, 0.22, 1.2) box x 47.02..48.50 z 0.46..1.94  gap wall 0.34 terem 1.48  yaw 0.00
+IDOL 2 at (46.66, 0.0, 3.4) box x 45.88..47.36 z 2.66..4.14  gap wall 1.48 terem 0.34  yaw 0.00
+GRASS on paving: 0 cells []
+HERO: to post 0.60 m  hero (37.2, 0.08, 1.85)
+UI: screen (1600.0, 900.0) root_box (1600.0, 900.0) dock min (1597.0, 146.0)
+UI: outside=0
+FONTS: smallest 21.6 px at @Label@127 'Соловей-Разбойник'  below14=0
+DOCK: height plain 146.0 selected 146.0  top 750.0 / 750.0
+VIEW: l3_night_1920x1080_select_ui (1920, 1080)
+== nsel1280
+WALLS: holes=0
+IDOL 0 at (46.66, 0.0, -1.0) box x 45.88..47.36 z -1.74..-0.26  gap wall 1.48 terem 0.34  yaw 0.00
+IDOL 1 at (47.8, 0.22, 1.2) box x 47.02..48.50 z 0.46..1.94  gap wall 0.34 terem 1.48  yaw 0.00
+IDOL 2 at (46.66, 0.0, 3.4) box x 45.88..47.36 z 2.66..4.14  gap wall 1.48 terem 0.34  yaw 0.00
+GRASS on paving: 0 cells []
+HERO: to post 0.60 m  hero (37.2, 0.08, 1.85)
+UI: screen (1600.0, 900.0) root_box (1600.0, 900.0) dock min (1597.0, 146.0)
+UI: outside=0
+FONTS: smallest 14.4 px at @Label@127 'Соловей-Разбойник'  below14=0
+DOCK: height plain 146.0 selected 150.0  top 750.0 / 746.0
+VIEW: l3_night_1280x720_select_ui (1280, 720)
+== nsel1440
+WALLS: holes=0
+IDOL 0 at (46.66, 0.0, -1.0) box x 45.88..47.36 z -1.74..-0.26  gap wall 1.48 terem 0.34  yaw 0.00
+IDOL 1 at (47.8, 0.22, 1.2) box x 47.02..48.50 z 0.46..1.94  gap wall 0.34 terem 1.48  yaw 0.00
+IDOL 2 at (46.66, 0.0, 3.4) box x 45.88..47.36 z 2.66..4.14  gap wall 1.48 terem 0.34  yaw 0.00
+IDOL 3 at (47.8, 0.34, -3.1) box x 47.02..48.50 z -3.84..-2.36  gap wall 0.34 terem 2.03  yaw 0.00
+GRASS on paving: 0 cells []
+HERO: to post 0.60 m  hero (37.2, 0.08, 1.85)
+UI: screen (1600.0, 1200.0) root_box (1600.0, 1200.0) dock min (1595.0, 146.0)
+UI: outside=0
+FONTS: smallest 16.2 px at @Label@127 'Соловей-Разбойник'  below14=0
+DOCK: height plain 146.0 selected 150.0  top 1050.0 / 1046.0
+VIEW: l4_night_1440x1080_select_ui (1440, 1080)
+== halfpl
+VIEW: l2_day_1920x1080_place-half_ui (1920, 1080)
+== l2evgame
+VIEW: l2_evening_1920x1080_game (1920, 1080)
+VIEW: l2_evening_1920x1080_machines (1920, 1080)
+== l4eve
+VIEW: l4_evening_1920x1080_game (1920, 1080)
+VIEW: l4_evening_1920x1080_plazatop (1920, 1080)
+VIEW: l4_evening_1920x1080_terem (1920, 1080)
+VIEW: l4_evening_1920x1080_idols (1920, 1080)
+VIEW: l4_evening_1920x1080_gatehouse (1920, 1080)
+== l1nhero
+VIEW: l1_night_1280x720_game (1280, 720)
+VIEW: l1_night_1280x720_hero (1280, 720)
+== toast1440
+VIEW: l4_night_1440x1080_toast_ui (1440, 1080)
+== l2bossg
+VIEW: l2_boss_1920x1080_game (1920, 1080)
+VIEW: l2_boss_1920x1080_gatewest (1920, 1080)
+exit=0

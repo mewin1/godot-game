@@ -628,7 +628,13 @@ func _draw_preview() -> void:
 				Color("f4dca0"), 15)
 			return
 	if trial.settings.uses_plots():
-		return  # призрак дома и круг дальности — в 3D (RitualStage3D.show_ghost, critique_3 п. 66)
+		# Призрак дома и круг дальности — в 3D (RitualStage3D.show_ghost); сюда нельзя — серый
+		# призрак и перечёркнутый круг над участком (critique_4 п. 27).
+		if action == &"buy" and preview_index >= 0 and trial.field.is_buildable(hover_cell) \
+				and trial.field.get_tower_at(hover_cell) == null \
+				and not trial.building_unlock_error(preview_index).is_empty():
+			_forbid_sign(_point(TowerState.center_of([hover_cell])) + Vector2(0, -_cell * 0.9))
+		return
 	var cells: Array[Vector2i] = TowerState.shape_cells_at(data.shape, hover_cell, preview_rotation)
 	var valid: bool = trial.field.can_place(cells, selected_id if action == &"move" else 0)
 	for cell: Vector2i in cells:
@@ -781,3 +787,11 @@ func _reaction_badge(at: Vector2, first: Color, second: Color) -> void:
 	draw_arc(at, 6.0, PI * 0.5, PI * 1.5, 12, first, 6.0, true)
 	draw_arc(at, 6.0, -PI * 0.5, PI * 0.5, 12, second, 6.0, true)
 	draw_arc(at, 10.0, 0.0, TAU, 20, Color(1, 1, 1, 0.5), 1.2, true)
+
+
+## Знак «нельзя»: серый перечёркнутый круг на тёмной подложке.
+func _forbid_sign(at: Vector2) -> void:
+	var gray: Color = Color(0.82, 0.82, 0.8)
+	draw_circle(at, 17.0, Color(0.03, 0.03, 0.04, 0.82))
+	draw_arc(at, 12.0, 0.0, TAU, 28, gray, 3.5, true)
+	draw_line(at + Vector2(-8.5, 8.5), at + Vector2(8.5, -8.5), gray, 3.5, true)

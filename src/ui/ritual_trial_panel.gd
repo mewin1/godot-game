@@ -74,7 +74,6 @@ var _sound_bank: SoundBank
 ## Ночь ли была на прошлом обновлении: смена дня и ночи звучит рогом и колоколом.
 var _was_night: bool = false
 var _upgrade_button: Button
-var _upgrade_surcharge: Label
 var _specialise_buttons: Array[Button] = []
 var _sell_button: Button
 var _wear_dawn: int = -1
@@ -94,6 +93,12 @@ var _boon_key: String = ""
 var _supply_menu: MenuButton
 var _boon_shade: ColorRect
 const PALISADE_ICON: Texture2D = preload("res://assets/ui/ritual/palisade.svg")
+## Высота тоста в портрете: две строки сообщения (critique_4 п. 34).
+const TOAST_COMPACT_HEIGHT: float = 64.0
+## Молоток ремонта — тот же знак, что бейдж износа над домом.
+const REPAIR_ICON: Texture2D = preload("res://assets/ui/icon_repair.svg")
+## Луна у ночной цены улучшения (critique_4 п. 37).
+const NIGHT_PRICE_ICON: Texture2D = preload("res://assets/ui/icon_night_price.svg")
 ## Усиление без бога (плотники, купцы, ремесло) — общий знак дара.
 const BOON_ICON: Texture2D = preload("res://assets/ui/ritual/supply_charm.svg")
 const SUPPLY_ICONS: Array[Texture2D] = [preload("res://assets/ui/ritual/supply_tar.svg"),
@@ -240,6 +245,9 @@ func _build_ui() -> void:
 	_message.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_message.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_message.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	# Надпись заполняет плашку по высоте: с переносом (портрет) её мин. высота до раскладки — 1 px.
+	_message.size_flags_vertical = Control.SIZE_FILL
+	_message.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_history = _label(controls, "", 10)
 	_history.hide()
 	_build_schedule()
@@ -364,12 +372,6 @@ func _build_legacy(root_box: VBoxContainer) -> void:
 		for branch_index: int in 2:
 			_specialise_buttons.append(_button(upgrades, "", _upgrade_selected.bind(branch_index)))
 			_specialise_buttons[-1].name = "SpecialiseHouse%d" % branch_index
-		_upgrade_surcharge = Label.new()
-		_upgrade_surcharge.name = "UpgradeNightSurcharge"
-		_upgrade_surcharge.text = "↑"
-		_upgrade_surcharge.mouse_filter = Control.MOUSE_FILTER_PASS
-		_upgrade_surcharge.add_theme_color_override("font_color", Color("ff6258"))
-		upgrades.add_child(_upgrade_surcharge)
 	var bottom: HBoxContainer = HBoxContainer.new()
 	bottom.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	bottom.add_theme_constant_override("separation", 12)
@@ -455,13 +457,10 @@ func _build_dock(root_box: VBoxContainer) -> void:
 	for branch_index: int in 2:
 		_specialise_buttons.append(_button(_dock.house_actions, "", _upgrade_selected.bind(branch_index)))
 		_specialise_buttons[-1].name = "SpecialiseHouse%d" % branch_index
-	_upgrade_surcharge = Label.new()
-	_upgrade_surcharge.name = "UpgradeNightSurcharge"
-	_upgrade_surcharge.text = "↑"
-	_upgrade_surcharge.mouse_filter = Control.MOUSE_FILTER_PASS
-	_upgrade_surcharge.add_theme_color_override("font_color", Color("ff6258"))
-	_dock.house_actions.add_child(_upgrade_surcharge)
 	_repair_house_button = _button(_dock.house_actions, "Починить дом", _repair_selected)
+	# Молоток и цена (critique_4 п. 36): три кнопки дома — в один ряд, док не растёт ночью.
+	_repair_house_button.icon = REPAIR_ICON
+	_repair_house_button.add_theme_constant_override("icon_max_width", 18)
 	_sell_button = _button(_dock.house_actions, "Продать", _sell)
 	# Три веса действий (critique_3 п. 56): «Улучшить» — янтарём, «Продать» — красным текстом.
 	DuskTheme.make_primary(_upgrade_button)
@@ -1276,16 +1275,18 @@ func _refresh_building_actions(tower: TowerState) -> void:
 	_sell_button.text = "Продать" if tower == null else "Продать · %d" % trial.sell_value(tower)
 	var can_upgrade: bool = tower != null and tower.level < settings.combat.max_tower_level
 	var at_night: bool = settings.is_night(trial.tick_count)
-	_upgrade_surcharge.visible = can_upgrade and at_night
-	_upgrade_surcharge.tooltip_text = "Мастера спят. Ночной вызов: +%d%% к цене, стройка %d с." % [
-		settings.night_cost_percent - 100, settings.night_install_ticks / settings.combat.ticks_per_second]
+	# Ночная наценка — луной у цены, как в каталоге (critique_4 п. 36-37): красная «↑» путалась со
+	# стрелкой улучшения и, будучи выше кнопок, растягивала док ночью на 4 px.
+	var surcharge: String = "\nМастера спят. Ночной вызов: +%d%% к цене, стройка %d с." % [
+		settings.night_cost_percent - 100, settings.night_install_ticks / settings.combat.ticks_per_second] \
+		if at_night else ""
 	_color_build_price(_upgrade_button, at_night)
 	_upgrade_button.visible = can_upgrade and tower.level != 2
 	if _upgrade_button.visible:
 		_upgrade_button.text = "Улучшить · %d" % trial.upgrade_cost(tower)
 		var error: String = trial.upgrade_error(tower)
 		_upgrade_button.disabled = not error.is_empty()
-		_upgrade_button.tooltip_text = error if not error.is_empty() else _upgrade_note(tower, -1)
+		_upgrade_button.tooltip_text = (error if not error.is_empty() else _upgrade_note(tower, -1)) + surcharge
 	for index: int in _specialise_buttons.size():
 		var button: Button = _specialise_buttons[index]
 		_color_build_price(button, at_night)
@@ -1296,15 +1297,20 @@ func _refresh_building_actions(tower: TowerState) -> void:
 		button.text = "%s · %d" % [levels.branches[index].title, trial.upgrade_cost(tower)]
 		var error: String = trial.upgrade_error(tower, index)
 		button.disabled = not error.is_empty()
-		button.tooltip_text = error if not error.is_empty() else _upgrade_note(tower, index)
+		button.tooltip_text = (error if not error.is_empty() else _upgrade_note(tower, index)) + surcharge
 
 
+## Ночная цена: оранжевый текст и луна справа (тот же знак, что у цены в каталоге).
 func _color_build_price(button: Button, at_night: bool) -> void:
 	for key: StringName in [&"font_color", &"font_hover_color", &"font_pressed_color", &"font_focus_color"]:
-		if at_night:
-			button.add_theme_color_override(key, Color("ffe066"))
+		# Янтарная главная кнопка оставляет тёмный текст: оранжевый на янтаре не читается.
+		if at_night and button != _upgrade_button:
+			button.add_theme_color_override(key, RitualBuildChip.NIGHT_PRICE)
 		else:
 			button.remove_theme_color_override(key)
+	button.icon = NIGHT_PRICE_ICON if at_night else null
+	button.icon_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	button.add_theme_constant_override("icon_max_width", 16)
 
 
 func _display_dps(tower: TowerState) -> int:
@@ -1334,7 +1340,8 @@ func _refresh_wear(selected: TowerState) -> void:
 		_repair_all_button.visible = total > 0
 	var one: int = trial.repair_cost(selected) if selected != null else 0
 	_repair_house_button.visible = one > 0
-	_repair_house_button.text = "Починить дом · %d" % one
+	_repair_house_button.text = ("%d" % one) if _dock != null else "Починить дом · %d" % one
+	_repair_house_button.tooltip_text = "Починить дом · %d" % one
 	_repair_house_button.disabled = trial.gold < one
 
 
@@ -1724,15 +1731,14 @@ func _selection_text(tower: TowerState) -> String:
 			condition = "Ослаб, урон %d%%" % settings.worn_damage_percent if tower.data.damage > 0 else "Изношен"
 		if tower.is_action_blocked():
 			condition = "Строится"
-		var next: RitualTower = trial.upgrade_preview(tower)
 		# Днём «урон 0» бессмыслен (critique_3 п. 55): урон — только ночью; днём строка дока — роль
 		# и состояние, остальное — в подсказке.
-		var damage: String = "урон %d в с" % _display_dps(tower)
-		if next != null:
-			damage += ", после улучшения %d" % _display_dps(next)
+		# Ночью — урон в секунду «48/с»; у домов без урона (контроль) — только роль (critique_4 п. 38).
+		# Урон после улучшения — в подсказке кнопки «Улучшить», а не в строке дока.
 		var parts: PackedStringArray = [profile.role]
-		if settings.is_night(trial.tick_count):
-			parts.insert(1, damage)
+		var dps: int = _display_dps(tower)
+		if settings.is_night(trial.tick_count) and dps > 0:
+			parts.insert(1, "урон %d/с" % dps)
 		var text: String = "%s · %s%s\n%s\n%s · прочность %d%% · ремонт %d · %s" % [tower.data.display_name,
 			settings.level_name(tower.level), branch_name, " · ".join(parts),
 			condition, tower.durability * 100 / maxi(1, full), trial.repair_cost(tower), ward_note(settings, tower.data)]
@@ -1844,7 +1850,10 @@ func _fit_screen() -> void:
 		_scout_strip.position.y = 62.0
 		_toast.offset_left = -width * 0.5 + 12.0
 		_toast.offset_right = width * 0.5 - 12.0
+		# Две строки сообщения целиком (critique_4 п. 34): низ задан явно, иначе плашка сплющивалась
+		# до 14 px (нижний край 120 оставался выше верхнего 150).
 		_toast.offset_top = 150.0
+		_toast.offset_bottom = 150.0 + TOAST_COMPACT_HEIGHT
 		_message.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	else:
 		_scout_strip.reparent(_top_bar, false)
@@ -1852,4 +1861,5 @@ func _fit_screen() -> void:
 		_toast.offset_left = -380.0
 		_toast.offset_right = 380.0
 		_toast.offset_top = 90.0
+		_toast.offset_bottom = 120.0
 		_message.autowrap_mode = TextServer.AUTOWRAP_OFF
