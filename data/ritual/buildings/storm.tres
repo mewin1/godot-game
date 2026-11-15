@@ -3,7 +3,7 @@
 [resource]
 script = ExtResource("1")
 id = &"storm"
-display_name = "Грозовая решетка"
+display_name = "Грозовая решётка"
 god = &"perun"
 school = &"perun"
 tags = Array[StringName]([&"lightning"])

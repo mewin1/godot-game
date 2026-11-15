@@ -3,7 +3,7 @@
 [resource]
 script = ExtResource("1")
 id = &"hex"
-display_name = "Черная метка"
+display_name = "Чёрная метка"
 god = &"curse"
 school = &"curse"
 tags = Array[StringName]([&"curse"])

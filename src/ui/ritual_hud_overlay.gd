@@ -46,9 +46,8 @@ func _init() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	# Баннер без коробки с рамкой (critique.md п. 21): крупный заголовок с тенью и одна строка.
 	_banner = PanelContainer.new()
-	var soft: StyleBoxFlat = DuskTheme.glass(0.45, 12)
-	soft.border_color = Color.TRANSPARENT
-	_banner.add_theme_stylebox_override("panel", soft)
+	# Без стеклянного короба (critique_3 п. 74): заголовок с тенью прямо над картой.
+	_banner.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
 	_banner.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_banner)
 	var box: VBoxContainer = VBoxContainer.new()
@@ -66,7 +65,11 @@ func _init() -> void:
 	_banner_text.add_theme_color_override("font_color", Color("dfe6ea"))
 	_banner_text.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_banner_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_banner_text.custom_minimum_size.x = 520
+	_banner_text.custom_minimum_size.x = 420
+	_banner_text.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.85))
+	_banner_text.add_theme_constant_override("shadow_offset_y", 2)
+	_banner_text.add_theme_constant_override("outline_size", 4)
+	_banner_text.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.6))
 	box.add_child(_banner_text)
 	_banner.hide()
 	# Пауза — лёгкое затемнение карты (critique_2 п. 31); пометка «пауза» — у таймера в шапке.
@@ -120,7 +123,7 @@ func refresh(trial: RitualTrial, paused: bool, modal: bool, delta: float) -> voi
 	_banner.visible = _banner_age < BANNER_SECONDS
 	if _banner.visible:
 		_banner.modulate.a = clampf((BANNER_SECONDS - _banner_age) / 0.6, 0.0, 1.0)
-		_banner.position = Vector2((size.x - _banner.size.x) * 0.5, 104)
+		_banner.position = Vector2((size.x - _banner.size.x) * 0.5, 76)
 	_refresh_skill(trial, running)
 	_watch_boss(trial)
 	queue_redraw()
@@ -141,17 +144,18 @@ func toggle_legend(settings: RitualTrialConfig) -> void:
 	if _legend == null:
 		_legend = PanelContainer.new()
 		_legend.name = "ReactionLegend"
-		_legend.add_theme_stylebox_override("panel", DuskTheme.panel(Color(0.04, 0.07, 0.11, 0.96), DuskTheme.GOLD, 12))
+		_legend.add_theme_stylebox_override("panel", DuskTheme.modal(18))
 		_legend.mouse_filter = Control.MOUSE_FILTER_STOP
 		add_child(_legend)
 		var box: VBoxContainer = VBoxContainer.new()
 		box.add_theme_constant_override("separation", 4)
 		_legend.add_child(box)
-		var title: Label = Label.new()
-		title.text = "Метки на врагах и реакции · «?» — закрыть"
-		title.add_theme_font_size_override("font_size", 18)
-		title.add_theme_color_override("font_color", DuskTheme.GOLD)
-		box.add_child(title)
+		box.add_child(DuskTheme.modal_title("Метки и реакции", 26))
+		var hint: Label = Label.new()
+		hint.text = "«?» — закрыть"
+		hint.add_theme_color_override("font_color", DuskTheme.MUTED)
+		hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		box.add_child(hint)
 		var marks: Label = Label.new()
 		marks.text = "Капля — мокрый · треугольник — горит · ромб — заряд · квадрат — холод (светлый — скован) · крест — проклятие"
 		marks.add_theme_font_size_override("font_size", 18)
@@ -170,7 +174,7 @@ func toggle_legend(settings: RitualTrialConfig) -> void:
 		_legend.hide()
 	_legend.visible = not _legend.visible
 	_legend.reset_size()
-	_legend.position = Vector2((size.x - _legend.size.x) * 0.5, 70)
+	_legend.position = Vector2((size.x - _legend.size.x) * 0.5, maxf(70.0, (size.y - _legend.size.y) * 0.4))
 
 
 func legend_visible() -> bool:

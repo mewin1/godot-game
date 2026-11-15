@@ -24,6 +24,7 @@ var _warning: Label
 ## Примета ночи (docs/36 §2): название, описание — в подсказке.
 var _omen: Label
 var _flow: HFlowContainer
+const MAX_FLOW_WIDTH: float = 760.0
 
 
 func _init() -> void:
@@ -50,13 +51,15 @@ func _init() -> void:
 
 
 func refresh(trial: RitualTrial) -> void:
+	_fit_flow()
 	var queue: Array[RitualPack] = trial.night_queue()
 	var night: int = trial.current_night()
 	var at_night: bool = trial.settings.is_night(trial.tick_count)
-	_title.text = "Ночь %d · %s: %d" % [night, "осталось пачек" if at_night else "пачек", queue.size()]
+	# Номер ночи уже в шапке слева (critique_3 п. 44): здесь только пачки и враги.
+	_title.text = "%s: %d" % ["Осталось пачек" if at_night else "Пачек", queue.size()]
 	var alive: int = trial.field.count_alive_mobs()
 	if at_night and alive > 0:
-		_title.text += " · врагов на улицах: %d" % alive
+		_title.text += " · врагов: %d" % alive
 	var night_omen: RitualOmenData = trial.plan().omen(night)
 	_omen.text = "" if night_omen == null else "  · %s" % night_omen.title
 	_omen.tooltip_text = "" if night_omen == null else "Примета ночи %d — %s.\n%s" % [
@@ -281,3 +284,16 @@ func _icon(mob: MobData) -> Texture2D:
 	var visual: Resource = load(MOB_VISUALS % kind)
 	var texture: Variant = visual.get(&"texture") if visual != null else null
 	return texture if texture is Texture2D else null
+
+
+## Полоса разведки по содержимому (critique_3 п. 43): карточки пачек в один ряд, пока помещаются
+## (до MAX_FLOW_WIDTH), а не столбиком в узкой полосе.
+func _fit_flow() -> void:
+	var total: float = 0.0
+	for child: Node in _flow.get_children():
+		var card: Control = child as Control
+		if card != null and card.visible:
+			total += card.get_combined_minimum_size().x + 4.0
+	var width: float = minf(total, MAX_FLOW_WIDTH)
+	if not is_equal_approx(_flow.custom_minimum_size.x, width):
+		_flow.custom_minimum_size.x = width

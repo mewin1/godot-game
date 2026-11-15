@@ -155,3 +155,25 @@ static func _ellipsis(font: Font, text: String, width: float) -> String:
 	while cut.length() > 1 and font.get_string_size(cut + "…", HORIZONTAL_ALIGNMENT_LEFT, -1, NAME_SIZE).x > width:
 		cut = cut.substr(0, cut.length() - 1)
 	return cut + "…"
+
+
+## Своя подсказка карточки (critique_3 п. 72): имя крупно (Kurale), ниже роль и строки подсказки.
+func _make_custom_tooltip(for_text: String) -> Object:
+	if for_text.is_empty():
+		return null
+	var lines: PackedStringArray = for_text.split("\n")
+	var box: VBoxContainer = VBoxContainer.new()
+	box.add_theme_constant_override("separation", 2)
+	var title: Label = Label.new()
+	title.text = data.display_name if data != null else lines[0]
+	title.theme_type_variation = &"HeaderLabel"
+	title.add_theme_font_size_override("font_size", 22)
+	title.add_theme_color_override("font_color", GodSymbols.get_color(data.god) if data != null else DuskTheme.GOLD)
+	box.add_child(title)
+	for row: int in range(1, lines.size()):
+		var line: Label = Label.new()
+		line.text = lines[row]
+		line.add_theme_font_size_override("font_size", 18 if row == 1 else 17)
+		line.add_theme_color_override("font_color", DuskTheme.TEXT if row == 1 else DuskTheme.MUTED)
+		box.add_child(line)
+	return box

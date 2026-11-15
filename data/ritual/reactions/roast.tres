@@ -10,6 +10,6 @@ damage_percent = 175
 stun_ticks = 8
 suppress_status = false
 display_name = "Прожарка"
-explanation = "Горение → Молния: урон ×1.25, стан 0.2 с; горение поглощается."
+explanation = "Горение → Молния: урон ×1,25, стан 0,2 с; горение поглощается."
 pay_out_consumed = true
 cooldown_ticks = 50

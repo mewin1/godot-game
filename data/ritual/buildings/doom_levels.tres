@@ -44,7 +44,7 @@ title = "Моровая область"
 levels = Array[ExtResource("behavior")]([SubResource("b0_3"), SubResource("b0_4")])
 [sub_resource type="Resource" id="b1_3"]
 script = ExtResource("behavior")
-note = "Черный столп: сильная цель и дальность"
+note = "Чёрный столп: сильная цель и дальность"
 damage_percent = 473
 extra_targets = 0
 support_percent = 460
@@ -52,7 +52,7 @@ armor_pierce = 4
 range_bonus_milli = 500
 [sub_resource type="Resource" id="b1_4"]
 script = ExtResource("behavior")
-note = "Черный столп: сильная цель и дальность"
+note = "Чёрный столп: сильная цель и дальность"
 damage_percent = 1117
 extra_targets = 0
 support_percent = 950
@@ -60,7 +60,7 @@ armor_pierce = 8
 range_bonus_milli = 800
 [sub_resource type="Resource" id="b1"]
 script = ExtResource("branch")
-title = "Черный столп"
+title = "Чёрный столп"
 levels = Array[ExtResource("behavior")]([SubResource("b1_3"), SubResource("b1_4")])
 [resource]
 script = ExtResource("profile")

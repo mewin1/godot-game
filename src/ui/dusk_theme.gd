@@ -67,6 +67,46 @@ static func create() -> Theme:
 	return result
 
 
+## Окно забега (critique_3 п. 68-74): одна плашка для выбора героя, дара, поражения, легенды и идола —
+## тёмное стекло с янтарной кромкой и тенью; заголовок — HeaderLabel (Kurale).
+static func modal(margin: int = 22) -> StyleBoxFlat:
+	var style: StyleBoxFlat = glass(0.94, margin)
+	style.border_color = Color(GOLD, 0.55)
+	style.shadow_color = Color(0, 0, 0, 0.55)
+	style.shadow_size = 24
+	return style
+
+
+## Заголовок окна: Kurale, янтарь, с тенью.
+static func modal_title(text: String, font_size: int = 30) -> Label:
+	var title: Label = Label.new()
+	title.text = text
+	title.theme_type_variation = &"HeaderLabel"
+	title.add_theme_font_size_override("font_size", font_size)
+	title.add_theme_color_override("font_color", Color("f0d39c"))
+	title.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.7))
+	title.add_theme_constant_override("shadow_offset_y", 2)
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	return title
+
+
+## Главная кнопка окна — янтарём (AccentButton); снимает общие переопределения кнопок панели.
+static func make_primary(button: Button) -> Button:
+	for state: StringName in [&"normal", &"hover", &"pressed", &"disabled", &"focus"]:
+		button.remove_theme_stylebox_override(state)
+	button.theme_type_variation = &"AccentButton"
+	button.custom_minimum_size.y = maxf(button.custom_minimum_size.y, 40)
+	return button
+
+
+## Второстепенная кнопка окна — текстом без рамки.
+static func make_quiet(button: Button) -> Button:
+	button.flat = true
+	button.add_theme_color_override("font_color", MUTED)
+	button.add_theme_color_override("font_hover_color", TEXT)
+	return button
+
+
 ## «Стеклянная» панель поверх 3D-сцены: дымчатая почти чёрная, тонкая светлая кромка, тень.
 static func glass(alpha: float = 0.66, margin: int = 10) -> StyleBoxFlat:
 	var style: StyleBoxFlat = StyleBoxFlat.new()

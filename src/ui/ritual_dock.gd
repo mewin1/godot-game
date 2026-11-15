@@ -213,14 +213,14 @@ static func _chip_tooltip(trial: RitualTrial, chip: RitualBuildChip, unlock: Str
 	var settings: RitualTrialConfig = trial.settings
 	var levels: RitualBuildingLevels = settings.levels_for(chip.data)
 	var first: RitualLevelBehavior = levels.at_level(1) if levels != null else null
-	var lines: PackedStringArray = ["%s · %s · тир %s" % [chip.data.display_name,
+	var lines: PackedStringArray = ["%s · %s · дома %s уровня" % [chip.data.display_name,
 		GodSymbols.get_power_name(chip.data.god), RitualBuildChip.TIER_NAMES[clampi(chip.data.tier, 1, 3) - 1]]]
 	if levels != null and not levels.role.is_empty():
 		lines.append(levels.role)
 	var note: String = first.note if first != null and not first.note.is_empty() else chip.data.description
 	if levels == null or note != levels.role:
 		lines.append(note)
-	lines.append("Цена %d · один дом на свободный участок · %s" % [chip.price,
+	lines.append("Цена %d · один дом на участок · %s" % [chip.price,
 		RitualTrialPanel.ward_note(settings, chip.data)])
 	var discount: int = trial.discount_bp(chip.data.god)
 	if discount > 0:

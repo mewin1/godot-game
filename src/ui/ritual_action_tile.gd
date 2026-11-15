@@ -37,24 +37,27 @@ func _draw() -> void:
 	var font: Font = get_theme_default_font()
 	var art: Rect2 = Rect2(Vector2.ZERO, size).grow(-8)
 	if picture != null:
-		var alpha: float = 0.3 if empty else 0.5 if disabled else 1.0
+		# Пустой припас узнаётся (critique_3 п. 50): не темнее 60%.
+		var alpha: float = 0.6 if empty else 0.7 if disabled else 1.0
 		draw_texture_rect(picture, art, false, Color(1, 1, 1, alpha))
 	# Бейджи не мельче 15 (critique_3 п. 4): клавиша слева сверху, число или цена — внизу.
-	if not key_hint.is_empty():
+	if not key_hint.is_empty() and not (empty and price >= 0):
 		var key_width: float = font.get_string_size(key_hint, HORIZONTAL_ALIGNMENT_LEFT, -1, BADGE_SIZE).x
 		draw_rect(Rect2(2, 2, key_width + 6, BADGE_SIZE + 3), BADGE)
 		draw_string(font, Vector2(5, BADGE_SIZE + 1), key_hint, HORIZONTAL_ALIGNMENT_LEFT, -1, BADGE_SIZE,
 				Color(0.8, 0.84, 0.86))
 	var numbers: Font = DuskTheme.NUMBER_FONT
-	if empty and price >= 0:
-		var amount: String = str(price)
-		var width: float = DuskTheme.price_width(numbers, amount, BADGE_SIZE)
-		draw_rect(Rect2((size.x - width) * 0.5 - 3, size.y - BADGE_SIZE - 5, width + 6, BADGE_SIZE + 3), BADGE)
-		DuskTheme.draw_price(self, numbers, Vector2((size.x - width) * 0.5, size.y - 5), amount, BADGE_SIZE,
-				PRICE_COLOR)
-	elif count >= 0 and not empty:
+	# Одно место — один смысл (п. 50): внизу справа всегда количество (0 — серым); цена покупки —
+	# отдельным бейджем «+» сверху справа, только когда купить можно.
+	if count >= 0:
 		var number: String = str(count)
 		var width: float = numbers.get_string_size(number, HORIZONTAL_ALIGNMENT_LEFT, -1, 17).x
 		draw_rect(Rect2(size.x - width - 8, size.y - 21, width + 6, 19), BADGE)
 		draw_string(numbers, Vector2(size.x - width - 5, size.y - 5), number, HORIZONTAL_ALIGNMENT_LEFT, -1, 17,
-				COUNT_COLOR)
+				COUNT_COLOR if count > 0 else Color(0.6, 0.62, 0.64))
+	if empty and price >= 0:
+		var amount: String = str(price)
+		var width_price: float = DuskTheme.price_width(numbers, amount, BADGE_SIZE)
+		var left: float = size.x - width_price - 4
+		draw_rect(Rect2(left - 2, 1, width_price + 4, BADGE_SIZE + 4), BADGE)
+		DuskTheme.draw_price(self, numbers, Vector2(left, BADGE_SIZE + 1), amount, BADGE_SIZE, PRICE_COLOR)

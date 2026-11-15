@@ -28,7 +28,9 @@ func _init() -> void:
 	var head: HBoxContainer = HBoxContainer.new()
 	box.add_child(head)
 	_title = Label.new()
-	_title.add_theme_font_size_override("font_size", 18)
+	# Заголовок окна идола — Kurale крупнее пунктов (critique_3 п. 70, 79).
+	_title.theme_type_variation = &"HeaderLabel"
+	_title.add_theme_font_size_override("font_size", 22)
 	_title.add_theme_color_override("font_color", Color("e9cea2"))
 	_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_child(_title)

@@ -8,5 +8,5 @@ required = &"curse"
 curse_extra_ticks = 10
 curse_damage_percent = 260
 display_name = "Консервация"
-explanation = "Проклятие → Лёд: один раз +1 с задержки, сила взрыва ×1.5."
+explanation = "Проклятие → Лёд: один раз +1 с задержки, сила взрыва ×1,5."
 cooldown_ticks = 50

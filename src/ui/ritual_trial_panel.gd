@@ -8,7 +8,7 @@ const ENDLESS: RitualTrialConfig = preload("res://data/ritual/endless.tres")
 const MAX_FRAME_TICKS: int = 8
 ## Сообщение внизу поля гаснет через столько секунд (подсказка выбора - пока выбор идет).
 const TOAST_SECONDS: float = 4.0
-const PLACE_HINT: String = "ЛКМ - поставить · R - поворот · ПКМ/Esc - отмена"
+const PLACE_HINT: String = "ЛКМ — поставить · R — поворот · ПКМ/Esc — отмена"
 var settings: RitualTrialConfig = ENDLESS
 var trial: RitualTrial
 var board: RitualBoard
@@ -51,6 +51,9 @@ var _repair_house_button: Button
 var _defeat_text: Label
 ## Выбор героя перед бесконечным забегом (docs/36 §1).
 var _hero_panel: PanelContainer
+## Затемнение под окнами забега (critique_3 п. 68, 73): фон не спорит с окном и не ловит щелчки.
+var _modal_shade: ColorRect
+var _defeat_title: Label
 var _hero_choice: int = 0
 var _omen_night: int = 0
 ## Ряд припасов (docs/36 §4): смола, чаша, оберег.
@@ -235,6 +238,14 @@ func _build_ui() -> void:
 	_history = _label(controls, "", 10)
 	_history.hide()
 	_build_schedule()
+	_modal_shade = ColorRect.new()
+	_modal_shade.name = "ModalShade"
+	_modal_shade.color = Color(0.0, 0.01, 0.02, 0.62)
+	_modal_shade.mouse_filter = Control.MOUSE_FILTER_STOP
+	_modal_shade.z_index = 9
+	add_child(_modal_shade)
+	_modal_shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_modal_shade.hide()
 	_build_defeat()
 	_build_gifts()
 	_build_heroes()
@@ -256,10 +267,19 @@ func _build_top_bar(strip: PanelContainer) -> void:
 	var chip: Control = _hud._prep_info.get_parent() as Control
 	chip.reparent(bar, false)
 	chip.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-	strip.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	# Полоса разведки — по содержимому и по центру (critique_3 п. 43), а не стеклянная плита во всю ширину.
+	strip.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	strip.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	strip.clip_contents = true
+	var left_gap: Control = Control.new()
+	left_gap.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	left_gap.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bar.add_child(left_gap)
 	bar.add_child(strip)
+	var right_gap: Control = Control.new()
+	right_gap.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	right_gap.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bar.add_child(right_gap)
 	var tools: HBoxContainer = _hud._prep_tools
 	tools.reparent(bar, false)
 	tools.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
@@ -267,6 +287,8 @@ func _build_top_bar(strip: PanelContainer) -> void:
 	for child: Node in tools.get_children():
 		if child is Button:
 			(child as Button).add_theme_font_size_override("font_size", 18)
+			# Инструменты одной ширины (critique_3 п. 48).
+			(child as Button).custom_minimum_size = Vector2(44, 40)
 
 
 ## Прежняя раскладка (4-суточный опыт): лавка и правка слева, идолы и герой под картой.
@@ -434,6 +456,11 @@ func _build_dock(root_box: VBoxContainer) -> void:
 	_dock.house_actions.add_child(_upgrade_surcharge)
 	_repair_house_button = _button(_dock.house_actions, "Починить дом", _repair_selected)
 	_sell_button = _button(_dock.house_actions, "Продать", _sell)
+	# Три веса действий (critique_3 п. 56): «Улучшить» — янтарём, «Продать» — красным текстом.
+	DuskTheme.make_primary(_upgrade_button)
+	_sell_button.flat = true
+	_sell_button.add_theme_color_override("font_color", Color("ff8a72"))
+	_sell_button.add_theme_color_override("font_hover_color", Color("ffb2a0"))
 	if not settings.streets.is_empty():
 		_street_button = _button(_dock.city_actions, "", _grow)
 	for index: int in settings.alleys.size():
@@ -533,13 +560,16 @@ func _tile(picture: Texture2D, key_hint: String, callback: Callable) -> RitualAc
 ## Экран поражения бесконечного забега: ночи, рекорд на устройстве, убитые боссы.
 func _build_defeat() -> void:
 	_defeat = PanelContainer.new()
-	_defeat.add_theme_stylebox_override("panel", DuskTheme.panel(Color("101b23"), DuskTheme.GOLD, 20))
+	_defeat.add_theme_stylebox_override("panel", DuskTheme.modal(28))
 	_defeat.z_index = 10
 	add_child(_defeat)
 	_defeat.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
 	var content: VBoxContainer = VBoxContainer.new()
-	content.add_theme_constant_override("separation", 12)
+	content.add_theme_constant_override("separation", 14)
 	_defeat.add_child(content)
+	# Финал забега (critique_3 п. 73): крупный заголовок Kurale, итог строкой ниже.
+	_defeat_title = DuskTheme.modal_title("", 48)
+	content.add_child(_defeat_title)
 	_defeat_text = _label(content, "", 20)
 	_defeat_text.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_defeat_columns = HBoxContainer.new()
@@ -549,10 +579,10 @@ func _build_defeat() -> void:
 	buttons.alignment = BoxContainer.ALIGNMENT_CENTER
 	buttons.add_theme_constant_override("separation", 10)
 	content.add_child(buttons)
-	_button(buttons, "Ещё забег", _again).tooltip_text = "Новый забег тем же героем"
+	DuskTheme.make_primary(_button(buttons, "Ещё забег", _again)).tooltip_text = "Новый забег тем же героем"
 	if settings.heroes.size() > 1:
 		_button(buttons, "Сменить героя", _change_hero)
-	_button(buttons, "В меню", _back)
+	DuskTheme.make_quiet(_button(buttons, "В меню", _back))
 	_defeat.hide()
 
 
@@ -561,45 +591,57 @@ func _build_heroes() -> void:
 	if settings.heroes.size() < 2:
 		return
 	_hero_panel = PanelContainer.new()
-	_hero_panel.add_theme_stylebox_override("panel", DuskTheme.panel(Color("101b23"), DuskTheme.GOLD, 20))
+	_hero_panel.add_theme_stylebox_override("panel", DuskTheme.modal())
 	_hero_panel.z_index = 10
 	add_child(_hero_panel)
 	var content: VBoxContainer = VBoxContainer.new()
 	content.add_theme_constant_override("separation", 14)
 	_hero_panel.add_child(content)
-	_label(content, "Кто встанет в сторожку?", 24).horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	content.add_child(DuskTheme.modal_title("Кто встанет в сторожку?", 32))
 	var row: HBoxContainer = HBoxContainer.new()
 	row.add_theme_constant_override("separation", 14)
 	content.add_child(row)
+	# Карточка героя целиком — кнопка (critique_3 п. 68): портрет в тёмной виньетке, имя Kurale,
+	# здоровье и перезарядка значками, умения — короткими строками.
 	for index: int in settings.heroes.size():
 		var hero: RitualHeroData = settings.heroes[index]
+		var frame: PanelContainer = PanelContainer.new()
+		frame.name = "HeroCard%d" % index
+		var rest: StyleBoxFlat = DuskTheme.panel(Color(0.04, 0.06, 0.08, 0.9), Color(1, 1, 1, 0.08), 12)
+		var lit: StyleBoxFlat = DuskTheme.panel(Color(0.1, 0.09, 0.06, 0.95), DuskTheme.GOLD, 12)
+		frame.add_theme_stylebox_override("panel", rest)
+		frame.mouse_filter = Control.MOUSE_FILTER_STOP
+		frame.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		frame.mouse_entered.connect(frame.add_theme_stylebox_override.bind("panel", lit))
+		frame.mouse_exited.connect(frame.add_theme_stylebox_override.bind("panel", rest))
+		frame.gui_input.connect(_hero_card_input.bind(index))
+		row.add_child(frame)
 		var card: VBoxContainer = VBoxContainer.new()
 		card.custom_minimum_size = Vector2(250, 0)
 		card.add_theme_constant_override("separation", 8)
-		row.add_child(card)
+		card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		frame.add_child(card)
 		var portrait: TextureRect = TextureRect.new()
 		portrait.texture = load(hero.portrait) as Texture2D
 		portrait.custom_minimum_size = Vector2(250, 170)
 		portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		portrait.self_modulate = Color(0.82, 0.86, 0.94)
+		portrait.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		card.add_child(portrait)
-		var title: Label = _label(card, hero.display_name, 20)
-		title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		title.add_theme_color_override("font_color", DuskTheme.GOLD)
-		# HP и перезарядка - главное отличие героев в забеге (docs/37 HER-4).
-		var vitals: Label = _label(card, "♥ %d · умение раз в %d с" % [hero.hp,
-			hero.cooldown_ticks / settings.combat.ticks_per_second], 15)
+		var title: Label = DuskTheme.modal_title(hero.display_name, 24)
+		card.add_child(title)
+		var vitals: Label = _label(card, "♥ %d   ⟳ %d с" % [hero.hp, hero.cooldown_ticks / settings.combat.ticks_per_second], 18)
 		vitals.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		vitals.add_theme_color_override("font_color", Color("e7b2a4"))
+		vitals.tooltip_text = "Здоровье героя (здоровье забега) и перезарядка умения"
 		for text: String in [hero.passive_text, hero.skill_text]:
-			var line: Label = _label(card, text, 18)
+			var line: Label = _label(card, text.replace(" с.", "\u00a0с."), 17)
 			line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 			line.custom_minimum_size = Vector2(250, 0)
-		var spacer: Control = Control.new()
-		spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
-		card.add_child(spacer)
-		var button: Button = _button(card, "Выбрать", _pick_hero.bind(index))
-		button.add_theme_font_size_override("font_size", 18)
+			line.add_theme_color_override("font_color", DuskTheme.MUTED)
+		for child: Node in card.get_children():
+			(child as Control).mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_hero_panel.hide()
 
 
@@ -610,7 +652,13 @@ func _show_heroes() -> void:
 	_hero_panel.show()
 	_hero_panel.reset_size()
 	_hero_panel.set_anchors_and_offsets_preset(Control.PRESET_CENTER, Control.PRESET_MODE_MINSIZE)
-	_message.text = "Выберите героя: он стоит в сторожке, его здоровье — здоровье забега."
+	# Без тоста (critique_3 п. 68): он повторял заголовок окна.
+
+
+func _hero_card_input(event: InputEvent, index: int) -> void:
+	var press: InputEventMouseButton = event as InputEventMouseButton
+	if press != null and press.pressed and press.button_index == MOUSE_BUTTON_LEFT:
+		_pick_hero(index)
 
 
 func _pick_hero(index: int) -> void:
@@ -632,13 +680,13 @@ func _change_hero() -> void:
 ## Выбор дара за босса: игра стоит (симуляция не идёт), пока не выбран один из трёх.
 func _build_gifts() -> void:
 	_gift_panel = PanelContainer.new()
-	_gift_panel.add_theme_stylebox_override("panel", DuskTheme.panel(Color("101b23"), DuskTheme.GOLD, 20))
+	_gift_panel.add_theme_stylebox_override("panel", DuskTheme.modal())
 	_gift_panel.z_index = 10
 	add_child(_gift_panel)
 	var content: VBoxContainer = VBoxContainer.new()
 	content.add_theme_constant_override("separation", 10)
 	_gift_panel.add_child(content)
-	_label(content, "Босс повержен! Выберите дар:", 22).horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	content.add_child(DuskTheme.modal_title("Босс повержен — выберите дар", 30))
 	_gift_buttons = VBoxContainer.new()
 	_gift_buttons.add_theme_constant_override("separation", 8)
 	content.add_child(_gift_buttons)
@@ -759,9 +807,9 @@ func _show_defeat() -> void:
 	var record: bool = RitualRunRecord.submit(nights, trial.bosses_killed)
 	var best: Dictionary[String, int] = RitualRunRecord.best()
 	var seconds: int = trial.tick_count / settings.combat.ticks_per_second
-	_defeat_text.text = "%s\nПродержались ночей: %d · рекорд: %d%s\nВремя забега %d:%02d · боссов убито: %d" % [
-		trial.result, nights, best["nights"], " — новый!" if record else "", seconds / 60, seconds % 60,
-		trial.bosses_killed]
+	_defeat_title.text = trial.result.get_slice("\n", 0).trim_suffix(".")
+	_defeat_text.text = "Ночей: %d · рекорд: %d%s · время %d:%02d · боссов: %d" % [
+		nights, best["nights"], " — новый!" if record else "", seconds / 60, seconds % 60, trial.bosses_killed]
 	for child: Node in _defeat_columns.get_children():
 		_defeat_columns.remove_child(child)
 		child.queue_free()
@@ -771,7 +819,7 @@ func _show_defeat() -> void:
 	var leaks: PackedStringArray = RitualRunStats.leak_lines(trial)
 	if not reaction.is_empty():
 		leaks.append("")
-		leaks.append("Чаще всего: %s" % reaction)
+		leaks.append("Самая частая реакция: %s" % reaction)
 	_defeat_column("Прорвались", leaks)
 	_defeat.reset_size()
 	_defeat.set_anchors_and_offsets_preset(Control.PRESET_CENTER, Control.PRESET_MODE_MINSIZE)
@@ -786,7 +834,7 @@ func _defeat_column(title: String, lines: PackedStringArray) -> void:
 	head.add_theme_color_override("font_color", DuskTheme.GOLD)
 	head.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	head.custom_minimum_size.x = 230
-	_label(column, "\n".join(lines) if not lines.is_empty() else "—", 14)
+	_label(column, "\n".join(lines) if not lines.is_empty() else "ничего", 18)
 
 
 func _build_schedule() -> void:
@@ -991,14 +1039,20 @@ func _process(delta: float) -> void:
 	if _overlay != null:
 		var modal: bool = (_hero_panel != null and _hero_panel.visible) or _gift_panel.visible or _defeat.visible
 		_overlay.refresh(trial, _paused, modal, delta)
+		_modal_shade.visible = modal
+		# Поражение — на экране только итог (п. 73): шапки и дока не видно.
+		_modal_shade.color = Color(0.0, 0.01, 0.02, 0.86 if _defeat.visible else 0.62)
 		if board.stage is RitualStage3D:
 			(board.stage as RitualStage3D).set_pause_look(_paused and trial.phase == RitualTrial.Phase.RUNNING \
 					and not modal)
 
 
 ## Сообщение гаснет через TOAST_SECONDS после последней смены текста; подсказка выбора цели
-## держится, пока выбор не закончен.
+## держится, пока выбор не закончен. Пока открыта легенда «?», тоста нет (critique_3 п. 71).
 func _age_toast(delta: float) -> void:
+	if _overlay != null and _overlay.legend_visible():
+		_toast.visible = false
+		return
 	if _message.text != _toast_text:
 		_toast_text = _message.text
 		_toast_age = 0.0
@@ -1072,7 +1126,7 @@ func _choose_purchase(index: int) -> void:
 	board.selected_id = 0
 	board.preview_rotation = 0
 	board.action = &"buy"
-	_message.text = "Выберите свободный участок. ПКМ/Esc - отмена" if settings.uses_plots() \
+	_message.text = "Выберите свободный участок. ПКМ/Esc — отмена" if settings.uses_plots() \
 		else PLACE_HINT if settings.is_endless() else "Выберите свободные клетки. ПКМ поворачивает фигуру."
 	_refresh()
 
@@ -1205,7 +1259,7 @@ func _announce_repairs() -> void:
 		if tower.durability >= 0 and tower.durability * 2 <= settings.max_durability(tower.level):
 			worn += 1
 	if worn > 0:
-		_message.text = "Нужен ремонт: ослабших домов %d. Починить все: %d" % [worn, trial.repair_all_cost()]
+		_message.text = "Нужен ремонт: ослабли дома (%d) · починить всё — %d" % [worn, trial.repair_all_cost()]
 
 
 func _refresh_building_actions(tower: TowerState) -> void:
@@ -1322,10 +1376,13 @@ func _refresh_streets() -> void:
 	if _street_button == null:
 		return
 	if not trial.can_grow():
-		_street_button.text = "Город достроен" if _dock != null else "Проклятая земля"
+		_street_button.text = "✓ Город достроен" if _dock != null else "Проклятая земля"
 		_street_button.tooltip_text = "Дальше — проклятая земля: больше улиц не пристроить."
 		_street_button.disabled = true
+		# Статус, а не кнопка (critique_3 п. 57): без рамки и заливки.
+		_street_button.flat = true
 		return
+	_street_button.flat = false
 	var street: RitualStreetData = settings.streets[trial.street_nights.size()]
 	if _dock != null:
 		# «Укрепить» обещало защиту, а улица открывает новый вход врагам (critique_2 п. 26).
@@ -1660,12 +1717,17 @@ func _selection_text(tower: TowerState) -> String:
 		if tower.is_action_blocked():
 			condition = "Строится"
 		var next: RitualTower = trial.upgrade_preview(tower)
-		var damage: String = "Урон/с по целям %d" % _display_dps(tower)
+		# Днём «урон 0» бессмыслен (critique_3 п. 55): урон — только ночью; днём строка дока — роль
+		# и состояние, остальное — в подсказке.
+		var damage: String = "урон %d в с" % _display_dps(tower)
 		if next != null:
 			damage += ", после улучшения %d" % _display_dps(next)
-		var text: String = "%s · %s%s\n%s · %s · %s\n%s · прочность %d%% · ремонт %d" % [tower.data.display_name,
-			settings.level_name(tower.level), branch_name, profile.role, damage, ward_note(settings, tower.data),
-			condition, tower.durability * 100 / maxi(1, full), trial.repair_cost(tower)]
+		var parts: PackedStringArray = [profile.role]
+		if settings.is_night(trial.tick_count):
+			parts.insert(1, damage)
+		var text: String = "%s · %s%s\n%s\n%s · прочность %d%% · ремонт %d · %s" % [tower.data.display_name,
+			settings.level_name(tower.level), branch_name, " · ".join(parts),
+			condition, tower.durability * 100 / maxi(1, full), trial.repair_cost(tower), ward_note(settings, tower.data)]
 		var reactions: String = _reaction_note(tower.id)
 		return text + ("\n" + reactions if not reactions.is_empty() else "")
 	var behavior: RitualLevelBehavior = settings.level_behavior(tower)

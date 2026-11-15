@@ -10,6 +10,6 @@ damage_percent = 175
 stun_ticks = 8
 suppress_status = false
 display_name = "Прожарка"
-explanation = "Заряд → Огонь: урон ×1.25, стан 0.2 с; заряд поглощается."
+explanation = "Заряд → Огонь: урон ×1,25, стан 0,2 с; заряд поглощается."
 pay_out_consumed = true
 cooldown_ticks = 50
