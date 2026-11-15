@@ -23,6 +23,12 @@ const PLAZA: Rect2i = Rect2i(16, 8, 8, 5)
 const TEREM_AT: Vector3 = Vector3(43.5, 0.0, 1.0)
 const TEREM_FRONT: Vector3 = Vector3(-1.0, 0.0, 0.0)
 const TEREM_SIZE: float = 1.9
+## Обрезанный терем и его подклет (в единицах модели; tools/make_terem_trim.gd).
+const TEREM_TRIM: String = "res://assets/noir/courtyard/terem_trim.res"
+const TEREM_KEEP: Rect2 = Rect2(-0.84, -0.92, 1.84, 1.84)
+const CURB_WIDTH: float = 0.16
+## Верх оставшейся плиты под срубом в единицах модели (0,28 x 1,9 = 0,53 м).
+const PLINTH_TOP: float = 0.285
 const FILL: CourtyardForestLayout = preload("res://assets/noir/courtyard/ritual_fill.tres")
 ## Запас от открытой клетки до травы и камней (частокол стоит в 1 м от клетки).
 const GRASS_GAP: float = 1.6
@@ -272,13 +278,46 @@ func _build_terem(_at: Vector3, _out3: Vector3) -> void:
 	if _terem_scene == null:
 		return
 	var house: Node3D = _terem_scene.instantiate() as Node3D
+	_trim_terem(house)
 	_yard.add_child(house)
 	house.position = TEREM_AT
 	# Фасад модели смотрит на +z (в PvP — навстречу дороге); здесь дорога подходит слева.
 	house.rotation.y = atan2(TEREM_FRONT.x, TEREM_FRONT.z)
 	house.scale = Vector3.ONE * TEREM_SIZE
 	terem_bounds = house.transform * _bounds(house)
+	_build_terem_curb(house)
 	_warm_light(TEREM_AT + TEREM_FRONT * 4.0 + Vector3(0, 2.4, 0), 4.0, 9.0)
+
+
+## Терем без тёмной плиты (critique_3 п. 17): сетка из tools/make_terem_trim.gd — сруб, подклет
+## и крыльцо; вокруг площадь мостится как везде. Материал — у исходной модели.
+func _trim_terem(house: Node3D) -> void:
+	if not ResourceLoader.exists(TEREM_TRIM):
+		return
+	for node: Node in house.find_children("*", "MeshInstance3D", true, false):
+		var part: MeshInstance3D = node as MeshInstance3D
+		var material: Material = part.mesh.surface_get_material(0)
+		part.mesh = load(TEREM_TRIM) as Mesh
+		part.material_override = material
+		return
+
+
+## Подклет 3,5x3,5 м из камня под срубом (critique_3 п. 17): закрывает рваный край обрезанной плиты
+## (её верх — 0,53 м над мостовой), сверху — венец-бордюр.
+func _build_terem_curb(house: Node3D) -> void:
+	var stone: StandardMaterial3D = ArenaMaterials3D.stone(Color(0.36, 0.36, 0.35))
+	var rim: StandardMaterial3D = ArenaMaterials3D.stone(Color(0.46, 0.45, 0.42))
+	var keep: Rect2 = TEREM_KEEP
+	var center: Vector2 = keep.get_center() * TEREM_SIZE
+	var size: Vector2 = keep.size * TEREM_SIZE + Vector2.ONE * 0.12
+	var top: float = PLINTH_TOP * TEREM_SIZE
+	var basis: Basis = house.basis.orthonormalized()
+	var at: Vector3 = house.position + basis * Vector3(center.x, top * 0.5 - 0.02, center.y)
+	ArenaMaterials3D.part(_yard, ArenaMaterials3D.box(Vector3(size.x, top, size.y)), stone, at,
+			Vector3(0.0, house.rotation.y, 0.0))
+	var lip: Vector3 = house.position + basis * Vector3(center.x, top - 0.03, center.y)
+	ArenaMaterials3D.part(_yard, ArenaMaterials3D.box(Vector3(size.x + CURB_WIDTH, 0.08, size.y + CURB_WIDTH)), rim, lip,
+			Vector3(0.0, house.rotation.y, 0.0))
 
 
 ## Терем внутри частокола — проёма у крыльца, как в PvP, нет (ворота остаются только у входа).
@@ -289,7 +328,7 @@ func _build_walls(fine: Dictionary[Vector2i, bool], entry: Vector2, _door: Vecto
 ## Дорога от конца пути сворачивает к крыльцу терема на площади. Дороги улиц кончаются
 ## у сторожки (их обочины и ворота — для подклетов и частокола).
 func _build_road(finish: float, _door: Vector3, out3: Vector3) -> PackedVector2Array:
-	var main_bank: PackedVector2Array = super._build_road(finish, TEREM_AT + TEREM_FRONT * 3.6, out3)
+	var main_bank: PackedVector2Array = super._build_road(finish, TEREM_AT + TEREM_FRONT * 1.75, out3)
 	_extra_lanes.clear()
 	_extra_entries.clear()
 	var main: ArenaLayout3D = _layout
@@ -1021,6 +1060,7 @@ func _build_paving(fine: Dictionary[Vector2i, bool]) -> Material:
 			var material: ShaderMaterial = mesh.material_override as ShaderMaterial
 			if material != null and material.shader == PAVING_SHADER:
 				material.set_shader_parameter("custom_palette", true)
+				material.set_shader_parameter("scatter", true)
 				material.set_shader_parameter("grout_color", Color("47514f"))
 				material.set_shader_parameter("stone_dark", Color("343e3e"))
 				material.set_shader_parameter("stone_light", Color("545e5c"))

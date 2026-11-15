@@ -7,6 +7,9 @@ uniform vec3 core : source_color = vec3(1.0, 0.86, 0.55);
 uniform vec3 outer : source_color = vec3(1.0, 0.38, 0.06);
 uniform float intensity = 3.3;
 uniform float seed = 0.0;
+// Пламя в чаше идола (critique_3 п. 12): стоит вертикально и поворачивается к камере только вокруг
+// оси Y — сверху виден не срез картонки, а язык; масштаб узла сохраняется (растёт с заговорами).
+uniform bool upright = false;
 
 float hash(vec2 p) {
 	return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
@@ -20,8 +23,17 @@ float noise(vec2 p) {
 }
 
 void vertex() {
-	// полный билборд: плоскость смотрит в камеру, размер — из меша
-	MODELVIEW_MATRIX = VIEW_MATRIX * mat4(INV_VIEW_MATRIX[0], INV_VIEW_MATRIX[1], INV_VIEW_MATRIX[2], MODEL_MATRIX[3]);
+	if (upright) {
+		float scale = length(MODEL_MATRIX[0].xyz);
+		vec3 right = normalize(vec3(INV_VIEW_MATRIX[0].x, 0.0, INV_VIEW_MATRIX[0].z) + vec3(1e-4, 0.0, 0.0));
+		vec3 up = vec3(0.0, 1.0, 0.0);
+		vec3 back = cross(right, up);
+		MODELVIEW_MATRIX = VIEW_MATRIX * mat4(vec4(right * scale, 0.0), vec4(up * scale, 0.0),
+				vec4(back * scale, 0.0), MODEL_MATRIX[3]);
+	} else {
+		// полный билборд: плоскость смотрит в камеру, размер — из меша
+		MODELVIEW_MATRIX = VIEW_MATRIX * mat4(INV_VIEW_MATRIX[0], INV_VIEW_MATRIX[1], INV_VIEW_MATRIX[2], MODEL_MATRIX[3]);
+	}
 }
 
 void fragment() {

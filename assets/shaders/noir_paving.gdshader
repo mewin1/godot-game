@@ -10,6 +10,9 @@ uniform bool custom_palette = false;
 uniform vec3 stone_dark : source_color;
 uniform vec3 stone_light : source_color;
 uniform vec3 grout_color : source_color;
+// Без «кафеля» (critique_3 п. 23): каждая клетка 2 м берёт одну из четырёх плиток карты без рамки,
+// повёрнутую по хэшу клетки; границы клеток волнистые. Выключено — прежняя кладка PvP.
+uniform bool scatter = false;
 varying vec2 ground;
 varying float border;
 
@@ -18,10 +21,41 @@ void vertex() {
 	border = COLOR.r;
 }
 
+float hash(vec2 p) {
+	return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+}
+
+float value_noise(vec2 p) {
+	vec2 i = floor(p);
+	vec2 f = fract(p);
+	f = f * f * (3.0 - 2.0 * f);
+	return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x), mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x), f.y);
+}
+
 void fragment() {
 	vec2 uv = ground * 0.25;
-	vec3 r = texture(relief, uv).rgb;
-	vec3 stone = texture(setts, uv).rgb;
+	vec2 du = dFdx(uv);
+	vec2 dv = dFdy(uv);
+	mat2 turn = mat2(1.0);
+	if (scatter) {
+		vec2 warp = vec2(value_noise(ground * 0.45), value_noise(ground * 0.45 + 17.3)) * 0.8 - 0.4;
+		vec2 g = (ground + warp) * 0.5;
+		vec2 cell = floor(g);
+		vec2 local = fract(g) - 0.5;
+		float h = hash(cell);
+		float quarter = floor(h * 4.0);
+		float c = quarter == 1.0 ? 0.0 : (quarter == 3.0 ? 0.0 : (quarter == 2.0 ? -1.0 : 1.0));
+		float s = quarter == 1.0 ? 1.0 : (quarter == 3.0 ? -1.0 : 0.0);
+		turn = mat2(vec2(c, s), vec2(-s, c));
+		local = turn * local + 0.5;
+		vec2 tile = vec2(floor(fract(h * 7.13) * 2.0), floor(fract(h * 3.77) * 2.0));
+		const float CROP = 0.08;
+		uv = (tile + CROP + local * (1.0 - 2.0 * CROP)) * 0.5;
+		du = turn * du * (1.0 - 2.0 * CROP);
+		dv = turn * dv * (1.0 - 2.0 * CROP);
+	}
+	vec3 r = textureGrad(relief, uv, du, dv).rgb;
+	vec3 stone = textureGrad(setts, uv, du, dv).rgb;
 	if (custom_palette) {
 		float value = dot(stone, vec3(0.29, 0.58, 0.13));
 		vec3 slab = mix(stone_dark, stone_light, smoothstep(0.03, 0.115, value));
@@ -47,6 +81,6 @@ void fragment() {
 	SPECULAR = 0.42;
 	CLEARCOAT = wet * 0.24;
 	CLEARCOAT_ROUGHNESS = 0.23;
-	vec2 slope = (r.rg * 2.0 - 1.0) * 0.85;
+	vec2 slope = transpose(turn) * ((r.rg * 2.0 - 1.0) * 0.85);
 	NORMAL = normalize((VIEW_MATRIX * vec4(normalize(vec3(slope.x, 1.0, slope.y)), 0.0)).xyz);
 }
