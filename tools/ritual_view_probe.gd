@@ -6,7 +6,7 @@ extends SceneTree
 ## герой и столбы сторожки. Повторяет все кадры разбора critique_3 одной командой.
 ## godot --path . --screen 1 -s res://tools/ritual_view_probe.gd -- --size=1920x1080 --level=1
 ##     --moment=day|evening|dawn|spawn|prespawn|dusk|night|nightN|boss [--night=N]
-##     --state=heroes,idol,legend,place,select,alt,hover,tooltip,damaged,defeat,banner,tier2,tier3,live,half,toast
+##     --state=street,walls,heroes,idol,legend,place,select,alt,hover,tooltip,damaged,defeat,banner,tier2,tier3,live,half,toast
 ##     --shots=ui,game,top,gates,<камера> --out=<папка> --tag=x --empty --run=<сек> --dump
 ## Камеры: terem, idols, gatehouse, pier, bridge, trailend, enemy, enemy2, hero, pond, pondclose,
 ##     pondnight, plaza, plazatop, stream, spawn, shrine, machines, gatewest, northrow, wide, house,
@@ -100,7 +100,20 @@ func _run() -> void:
 		trial.execute(RitualCommand.new(RitualCommand.Action.STREET))
 	if _houses:
 		_fill_plots(trial, _states.has("half"))
+	if _states.has("street"):
+		# Плейтест 19 ноября: улица куплена днём — вход откроется только через полный день.
+		trial.gold += 1000
+		_panel._grow()
 	_advance_to_moment(trial)
+	if _states.has("walls"):
+		# Два частокола-заслона на главной дороге (плейтест 19 ноября).
+		trial.palisades = 2
+		var end: int = trial.field.lane_end_progress(0)
+		for share: int in [12, 88]:
+			var placed: String = trial.execute(RitualCommand.new(RitualCommand.Action.PALISADE, 0, Vector2i.ZERO, 0, 0,
+					end * share / 100))
+			print("WALL: %d%% '%s' on road %d" % [share, placed, trial.wall_lanes.size()])
+		_advance(trial, trial.tick_count + 60)
 	if _states.has("damaged"):
 		for tower: TowerState in trial.field.towers:
 			if tower.id % 2 == 0 and tower.durability > 0:

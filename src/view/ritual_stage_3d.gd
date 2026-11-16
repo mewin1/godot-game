@@ -474,9 +474,12 @@ func _make_palisade(lane: int, progress: int) -> Node3D:
 	node.position = road.road_point(length)
 	var direction: Vector3 = road.road_direction(length)
 	node.rotation.y = atan2(direction.x, direction.z)
+	# Колья 1,7 м с перекладиной (плейтест 19 ноября): низкий частокол терялся за домами x2.
 	for index: int in 5:
-		ArenaMaterials3D.part(node, ArenaMaterials3D.cylinder(0.10, 0.02, 1.2, 5),
-			ArenaMaterials3D.solid(ArenaMaterials3D.WOOD), Vector3((index - 2) * 0.36, 0.6, 0))
+		ArenaMaterials3D.part(node, ArenaMaterials3D.cylinder(0.11, 0.02, 1.7, 5),
+			ArenaMaterials3D.solid(ArenaMaterials3D.WOOD), Vector3((index - 2) * 0.36, 0.85, 0))
+	ArenaMaterials3D.part(node, ArenaMaterials3D.box(Vector3(1.7, 0.12, 0.12)),
+		ArenaMaterials3D.solid(ArenaMaterials3D.WOOD), Vector3(0, 0.95, 0.1))
 	return node
 
 

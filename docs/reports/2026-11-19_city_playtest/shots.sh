@@ -54,3 +54,9 @@ run l4eve   --size=1920x1080 --level=4 --moment=evening --shots=game,plazatop,te
 run l1nhero --size=1280x720 --level=1 --moment=night --shots=game,hero
 run toast1440 --size=1440x1080 --level=4 --moment=night --state=toast --shots=ui
 run l2bossg --size=1920x1080 --level=2 --moment=boss --shots=game,gatewest
+# Добавлено для плейтеста 19 ноября: улица куплена днём, частоколы ночью, мост и дома у моста,
+# шапка ночью босса на 1280, верх города на 16:9.
+run street  --size=1920x1080 --level=1 --moment=day --state=street --shots=ui --dump
+run walls   --size=1920x1080 --level=2 --moment=spawn --state=walls --shots=ui,game
+run bridge2 --size=1920x1080 --level=2 --moment=night --shots=bridge,top
+run boss1280 --size=1280x720 --level=3 --moment=boss --shots=ui --dump
