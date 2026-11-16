@@ -56,6 +56,8 @@ extends Resource
 ## Здоровье босса растёт своим темпом — за каждое появление, а не за ночь, иначе дары
 ## за победу почти недостижимы (проба темпа, docs/34 §14 шаг 9).
 @export var boss_hp_growth_percent: int = 60
+## Здоровье первого босса в процентах от его данных (плейтест 19 ноября: боссы были «тонкими»).
+@export var boss_hp_base_percent: int = 100
 ## Доля бюджета ночи на свиту босса (сверх обычных пачек).
 @export var boss_escort_percent: int = 40
 ## Стихийный босс неуязвим к одной из этих стихий (бог постройки).
@@ -179,7 +181,7 @@ func pack_count(night: int) -> int:
 
 
 func boss_hp_percent(night: int) -> int:
-	var value: int = 100
+	var value: int = boss_hp_base_percent
 	for index: int in maxi(0, night / maxi(1, boss_every) - 1):
 		value = value * (100 + boss_hp_growth_percent) / 100
 	return value

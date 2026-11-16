@@ -5,9 +5,11 @@ extends SceneTree
 
 ## Копия правил: аргументы `-- --pressure=29 --budget=14 --boss=1800` меняют рост давления/бюджета ночей
 ## и здоровье босса; `--base`, `--gold`, `--spread`, `--kill=150` (награда в процентах), `--escort` (свита босса,
-## % бюджета ночи) — тоже только в этом прогоне.
+## % бюджета ночи), `--pbase` (давление 1-й ночи), `--bounty` (награда ночи, %), `--bossgrow` (рост босса за
+## каждого следующего, %) — тоже только в этом прогоне.
 ## Бот покупает улицы (ключ `--streets`): днём, со 2-й ночи, если останется запас.
 var _streets: bool = false
+var _off: PackedStringArray = []
 ## `--trace`: кто ранил героя по ночам (вид врага → урон).
 var _trace: bool = false
 var _record: bool = false
@@ -52,6 +54,16 @@ func _run() -> void:
 			heroes.clear()
 			for part: String in argument.trim_prefix("--heroes=").split(","):
 				heroes.append(part.to_int())
+		# Плейтест 19 ноября: перебор сложности без правки .tres.
+		if argument.begins_with("--pbase="):
+			SETTINGS.nights.pressure_base = argument.trim_prefix("--pbase=").to_int()
+		if argument.begins_with("--bounty="):
+			SETTINGS.nights.bounty_percent = argument.trim_prefix("--bounty=").to_int()
+		if argument.begins_with("--bossgrow="):
+			SETTINGS.nights.boss_hp_growth_percent = argument.trim_prefix("--bossgrow=").to_int()
+		# A/B окупаемости (плейтест 19 ноября): --off=skill,supplies,walls — бот этим не пользуется.
+		if argument.begins_with("--off="):
+			_off = argument.trim_prefix("--off=").split(",", false)
 		if argument.begins_with("--escort="):
 			SETTINGS.nights.boss_escort_percent = argument.trim_prefix("--escort=").to_int()
 		if argument == "--trace":
@@ -109,9 +121,12 @@ func _play(policy: String, seed_value: int, hero: int = 0) -> void:
 			trial.execute(RitualCommand.new(RitualCommand.Action.BOON, trial.boon_choice[0]))
 		if policy != "ничего" and trial.tick_count % 10 == 0:
 			_spend(trial)
-			_cast(trial)
-			_palisade(trial)
-			_use_supplies(trial)
+			if not _off.has("skill"):
+				_cast(trial)
+			if not _off.has("walls"):
+				_palisade(trial)
+			if not _off.has("supplies"):
+				_use_supplies(trial)
 		if trial.nights_survived() > last_night:
 			last_night = trial.nights_survived()
 			if last_night == 15:

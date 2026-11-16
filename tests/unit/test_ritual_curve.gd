@@ -26,12 +26,13 @@ func test_endless_curve_is_smooth() -> void:
 			assert_true(gold[night] >= gold[night - 1], "Награда за ночь не падает: " + place)
 			var ratio: int = health[night] * 100 / health[night - 1]
 			if _rules.is_boss_night(night):
-				assert_between(ratio, 110, 145, "Ночь босса - не больше x1,45 к прошлой: " + place)
+				assert_between(ratio, 125, 160, "Ночь босса - не больше x1,60 к прошлой: " + place)
 			elif _rules.is_boss_night(night - 1):
 				# После босса сравнение через ночь: босс поднимает одну ночь, а не кривую.
-				assert_between(health[night] * 100 / health[night - 2], 121, 169, "Две ночи после босса: " + place)
+				assert_between(health[night] * 100 / health[night - 2], 156, 196, "Две ночи после босса: " + place)
 			else:
-				assert_between(ratio, 110, 130, "Ночь к ночи x1,10-x1,30: " + place)
+				# Плейтест 19 ноября: «слишком легко» — давление x1,36 за ночь (было x1,29, цель docs/37 x1,10-1,30).
+				assert_between(ratio, 125, 145, "Ночь к ночи x1,25-x1,45: " + place)
 
 
 func test_omen_changes_composition_not_strength() -> void:

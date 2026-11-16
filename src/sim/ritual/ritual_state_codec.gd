@@ -104,6 +104,8 @@ static func rules_state(source: Resource) -> Dictionary[String, Variant]:
 				continue
 			if nights.pressure_base > 0 and key == "hp_growth_percent":
 				continue
+			if key == "boss_hp_base_percent" and nights.boss_hp_base_percent == 100:
+				continue
 		# Вехи идолов и проулки-срезки (docs/37 IDL-4, ALY-1): пустые списки не меняют отпечаток
 		# прежних правил; новые поля уровня города тоже, пока не заданы.
 		if source is RitualTrialConfig and key in ["idol_milestones", "alleys"] \
