@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <!-- Враги на поле: череп -->
+  <g stroke="#1a1612" stroke-width="2.5" stroke-linejoin="round">
+    <path d="M32 6 C17 6 9 16 9 28 C9 36 13 41 18 44 L18 54 L46 54 L46 44 C51 41 55 36 55 28 C55 16 47 6 32 6 Z" fill="#d9d2c0"/>
+    <circle cx="23" cy="29" r="6" fill="#2a2420"/><circle cx="41" cy="29" r="6" fill="#2a2420"/>
+    <path d="M32 36 L28 43 L36 43 Z" fill="#2a2420"/>
+    <path d="M25 54 L25 48 M32 54 L32 48 M39 54 L39 48" fill="none"/>
+  </g>
+</svg>

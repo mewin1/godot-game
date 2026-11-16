@@ -19,10 +19,22 @@ var _key: String = ""
 var _cards: Array[Control] = []
 var _packs: Array[RitualPack] = []
 var _tips: PackedStringArray = []
+## Шапка полосы значками (плейтест 19 ноября: «неприлично много букв»): пачки и враги — значок и
+## число, примета и ближайший босс — значок, подробности в подсказке.
+const PACKS_ICON: Texture2D = preload("res://assets/ui/ritual/packs.svg")
+const ENEMIES_ICON: Texture2D = preload("res://assets/ui/ritual/enemies.svg")
+const OMEN_ICON: Texture2D = preload("res://assets/ui/ritual/omen.svg")
+const BOSS_ICON: Texture2D = preload("res://assets/ui/ritual/boss.svg")
 var _title: Label
-var _warning: Label
-## Примета ночи (docs/36 §2): название, описание — в подсказке.
-var _omen: Label
+var _packs_box: HBoxContainer
+var _enemies: Label
+var _enemies_box: HBoxContainer
+## Примета ночи (docs/36 §2): значок, название и описание — в подсказке.
+var _omen: TextureRect
+## Босс в следующие ночи: значок, номер ночи и стихия неуязвимости; подробно — в подсказке.
+var _boss: HBoxContainer
+var _boss_night: Label
+var _boss_resist: TextureRect
 var _flow: HFlowContainer
 const MAX_FLOW_WIDTH: float = 760.0
 
@@ -33,16 +45,26 @@ func _init() -> void:
 	var header: HBoxContainer = HBoxContainer.new()
 	header.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(header)
-	_title = _small_label(header, 18)
-	_omen = _small_label(header, 18)
-	_omen.add_theme_color_override("font_color", Color("c9a6f2"))
+	header.add_theme_constant_override("separation", 10)
+	_packs_box = _counter(header, PACKS_ICON)
+	_title = _packs_box.get_child(1) as Label
+	_enemies_box = _counter(header, ENEMIES_ICON)
+	_enemies = _enemies_box.get_child(1) as Label
+	_omen = _glyph(OMEN_ICON, Vector2(26, 26))
 	_omen.mouse_filter = Control.MOUSE_FILTER_STOP
-	_warning = _small_label(header, 18)
-	_warning.add_theme_color_override("font_color", Color("ffab65"))
-	# Полоса делит шапку с таймером и кнопками: длинные строки сокращаются, а не раздвигают шапку.
-	for label: Label in [_omen, _warning]:
-		label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-		label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	header.add_child(_omen)
+	_boss = HBoxContainer.new()
+	_boss.add_theme_constant_override("separation", 3)
+	_boss.mouse_filter = Control.MOUSE_FILTER_STOP
+	header.add_child(_boss)
+	var skull: TextureRect = _glyph(BOSS_ICON, Vector2(26, 26))
+	skull.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_boss.add_child(skull)
+	_boss_night = _small_label(_boss, 18)
+	_boss_night.add_theme_color_override("font_color", Color("ffab65"))
+	_boss_resist = _glyph(null, Vector2(20, 20))
+	_boss_resist.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_boss.add_child(_boss_resist)
 	_flow = HFlowContainer.new()
 	_flow.add_theme_constant_override("h_separation", 4)
 	_flow.add_theme_constant_override("v_separation", 4)
@@ -55,18 +77,27 @@ func refresh(trial: RitualTrial) -> void:
 	var queue: Array[RitualPack] = trial.night_queue()
 	var night: int = trial.current_night()
 	var at_night: bool = trial.settings.is_night(trial.tick_count)
-	# Номер ночи уже в шапке слева (critique_3 п. 44): здесь только пачки и враги.
-	_title.text = "%s: %d" % ["Осталось пачек" if at_night else "Пачек", queue.size()]
+	# Номер ночи уже в шапке слева (critique_3 п. 44): здесь только пачки и враги — значками.
+	_title.text = str(queue.size())
+	_packs_box.tooltip_text = "%s: %d" % ["Осталось пачек этой ночи" if at_night else "Пачек в ночь %d" % night,
+		queue.size()]
 	var alive: int = trial.field.count_alive_mobs()
-	if at_night and alive > 0:
-		_title.text += " · врагов: %d" % alive
+	_enemies_box.visible = at_night and alive > 0
+	_enemies.text = str(alive)
+	_enemies_box.tooltip_text = "Врагов в городе: %d" % alive
 	var night_omen: RitualOmenData = trial.plan().omen(night)
-	_omen.text = "" if night_omen == null else "  · %s" % night_omen.title
+	_omen.visible = night_omen != null
 	_omen.tooltip_text = "" if night_omen == null else "Примета ночи %d — %s.\n%s" % [
 		night, night_omen.title, night_omen.description]
 	var boss: RitualPack = trial.boss_warning()
-	_warning.text = "" if boss == null else "  · Босс в ночь %d%s" % [boss.night,
-		"" if boss.resist == &"" else ", неуязвим к стихии: " + element_name(boss.resist)]
+	_boss.visible = boss != null
+	if boss != null:
+		_boss_night.text = str(boss.night)
+		_boss_resist.visible = boss.resist != &""
+		_boss_resist.texture = RitualIcons.god(boss.resist)
+		_boss_resist.modulate = GodSymbols.get_color(boss.resist) if boss.resist != &"" else Color.WHITE
+		_boss.tooltip_text = "Босс %s — в ночь %d%s" % [trial.settings.enemies[boss.leader].display_name, boss.night,
+			"" if boss.resist == &"" else ".\nНеуязвим к стихии: " + element_name(boss.resist)]
 	var key: String = str(night)
 	for pack: RitualPack in queue:
 		key += ";%d@%d" % [pack.at_tick, trial.pack_lane(pack)]
@@ -215,8 +246,10 @@ func _card(trial: RitualTrial, pack: RitualPack) -> Control:
 		icon.custom_minimum_size = ICON_SIZE
 		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		row.add_child(icon)
-		var count: Label = _small_label(row, 18)
-		count.text = "×%d" % kind.y
+		# Число — только если врагов этого вида больше одного (плейтест 19 ноября: «×1» — лишние буквы).
+		if kind.y > 1:
+			var count: Label = _small_label(row, 18)
+			count.text = str(kind.y)
 	if pack.elite.size() > pack.elite.count(0):
 		var crown: TextureRect = TextureRect.new()
 		crown.texture = ELITE_CROWN
@@ -244,6 +277,29 @@ static func kinds(pack: RitualPack) -> Array[Vector2i]:
 			return first.x == leader
 		return first.y > second.y or (first.y == second.y and first.x < second.x))
 	return result
+
+
+## Значок и число рядом; подсказка — на всей паре.
+func _counter(parent: Node, texture: Texture2D) -> HBoxContainer:
+	var box: HBoxContainer = HBoxContainer.new()
+	box.add_theme_constant_override("separation", 3)
+	box.mouse_filter = Control.MOUSE_FILTER_STOP
+	parent.add_child(box)
+	var icon: TextureRect = _glyph(texture, Vector2(24, 24))
+	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.add_child(icon)
+	_small_label(box, 18)
+	return box
+
+
+static func _glyph(texture: Texture2D, size: Vector2) -> TextureRect:
+	var icon: TextureRect = TextureRect.new()
+	icon.texture = texture
+	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	icon.custom_minimum_size = size
+	icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	return icon
 
 
 func _small_label(parent: Node, font_size: int) -> Label:

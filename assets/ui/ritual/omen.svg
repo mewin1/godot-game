@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <!-- Примета ночи: недоброе око -->
+  <g stroke="#1e1426" stroke-width="2.5" stroke-linejoin="round">
+    <path d="M3 32 C14 14 50 14 61 32 C50 50 14 50 3 32 Z" fill="#c9a6f2"/>
+    <circle cx="32" cy="32" r="11" fill="#6b3f9a"/>
+    <ellipse cx="32" cy="32" rx="3.5" ry="9" fill="#120a18"/>
+  </g>
+</svg>

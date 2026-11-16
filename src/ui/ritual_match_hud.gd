@@ -10,6 +10,10 @@ var hero_name_width: float = 185.0
 ## Док забега: частокол — плитка с числом и клавишей (critique_2 п. 23); null — прежняя кнопка.
 var palisade_tile: RitualActionTile
 var _pause_mark: RitualPauseMark
+## Значок фазы у таймера (плейтест 19 ноября): солнце днём, луна ночью — вместо «рассвет через».
+var _phase_icon: TextureRect
+const DAY_ICON: Texture2D = preload("res://assets/ui/ritual/phase_day.svg")
+const NIGHT_ICON: Texture2D = preload("res://assets/ui/ritual/phase_night.svg")
 
 
 func _init() -> void:
@@ -20,6 +24,14 @@ func _init() -> void:
 	_pause_mark = RitualPauseMark.new()
 	_pause_mark.name = "PauseMark"
 	_pause_mark.hide()
+	_phase_icon = TextureRect.new()
+	_phase_icon.name = "PhaseIcon"
+	_phase_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_phase_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_phase_icon.custom_minimum_size = Vector2(26, 26)
+	_phase_icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_phase_icon.mouse_filter = Control.MOUSE_FILTER_STOP
+	_phase_icon.hide()
 
 
 func refresh_ritual(trial: RitualTrial, paused: bool) -> void:
@@ -39,13 +51,22 @@ func refresh_ritual(trial: RitualTrial, paused: bool) -> void:
 		var at_night: bool = nights.is_night(trial.tick_count)
 		var left: int = ceili(float((nights.night_end(night) if at_night else nights.night_start(night))
 				- trial.tick_count) / trial.settings.combat.ticks_per_second)
-		_phase_label.text = "%s через %d:%02d" % ["рассвет" if at_night else "ночь", left / 60, left % 60]
+		_phase_label.text = "%d:%02d" % [left / 60, left % 60]
+		_phase_icon.texture = NIGHT_ICON if at_night else DAY_ICON
+		_phase_icon.tooltip_text = "%s через %d:%02d" % ["Рассвет" if at_night else "Ночь", left / 60, left % 60]
+		_phase_label.tooltip_text = _phase_icon.tooltip_text
+		_phase_label.mouse_filter = Control.MOUSE_FILTER_STOP
 	# Пауза — значком у таймера (critique_3 п. 45), а не словом. Таймер переезжает в шапку забега
 	# после _init — значок ставится рядом с ним там, где он сейчас.
 	if _pause_mark.get_parent() != _phase_label.get_parent():
 		if _pause_mark.get_parent() != null:
 			_pause_mark.get_parent().remove_child(_pause_mark)
 		_phase_label.add_sibling(_pause_mark)
+		if _phase_icon.get_parent() != null:
+			_phase_icon.get_parent().remove_child(_phase_icon)
+		_phase_label.get_parent().add_child(_phase_icon)
+		_phase_label.get_parent().move_child(_phase_icon, _phase_label.get_index())
+	_phase_icon.visible = trial.settings.is_endless() and trial.phase == RitualTrial.Phase.RUNNING
 	_pause_mark.visible = trial.settings.is_endless() and paused and trial.phase == RitualTrial.Phase.RUNNING
 	if trial.phase == RitualTrial.Phase.PREP:
 		_phase_label.text = "Подготовка"
@@ -71,12 +92,16 @@ func refresh_ritual(trial: RitualTrial, paused: bool) -> void:
 		_skill_button.add_theme_constant_override("icon_max_width", 20)
 		RitualIcons.tint(_skill_button, Color("2a1c10"))
 	var wait: int = ceili(float(trial.hero_ready - trial.tick_count) / trial.settings.combat.ticks_per_second)
-	_skill_button.text = "%s · Q" % skill if trial.tick_count >= trial.hero_ready else "%s · %d с" % [skill, wait]
+	# Значок умения + клавиша или секунды (плейтест 19 ноября: имя не влезало — «Варево · го»);
+	# имя и описание — в подсказке.
+	_skill_button.text = "Q" if trial.tick_count >= trial.hero_ready else "%d с" % wait
 	if hero != null and trial.brew_charges > 0:
-		_skill_button.text = "%s · готово ×%d" % [skill, trial.brew_charges]
+		_skill_button.text = "×%d" % trial.brew_charges
 	_skill_button.disabled = trial.phase != RitualTrial.Phase.RUNNING or trial.tick_count < trial.hero_ready or trial.hero_due >= 0
-	_skill_button.tooltip_text = "%s\n%s" % [hero.skill_text, hero.passive_text] if hero != null \
-			else "Указать дорогу. Через 1 с — физический удар по области; не оглушает."
+	_skill_button.tooltip_text = "%s (Q)\n%s\n%s" % [skill, hero.skill_text, hero.passive_text] if hero != null \
+			else "%s (Q)\nУказать дорогу. Через 1 с — физический удар по области; не оглушает." % skill
+	if hero != null and trial.brew_charges > 0:
+		_skill_button.tooltip_text = "Готово зелий: %d\n%s" % [trial.brew_charges, _skill_button.tooltip_text]
 	var palisade_tip: String = "Частокол поперёк дороги (F): враги стоят, пока первый тяжёлый не сломает его.\nВ запасе: %d." % trial.palisades
 	if trial.walls_mode():
 		palisade_tip = ("Частокол поперёк дороги (F): первый подошедший враг упирается, и частокол держит всех " \

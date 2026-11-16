@@ -426,7 +426,7 @@ func _build_dock(root_box: VBoxContainer) -> void:
 	# Действия героя одним рядом плиток (critique_2 п. 23-24): умение, частокол, три припаса.
 	var orders: Node = _hud._skill_button.get_parent()
 	_hud._skill_button.reparent(_dock.utility_row)
-	_hud._skill_button.custom_minimum_size = Vector2(138, 48)
+	_hud._skill_button.custom_minimum_size = Vector2(92, 48)
 	_hud._skill_button.add_theme_font_size_override("font_size", 18)
 	_hud._reserve_button.reparent(_dock.utility_row)
 	_hud._reserve_button.hide()

@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <!-- Ночь: серп луны и звезда -->
+  <g stroke="#1c2230" stroke-width="2.5" stroke-linejoin="round">
+    <path d="M40 6 A26 26 0 1 0 58 44 A20 20 0 1 1 40 6 Z" fill="#c9d4e8"/>
+    <path d="M50 10 L52.5 16 L58.5 16.5 L54 20.5 L55.5 26.5 L50 23 L44.5 26.5 L46 20.5 L41.5 16.5 L47.5 16 Z" fill="#e8ecf4"/>
+  </g>
+</svg>

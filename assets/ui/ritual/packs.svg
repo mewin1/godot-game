@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <!-- Пачки ночи: три силуэта -->
+  <g stroke="#1a1612" stroke-width="2.5" stroke-linejoin="round">
+    <circle cx="16" cy="22" r="7" fill="#8f8a7e"/><path d="M5 54 C5 40 10 33 16 33 C22 33 27 40 27 54 Z" fill="#8f8a7e"/>
+    <circle cx="48" cy="22" r="7" fill="#8f8a7e"/><path d="M37 54 C37 40 42 33 48 33 C54 33 59 40 59 54 Z" fill="#8f8a7e"/>
+    <circle cx="32" cy="18" r="8" fill="#cfc8b6"/><path d="M19 58 C19 42 25 30 32 30 C39 30 45 42 45 58 Z" fill="#cfc8b6"/>
+  </g>
+</svg>

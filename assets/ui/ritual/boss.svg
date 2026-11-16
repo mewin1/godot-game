@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <!-- Босс: рогатый череп в короне -->
+  <g stroke="#1a0e0a" stroke-width="2.5" stroke-linejoin="round">
+    <path d="M14 22 C6 18 4 8 8 3 C10 12 16 15 21 15 Z" fill="#d46c50"/>
+    <path d="M50 22 C58 18 60 8 56 3 C54 12 48 15 43 15 Z" fill="#d46c50"/>
+    <path d="M32 12 C19 12 13 21 13 31 C13 38 16 42 21 45 L21 56 L43 56 L43 45 C48 42 51 38 51 31 C51 21 45 12 32 12 Z" fill="#e2d8c2"/>
+    <circle cx="24" cy="32" r="5.5" fill="#7a1a10"/><circle cx="40" cy="32" r="5.5" fill="#7a1a10"/>
+    <path d="M32 38 L28.5 44 L35.5 44 Z" fill="#2a1a14"/>
+  </g>
+</svg>
