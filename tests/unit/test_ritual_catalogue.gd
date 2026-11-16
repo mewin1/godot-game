@@ -12,9 +12,12 @@ func before_each() -> void:
 	_trial.gold = 10000
 
 
-func test_start_has_ten_separate_plots() -> void:
-	var cells: Array[Vector2i] = _trial.field.get_buildable_cells()
-	assert_eq(cells.size(), 10)
+func test_start_has_thirteen_separate_plots_and_all_levels_keep_gaps() -> void:
+	assert_eq(_trial.field.get_buildable_cells().size(), 13)
+	var cells: Array[Vector2i] = []
+	for plot: RitualPlot in _settings.plots:
+		assert_false(cells.has(plot.cell), "Участок %s один" % plot.cell)
+		cells.append(plot.cell)
 	for first: Vector2i in cells:
 		for second: Vector2i in cells:
 			if first != second:
@@ -108,12 +111,12 @@ func test_city_unlocks_plots_and_catalogue_tiers() -> void:
 	assert_eq(_trial.gold, gold)
 	assert_eq(_trial.execute(RitualCommand.new(RitualCommand.Action.STREET)), "")
 	assert_eq(_trial.city_level(), 2)
-	assert_eq(_trial.field.get_buildable_cells().size(), 16)
+	assert_eq(_trial.field.get_buildable_cells().size(), 26)
 	assert_eq(_trial.building_unlock_error(second), "")
 	assert_ne(_trial.building_unlock_error(third), "")
 	assert_eq(_trial.execute(RitualCommand.new(RitualCommand.Action.STREET)), "")
 	assert_eq(_trial.city_level(), 3)
-	assert_eq(_trial.field.get_buildable_cells().size(), 22)
+	assert_eq(_trial.field.get_buildable_cells().size(), 39)
 	assert_eq(_trial.building_unlock_error(third), "")
 
 

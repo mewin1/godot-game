@@ -27,16 +27,17 @@ func _enemy(fast: bool) -> int:
 
 func test_city_levels_open_plots_tiers_and_hero_hp() -> void:
 	assert_eq(_trial.city_level(), 1)
-	assert_eq(_trial.field.get_buildable_cells().size(), 10)
+	# Плейтест 19 ноября: участок на каждом мощёном месте своего уровня — 13, +13, +13, +1.
+	assert_eq(_trial.field.get_buildable_cells().size(), 13)
 	var hp: int = _trial.max_hp()
 	_grow(1)
-	assert_eq(_trial.field.get_buildable_cells().size(), 16)
+	assert_eq(_trial.field.get_buildable_cells().size(), 26)
 	_grow(1)
-	assert_eq(_trial.field.get_buildable_cells().size(), 22)
+	assert_eq(_trial.field.get_buildable_cells().size(), 39)
 	assert_eq(_trial.field.idols.size(), 3)
 	_grow(1)
 	assert_eq(_trial.city_level(), 4)
-	assert_eq(_trial.field.get_buildable_cells().size(), 26)
+	assert_eq(_trial.field.get_buildable_cells().size(), 40)
 	assert_eq(_trial.max_hp(), hp + 10, "Детинец прибавляет здоровья герою")
 	assert_eq(_trial.field.idols.size(), 4, "Детинец ставит четвёртого идола")
 	assert_false(_trial.can_grow())

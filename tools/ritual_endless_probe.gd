@@ -133,14 +133,16 @@ func _play(policy: String, seed_value: int, hero: int = 0) -> void:
 			timeline.append("н%d %d:%02d ♥%d з%d д%d в%d" % [last_night, trial.tick_count / TPS / 60,
 				trial.tick_count / TPS % 60, trial.hp, trial.gold, trial.field.towers.size(),
 				_enemies(trial, last_night)])
+		var alive_bosses: Dictionary[int, bool] = {}
 		for base: MobState in trial.field.mobs:
-			if not base.data.tags.has(SETTINGS.boss_tag):
-				continue
-			if base.is_alive() and not boss_seen.has(base.id):
-				boss_seen[base.id] = trial.tick_count
-			elif not base.is_alive() and boss_seen.has(base.id) and boss_seen[base.id] >= 0:
-				boss_lives.append(trial.tick_count - boss_seen[base.id])
-				boss_seen[base.id] = -1
+			if base.is_alive() and base.data.tags.has(SETTINGS.boss_tag):
+				alive_bosses[base.id] = true
+				if not boss_seen.has(base.id):
+					boss_seen[base.id] = trial.tick_count
+		for id: int in boss_seen:
+			if boss_seen[id] >= 0 and not alive_bosses.has(id):
+				boss_lives.append(trial.tick_count - boss_seen[id])
+				boss_seen[id] = -1
 		trial.tick()
 	var seconds: int = trial.tick_count / TPS
 	var used: Dictionary[int, int] = {}

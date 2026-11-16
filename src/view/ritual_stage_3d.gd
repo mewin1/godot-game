@@ -40,10 +40,10 @@ const PORTRAIT_TURN: float = -PI * 0.5
 ## Враги забега мельче домов (решение автора 15 ноября: враг ~0,7 высоты дома тира I, дома x2).
 ## Читаемость держит плотная доска 17x14: камера ближе, чем на прежней 20x18.
 const MOB_SCALE: float = 0.75
-## Сторожка: центр на столько метров до конца главной дороги; герой — перед её проёмом и чуть к камере.
+## Сторожка: центр на столько метров до конца главной дороги.
 const GATEHOUSE_BACK: float = 2.2
-const HERO_BEFORE_GATE: float = 0.65
-const HERO_OFF_AXIS: float = 0.45
+## Герой — на столько метров за концом главной дороги, к терему (общий путь всех входов).
+const HERO_PAST_END: float = 2.2
 ## Солнце, закат, ночь и тени облаков (ночь — свет PvP-двора).
 var _daylight: RitualDaylight
 var _catalogue_profile: bool = false
@@ -237,7 +237,8 @@ func _build_gates(ritual: RitualField) -> void:
 	_gates.set_gates(points, outwards)
 
 
-## Герой забега в сторожке — конец главной улицы, у крыльца терема, чуть в стороне от колеи.
+## Герой забега — перед крыльцом терема (плейтест 19 ноября): за развилкой, где сходятся все входы,
+## иначе враги северной и южной улиц проходили мимо него. Сторожка остаётся воротами главной улицы.
 func _spawn_hero() -> void:
 	if _hero != null:
 		_hero.queue_free()
@@ -245,12 +246,9 @@ func _spawn_hero() -> void:
 	_hero = scene.instantiate() as Node3D
 	_world.add_child(_hero)
 	ArenaTower3D._tune_materials(_hero, STYLE.noir_model_glow, STYLE.noir_model_tone, STYLE.noir_model_rim)
-	# Перед западным проёмом сторожки (critique_4 п. 10, 54): вне тени крыши — виден целиком с игровой
-	# камеры; чуть к камере от оси, враги идут мимо, а не сквозь героя.
 	var end: float = layout.road_end_length()
-	var spot: float = end - GATEHOUSE_BACK - RitualGates3D.GATE_HALF_DEPTH - HERO_BEFORE_GATE
-	var along: Vector3 = layout.road_direction(spot)
-	_hero.position = layout.road_point(spot) + Vector3(along.z, 0.0, -along.x) * -HERO_OFF_AXIS
+	var along: Vector3 = layout.road_direction(end - 0.3)
+	_hero.position = layout.road_point(end) + along * HERO_PAST_END
 	_hero.rotation.y = PI * 0.5
 
 
