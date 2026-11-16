@@ -92,10 +92,9 @@ func _check_endless(scene: PackedScene) -> void:
 	panel.trial.gold += 1000
 	panel._grow()
 	_check(panel.trial.city_level() == 2 and panel.trial.entrances(1000) == 2, "«Укрепить город» не открыл север")
-	panel._toggle_barricade(0)
-	_check(panel.trial.barricades[0] and not panel.trial.alley_open(0), "Проулок не завален")
-	panel._toggle_barricade(0)
-	_check(panel.trial.alley_open(0), "Завал не разобран")
+	# Плейтест 19 ноября: проулок не заваливают — кнопки нет, проулок открыт.
+	panel._refresh()
+	_check(panel.trial.alley_open(0) and not panel._barricade_buttons[0].visible, "Проулок закрыт или есть кнопка завала")
 	# Припасы за золото днём (docs/37 SUP-2).
 	var tar: int = panel.trial.supplies[RitualTrial.Supply.TAR]
 	panel._buy_supply(RitualTrial.Supply.TAR)
@@ -104,7 +103,7 @@ func _check_endless(scene: PackedScene) -> void:
 	while panel.trial.tick_count < nights.night_start(1) + 1:
 		panel.trial.tick()
 	panel._refresh()
-	_check(panel._hud._round_label.text == "Ночь 1" and panel._clock.text.begins_with("рассвет через"),
+	_check(panel._hud._round_label.text == "Ночь 1" and panel._clock.tooltip_text.begins_with("Рассвет через"),
 		"Ночь не наступила после вечера: %s %s" % [panel._hud._round_label.text, panel._clock.text])
 	var boss: RitualMob = panel.trial.field.spawn_mob(nights.boss_enemy)
 	panel.trial.field.deal_mob_damage(boss, boss.hp * 10)
@@ -136,7 +135,7 @@ func _check_endless(scene: PackedScene) -> void:
 	panel._refresh()
 	_check(panel._status.text == "40/40" and panel._hud._hero_name.text.contains("Яга"),
 		"В доке не Яга: " + panel._status.text + " " + panel._hud._hero_name.text)
-	_check(panel._skill_button.text.begins_with("Варево"), "Навык Яги не варево: " + panel._skill_button.text)
+	_check(panel._skill_button.tooltip_text.begins_with("Варево"), "Навык Яги не варево: " + panel._skill_button.tooltip_text)
 	panel._choose_skill()
 	_check(panel.trial.brew_charges == 1 and panel.board.action == &"", "Варево требует прицела или не готово")
 	panel.queue_free()

@@ -47,6 +47,10 @@ var _crow_in: float = 2.5
 var _flock_in: float = 14.0
 var _bear: ArenaBearCub3D
 var _battle: bool = false
+## Плейтест 19 ноября («Обряд»): центр поля для облёта ворон и запрет появляться в кадре — вороны
+## прилетают из-за дальнего края, вне поля зрения камеры. PvP оставляет прежнее (false).
+var field_center: Vector3 = FIELD_CENTER
+var avoid_camera: bool = false
 
 
 ## yard — прямоугольник двора (x, z): светлячки и пыль над полем боя гаснут.
@@ -324,7 +328,10 @@ func _leave(crow: ArenaCrow3D, hop: bool) -> void:
 ## Стайка из 2–4 ворон пролетает над лесом, не садясь.
 func _fly_over() -> void:
 	var start: Vector3 = _offscreen()
-	var finish: Vector3 = FIELD_CENTER * 2.0 - start
+	var finish: Vector3 = field_center * 2.0 - start
+	if avoid_camera:
+		# Зеркальная точка легла бы перед камерой: стая уходит в другую точку за дальним краем.
+		finish = _offscreen()
 	finish.y = OFFSCREEN_HEIGHT
 	var lane: Vector3 = (finish - start).normalized().cross(Vector3.UP)
 	for k: int in _rng.randi_range(2, 4):
@@ -342,8 +349,29 @@ func _on_crow_finished(crow: ArenaCrow3D) -> void:
 
 
 func _offscreen() -> Vector3:
-	var direction: Vector2 = Vector2.from_angle(_rng.randf() * TAU)
-	return FIELD_CENTER + Vector3(direction.x, 0.0, direction.y) * OFFSCREEN_RADIUS + Vector3.UP * OFFSCREEN_HEIGHT
+	var camera: Camera3D = get_viewport().get_camera_3d() if avoid_camera and is_inside_tree() else null
+	var point: Vector3 = Vector3.ZERO
+	for attempt: int in 24:
+		var direction: Vector2 = Vector2.from_angle(_rng.randf() * TAU)
+		point = field_center + Vector3(direction.x, 0.0, direction.y) * OFFSCREEN_RADIUS + Vector3.UP * OFFSCREEN_HEIGHT
+		if camera == null:
+			return point
+		# Дальше от камеры, чем город, и вне кадра: путь к насесту не проходит перед объективом.
+		var behind_town: bool = point.distance_to(camera.global_position) \
+				> field_center.distance_to(camera.global_position)
+		if behind_town and not camera.is_position_in_frustum(point):
+			return point
+	return point
+
+
+## Без листопада (плейтест 19 ноября: лето, жёлтые листья не к месту): частицы листьев выключены.
+func stop_leaves() -> void:
+	for id: String in ["FallingLeaves", "GustLeaves"]:
+		var leaves: GPUParticles3D = get_node_or_null(id) as GPUParticles3D
+		if leaves != null:
+			leaves.emitting = false
+			leaves.visible = false
+	_gust_leaves = null
 
 
 ## Искры и тонкий дым над огнём чаши; узел ставит вызывающий (во двор — уходит вместе с ним).

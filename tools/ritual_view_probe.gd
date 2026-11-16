@@ -579,6 +579,23 @@ func _dump_ui() -> void:
 				print("  OVERLAP %s %s / %s %s" % [names[i], a, names[j], b])
 	for key: String in names:
 		print("  HEADER %s %s" % [key, header[key]])
+	# Плейтест 19 ноября (п. 8): клетки города (участки, дороги, ворота) под шапкой или доком.
+	var stage: RitualStage3D = _stage()
+	var offset: Vector2 = stage.get_global_rect().position
+	var covers: Array[Rect2] = []
+	for key: String in names:
+		if header[key].size.x > 0.0:
+			covers.append(header[key])
+	if _panel._dock != null:
+		covers.append(_panel._dock.get_global_rect())
+	var under: Array[Vector2i] = []
+	var ritual: RitualField = _panel.trial.field
+	for cell: Vector2i in ritual.get_buildable_cells() + ritual.open_road_cells():
+		var point: Vector2 = offset + stage.project_cell_corner(cell, Vector2(0.5, 0.5), 0.3)
+		for cover: Rect2 in covers:
+			if cover.has_point(point) and not under.has(cell):
+				under.append(cell)
+	print("UI: town under ui=%d %s" % [under.size(), under.slice(0, 8)])
 
 
 static func _text(control: Control) -> String:

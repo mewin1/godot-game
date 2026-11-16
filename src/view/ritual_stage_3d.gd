@@ -28,7 +28,7 @@ const CAMERA_YAW_RITUAL: float = 0.3
 ## Наклон на 21:9 и при каком соотношении сторон места под карту он включается (плавно).
 const CAMERA_PITCH_WIDE: float = -0.6
 ## Сколько логических пикселей кадр заходит под шапку на альбомном экране.
-const HEADER_UNDER: float = 64.0
+const HEADER_UNDER: float = 0.0
 const WIDE_FROM: float = 1.9
 ## 21:9: насколько кадр крупнее и насколько город сдвинут влево (доли места под карту).
 const WIDE_ZOOM: float = 0.14
@@ -64,6 +64,7 @@ const APPEAR_SECONDS: float = 0.45
 ## Последние метры тропы фантом проявляется из тумана.
 const PHANTOM_FADE_M: float = 3.0
 var _phantoms: Dictionary[String, ArenaUnit3D] = {}
+var _phantom_speeds: Dictionary[String, float] = {}
 var _phantom_spots: Dictionary[String, Vector3] = {}
 ## Путь подхода каждого входа: от конца тропы к началу дороги (мир) и длины вдоль него.
 var _approach: Array[PackedVector3Array] = []
@@ -347,13 +348,21 @@ func _sync_phantoms(trial: RitualTrial, delta: float) -> void:
 				unit.position = point
 				if moved.length() > 0.002:
 					unit.rotation.y = atan2(moved.x, moved.z)
-				unit.animate(delta, moved.length() / maxf(delta, 0.001), STYLE.steps_per_meter)
+				# Сглаженная скорость, как у врагов в городе (плейтест 19 ноября): тропа сдвигается раз в тик,
+				# и в кадрах между тиками скорость 0 сбрасывала шаг — фантом «плыл» без ходьбы.
+				var speed: float = moved.length() / maxf(delta, 0.001)
+				var last: float = _phantom_speeds.get(key, speed)
+				var smoothed: float = lerpf(last, speed,
+						clampf(delta * SPEED_SMOOTHING, 0.0, 1.0))
+				_phantom_speeds[key] = smoothed
+				unit.animate(delta, smoothed, STYLE.steps_per_meter)
 				unit.set_ghost(clampf(walked / PHANTOM_FADE_M, 0.0, 1.0))
 	for key: String in _phantoms.keys():
 		if not wanted.has(key):
 			_phantoms[key].queue_free()
 			_phantoms.erase(key)
 			_phantom_spots.erase(key)
+			_phantom_speeds.erase(key)
 
 
 func _clear_phantoms() -> void:
@@ -361,6 +370,7 @@ func _clear_phantoms() -> void:
 		unit.queue_free()
 	_phantoms.clear()
 	_phantom_spots.clear()
+	_phantom_speeds.clear()
 
 
 ## Путь подхода входа: тропа от её конца к воротам и дальше до начала дороги (прогресс 0).

@@ -149,6 +149,11 @@ func build_for_layout(layout: ArenaLayout3D) -> void:
 				box = box.expand(point)
 			_trail_boxes.append(box.grow(TRAIL_CLEAR))
 	super.build_for_layout(layout)
+	if _ambience != null:
+		# Плейтест 19 ноября: вороны прилетают из-за города вне кадра, листопада нет (лето).
+		_ambience.field_center = Vector3(YARD.get_center().x, 0.0, YARD.get_center().y)
+		_ambience.avoid_camera = true
+		_ambience.stop_leaves()
 
 
 ## Тропа входа lane: начинается под воротами, идёт наружу и конец уводит вбок, в лес.
