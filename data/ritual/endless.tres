@@ -435,7 +435,7 @@ packs_add = 0
 [sub_resource type="Resource" id="nights"]
 script = ExtResource("night_rules")
 first_evening_ticks = 900
-day_ticks = 500
+day_ticks = 800
 dusk_ticks = 100
 night_ticks = 1200
 night_growth_ticks = 100
@@ -496,7 +496,7 @@ script = ExtResource("alley")
 lane = 0
 cells = Array[Vector2i]([Vector2i(7, 9), Vector2i(8, 9), Vector2i(9, 9), Vector2i(10, 9), Vector2i(11, 9), Vector2i(12, 9), Vector2i(13, 9)])
 city_level = 2
-barricade_cost = 15
+barricade_cost = 0
 fast_speed_milli = 70
 
 [sub_resource type="Resource" id="hero_ilya"]
@@ -539,7 +539,7 @@ radius_milli = 2000
 knockback_milli = 3000
 stun_ticks = 40
 dawn_palisades = 1
-palisade_cap = 2
+palisade_cap = 5
 [sub_resource type="Resource" id="hero_baba_yaga"]
 script = ExtResource("hero")
 id = &"baba_yaga"
@@ -1052,6 +1052,11 @@ market_shooter_slots = 0
 market_rite_slots = 0
 market_by_element = false
 early_dawn = true
+palisade_hold_ticks = 120
+palisade_active_cap = 2
+palisade_dawn_gain = 1
+palisade_stock_cap = 3
+street_full_day = true
 reroll_cost = 2
 reroll_cost_step = 1
 level_names = Array[String](["Деревянный", "Каменный", "Кирпичный", "Белокаменный"])

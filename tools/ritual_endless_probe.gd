@@ -98,6 +98,9 @@ func _play(policy: String, seed_value: int, hero: int = 0) -> void:
 	var last_night: int = 0
 	var reactions_before: int = 0
 	var rates: PackedStringArray = []
+	# Плейтест 19 ноября: сколько живёт босс (от выхода до смерти) и что бот тратит на умение/припасы.
+	var boss_seen: Dictionary[int, int] = {}
+	var boss_lives: Array[int] = []
 	while trial.phase == RitualTrial.Phase.RUNNING and trial.tick_count < LIMIT_TICKS \
 			and (_night_limit == 0 or trial.nights_survived() < _night_limit):
 		if not trial.gift_choice.is_empty():
@@ -130,8 +133,27 @@ func _play(policy: String, seed_value: int, hero: int = 0) -> void:
 			timeline.append("н%d %d:%02d ♥%d з%d д%d в%d" % [last_night, trial.tick_count / TPS / 60,
 				trial.tick_count / TPS % 60, trial.hp, trial.gold, trial.field.towers.size(),
 				_enemies(trial, last_night)])
+		for base: MobState in trial.field.mobs:
+			if not base.data.tags.has(SETTINGS.boss_tag):
+				continue
+			if base.is_alive() and not boss_seen.has(base.id):
+				boss_seen[base.id] = trial.tick_count
+			elif not base.is_alive() and boss_seen.has(base.id) and boss_seen[base.id] >= 0:
+				boss_lives.append(trial.tick_count - boss_seen[base.id])
+				boss_seen[base.id] = -1
 		trial.tick()
 	var seconds: int = trial.tick_count / TPS
+	var used: Dictionary[int, int] = {}
+	for command: Dictionary in trial.commands:
+		var kind: int = RitualStateCodec.integer(command["action"])
+		used[kind] = used.get(kind, 0) + 1
+	var lives: PackedStringArray = []
+	for life: int in boss_lives:
+		lives.append("%d с" % (life / TPS))
+	print("SPEND: %s, сид %d | умение %d раз | припасы: куплено %d, применено %d | частоколов %d | боссы живут: %s" % [
+		policy, seed_value, used.get(RitualCommand.Action.SKILL, 0), used.get(RitualCommand.Action.BUY_SUPPLY, 0),
+		used.get(RitualCommand.Action.SUPPLY, 0), used.get(RitualCommand.Action.PALISADE, 0),
+		", ".join(lives) if not lives.is_empty() else "-"])
 	print("ENDLESS: %s, %s, сид %d — ночей %d, %d:%02d, %s, добыто %d, домов %d, боссов %d, даров %d" % [
 		policy, trial.hero_name(), seed_value, trial.nights_survived(), seconds / 60, seconds % 60,
 		trial.result if not trial.result.is_empty() else "жив к пределу", trial.earned,
@@ -427,11 +449,14 @@ func _whistle(trial: RitualTrial) -> void:
 
 ## Частокол перед самым дальним тяжёлым врагом (или боссом) во второй половине пути.
 func _palisade(trial: RitualTrial) -> void:
-	if trial.palisades <= 0 or trial.palisade_progress >= 0:
+	if not trial.palisade_free():
 		return
 	var end: int = trial.field.get_path_end_progress()
+	# Заслон (плейтест 19 ноября) держит любого: ставим перед гущей, когда на дороге не меньше 4 врагов.
+	if trial.walls_mode() and trial.field.count_alive_mobs() < 4:
+		return
 	for mob: MobState in trial.field.mobs:
-		if mob.is_alive() and trial.eligible_for_palisade(mob) and (mob as RitualMob).lane == 0 \
+		if mob.is_alive() and (trial.walls_mode() or trial.eligible_for_palisade(mob)) and (mob as RitualMob).lane == 0 \
 				and mob.progress > end / 2 and mob.progress + 1500 < end:
 			if trial.execute(RitualCommand.new(RitualCommand.Action.PALISADE, 0, Vector2i.ZERO, 0, 0,
 					mob.progress + 1500)).is_empty():

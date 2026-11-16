@@ -1069,7 +1069,9 @@ func _process(delta: float) -> void:
 		return
 	if _paused and trial.phase == RitualTrial.Phase.RUNNING:
 		_paused_seconds += delta
-	if not _paused and trial.phase == RitualTrial.Phase.RUNNING:
+	# Пока открыт выбор усиления рассвета, время стоит (плейтест 19 ноября): чтение не съедает день.
+	var choosing: bool = _boon_panel != null and _boon_panel.visible
+	if not _paused and not choosing and trial.phase == RitualTrial.Phase.RUNNING:
 		_accumulator += delta * settings.combat.ticks_per_second * _speed
 		var steps: int = mini(MAX_FRAME_TICKS, int(_accumulator))
 		for index: int in steps:
@@ -1418,7 +1420,8 @@ func _refresh_barricades() -> void:
 	for index: int in _barricade_buttons.size():
 		var button: Button = _barricade_buttons[index]
 		var alley: RitualAlley = settings.alleys[index]
-		button.visible = trial.city_level() >= alley.city_level
+		# Без цены завала проулок не заваливают (плейтест 19 ноября): кнопки нет.
+		button.visible = alley.barricade_cost > 0 and trial.city_level() >= alley.city_level
 		var closed: bool = index < trial.barricades.size() and trial.barricades[index]
 		# Коротко (critique_3 п. 54): две кнопки города в ряд; что делает завал — в подсказке.
 		# «Завалить» со знаком частокола (critique_4 п. 50): что и где — в подсказке; длинное «Завалить проулок»

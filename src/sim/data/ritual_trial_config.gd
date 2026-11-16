@@ -132,6 +132,16 @@ extends Resource
 @export var boss_immunity_ticks: int = 160
 @export var palisade_install: int = 40
 @export var palisade_stun: int = 60
+## Частокол-заслон (плейтест 19 ноября): > 0 — первый же враг (любой) упирается в частокол, и тот держит
+## всех подошедших столько тиков, потом ломается. 0 — прежний частокол против тяжёлых.
+@export var palisade_hold_ticks: int = 0
+## Сколько частоколов может стоять на дорогах одновременно (в режиме заслона).
+@export var palisade_active_cap: int = 1
+## Каждый рассвет в запас прибавляется столько частоколов, но не выше palisade_stock_cap.
+@export var palisade_dawn_gain: int = 0
+@export var palisade_stock_cap: int = 0
+## Новая улица открывает вход не в ближайшую ночь, а после полного дня (плейтест 19 ноября).
+@export var street_full_day: bool = false
 @export var ward_tag: StringName = &"ward"
 @export var banner_tag: StringName = &"banner"
 @export var boss_tag: StringName = &"boss"

@@ -121,6 +121,11 @@ static func rules_state(source: Resource) -> Dictionary[String, Variant]:
 				or (source is RitualHeroData and key == "cap_growth_percent")) \
 				and str(source.get(key)) in ["0", "false", "[]"]:
 			continue
+		# Частокол-заслон и подготовка улицы (плейтест 19 ноября): прежние значения не меняют отпечаток.
+		if source is RitualTrialConfig and ((key in ["palisade_hold_ticks", "palisade_dawn_gain",
+					"palisade_stock_cap", "street_full_day"] and str(source.get(key)) in ["0", "false"])
+				or (key == "palisade_active_cap" and integer(source.get(key)) == 1)):
+			continue
 		if source is RitualStreetData and key in ["summary", "hero_hp", "extra_idol"] \
 				and (source.get(key) == null or str(source.get(key)) in ["", "0", "false"]):
 			continue

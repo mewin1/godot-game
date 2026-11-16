@@ -75,25 +75,22 @@ func test_new_entrance_opens_next_night() -> void:
 	assert_eq(_trial.entrances(opened), 2, "С ближайшей ночи вход открыт")
 
 
-## Срезка короче срезанного отрезка; быстрый враг идёт ею, медленный — по дороге.
-func test_fast_enemies_take_open_alley_and_barricade_stops_them() -> void:
+## Срезка короче срезанного отрезка; быстрый враг идёт ею, медленный — по дороге. Завала нет
+## (плейтест 19 ноября): проулок всегда открыт с уровня города 2, его держат дома у моста.
+func test_fast_enemies_take_open_alley_and_it_cannot_be_barricaded() -> void:
 	var alley_lane: int = _trial.field.alley_route(0)
 	assert_true(_trial.field.route(alley_lane).size() < _trial.field.route(0).size(), "Проулок короче дороги")
 	var fast: int = _enemy(true)
 	var slow: int = _enemy(false)
 	assert_true(fast >= 0 and slow >= 0)
 	assert_false(_trial.takes_alley(0, _settings.enemies[fast]), "На уровне 1 проулка ещё нет")
-	assert_ne(_trial.execute(RitualCommand.new(RitualCommand.Action.BARRICADE, 0)), "")
 	_grow(1)
 	assert_true(_trial.takes_alley(0, _settings.enemies[fast]))
 	assert_false(_trial.takes_alley(0, _settings.enemies[slow]))
 	var gold: int = _trial.gold
-	assert_eq(_trial.execute(RitualCommand.new(RitualCommand.Action.BARRICADE, 0)), "")
-	assert_eq(_trial.gold, gold - _settings.alleys[0].barricade_cost)
-	assert_false(_trial.takes_alley(0, _settings.enemies[fast]), "Завал закрывает проулок")
-	assert_eq(_trial.execute(RitualCommand.new(RitualCommand.Action.BARRICADE, 0)), "")
-	assert_true(_trial.takes_alley(0, _settings.enemies[fast]), "Завал разобран")
-	assert_eq(_trial.gold, gold - _settings.alleys[0].barricade_cost, "Разбор бесплатный, без возврата")
+	assert_ne(_trial.execute(RitualCommand.new(RitualCommand.Action.BARRICADE, 0)), "")
+	assert_eq(_trial.gold, gold)
+	assert_true(_trial.takes_alley(0, _settings.enemies[fast]), "Проулок открыт")
 
 
 ## Медленный враг сворачивает в проулок, когда впереди на срезаемом отрезке частокол.
@@ -112,11 +109,9 @@ func test_slow_enemy_turns_into_alley_before_palisade() -> void:
 	assert_eq(mob.lane, _trial.field.alley_route(0), "Частокол впереди — враг свернул в проулок")
 
 
-func test_snapshot_keeps_barricade_and_fourth_idol() -> void:
+func test_snapshot_keeps_fourth_idol() -> void:
 	_grow(3)
-	_trial.execute(RitualCommand.new(RitualCommand.Action.BARRICADE, 0))
 	var restored: RitualTrial = RitualTrial.from_snapshot(_settings, _trial.snapshot())
 	assert_not_null(restored)
-	assert_true(restored.barricades[0])
 	assert_eq(restored.field.idols.size(), 4)
 	assert_eq(restored.state_hash(), _trial.state_hash())

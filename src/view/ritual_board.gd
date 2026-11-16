@@ -607,7 +607,7 @@ func _draw_preview() -> void:
 						var note: String = "назад" if whistle \
 								else "−%d%s" % [trial.hero_damage(mob), " щит" if mob.ward_hp > 0 else ""]
 						_text(_point(trial.field.get_mob_position(mob)) + Vector2(8, -12), note, Color.WHITE)
-			else:
+			elif not trial.walls_mode():
 				var candidate: MobState = null
 				var candidate_gap: int = 0
 				for mob: MobState in trial.field.mobs:

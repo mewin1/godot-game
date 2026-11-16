@@ -78,10 +78,15 @@ func refresh_ritual(trial: RitualTrial, paused: bool) -> void:
 	_skill_button.tooltip_text = "%s\n%s" % [hero.skill_text, hero.passive_text] if hero != null \
 			else "Указать дорогу. Через 1 с — физический удар по области; не оглушает."
 	var palisade_tip: String = "Частокол поперёк дороги (F): враги стоят, пока первый тяжёлый не сломает его.\nВ запасе: %d." % trial.palisades
+	if trial.walls_mode():
+		palisade_tip = ("Частокол поперёк дороги (F): первый подошедший враг упирается, и частокол держит всех " \
+				+ "%d с, потом ломается. На дорогах — до %d сразу.\nВ запасе: %d (+%d на рассвете).") % [
+				trial.settings.palisade_hold_ticks / trial.settings.combat.ticks_per_second,
+				trial.settings.palisade_active_cap, trial.palisades, trial.settings.palisade_dawn_gain]
 	if palisade_tile != null:
 		palisade_tile.set_state(trial.palisades, trial.palisades <= 0, -1)
 		palisade_tile.tooltip_text = palisade_tip
-		palisade_tile.disabled = trial.phase != RitualTrial.Phase.RUNNING or trial.palisades <= 0
+		palisade_tile.disabled = not trial.palisade_free()
 		_reserve_button.disabled = palisade_tile.disabled
 	else:
 		_reserve_button.text = "Частокол · %d · F" % trial.palisades

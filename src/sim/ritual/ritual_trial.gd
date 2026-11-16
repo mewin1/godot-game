@@ -30,6 +30,12 @@ var palisade_progress: int = -1
 ## Вход, на маршруте которого стоит частокол (общий отрезок дорог он перекрывает для всех).
 var palisade_lane: int = 0
 var palisade_ready: int = -1
+## Частоколы-заслоны (palisade_hold_ticks > 0): дорога, точка, тик готовности и тик слома
+## (-1 — ещё никто не упёрся). Параллельные списки целых — снимок и хэш без объектов.
+var wall_lanes: Array[int] = []
+var wall_progress: Array[int] = []
+var wall_ready: Array[int] = []
+var wall_break: Array[int] = []
 var hero_ready: int = 0
 var hero_due: int = -1
 var hero_progress: int = 0
@@ -849,7 +855,9 @@ func _street() -> String:
 		return "Не хватает золота"
 	gold -= cost
 	spent += cost
-	var night: int = current_night() + (1 if settings.is_night(tick_count) else 0)
+	# Вход — с ближайшей не начавшейся ночи; со street_full_day — только после полного дня подготовки.
+	var later: bool = settings.is_night(tick_count) or settings.street_full_day
+	var night: int = current_night() + (1 if later else 0)
 	street_nights.append(night)
 	sync_streets()
 	_event(&"street", {"street": street_nights.size(), "night": night, "cost": cost})
@@ -869,6 +877,8 @@ func _barricade(index: int) -> String:
 	if index < 0 or index >= settings.alleys.size():
 		return "Нет такого проулка"
 	var alley: RitualAlley = settings.alleys[index]
+	if alley.barricade_cost <= 0:
+		return "Проулок не заваливают: его держат дома у моста"
 	if city_level() < alley.city_level:
 		return "Проулок ещё за пределами города"
 	if barricades.size() != settings.alleys.size():
@@ -912,6 +922,9 @@ func _reroute_at_forks() -> void:
 		var blocked: bool = (palisade_progress >= 0 and palisade_lane == alley.lane
 				and palisade_progress > fork and palisade_progress < join) \
 			or (tar_until > tick_count and tar_lane == alley.lane and tar_progress > fork and tar_progress < join)
+		for wall: int in wall_lanes.size():
+			blocked = blocked or (wall_lanes[wall] == alley.lane and wall_progress[wall] > fork
+					and wall_progress[wall] < join)
 		if not blocked:
 			continue
 		for base: MobState in field.mobs:
@@ -1155,7 +1168,21 @@ func _whistle() -> void:
 #endregion
 
 
+## Можно ли сейчас поставить частокол (есть в запасе и на дорогах не стоит предельное число).
+func palisade_free() -> bool:
+	if phase != Phase.RUNNING or palisades <= 0:
+		return false
+	return wall_lanes.size() < settings.palisade_active_cap if walls_mode() else palisade_progress < 0
+
+
+## Частокол-заслон держит любого врага (плейтест 19 ноября), а не только тяжёлого.
+func walls_mode() -> bool:
+	return settings.palisade_hold_ticks > 0
+
+
 func _palisade(lane: int, progress: int) -> String:
+	if walls_mode():
+		return _place_wall(lane, progress)
 	if phase != Phase.RUNNING or palisades <= 0 or palisade_progress >= 0:
 		return "Нет свободного частокола"
 	if not valid_spot(lane, progress):
@@ -1168,6 +1195,57 @@ func _palisade(lane: int, progress: int) -> String:
 	palisade_progress = progress
 	palisade_ready = tick_count + settings.palisade_install
 	return ""
+
+
+func _place_wall(lane: int, progress: int) -> String:
+	if not palisade_free():
+		return "Нет свободного частокола" if palisades <= 0 else "На дорогах уже %d частокола" \
+				% settings.palisade_active_cap
+	if not valid_spot(lane, progress):
+		return "Выберите точку дороги"
+	for wall: int in wall_lanes.size():
+		if wall_lanes[wall] == lane and absi(wall_progress[wall] - progress) < FieldState.MILLI:
+			return "Здесь уже стоит частокол"
+	palisades -= 1
+	wall_lanes.append(lane)
+	wall_progress.append(progress)
+	wall_ready.append(tick_count + settings.palisade_install)
+	wall_break.append(-1)
+	_event(&"wall_placed", {"lane": lane, "progress": progress})
+	return ""
+
+
+## Заслоны после шага врагов: враг, дошедший до готового частокола, стоит у него; первый упёршийся
+## запускает отсчёт слома (palisade_hold_ticks), к нему частокол рушится и отпускает всех.
+func _resolve_walls() -> void:
+	var broken: Array[int] = []
+	for wall: int in wall_lanes.size():
+		if tick_count < wall_ready[wall]:
+			continue
+		if wall_break[wall] >= 0 and tick_count >= wall_break[wall]:
+			broken.append(wall)
+			continue
+		for base: MobState in field.mobs:
+			var mob: RitualMob = base as RitualMob
+			if not mob.is_alive():
+				continue
+			# Заслон — бревна поперёк дороги, а не чары: неуязвимость босса его не отменяет.
+			var mark: int = spot_on_route(wall_lanes[wall], wall_progress[wall], mob)
+			if mark < 0 or mob.previous_progress > mark or mob.progress < mark:
+				continue
+			mob.progress = mark
+			if wall_break[wall] < 0:
+				wall_break[wall] = tick_count + settings.palisade_hold_ticks
+				field.interrupt_boss(mob)
+				_event(&"palisade", {"mob": mob.id, "affected": true, "progress": wall_progress[wall],
+					"lane": wall_lanes[wall]})
+	broken.reverse()
+	for wall: int in broken:
+		_event(&"wall_broken", {"lane": wall_lanes[wall], "progress": wall_progress[wall]})
+		wall_lanes.remove_at(wall)
+		wall_progress.remove_at(wall)
+		wall_ready.remove_at(wall)
+		wall_break.remove_at(wall)
 
 
 ## Точка на открытой дороге: главной или пристроенной улицы (до сторожки, не на ней).
@@ -1336,6 +1414,8 @@ func _finish_installations() -> void:
 
 
 func _resolve_palisade() -> void:
+	if not wall_lanes.is_empty():
+		_resolve_walls()
 	if palisade_progress < 0 or tick_count < palisade_ready:
 		return
 	var first: RitualMob = null
@@ -1386,6 +1466,8 @@ func _boundaries() -> void:
 		# Частокол против тяжёлых — к ночи босса (решено в сессии, decisions.md).
 		if settings.nights.is_boss_night(dawn + 1):
 			palisades += 1
+		if settings.palisade_dawn_gain > 0:
+			palisades = maxi(palisades, mini(settings.palisade_stock_cap, palisades + settings.palisade_dawn_gain))
 		_collect_tribute(dawn)
 		_grant_supply(dawn)
 		_clean_night_bonus(dawn)

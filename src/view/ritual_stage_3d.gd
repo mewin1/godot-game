@@ -13,6 +13,8 @@ var _hero_model: String = "res://assets/noir_h3d/heroes/ilya.glb"
 var _barrier: Node3D
 var _barrier_progress: int = -1
 var _barrier_lane: int = 0
+var _walls: Array[Node3D] = []
+var _walls_key: String = ""
 ## Дорога каждого входа: 0 — главная (она же layout), N — улица N.
 var _lanes: Array[ArenaLayout3D] = []
 ## Края кадра по высоте двора (z мира): запас к открытым клеткам, как у прежнего кадра.
@@ -448,19 +450,46 @@ func update_ritual(trial: RitualTrial, delta: float) -> void:
 			_barrier.queue_free()
 			_barrier = null
 		if _barrier_progress >= 0:
-			_barrier = Node3D.new()
-			_world.add_child(_barrier)
-			var road: ArenaLayout3D = _lane_layout(_barrier_lane)
-			var length: float = road.progress_to_length(_barrier_progress)
-			_barrier.position = road.road_point(length)
-			var direction: Vector3 = road.road_direction(length)
-			_barrier.rotation.y = atan2(direction.x, direction.z)
-			for index: int in 5:
-				ArenaMaterials3D.part(_barrier, ArenaMaterials3D.cylinder(0.10, 0.02, 1.2, 5),
-					ArenaMaterials3D.solid(ArenaMaterials3D.WOOD), Vector3((index - 2) * 0.36, 0.6, 0))
+			_barrier = _make_palisade(_barrier_lane, _barrier_progress)
 	if _barrier != null:
 		_barrier.scale.y = 1.0 if trial.tick_count >= trial.palisade_ready else 0.4
+	_sync_walls(trial)
 	sync(delta, 1.0)
+
+
+## Частокол поперёк дороги: пять кольев.
+func _make_palisade(lane: int, progress: int) -> Node3D:
+	var node: Node3D = Node3D.new()
+	_world.add_child(node)
+	var road: ArenaLayout3D = _lane_layout(lane)
+	var length: float = road.progress_to_length(progress)
+	node.position = road.road_point(length)
+	var direction: Vector3 = road.road_direction(length)
+	node.rotation.y = atan2(direction.x, direction.z)
+	for index: int in 5:
+		ArenaMaterials3D.part(node, ArenaMaterials3D.cylinder(0.10, 0.02, 1.2, 5),
+			ArenaMaterials3D.solid(ArenaMaterials3D.WOOD), Vector3((index - 2) * 0.36, 0.6, 0))
+	return node
+
+
+## Частоколы-заслоны (плейтест 19 ноября): по узлу на каждый; ставится — низкий, держит врага —
+## кренится тем сильнее, чем ближе слом.
+func _sync_walls(trial: RitualTrial) -> void:
+	var key: String = "%s|%s" % [trial.wall_lanes, trial.wall_progress]
+	if key != _walls_key:
+		_walls_key = key
+		for node: Node3D in _walls:
+			node.queue_free()
+		_walls.clear()
+		for index: int in trial.wall_lanes.size():
+			_walls.append(_make_palisade(trial.wall_lanes[index], trial.wall_progress[index]))
+	for index: int in mini(_walls.size(), trial.wall_lanes.size()):
+		var ready: bool = trial.tick_count >= trial.wall_ready[index]
+		_walls[index].scale.y = 1.0 if ready else 0.4
+		var lean: float = 0.0
+		if trial.wall_break[index] >= 0 and trial.settings.palisade_hold_ticks > 0:
+			lean = 1.0 - float(trial.wall_break[index] - trial.tick_count) / trial.settings.palisade_hold_ticks
+		_walls[index].rotation.x = clampf(lean, 0.0, 1.0) * 0.35
 
 
 func _sync_barricades(trial: RitualTrial) -> void:
